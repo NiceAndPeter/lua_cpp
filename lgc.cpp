@@ -133,7 +133,7 @@ static l_mem objsize (GCObject *o) {
       break;
     }
     case LUA_VPROTO: {
-      res = luaF_protosize(gco2p(o));
+      res = gco2p(o)->memorySize();  /* Phase 25b */
       break;
     }
     case LUA_VTHREAD: {
@@ -837,7 +837,7 @@ static void freeobj (lua_State *L, GCObject *o) {
   assert_code(l_mem newmem = gettotalbytes(G(L)) - objsize(o));
   switch (o->tt) {
     case LUA_VPROTO:
-      luaF_freeproto(L, gco2p(o));
+      gco2p(o)->free(L);  /* Phase 25b */
       break;
     case LUA_VUPVAL:
       freeupval(L, gco2upv(o));
