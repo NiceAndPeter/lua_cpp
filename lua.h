@@ -64,8 +64,39 @@ typedef struct lua_State lua_State;
 /*
 ** basic types
 */
-#define LUA_TNONE		(-1)
 
+#ifdef __cplusplus
+// C++ version: Use enum class for type safety
+enum class LuaType : int {
+    None           = -1,
+    Nil            = 0,
+    Boolean        = 1,
+    LightUserdata  = 2,
+    Number         = 3,
+    String         = 4,
+    Table          = 5,
+    Function       = 6,
+    Userdata       = 7,
+    Thread         = 8,
+    NumTypes       = 9
+};
+
+// Backward compatibility macros that use the enum
+#define LUA_TNONE		static_cast<int>(LuaType::None)
+#define LUA_TNIL		static_cast<int>(LuaType::Nil)
+#define LUA_TBOOLEAN		static_cast<int>(LuaType::Boolean)
+#define LUA_TLIGHTUSERDATA	static_cast<int>(LuaType::LightUserdata)
+#define LUA_TNUMBER		static_cast<int>(LuaType::Number)
+#define LUA_TSTRING		static_cast<int>(LuaType::String)
+#define LUA_TTABLE		static_cast<int>(LuaType::Table)
+#define LUA_TFUNCTION		static_cast<int>(LuaType::Function)
+#define LUA_TUSERDATA		static_cast<int>(LuaType::Userdata)
+#define LUA_TTHREAD		static_cast<int>(LuaType::Thread)
+#define LUA_NUMTYPES		static_cast<int>(LuaType::NumTypes)
+
+#else
+// C version: Traditional integer constants
+#define LUA_TNONE		(-1)
 #define LUA_TNIL		0
 #define LUA_TBOOLEAN		1
 #define LUA_TLIGHTUSERDATA	2
@@ -75,8 +106,8 @@ typedef struct lua_State lua_State;
 #define LUA_TFUNCTION		6
 #define LUA_TUSERDATA		7
 #define LUA_TTHREAD		8
-
 #define LUA_NUMTYPES		9
+#endif
 
 
 
