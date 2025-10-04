@@ -1127,7 +1127,7 @@ static void f_parser (lua_State *L, void *ud) {
     cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
   }
   lua_assert(cl->nupvalues == cl->p->sizeupvalues);
-  luaF_initupvals(L, cl);
+  cl->initUpvals(L);  /* Phase 25d */
 }
 
 
