@@ -642,6 +642,28 @@ typedef union UValue {
 ** Header for userdata with user values;
 ** memory area follows the end of this structure.
 */
+#ifdef __cplusplus
+class Udata {
+public:
+  CommonHeader;
+  unsigned short nuvalue;  /* number of user values */
+  size_t len;  /* number of bytes */
+  struct Table *metatable;
+  GCObject *gclist;
+  UValue uv[1];  /* user values */
+
+  // Inline accessors
+  inline size_t getLen() const noexcept { return len; }
+  inline unsigned short getNumUserValues() const noexcept { return nuvalue; }
+  inline Table* getMetatable() const noexcept { return metatable; }
+  inline void setMetatable(Table* mt) noexcept { metatable = mt; }
+  inline UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
+  inline const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
+  // Note: getMemory() uses macro udatamemoffset which requires Udata0 to be defined
+  inline void* getMemory() noexcept;
+  inline const void* getMemory() const noexcept;
+};
+#else
 typedef struct Udata {
   CommonHeader;
   unsigned short nuvalue;  /* number of user values */
@@ -650,6 +672,7 @@ typedef struct Udata {
   GCObject *gclist;
   UValue uv[1];  /* user values */
 } Udata;
+#endif
 
 
 /*
@@ -680,6 +703,16 @@ typedef struct Udata0 {
 
 /* compute the size of a userdata */
 #define sizeudata(nuv,nb)	(udatamemoffset(nuv) + (nb))
+
+#ifdef __cplusplus
+// Implementation of Udata::getMemory() now that Udata0 is defined
+inline void* Udata::getMemory() noexcept {
+  return getudatamem(this);
+}
+inline const void* Udata::getMemory() const noexcept {
+  return getudatamem(const_cast<Udata*>(this));
+}
+#endif
 
 /* }================================================================== */
 
