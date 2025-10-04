@@ -73,6 +73,22 @@ public:
   inline lu_byte getType() const noexcept { return tt_; }
   inline const Value& getValue() const noexcept { return value_; }
   inline Value& getValue() noexcept { return value_; }
+
+  // Value accessors (Phase 15: Macro reduction)
+  // Integer value (for VKINT/VNUMINT types)
+  inline lua_Integer intValue() const noexcept { return value_.i; }
+
+  // Float value (for VNUMFLT types)
+  inline lua_Number floatValue() const noexcept { return value_.n; }
+
+  // Pointer value (for VLIGHTUSERDATA)
+  inline void* pointerValue() const noexcept { return value_.p; }
+
+  // GC object value (for collectable types)
+  inline GCObject* gcValue() const noexcept { return value_.gc; }
+
+  // C function value (for light C functions)
+  inline lua_CFunction functionValue() const noexcept { return value_.f; }
 };
 #else
 typedef struct TValue {
@@ -438,7 +454,11 @@ inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o)
 #define iscollectable(o)	(rawtt(o) & BIT_ISCOLLECTABLE)
 #endif
 
+#ifdef __cplusplus
+inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
+#else
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
+#endif
 
 #define gcvalueraw(v)	((v).gc)
 
@@ -471,8 +491,14 @@ inline constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o,
 
 #define nvalue(o)	check_exp(ttisnumber(o), \
 	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
+
+#ifdef __cplusplus
+inline lua_Number fltvalue(const TValue* o) noexcept { return o->floatValue(); }
+inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
+#else
 #define fltvalue(o)	check_exp(ttisfloat(o), val_(o).n)
 #define ivalue(o)	check_exp(ttisinteger(o), val_(o).i)
+#endif
 
 #define fltvalueraw(v)	((v).n)
 #define ivalueraw(v)	((v).i)
@@ -644,7 +670,12 @@ inline constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checkt
 #define ttisfulluserdata(o)	checktag((o), ctb(LUA_VUSERDATA))
 #endif
 
+#ifdef __cplusplus
+inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
+#else
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
+#endif
+
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
 
 #define pvalueraw(v)	((v).p)
@@ -953,8 +984,13 @@ inline constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosur
 
 #define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
 #define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
-#define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
 #define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
+
+#ifdef __cplusplus
+inline lua_CFunction fvalue(const TValue* o) noexcept { return o->functionValue(); }
+#else
+#define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
+#endif
 
 #define fvalueraw(v)	((v).f)
 
