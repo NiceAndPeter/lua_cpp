@@ -799,7 +799,7 @@ static TStatus finishpcallk (lua_State *L,  CallInfo *ci) {
     L->allowhook = getoah(ci);  /* restore 'allowhook' */
     func = luaF_close(L, func, status, 1);  /* can yield or raise an error */
     luaD_seterrorobj(L, status, func);
-    luaD_shrinkstack(L);   /* restore stack size in case of overflow */
+    L->shrinkStack();  /* Phase 25e: restore stack size in case of overflow */
     setcistrecst(ci, LUA_OK);  /* clear original status */
   }
   ci->callstatus &= ~CIST_YPCALL;
@@ -1080,7 +1080,7 @@ TStatus luaD_pcall (lua_State *L, Pfunc func, void *u, ptrdiff_t old_top,
     L->allowhook = old_allowhooks;
     status = luaD_closeprotected(L, old_top, status);
     luaD_seterrorobj(L, status, restorestack(L, old_top));
-    luaD_shrinkstack(L);   /* restore stack size in case of overflow */
+    L->shrinkStack();  /* Phase 25e: restore stack size in case of overflow */
   }
   L->errfunc = old_errfunc;
   return status;
@@ -1149,5 +1149,29 @@ TStatus luaD_protectedparser (lua_State *L, ZIO *z, const char *name,
   decnny(L);
   return status;
 }
+
+
+#ifdef __cplusplus
+/*
+** Phase 25e: lua_State method implementations
+*/
+
+void lua_State::inctop() {
+  luaD_inctop(this);
+}
+
+void lua_State::shrinkStack() {
+  luaD_shrinkstack(this);
+}
+
+int lua_State::growStack(int n, int raiseerror) {
+  return luaD_growstack(this, n, raiseerror);
+}
+
+int lua_State::reallocStack(int newsize, int raiseerror) {
+  return luaD_reallocstack(this, newsize, raiseerror);
+}
+
+#endif
 
 

@@ -330,6 +330,12 @@ public:
   global_State* getGlobalState() const noexcept { return l_G; }
   CallInfo* getCallInfo() const noexcept { return ci; }
   TStatus getStatus() const noexcept { return status; }
+
+  // Phase 25e: Stack operation methods (implemented in ldo.cpp)
+  void inctop();
+  void shrinkStack();
+  int growStack(int n, int raiseerror);
+  int reallocStack(int newsize, int raiseerror);
 };
 
 

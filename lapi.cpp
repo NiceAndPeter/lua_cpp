@@ -115,7 +115,7 @@ LUA_API int lua_checkstack (lua_State *L, int n) {
   if (L->stack_last.p - L->top.p > n)  /* stack large enough? */
     res = 1;  /* yes; check is OK */
   else  /* need to grow stack */
-    res = luaD_growstack(L, n, 0);
+    res = L->growStack(n, 0);  /* Phase 25e */
   if (res && ci->top.p < L->top.p + n)
     ci->top.p = L->top.p + n;  /* adjust frame top */
   lua_unlock(L);
