@@ -62,7 +62,7 @@ CWARNS= $(CWARNSCPP) $(CWARNSC) $(CWARNGCC)
 # ASAN_OPTIONS="detect_invalid_pointer_pairs=2".
 # -fsanitize=undefined
 # -fsanitize=pointer-subtract -fsanitize=address -fsanitize=pointer-compare
-# TESTS= -DLUA_USER_H='"ltests.h"' -Og -g
+TESTS= -DLUA_USER_H='"ltests.h"' -Og -g
 
 
 LOCAL = $(TESTS) $(CWARNS)

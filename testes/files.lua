@@ -7,6 +7,15 @@ local debug = require "debug"
 
 local maxint = math.maxinteger
 
+-- get name of running executable for use in popen tests
+local progname
+do
+  local arg = arg or ARG
+  local i = 0
+  while arg[i] do i = i - 1 end
+  progname = '"' .. arg[i + 1] .. '"'
+end
+
 assert(type(os.getenv"PATH") == "string")
 
 assert(io.input(io.stdin) == io.stdin)
@@ -84,8 +93,14 @@ io.output(file)
 assert(io.output() ~= io.stdout)
 
 if not _port then   -- invalid seek
-  local status, msg, code = io.stdin:seek("set", 1000)
-  assert(not status and type(msg) == "string" and type(code) == "number")
+  -- First check if stdin supports seeking
+  local curpos = io.stdin:seek("cur", 0)
+  if not curpos then
+    -- stdin is not seekable (pipe, terminal, etc.) - test the error
+    local status, msg, code = io.stdin:seek("set", 1000)
+    assert(not status and type(msg) == "string" and type(code) == "number")
+  end
+  -- else: stdin is seekable, skip this particular test
 end
 
 assert(io.output():seek() == 0)
@@ -726,8 +741,8 @@ if T and T.nonblock and not _port then
   assert(f:close())
 
   -- receiver will read a "few" bytes (enough to empty a large buffer)
-  local receiver = [[
-    lua -e 'assert(io.stdin:setvbuf("no")); assert(#io.read(1e4) == 1e4)' ]]
+  local receiver =
+    progname .. [[ -e 'assert(io.stdin:setvbuf("no")); assert(#io.read(1e4) == 1e4)' ]]
 
   local f = io.popen(receiver, "w")
   assert(f:setvbuf("no"))
@@ -767,13 +782,6 @@ if not _soft then
 end
 
 if not _port then
-  local progname
-  do  -- get name of running executable
-    local arg = arg or ARG
-    local i = 0
-    while arg[i] do i = i - 1 end
-    progname = '"' .. arg[i + 1] .. '"'
-  end
   print("testing popen/pclose and execute")
   -- invalid mode for popen
   checkerr("invalid mode", io.popen, "cat", "")
