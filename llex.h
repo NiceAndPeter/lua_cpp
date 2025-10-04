@@ -61,6 +61,32 @@ typedef struct Token {
 
 /* state of the scanner plus state of the parser when shared by all
    functions */
+#ifdef __cplusplus
+class LexState {
+public:
+  int current;  /* current character (charint) */
+  int linenumber;  /* input line counter */
+  int lastline;  /* line of last token 'consumed' */
+  Token t;  /* current token */
+  Token lookahead;  /* look ahead token */
+  struct FuncState *fs;  /* current function (parser) */
+  struct lua_State *L;
+  ZIO *z;  /* input stream */
+  Mbuffer *buff;  /* buffer for tokens */
+  Table *h;  /* to avoid collection/reuse strings */
+  struct Dyndata *dyd;  /* dynamic structures used by the parser */
+  TString *source;  /* current source name */
+  TString *envn;  /* environment variable name */
+  TString *brkn;  /* "break" name (used as a label) */
+  TString *glbn;  /* "global" name (when not a reserved word) */
+
+  // Inline accessors
+  inline int getCurrentChar() const noexcept { return current; }
+  inline int getLineNumber() const noexcept { return linenumber; }
+  inline TString* getSource() const noexcept { return source; }
+  inline const Token& getCurrentToken() const noexcept { return t; }
+};
+#else
 typedef struct LexState {
   int current;  /* current character (charint) */
   int linenumber;  /* input line counter */
@@ -78,6 +104,7 @@ typedef struct LexState {
   TString *brkn;  /* "break" name (used as a label) */
   TString *glbn;  /* "global" name (when not a reserved word) */
 } LexState;
+#endif
 
 
 LUAI_FUNC void luaX_init (lua_State *L);

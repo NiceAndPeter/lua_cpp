@@ -71,6 +71,35 @@ typedef enum {
 #define vkisindexed(k)	(VINDEXED <= (k) && (k) <= VINDEXSTR)
 
 
+#ifdef __cplusplus
+class expdesc {
+public:
+  expkind k;
+  union {
+    lua_Integer ival;    /* for VKINT */
+    lua_Number nval;  /* for VKFLT */
+    TString *strval;  /* for VKSTR */
+    int info;  /* for generic use */
+    struct {  /* for indexed variables */
+      short idx;  /* index (R or "long" K) */
+      lu_byte t;  /* table (register or upvalue) */
+      lu_byte ro;  /* true if variable is read-only */
+      int keystr;  /* index in 'k' of string key, or -1 if not a string */
+    } ind;
+    struct {  /* for local variables */
+      lu_byte ridx;  /* register holding the variable */
+      short vidx;  /* index in 'actvar.arr' */
+    } var;
+  } u;
+  int t;  /* patch list of 'exit when true' */
+  int f;  /* patch list of 'exit when false' */
+
+  // Inline accessors
+  inline expkind getKind() const noexcept { return k; }
+  inline bool isConstant() const noexcept { return k == VNIL || k == VFALSE || k == VTRUE || k == VKINT || k == VKFLT || k == VKSTR; }
+  inline int getInfo() const noexcept { return u.info; }
+};
+#else
 typedef struct expdesc {
   expkind k;
   union {
@@ -92,6 +121,7 @@ typedef struct expdesc {
   int t;  /* patch list of 'exit when true' */
   int f;  /* patch list of 'exit when false' */
 } expdesc;
+#endif
 
 
 /* kinds of variables */
@@ -158,6 +188,38 @@ struct BlockCnt;  /* defined in lparser.c */
 
 
 /* state needed to generate code for a given function */
+#ifdef __cplusplus
+class FuncState {
+public:
+  Proto *f;  /* current function header */
+  struct FuncState *prev;  /* enclosing function */
+  struct LexState *ls;  /* lexical state */
+  struct BlockCnt *bl;  /* chain of current blocks */
+  Table *kcache;  /* cache for reusing constants */
+  int pc;  /* next position to code (equivalent to 'ncode') */
+  int lasttarget;   /* 'label' of last 'jump label' */
+  int previousline;  /* last line that was saved in 'lineinfo' */
+  int nk;  /* number of elements in 'k' */
+  int np;  /* number of elements in 'p' */
+  int nabslineinfo;  /* number of elements in 'abslineinfo' */
+  int firstlocal;  /* index of first local var (in Dyndata array) */
+  int firstlabel;  /* index of first label (in 'dyd->label->arr') */
+  short ndebugvars;  /* number of elements in 'f->locvars' */
+  short nactvar;  /* number of active variable declarations */
+  lu_byte nups;  /* number of upvalues */
+  lu_byte freereg;  /* first free register */
+  lu_byte iwthabs;  /* instructions issued since last absolute line info */
+  lu_byte needclose;  /* function needs to close upvalues when returning */
+
+  // Inline accessors
+  inline Proto* getProto() const noexcept { return f; }
+  inline FuncState* getPrev() const noexcept { return prev; }
+  inline int getPC() const noexcept { return pc; }
+  inline lu_byte getFreeReg() const noexcept { return freereg; }
+  inline lu_byte getNumUpvalues() const noexcept { return nups; }
+  inline short getNumActiveVars() const noexcept { return nactvar; }
+};
+#else
 typedef struct FuncState {
   Proto *f;  /* current function header */
   struct FuncState *prev;  /* enclosing function */
@@ -179,6 +241,7 @@ typedef struct FuncState {
   lu_byte iwthabs;  /* instructions issued since last absolute line info */
   lu_byte needclose;  /* function needs to close upvalues when returning */
 } FuncState;
+#endif
 
 
 LUAI_FUNC lu_byte luaY_nvarstack (FuncState *fs);
