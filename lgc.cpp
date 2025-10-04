@@ -865,7 +865,7 @@ static void freeobj (lua_State *L, GCObject *o) {
     }
     case LUA_VSHRSTR: {
       TString *ts = gco2ts(o);
-      luaS_remove(L, ts);  /* remove it from hash table */
+      ts->remove(L);  /* Phase 25a: use method instead of free function */
       luaM_freemem(L, ts, sizestrshr(cast_uint(ts->shrlen)));
       break;
     }

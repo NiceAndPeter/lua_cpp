@@ -1170,7 +1170,7 @@ void luaH_finishset (lua_State *L, Table *t, const TValue *key,
     }
     else if (isextstr(key)) {  /* external string? */
       /* If string is short, must internalize it to be used as table key */
-      TString *ts = luaS_normstr(L, tsvalue(key));
+      TString *ts = tsvalue(key)->normalize(L);  /* Phase 25a: use method */
       setsvalue2s(L, L->top.p++, ts);  /* anchor 'ts' (EXTRA_STACK) */
       luaH_newkey(L, t, s2v(L->top.p - 1), value);
       L->top.p--;

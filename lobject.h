@@ -566,6 +566,8 @@ public:
   // Method declarations (implemented in lstring.cpp)
   unsigned hashLongStr();
   bool equals(TString* other);
+  void remove(lua_State* L);           // Phase 25a: from luaS_remove
+  TString* normalize(lua_State* L);    // Phase 25a: from luaS_normstr
 
   // Static factory-like functions (still use luaS_* for now)
   // static TString* create(lua_State* L, const char* str, size_t len);

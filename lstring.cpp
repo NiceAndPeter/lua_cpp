@@ -366,5 +366,26 @@ bool TString::equals(TString* other) {
   return luaS_eqstr(this, other) != 0;
 }
 
+// Phase 25a: Convert luaS_remove to TString method
+void TString::remove(lua_State* L) {
+  stringtable *tb = &G(L)->strt;
+  TString **p = &tb->hash[lmod(this->hash, tb->size)];
+  while (*p != this)  /* find previous element */
+    p = &(*p)->u.hnext;
+  *p = (*p)->u.hnext;  /* remove element from its list */
+  tb->nuse--;
+}
+
+// Phase 25a: Convert luaS_normstr to TString method
+TString* TString::normalize(lua_State* L) {
+  size_t len = this->u.lnglen;
+  if (len > LUAI_MAXSHORTLEN)
+    return this;  /* long string; keep the original */
+  else {
+    const char *str = getlngstr(this);
+    return internshrstr(L, str, len);
+  }
+}
+
 #endif
 
