@@ -956,43 +956,6 @@ static lu_byte finishnodeget (const TValue *val, TValue *res) {
 }
 
 
-lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res) {
-  unsigned k = ikeyinarray(t, key);
-  if (k > 0) {
-    lu_byte tag = *getArrTag(t, k - 1);
-    if (!tagisempty(tag))
-      farr2val(t, k - 1, tag, res);
-    return tag;
-  }
-  else
-    return finishnodeget(getintfromhash(t, key), res);
-}
-
-
-/*
-** search function for short strings
-*/
-const TValue *luaH_Hgetshortstr (Table *t, TString *key) {
-  Node *n = hashstr(t, key);
-  lua_assert(strisshr(key));
-  for (;;) {  /* check whether 'key' is somewhere in the chain */
-    if (keyisshrstr(n) && eqshrstr(keystrval(n), key))
-      return gval(n);  /* that's it */
-    else {
-      int nx = gnext(n);
-      if (nx == 0)
-        return &absentkey;  /* not found */
-      n += nx;
-    }
-  }
-}
-
-
-lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res) {
-  return finishnodeget(luaH_Hgetshortstr(t, key), res);
-}
-
-
 static const TValue *Hgetlongstr (Table *t, TString *key) {
   TValue ko;
   lua_assert(!strisshr(key));
@@ -1003,42 +966,9 @@ static const TValue *Hgetlongstr (Table *t, TString *key) {
 
 static const TValue *Hgetstr (Table *t, TString *key) {
   if (strisshr(key))
-    return luaH_Hgetshortstr(t, key);
+    return t->HgetShortStr(key);
   else
     return Hgetlongstr(t, key);
-}
-
-
-lu_byte luaH_getstr (Table *t, TString *key, TValue *res) {
-  return finishnodeget(Hgetstr(t, key), res);
-}
-
-
-/*
-** main search function
-*/
-lu_byte luaH_get (Table *t, const TValue *key, TValue *res) {
-  const TValue *slot;
-  switch (ttypetag(key)) {
-    case LUA_VSHRSTR:
-      slot = luaH_Hgetshortstr(t, tsvalue(key));
-      break;
-    case LUA_VNUMINT:
-      return luaH_getint(t, ivalue(key), res);
-    case LUA_VNIL:
-      slot = &absentkey;
-      break;
-    case LUA_VNUMFLT: {
-      lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
-        return luaH_getint(t, k, res);  /* use specialized version */
-      /* else... */
-    }  /* FALLTHROUGH */
-    default:
-      slot = getgeneric(t, key, 0);
-      break;
-  }
-  return finishnodeget(slot, res);
 }
 
 
@@ -1074,149 +1004,58 @@ static int rawfinishnodeset (const TValue *slot, TValue *val) {
 }
 
 
-int luaH_psetint (Table *t, lua_Integer key, TValue *val) {
-  lua_assert(!ikeyinarray(t, key));
-  return finishnodeset(t, getintfromhash(t, key), val);
-}
-
-
-static int psetint (Table *t, lua_Integer key, TValue *val) {
-  int hres;
-  luaH_fastseti(t, key, val, hres);
-  return hres;
-}
-
-
 /*
-** This function could be just this:
-**    return finishnodeset(t, luaH_Hgetshortstr(t, key), val);
-** However, it optimizes the common case created by constructors (e.g.,
-** {x=1, y=2}), which creates a key in a table that has no metatable,
-** it is not old/black, and it already has space for the key.
+** C API wrapper functions - these forward to Table methods
 */
+
+lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res) {
+  return t->getInt(key, res);
+}
+
+lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res) {
+  return t->getShortStr(key, res);
+}
+
+lu_byte luaH_getstr (Table *t, TString *key, TValue *res) {
+  return t->getStr(key, res);
+}
+
+lu_byte luaH_get (Table *t, const TValue *key, TValue *res) {
+  return t->get(key, res);
+}
+
+const TValue *luaH_Hgetshortstr (Table *t, TString *key) {
+  return t->HgetShortStr(key);
+}
+
+int luaH_psetint (Table *t, lua_Integer key, TValue *val) {
+  return t->psetInt(key, val);
+}
 
 int luaH_psetshortstr (Table *t, TString *key, TValue *val) {
-  const TValue *slot = luaH_Hgetshortstr(t, key);
-  if (!ttisnil(slot)) {  /* key already has a value? (all too common) */
-    setobj(((lua_State*)NULL), cast(TValue*, slot), val);  /* update it */
-    return HOK;  /* done */
-  }
-  else if (checknoTM(t->metatable, TM_NEWINDEX)) {  /* no metamethod? */
-    if (ttisnil(val))  /* new value is nil? */
-      return HOK;  /* done (value is already nil/absent) */
-    if (isabstkey(slot) &&  /* key is absent? */
-       !(isblack(t) && iswhite(key))) {  /* and don't need barrier? */
-      TValue tk;  /* key as a TValue */
-      setsvalue(cast(lua_State *, NULL), &tk, key);
-      if (insertkey(t, &tk, val)) {  /* insert key, if there is space */
-        invalidateTMcache(t);
-        return HOK;
-      }
-    }
-  }
-  /* Else, either table has new-index metamethod, or it needs barrier,
-     or it needs to rehash for the new key. In any of these cases, the
-     operation cannot be completed here. Return a code for the caller. */
-  return retpsetcode(t, slot);
+  return t->psetShortStr(key, val);
 }
-
 
 int luaH_psetstr (Table *t, TString *key, TValue *val) {
-  if (strisshr(key))
-    return luaH_psetshortstr(t, key, val);
-  else
-    return finishnodeset(t, Hgetlongstr(t, key), val);
+  return t->psetStr(key, val);
 }
-
 
 int luaH_pset (Table *t, const TValue *key, TValue *val) {
-  switch (ttypetag(key)) {
-    case LUA_VSHRSTR: return luaH_psetshortstr(t, tsvalue(key), val);
-    case LUA_VNUMINT: return psetint(t, ivalue(key), val);
-    case LUA_VNIL: return HNOTFOUND;
-    case LUA_VNUMFLT: {
-      lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
-        return psetint(t, k, val);  /* use specialized version */
-      /* else... */
-    }  /* FALLTHROUGH */
-    default:
-      return finishnodeset(t, getgeneric(t, key, 0), val);
-  }
+  return t->pset(key, val);
 }
 
-/*
-** Finish a raw "set table" operation, where 'hres' encodes where the
-** value should have been (the result of a previous 'pset' operation).
-** Beware: when using this function the caller probably need to check a
-** GC barrier and invalidate the TM cache.
-*/
+void luaH_set (lua_State *L, Table *t, const TValue *key, TValue *value) {
+  t->set(L, key, value);
+}
+
+void luaH_setint (lua_State *L, Table *t, lua_Integer key, TValue *value) {
+  t->setInt(L, key, value);
+}
+
 void luaH_finishset (lua_State *L, Table *t, const TValue *key,
                                     TValue *value, int hres) {
-  lua_assert(hres != HOK);
-  if (hres == HNOTFOUND) {
-    TValue aux;
-    if (l_unlikely(ttisnil(key)))
-      luaG_runerror(L, "table index is nil");
-    else if (ttisfloat(key)) {
-      lua_Number f = fltvalue(key);
-      lua_Integer k;
-      if (luaV_flttointeger(f, &k, F2Ieq)) {
-        setivalue(&aux, k);  /* key is equal to an integer */
-        key = &aux;  /* insert it as an integer */
-      }
-      else if (l_unlikely(luai_numisnan(f)))
-        luaG_runerror(L, "table index is NaN");
-    }
-    else if (isextstr(key)) {  /* external string? */
-      /* If string is short, must internalize it to be used as table key */
-      TString *ts = tsvalue(key)->normalize(L);  /* Phase 25a: use method */
-      setsvalue2s(L, L->top.p++, ts);  /* anchor 'ts' (EXTRA_STACK) */
-      luaH_newkey(L, t, s2v(L->top.p - 1), value);
-      L->top.p--;
-      return;
-    }
-    luaH_newkey(L, t, key, value);
-  }
-  else if (hres > 0) {  /* regular Node? */
-    setobj2t(L, gval(gnode(t, hres - HFIRSTNODE)), value);
-  }
-  else {  /* array entry */
-    hres = ~hres;  /* real index */
-    obj2arr(t, cast_uint(hres), value);
-  }
+  t->finishSet(L, key, value, hres);
 }
-
-
-/*
-** beware: when using this function you probably need to check a GC
-** barrier and invalidate the TM cache.
-*/
-void luaH_set (lua_State *L, Table *t, const TValue *key, TValue *value) {
-  int hres = luaH_pset(t, key, value);
-  if (hres != HOK)
-    luaH_finishset(L, t, key, value, hres);
-}
-
-
-/*
-** Ditto for a GC barrier. (No need to invalidate the TM cache, as
-** integers cannot be keys to metamethods.)
-*/
-void luaH_setint (lua_State *L, Table *t, lua_Integer key, TValue *value) {
-  unsigned ik = ikeyinarray(t, key);
-  if (ik > 0)
-    obj2arr(t, ik - 1, value);
-  else {
-    int ok = rawfinishnodeset(getintfromhash(t, key), value);
-    if (!ok) {
-      TValue k;
-      setivalue(&k, key);
-      luaH_newkey(L, t, &k, value);
-    }
-  }
-}
-
 
 /*
 ** Try to find a boundary in the hash part of table 't'. From the
@@ -1363,51 +1202,177 @@ Node *luaH_mainposition (const Table *t, const TValue *key) {
 */
 
 lu_byte Table::get(const TValue* key, TValue* res) {
-  return luaH_get(this, key, res);
+  const TValue *slot;
+  switch (ttypetag(key)) {
+    case LUA_VSHRSTR:
+      slot = this->HgetShortStr(tsvalue(key));
+      break;
+    case LUA_VNUMINT:
+      return this->getInt(ivalue(key), res);
+    case LUA_VNIL:
+      slot = &absentkey;
+      break;
+    case LUA_VNUMFLT: {
+      lua_Integer k;
+      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
+        return this->getInt(k, res);  /* use specialized version */
+      /* else... */
+    }  /* FALLTHROUGH */
+    default:
+      slot = getgeneric(this, key, 0);
+      break;
+  }
+  return finishnodeget(slot, res);
 }
 
 lu_byte Table::getInt(lua_Integer key, TValue* res) {
-  return luaH_getint(this, key, res);
+  unsigned k = ikeyinarray(this, key);
+  if (k > 0) {
+    lu_byte tag = *getArrTag(this, k - 1);
+    if (!tagisempty(tag))
+      farr2val(this, k - 1, tag, res);
+    return tag;
+  }
+  else
+    return finishnodeget(getintfromhash(this, key), res);
 }
 
 lu_byte Table::getShortStr(TString* key, TValue* res) {
-  return luaH_getshortstr(this, key, res);
+  return finishnodeget(this->HgetShortStr(key), res);
 }
 
 lu_byte Table::getStr(TString* key, TValue* res) {
-  return luaH_getstr(this, key, res);
+  return finishnodeget(Hgetstr(this, key), res);
 }
 
 const TValue* Table::HgetShortStr(TString* key) {
-  return luaH_Hgetshortstr(this, key);
+  Node *n = hashstr(this, key);
+  lua_assert(strisshr(key));
+  for (;;) {  /* check whether 'key' is somewhere in the chain */
+    if (keyisshrstr(n) && eqshrstr(keystrval(n), key))
+      return gval(n);  /* that's it */
+    else {
+      int nx = gnext(n);
+      if (nx == 0)
+        return &absentkey;  /* not found */
+      n += nx;
+    }
+  }
 }
 
 int Table::pset(const TValue* key, TValue* val) {
-  return luaH_pset(this, key, val);
+  switch (ttypetag(key)) {
+    case LUA_VSHRSTR: return this->psetShortStr(tsvalue(key), val);
+    case LUA_VNUMINT: {
+      int hres;
+      luaH_fastseti(this, ivalue(key), val, hres);
+      return hres;
+    }
+    case LUA_VNIL: return HNOTFOUND;
+    case LUA_VNUMFLT: {
+      lua_Integer k;
+      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) { /* integral index? */
+        int hres;
+        luaH_fastseti(this, k, val, hres);
+        return hres;
+      }
+      /* else... */
+    }  /* FALLTHROUGH */
+    default:
+      return finishnodeset(this, getgeneric(this, key, 0), val);
+  }
 }
 
 int Table::psetInt(lua_Integer key, TValue* val) {
-  return luaH_psetint(this, key, val);
+  lua_assert(!ikeyinarray(this, key));
+  return finishnodeset(this, getintfromhash(this, key), val);
 }
 
 int Table::psetShortStr(TString* key, TValue* val) {
-  return luaH_psetshortstr(this, key, val);
+  const TValue *slot = this->HgetShortStr(key);
+  if (!ttisnil(slot)) {  /* key already has a value? (all too common) */
+    setobj(((lua_State*)NULL), cast(TValue*, slot), val);  /* update it */
+    return HOK;  /* done */
+  }
+  else if (checknoTM(this->metatable, TM_NEWINDEX)) {  /* no metamethod? */
+    if (ttisnil(val))  /* new value is nil? */
+      return HOK;  /* done (value is already nil/absent) */
+    if (isabstkey(slot) &&  /* key is absent? */
+       !(isblack(this) && iswhite(key))) {  /* and don't need barrier? */
+      TValue tk;  /* key as a TValue */
+      setsvalue(cast(lua_State *, NULL), &tk, key);
+      if (insertkey(this, &tk, val)) {  /* insert key, if there is space */
+        invalidateTMcache(this);
+        return HOK;
+      }
+    }
+  }
+  /* Else, either table has new-index metamethod, or it needs barrier,
+     or it needs to rehash for the new key. In any of these cases, the
+     operation cannot be completed here. Return a code for the caller. */
+  return retpsetcode(this, slot);
 }
 
 int Table::psetStr(TString* key, TValue* val) {
-  return luaH_psetstr(this, key, val);
+  if (strisshr(key))
+    return this->psetShortStr(key, val);
+  else
+    return finishnodeset(this, Hgetlongstr(this, key), val);
 }
 
 void Table::set(lua_State* L, const TValue* key, TValue* value) {
-  luaH_set(L, this, key, value);
+  int hres = this->pset(key, value);
+  if (hres != HOK)
+    this->finishSet(L, key, value, hres);
 }
 
 void Table::setInt(lua_State* L, lua_Integer key, TValue* value) {
-  luaH_setint(L, this, key, value);
+  unsigned ik = ikeyinarray(this, key);
+  if (ik > 0)
+    obj2arr(this, ik - 1, value);
+  else {
+    int ok = rawfinishnodeset(getintfromhash(this, key), value);
+    if (!ok) {
+      TValue k;
+      setivalue(&k, key);
+      luaH_newkey(L, this, &k, value);
+    }
+  }
 }
 
 void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) {
-  luaH_finishset(L, this, key, value, hres);
+  lua_assert(hres != HOK);
+  if (hres == HNOTFOUND) {
+    TValue aux;
+    if (l_unlikely(ttisnil(key)))
+      luaG_runerror(L, "table index is nil");
+    else if (ttisfloat(key)) {
+      lua_Number f = fltvalue(key);
+      lua_Integer k;
+      if (luaV_flttointeger(f, &k, F2Ieq)) {
+        setivalue(&aux, k);  /* key is equal to an integer */
+        key = &aux;  /* insert it as an integer */
+      }
+      else if (l_unlikely(luai_numisnan(f)))
+        luaG_runerror(L, "table index is NaN");
+    }
+    else if (isextstr(key)) {  /* external string? */
+      /* If string is short, must internalize it to be used as table key */
+      TString *ts = tsvalue(key)->normalize(L);  /* Phase 25a: use method */
+      setsvalue2s(L, L->top.p++, ts);  /* anchor 'ts' (EXTRA_STACK) */
+      luaH_newkey(L, this, s2v(L->top.p - 1), value);
+      L->top.p--;
+      return;
+    }
+    luaH_newkey(L, this, key, value);
+  }
+  else if (hres > 0) {  /* regular Node? */
+    setobj2t(L, gval(gnode(this, hres - HFIRSTNODE)), value);
+  }
+  else {  /* array entry */
+    hres = ~hres;  /* real index */
+    obj2arr(this, cast_uint(hres), value);
+  }
 }
 
 void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {

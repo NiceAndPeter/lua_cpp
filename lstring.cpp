@@ -42,11 +42,7 @@
 ** generic equality for strings
 */
 int luaS_eqstr (TString *a, TString *b) {
-  size_t len1, len2;
-  const char *s1 = getlstr(a, len1);
-  const char *s2 = getlstr(b, len2);
-  return ((len1 == len2) &&  /* equal length and ... */
-          (memcmp(s1, s2, len1) == 0));  /* equal contents */
+  return a->equals(b);
 }
 
 
@@ -59,13 +55,7 @@ unsigned luaS_hash (const char *str, size_t l, unsigned seed) {
 
 
 unsigned luaS_hashlongstr (TString *ts) {
-  lua_assert(ts->tt == LUA_VLNGSTR);
-  if (ts->extra == 0) {  /* no hash? */
-    size_t len = ts->u.lnglen;
-    ts->hash = luaS_hash(getlngstr(ts), len, ts->hash);
-    ts->extra = 1;  /* now it has its hash */
-  }
-  return ts->hash;
+  return ts->hashLongStr();
 }
 
 
@@ -341,11 +331,21 @@ TString *luaS_newextlstr (lua_State *L,
 */
 
 unsigned TString::hashLongStr() {
-  return luaS_hashlongstr(this);
+  lua_assert(this->tt == LUA_VLNGSTR);
+  if (this->extra == 0) {  /* no hash? */
+    size_t len = this->u.lnglen;
+    this->hash = luaS_hash(getlngstr(this), len, this->hash);
+    this->extra = 1;  /* now it has its hash */
+  }
+  return this->hash;
 }
 
 bool TString::equals(TString* other) {
-  return luaS_eqstr(this, other) != 0;
+  size_t len1, len2;
+  const char *s1 = getlstr(this, len1);
+  const char *s2 = getlstr(other, len2);
+  return ((len1 == len2) &&  /* equal length and ... */
+          (memcmp(s1, s2, len1) == 0));  /* equal contents */
 }
 
 // Phase 25a: Convert luaS_remove to TString method
