@@ -39,7 +39,7 @@
 */
 
 /* add variant bits to a type */
-#define makevariant(t,v)	((t) | ((v) << 4))
+constexpr int makevariant(int t, int v) noexcept { return (t | (v << 4)); }
 
 
 
@@ -185,7 +185,7 @@ constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
 /* Macros for internal tests */
 
 /* collectable object has the same tag as the original value */
-#define righttt(obj)		(ttypetag(obj) == gcvalue(obj)->tt)
+/* NOTE: righttt() defined as inline function after gcvalue() below */
 
 /*
 ** Any value being manipulated by the program either is non
@@ -286,7 +286,7 @@ constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LUA_
 inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
 
 
-#define isabstkey(v)		checktag((v), LUA_VABSTKEY)
+constexpr bool isabstkey(const TValue* v) noexcept { return checktag(v, LUA_VABSTKEY); }
 
 
 /*
@@ -302,7 +302,7 @@ constexpr bool isnonstrictnil(const TValue* v) noexcept {
 ** (In any definition, values associated with absent keys must also
 ** be accepted as empty.)
 */
-#define isempty(v)		ttisnil(v)
+constexpr bool isempty(const TValue* v) noexcept { return ttisnil(v); }
 
 
 /* macro defining a value corresponding to an absent key */
@@ -445,6 +445,9 @@ inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 
 /* setgcovalue now defined as inline function below */
 
+/* collectable object has the same tag as the original value (inline version) */
+inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == gcvalue(obj)->tt; }
+
 /* }================================================================== */
 
 
@@ -580,15 +583,24 @@ public:
 };
 
 
-#define strisshr(ts)	((ts)->shrlen >= 0)
-#define isextstr(ts)	(ttislngstring(ts) && tsvalue(ts)->shrlen != LSTRREG)
+/* Check if string is short (wrapper for backward compatibility) */
+inline bool strisshr(const TString* ts) noexcept { return ts->isShort(); }
 
+/* Check if string is external (fixed or with custom deallocator) */
+inline bool isextstr(const TValue* v) noexcept {
+	return ttislngstring(v) && tsvalue(v)->shrlen != LSTRREG;
+}
 
 /*
 ** Get the actual string (array of bytes) from a 'TString'. (Generic
 ** version and specialized versions for long and short strings.)
 */
-#define rawgetshrstr(ts)  (cast_charp(&(ts)->contents))
+inline char* rawgetshrstr(TString* ts) noexcept {
+	return cast_charp(&ts->contents);
+}
+inline const char* rawgetshrstr(const TString* ts) noexcept {
+	return cast_charp(&ts->contents);
+}
 #define getshrstr(ts)	check_exp(strisshr(ts), rawgetshrstr(ts))
 #define getlngstr(ts)	check_exp(!strisshr(ts), (ts)->contents)
 #define getstr(ts) 	(strisshr(ts) ? rawgetshrstr(ts) : (ts)->contents)
