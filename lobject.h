@@ -210,7 +210,11 @@ typedef union {
 
 
 /* macro to test for (any kind of) nil */
+#ifdef __cplusplus
+inline constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
+#else
 #define ttisnil(v)		checktype((v), LUA_TNIL)
+#endif
 
 /*
 ** Macro to test the result of a table access. Formally, it should
@@ -218,11 +222,19 @@ typedef union {
 ** other tags. As currently nil is equivalent to LUA_VEMPTY, it is
 ** simpler to just test whether the value is nil.
 */
+#ifdef __cplusplus
+inline constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL; }
+#else
 #define tagisempty(tag)		(novariant(tag) == LUA_TNIL)
+#endif
 
 
 /* macro to test for a standard nil */
+#ifdef __cplusplus
+inline constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LUA_VNIL); }
+#else
 #define ttisstrictnil(o)	checktag((o), LUA_VNIL)
+#endif
 
 
 #define setnilvalue(obj) settt_(obj, LUA_VNIL)
@@ -267,13 +279,24 @@ typedef union {
 #define LUA_VFALSE	makevariant(LUA_TBOOLEAN, 0)
 #define LUA_VTRUE	makevariant(LUA_TBOOLEAN, 1)
 
+#ifdef __cplusplus
+inline constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_TBOOLEAN); }
+inline constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
+inline constexpr bool ttistrue(const TValue* o) noexcept { return checktag(o, LUA_VTRUE); }
+#else
 #define ttisboolean(o)		checktype((o), LUA_TBOOLEAN)
 #define ttisfalse(o)		checktag((o), LUA_VFALSE)
 #define ttistrue(o)		checktag((o), LUA_VTRUE)
+#endif
 
 
+#ifdef __cplusplus
+inline constexpr bool l_isfalse(const TValue* o) noexcept { return ttisfalse(o) || ttisnil(o); }
+inline constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || novariant(t) == LUA_TNIL); }
+#else
 #define l_isfalse(o)	(ttisfalse(o) || ttisnil(o))
 #define tagisfalse(t)	((t) == LUA_VFALSE || novariant(t) == LUA_TNIL)
+#endif
 
 
 
@@ -353,9 +376,15 @@ typedef struct GCObject {
 #define LUA_VNUMINT	makevariant(LUA_TNUMBER, 0)  /* integer numbers */
 #define LUA_VNUMFLT	makevariant(LUA_TNUMBER, 1)  /* float numbers */
 
+#ifdef __cplusplus
+inline constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TNUMBER); }
+inline constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
+inline constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o, LUA_VNUMINT); }
+#else
 #define ttisnumber(o)		checktype((o), LUA_TNUMBER)
 #define ttisfloat(o)		checktag((o), LUA_VNUMFLT)
 #define ttisinteger(o)		checktag((o), LUA_VNUMINT)
+#endif
 
 #define nvalue(o)	check_exp(ttisnumber(o), \
 	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
@@ -390,9 +419,15 @@ typedef struct GCObject {
 #define LUA_VSHRSTR	makevariant(LUA_TSTRING, 0)  /* short strings */
 #define LUA_VLNGSTR	makevariant(LUA_TSTRING, 1)  /* long strings */
 
+#ifdef __cplusplus
+inline constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
+inline constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
+inline constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
+#else
 #define ttisstring(o)		checktype((o), LUA_TSTRING)
 #define ttisshrstring(o)	checktag((o), ctb(LUA_VSHRSTR))
 #define ttislngstring(o)	checktag((o), ctb(LUA_VLNGSTR))
+#endif
 
 #define tsvalueraw(v)	(gco2ts((v).gc))
 
