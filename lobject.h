@@ -355,14 +355,9 @@ constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA
 
 inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
-#ifndef __cplusplus
-#define setthvalue(L,obj,x) \
-  { TValue *io = (obj); lua_State *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VTHREAD)); \
-    checkliveness(L,io); }
-#endif
+/* setthvalue now defined as inline function below */
 
-#define setthvalue2s(L,o,t)	setthvalue(L,s2v(o),t)
+// Phase 24: setthvalue defined at line 1056, wrapper at end of file
 
 /* }================================================================== */
 
@@ -441,7 +436,7 @@ constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_
 
 inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 
-#define gcvalueraw(v)	((v).gc)
+constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
 
 /* setgcovalue now defined as inline function below */
 
@@ -496,8 +491,8 @@ inline lua_Number nvalue(const TValue* o) noexcept { return o->numberValue(); }
 inline lua_Number fltvalue(const TValue* o) noexcept { return o->floatValue(); }
 inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
 
-#define fltvalueraw(v)	((v).n)
-#define ivalueraw(v)	((v).i)
+constexpr lua_Number fltvalueraw(const Value& v) noexcept { return v.n; }
+constexpr lua_Integer ivalueraw(const Value& v) noexcept { return v.i; }
 
 inline void setfltvalue(TValue* obj, lua_Number x) noexcept { obj->setFloat(x); }
 inline void chgfltvalue(TValue* obj, lua_Number x) noexcept { obj->changeFloat(x); }
@@ -525,13 +520,7 @@ constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(
 
 inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 
-/* setsvalue now defined as inline function below */
-
-/* set a string to the stack */
-#define setsvalue2s(L,o,s)	setsvalue(L,s2v(o),s)
-
-/* set a string to a new object */
-#define setsvalue2n	setsvalue
+// Phase 24: setsvalue defined at line 1053, wrappers at end of file
 
 
 /* Kinds of long strings (stored in 'shrlen') */
@@ -642,7 +631,7 @@ inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
 
 inline Udata* uvalue(const TValue* o) noexcept { return o->userdataValue(); }
 
-#define pvalueraw(v)	((v).p)
+constexpr void* pvalueraw(const Value& v) noexcept { return v.p; }
 
 /* setpvalue and setuvalue now defined as inline functions below */
 
@@ -874,11 +863,9 @@ inline CClosure* clCvalue(const TValue* o) noexcept { return o->cClosureValue();
 
 inline lua_CFunction fvalue(const TValue* o) noexcept { return o->functionValue(); }
 
-#define fvalueraw(v)	((v).f)
+constexpr lua_CFunction fvalueraw(const Value& v) noexcept { return v.f; }
 
-/* setclLvalue now defined as inline function below */
-
-#define setclLvalue2s(L,o,cl)	setclLvalue(L,s2v(o),cl)
+// Phase 24: setclLvalue defined at line 1057, wrapper at end of file
 
 /* setfvalue now defined as inline function below */
 
@@ -1051,9 +1038,28 @@ inline void setclLvalue(lua_State* L, TValue* obj, LClosure* cl) noexcept { obj-
 inline void setclCvalue(lua_State* L, TValue* obj, CClosure* cl) noexcept { obj->setCClosure(L, cl); }
 inline void setgcovalue(lua_State* L, TValue* obj, GCObject* gc) noexcept { obj->setGCObject(L, gc); }
 
-/* Note: sethvalue and other setter macros are now defined as inline functions above in C++ */
+/* Note: setter macros are now defined as inline functions above */
 
-#define sethvalue2s(L,o,h)	sethvalue(L,s2v(o),h)
+inline void sethvalue2s(lua_State* L, StackValue* o, Table* h) noexcept {
+	sethvalue(L, s2v(o), h);
+}
+
+// Phase 24: Setter wrapper functions (converted from macros)
+inline void setthvalue2s(lua_State* L, StackValue* o, lua_State* t) noexcept {
+	setthvalue(L, s2v(o), t);
+}
+
+inline void setsvalue2s(lua_State* L, StackValue* o, TString* s) noexcept {
+	setsvalue(L, s2v(o), s);
+}
+
+inline void setsvalue2n(lua_State* L, TValue* obj, TString* s) noexcept {
+	setsvalue(L, obj, s);
+}
+
+inline void setclLvalue2s(lua_State* L, StackValue* o, LClosure* cl) noexcept {
+	setclLvalue(L, s2v(o), cl);
+}
 
 
 /*
