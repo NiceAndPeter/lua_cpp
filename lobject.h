@@ -93,10 +93,19 @@ inline constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
 #else
 #define withvariant(t)	((t) & 0x3F)
 #endif
+
+#ifdef __cplusplus
+inline constexpr int ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
+#else
 #define ttypetag(o)	withvariant(rawtt(o))
+#endif
 
 /* type of a TValue */
+#ifdef __cplusplus
+inline constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
+#else
 #define ttype(o)	(novariant(rawtt(o)))
+#endif
 
 
 /* Macros to test type */
@@ -360,6 +369,41 @@ typedef struct GCObject {
   CommonHeader;
 } GCObject;
 
+#ifdef __cplusplus
+/*
+** CRTP Base class for all GC-managed objects
+** Provides common GC fields and operations without vtable overhead
+** Usage: class Table : public GCBase<Table> { ... };
+*/
+template<typename Derived>
+class GCBase {
+protected:
+    GCObject* next_;
+    lu_byte tt_;
+    lu_byte marked_;
+
+public:
+    // GC operations
+    constexpr GCObject* getNext() const noexcept { return next_; }
+    constexpr void setNext(GCObject* n) noexcept { next_ = n; }
+
+    constexpr lu_byte getType() const noexcept { return tt_; }
+    constexpr void setType(lu_byte t) noexcept { tt_ = t; }
+
+    constexpr lu_byte getMarked() const noexcept { return marked_; }
+    constexpr void setMarked(lu_byte m) noexcept { marked_ = m; }
+
+    constexpr bool isMarked() const noexcept { return marked_ != 0; }
+
+    // Cast to GCObject* for compatibility with existing C code
+    GCObject* toGCObject() noexcept {
+        return reinterpret_cast<GCObject*>(static_cast<Derived*>(this));
+    }
+    const GCObject* toGCObject() const noexcept {
+        return reinterpret_cast<const GCObject*>(static_cast<const Derived*>(this));
+    }
+};
+#endif
 
 #ifdef __cplusplus
 inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
@@ -845,6 +889,24 @@ typedef union Node {
 
 
 
+#ifdef __cplusplus
+// Table class - using CRTP for GC management
+// NOTE: For now keeping CommonHeader instead of inheriting to maintain macro compatibility
+// Will gradually migrate macros to use methods
+class Table {
+public:
+  CommonHeader;  // GC fields: next, tt, marked
+  lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
+  lu_byte lsizenode;  /* log2 of number of slots of 'node' array */
+  unsigned int asize;  /* number of slots in 'array' array */
+  Value *array;  /* array part */
+  Node *node;
+  Table *metatable;
+  GCObject *gclist;
+
+  // TODO: Add methods for luaH_* functions
+};
+#else
 typedef struct Table {
   CommonHeader;
   lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
@@ -855,6 +917,7 @@ typedef struct Table {
   struct Table *metatable;
   GCObject *gclist;
 } Table;
+#endif
 
 
 /*
