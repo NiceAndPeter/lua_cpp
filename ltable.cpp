@@ -1353,3 +1353,81 @@ Node *luaH_mainposition (const Table *t, const TValue *key) {
 }
 
 #endif
+
+
+#ifdef __cplusplus
+/*
+** C++ Table method implementations
+** These forward to the existing C-style functions for now
+** Gradual migration: later we'll move logic into methods
+*/
+
+lu_byte Table::get(const TValue* key, TValue* res) {
+  return luaH_get(this, key, res);
+}
+
+lu_byte Table::getInt(lua_Integer key, TValue* res) {
+  return luaH_getint(this, key, res);
+}
+
+lu_byte Table::getShortStr(TString* key, TValue* res) {
+  return luaH_getshortstr(this, key, res);
+}
+
+lu_byte Table::getStr(TString* key, TValue* res) {
+  return luaH_getstr(this, key, res);
+}
+
+const TValue* Table::HgetShortStr(TString* key) {
+  return luaH_Hgetshortstr(this, key);
+}
+
+int Table::pset(const TValue* key, TValue* val) {
+  return luaH_pset(this, key, val);
+}
+
+int Table::psetInt(lua_Integer key, TValue* val) {
+  return luaH_psetint(this, key, val);
+}
+
+int Table::psetShortStr(TString* key, TValue* val) {
+  return luaH_psetshortstr(this, key, val);
+}
+
+int Table::psetStr(TString* key, TValue* val) {
+  return luaH_psetstr(this, key, val);
+}
+
+void Table::set(lua_State* L, const TValue* key, TValue* value) {
+  luaH_set(L, this, key, value);
+}
+
+void Table::setInt(lua_State* L, lua_Integer key, TValue* value) {
+  luaH_setint(L, this, key, value);
+}
+
+void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) {
+  luaH_finishset(L, this, key, value, hres);
+}
+
+void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {
+  luaH_resize(L, this, nasize, nhsize);
+}
+
+void Table::resizeArray(lua_State* L, unsigned nasize) {
+  luaH_resizearray(L, this, nasize);
+}
+
+lu_mem Table::size() const {
+  return luaH_size(const_cast<Table*>(this));
+}
+
+int Table::tableNext(lua_State* L, StkId key) {
+  return luaH_next(L, this, key);
+}
+
+lua_Unsigned Table::getn(lua_State* L) {
+  return luaH_getn(L, this);
+}
+
+#endif

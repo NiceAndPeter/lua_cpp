@@ -904,7 +904,40 @@ public:
   Table *metatable;
   GCObject *gclist;
 
-  // TODO: Add methods for luaH_* functions
+  // Inline accessors
+  inline unsigned int arraySize() const noexcept { return asize; }
+  inline unsigned int nodeSize() const noexcept { return (1u << lsizenode); }
+  inline Table* getMetatable() const noexcept { return metatable; }
+  inline void setMetatable(Table* mt) noexcept { metatable = mt; }
+
+  // Flag operations (inline for performance)
+  // Note: BITDUMMY = (1 << 6), defined in ltable.h
+  inline bool isDummy() const noexcept { return (flags & (1 << 6)) != 0; }
+  inline void setDummy() noexcept { flags |= (1 << 6); }
+  inline void setNoDummy() noexcept { flags &= cast_byte(~(1 << 6)); }
+  // invalidateTMCache uses maskflags from ltm.h, so can't inline here - use macro instead
+
+  // Method declarations (implemented in ltable.cpp)
+  lu_byte get(const TValue* key, TValue* res);
+  lu_byte getInt(lua_Integer key, TValue* res);
+  lu_byte getShortStr(TString* key, TValue* res);
+  lu_byte getStr(TString* key, TValue* res);
+  const TValue* HgetShortStr(TString* key);
+
+  int pset(const TValue* key, TValue* val);
+  int psetInt(lua_Integer key, TValue* val);
+  int psetShortStr(TString* key, TValue* val);
+  int psetStr(TString* key, TValue* val);
+
+  void set(lua_State* L, const TValue* key, TValue* value);
+  void setInt(lua_State* L, lua_Integer key, TValue* value);
+  void finishSet(lua_State* L, const TValue* key, TValue* value, int hres);
+
+  void resize(lua_State* L, unsigned nasize, unsigned nhsize);
+  void resizeArray(lua_State* L, unsigned nasize);
+  lu_mem size() const;
+  int tableNext(lua_State* L, StkId key);  // renamed from next() to avoid conflict with GC field
+  lua_Unsigned getn(lua_State* L);
 };
 #else
 typedef struct Table {
