@@ -184,6 +184,40 @@ typedef struct stringtable {
 ** - field 'nres' is used only while closing tbc variables when
 ** returning from a function;
 */
+#ifdef __cplusplus
+class CallInfo {
+public:
+  StkIdRel func;  /* function index in the stack */
+  StkIdRel top;  /* top for this function */
+  struct CallInfo *previous, *next;  /* dynamic call link */
+  union {
+    struct {  /* only for Lua functions */
+      const Instruction *savedpc;
+      volatile l_signalT trap;  /* function is tracing lines/counts */
+      int nextraargs;  /* # of extra arguments in vararg functions */
+    } l;
+    struct {  /* only for C functions */
+      lua_KFunction k;  /* continuation in case of yields */
+      ptrdiff_t old_errfunc;
+      lua_KContext ctx;  /* context info. in case of yields */
+    } c;
+  } u;
+  union {
+    int funcidx;  /* called-function index */
+    int nyield;  /* number of values yielded */
+    int nres;  /* number of values returned */
+  } u2;
+  l_uint32 callstatus;
+
+  // Inline accessors
+  inline CallInfo* getPrevious() const noexcept { return previous; }
+  inline CallInfo* getNext() const noexcept { return next; }
+  inline l_uint32 getCallStatus() const noexcept { return callstatus; }
+  inline bool isLua() const noexcept { return (callstatus & (1 << 0)) == 0; }  // CIST_LUA = bit 0
+  inline const Instruction* getSavedPC() const noexcept { return u.l.savedpc; }
+  inline void setSavedPC(const Instruction* pc) noexcept { u.l.savedpc = pc; }
+};
+#else
 struct CallInfo {
   StkIdRel func;  /* function index in the stack */
   StkIdRel top;  /* top for this function */
@@ -207,6 +241,7 @@ struct CallInfo {
   } u2;
   l_uint32 callstatus;
 };
+#endif
 
 
 /*
