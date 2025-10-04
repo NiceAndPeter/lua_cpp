@@ -759,23 +759,54 @@ typedef l_uint32 Instruction;
 /*
 ** Description of an upvalue for function prototypes
 */
+#ifdef __cplusplus
+class Upvaldesc {
+public:
+  TString *name;  /* upvalue name (for debug information) */
+  lu_byte instack;  /* whether it is in stack (register) */
+  lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
+  lu_byte kind;  /* kind of corresponding variable */
+
+  // Inline accessors
+  inline TString* getName() const noexcept { return name; }
+  inline bool isInStack() const noexcept { return instack != 0; }
+  inline lu_byte getIndex() const noexcept { return idx; }
+  inline lu_byte getKind() const noexcept { return kind; }
+};
+#else
 typedef struct Upvaldesc {
   TString *name;  /* upvalue name (for debug information) */
   lu_byte instack;  /* whether it is in stack (register) */
   lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
   lu_byte kind;  /* kind of corresponding variable */
 } Upvaldesc;
+#endif
 
 
 /*
 ** Description of a local variable for function prototypes
 ** (used for debug information)
 */
+#ifdef __cplusplus
+class LocVar {
+public:
+  TString *varname;
+  int startpc;  /* first point where variable is active */
+  int endpc;    /* first point where variable is dead */
+
+  // Inline accessors
+  inline TString* getVarName() const noexcept { return varname; }
+  inline int getStartPC() const noexcept { return startpc; }
+  inline int getEndPC() const noexcept { return endpc; }
+  inline bool isActive(int pc) const noexcept { return startpc <= pc && pc < endpc; }
+};
+#else
 typedef struct LocVar {
   TString *varname;
   int startpc;  /* first point where variable is active */
   int endpc;    /* first point where variable is dead */
 } LocVar;
+#endif
 
 
 /*
@@ -788,10 +819,22 @@ typedef struct LocVar {
 ** absolute-line array, but we must traverse the 'lineinfo' array
 ** linearly to compute a line.)
 */
+#ifdef __cplusplus
+class AbsLineInfo {
+public:
+  int pc;
+  int line;
+
+  // Inline accessors
+  inline int getPC() const noexcept { return pc; }
+  inline int getLine() const noexcept { return line; }
+};
+#else
 typedef struct AbsLineInfo {
   int pc;
   int line;
 } AbsLineInfo;
+#endif
 
 
 /*

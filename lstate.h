@@ -164,11 +164,25 @@ struct lua_longjmp;  /* defined in ldo.c */
 #define KGC_GENMAJOR	2	/* generational in major mode */
 
 
+#ifdef __cplusplus
+class stringtable {
+public:
+  TString **hash;  /* array of buckets (linked lists of strings) */
+  int nuse;  /* number of elements */
+  int size;  /* number of buckets */
+
+  // Inline accessors
+  inline TString** getHash() const noexcept { return hash; }
+  inline int getNumElements() const noexcept { return nuse; }
+  inline int getSize() const noexcept { return size; }
+};
+#else
 typedef struct stringtable {
   TString **hash;  /* array of buckets (linked lists of strings) */
   int nuse;  /* number of elements */
   int size;  /* number of buckets */
 } stringtable;
+#endif
 
 
 /*
