@@ -738,7 +738,8 @@ static int pmain (lua_State *L) {
       print_version();
       doREPL(L);  /* do read-eval-print loop */
     }
-    else dofile(L, NULL);  /* executes stdin as a file */
+    else
+      dofile(L, NULL);  /* executes stdin as a file */
   }
   lua_pushboolean(L, 1);  /* signal no errors */
   return 1;

@@ -16,6 +16,11 @@
 #include "lua.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 /* global table */
 #define LUA_GNAME	"_G"
 
@@ -262,6 +267,9 @@ typedef struct luaL_Stream {
 /* }============================================================ */
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
