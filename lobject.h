@@ -1085,6 +1085,10 @@ public:
   inline void setNoDummy() noexcept { flags &= cast_byte(~(1 << 6)); }
   // invalidateTMCache uses maskflags from ltm.h, so can't inline here - use macro instead
 
+  // Node accessors (Phase 19: Table macro reduction)
+  inline Node* getNode(unsigned int i) noexcept { return &node[i]; }
+  inline const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
+
   // Method declarations (implemented in ltable.cpp)
   lu_byte get(const TValue* key, TValue* res);
   lu_byte getInt(lua_Integer key, TValue* res);

@@ -10,17 +10,25 @@
 #include "lobject.h"
 
 
-#define gnode(t,i)	(&(t)->node[i])
-#define gval(n)		(&(n)->i_val)
-#define gnext(n)	((n)->u.next)
+// Phase 19: Table accessor macros converted to inline functions
+// Note: Original macro did implicit const-cast, so non-const version works with const Table*
+inline Node* gnode(Table* t, unsigned int i) noexcept { return t->getNode(i); }
+inline Node* gnode(const Table* t, unsigned int i) noexcept {
+  return const_cast<Table*>(t)->getNode(i);
+}
+inline TValue* gval(Node* n) noexcept { return &n->i_val; }
+inline const TValue* gval(const Node* n) noexcept { return &n->i_val; }
+// gnext returns reference to allow modification
+inline int& gnext(Node* n) noexcept { return n->u.next; }
+inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 
 /*
 ** Clear all bits of fast-access metamethods, which means that the table
 ** may have any of these metamethods. (First access that fails after the
 ** clearing will set the bit again.)
+** Note: invalidateTMcache is now an inline function defined in ltm.h
 */
-#define invalidateTMcache(t)	((t)->flags &= cast_byte(~maskflags))
 
 
 /*

@@ -53,6 +53,10 @@ typedef enum {
 */
 #define maskflags	cast_byte(~(~0u << (TM_EQ + 1)))
 
+// Phase 19: Convert invalidateTMcache macro to inline function
+inline void invalidateTMcache(Table* t) noexcept {
+  t->flags &= cast_byte(~maskflags);
+}
 
 /*
 ** Test whether there is no tagmethod.
