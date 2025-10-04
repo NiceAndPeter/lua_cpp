@@ -279,15 +279,7 @@ void luaC_barrierback_ (lua_State *L, GCObject *o) {
 }
 
 
-void luaC_fix (lua_State *L, GCObject *o) {
-  global_State *g = G(L);
-  lua_assert(g->allgc == o);  /* object must be 1st in 'allgc' list! */
-  set2gray(o);  /* they will be gray forever */
-  setage(o, G_OLD);  /* and old forever */
-  g->allgc = o->next;  /* remove object from 'allgc' list */
-  o->next = g->fixedgc;  /* link it to 'fixedgc' list */
-  g->fixedgc = o;
-}
+// Phase 26: Removed luaC_fix - now GCObject::fix() method
 
 
 /*
@@ -1065,29 +1057,7 @@ static void correctpointers (global_State *g, GCObject *o) {
 ** if object 'o' has a finalizer, remove it from 'allgc' list (must
 ** search the list to find it) and link it in 'finobj' list.
 */
-void luaC_checkfinalizer (lua_State *L, GCObject *o, Table *mt) {
-  global_State *g = G(L);
-  if (tofinalize(o) ||                 /* obj. is already marked... */
-      gfasttm(g, mt, TM_GC) == NULL ||    /* or has no finalizer... */
-      (g->gcstp & GCSTPCLS))                   /* or closing state? */
-    return;  /* nothing to be done */
-  else {  /* move 'o' to 'finobj' list */
-    GCObject **p;
-    if (issweepphase(g)) {
-      makewhite(g, o);  /* "sweep" object 'o' */
-      if (g->sweepgc == &o->next)  /* should not remove 'sweepgc' object */
-        g->sweepgc = sweeptolive(L, g->sweepgc);  /* change 'sweepgc' */
-    }
-    else
-      correctpointers(g, o);
-    /* search for pointer pointing to 'o' */
-    for (p = &g->allgc; *p != o; p = &(*p)->next) { /* empty */ }
-    *p = o->next;  /* remove 'o' from 'allgc' list */
-    o->next = g->finobj;  /* link it in 'finobj' list */
-    g->finobj = o;
-    l_setbit(o->marked, FINALIZEDBIT);  /* mark it as such */
-  }
-}
+// Phase 26: Removed luaC_checkfinalizer - now GCObject::checkFinalizer() method
 
 /* }====================================================== */
 
@@ -1806,12 +1776,39 @@ void luaC_fullgc (lua_State *L, int isemergency) {
 ** Phase 25c: GCObject method implementations
 */
 
+// Phase 26: Full implementations (moved from luaC_* functions)
 void GCObject::fix(lua_State* L) {
-  luaC_fix(L, this);
+  global_State *g = G(L);
+  lua_assert(g->allgc == this);  /* object must be 1st in 'allgc' list! */
+  set2gray(this);  /* they will be gray forever */
+  setage(this, G_OLD);  /* and old forever */
+  g->allgc = this->next;  /* remove object from 'allgc' list */
+  this->next = g->fixedgc;  /* link it to 'fixedgc' list */
+  g->fixedgc = this;
 }
 
 void GCObject::checkFinalizer(lua_State* L, Table* mt) {
-  luaC_checkfinalizer(L, this, mt);
+  global_State *g = G(L);
+  if (tofinalize(this) ||                 /* obj. is already marked... */
+      gfasttm(g, mt, TM_GC) == NULL ||    /* or has no finalizer... */
+      (g->gcstp & GCSTPCLS))                   /* or closing state? */
+    return;  /* nothing to be done */
+  else {  /* move 'this' to 'finobj' list */
+    GCObject **p;
+    if (issweepphase(g)) {
+      makewhite(g, this);  /* "sweep" object 'this' */
+      if (g->sweepgc == &this->next)  /* should not remove 'sweepgc' object */
+        g->sweepgc = sweeptolive(L, g->sweepgc);  /* change 'sweepgc' */
+    }
+    else
+      correctpointers(g, this);
+    /* search for pointer pointing to 'this' */
+    for (p = &g->allgc; *p != this; p = &(*p)->next) { /* empty */ }
+    *p = this->next;  /* remove 'this' from 'allgc' list */
+    this->next = g->finobj;  /* link it in 'finobj' list */
+    g->finobj = this;
+    l_setbit(this->marked, FINALIZEDBIT);  /* mark it as such */
+  }
 }
 
 #endif

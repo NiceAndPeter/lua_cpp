@@ -50,7 +50,7 @@
 LUAI_FUNC Proto *luaF_newproto (lua_State *L);
 LUAI_FUNC CClosure *luaF_newCclosure (lua_State *L, int nupvals);
 LUAI_FUNC LClosure *luaF_newLclosure (lua_State *L, int nupvals);
-LUAI_FUNC void luaF_initupvals (lua_State *L, LClosure *cl);
+/* Phase 26: Removed luaF_initupvals - now LClosure::initUpvals() method */
 LUAI_FUNC UpVal *luaF_findupval (lua_State *L, StkId level);
 LUAI_FUNC void luaF_newtbcupval (lua_State *L, StkId level);
 LUAI_FUNC void luaF_closeupval (lua_State *L, StkId level);

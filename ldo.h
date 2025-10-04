@@ -29,12 +29,12 @@
 #else
 /* realloc stack keeping its size */
 #define condmovestack(L,pre,pos)  \
-  { int sz_ = stacksize(L); pre; luaD_reallocstack((L), sz_, 0); pos; }
+  { int sz_ = stacksize(L); pre; (L)->reallocStack(sz_, 0); pos; }
 #endif
 
 #define luaD_checkstackaux(L,n,pre,pos)  \
 	if (l_unlikely(L->stack_last.p - L->top.p <= (n))) \
-	  { pre; luaD_growstack(L, n, 1); pos; } \
+	  { pre; (L)->growStack(n, 1); pos; } \
 	else { condmovestack(L,pre,pos); }
 
 /* In general, 'pre'/'pos' are empty (nothing to save) */
@@ -85,10 +85,7 @@ LUAI_FUNC TStatus luaD_closeprotected (lua_State *L, ptrdiff_t level,
 LUAI_FUNC TStatus luaD_pcall (lua_State *L, Pfunc func, void *u,
                                         ptrdiff_t oldtop, ptrdiff_t ef);
 LUAI_FUNC void luaD_poscall (lua_State *L, CallInfo *ci, int nres);
-LUAI_FUNC int luaD_reallocstack (lua_State *L, int newsize, int raiseerror);
-LUAI_FUNC int luaD_growstack (lua_State *L, int n, int raiseerror);
-LUAI_FUNC void luaD_shrinkstack (lua_State *L);
-LUAI_FUNC void luaD_inctop (lua_State *L);
+/* Phase 26: Removed luaD_reallocstack, luaD_growstack, luaD_shrinkstack, luaD_inctop - now lua_State methods */
 
 LUAI_FUNC l_noret luaD_throw (lua_State *L, TStatus errcode);
 LUAI_FUNC l_noret luaD_throwbaselevel (lua_State *L, TStatus errcode);

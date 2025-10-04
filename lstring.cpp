@@ -187,14 +187,7 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
 }
 
 
-void luaS_remove (lua_State *L, TString *ts) {
-  stringtable *tb = &G(L)->strt;
-  TString **p = &tb->hash[lmod(ts->hash, tb->size)];
-  while (*p != ts)  /* find previous element */
-    p = &(*p)->u.hnext;
-  *p = (*p)->u.hnext;  /* remove element from its list */
-  tb->nuse--;
-}
+// Phase 26: Removed luaS_remove - now TString::remove() method
 
 
 static void growstrtab (lua_State *L, stringtable *tb) {
@@ -338,18 +331,7 @@ TString *luaS_newextlstr (lua_State *L,
 }
 
 
-/*
-** Normalize an external string: If it is short, internalize it.
-*/
-TString *luaS_normstr (lua_State *L, TString *ts) {
-  size_t len = ts->u.lnglen;
-  if (len > LUAI_MAXSHORTLEN)
-    return ts;  /* long string; keep the original */
-  else {
-    const char *str = getlngstr(ts);
-    return internshrstr(L, str, len);
-  }
-}
+// Phase 26: Removed luaS_normstr - now TString::normalize() method
 
 
 #ifdef __cplusplus

@@ -316,7 +316,7 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
     luaD_seterrorobj(L, status, L->stack.p + 1);
   else
     L->top.p = L->stack.p + 1;
-  luaD_reallocstack(L, cast_int(L->ci->top.p - L->stack.p), 0);
+  L->reallocStack(cast_int(L->ci->top.p - L->stack.p), 0);
   return status;
 }
 

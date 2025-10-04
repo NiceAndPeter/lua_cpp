@@ -303,70 +303,10 @@ static void correctstack (lua_State *L, StkId oldstack) {
 #endif
 
 
-/*
-** Reallocate the stack to a new size, correcting all pointers into it.
-** In case of allocation error, raise an error or return false according
-** to 'raiseerror'.
-*/
-int luaD_reallocstack (lua_State *L, int newsize, int raiseerror) {
-  int oldsize = stacksize(L);
-  int i;
-  StkId newstack;
-  StkId oldstack = L->stack.p;
-  lu_byte oldgcstop = G(L)->gcstopem;
-  lua_assert(newsize <= MAXSTACK || newsize == ERRORSTACKSIZE);
-  relstack(L);  /* change pointers to offsets */
-  G(L)->gcstopem = 1;  /* stop emergency collection */
-  newstack = luaM_reallocvector(L, oldstack, oldsize + EXTRA_STACK,
-                                   newsize + EXTRA_STACK, StackValue);
-  G(L)->gcstopem = oldgcstop;  /* restore emergency collection */
-  if (l_unlikely(newstack == NULL)) {  /* reallocation failed? */
-    correctstack(L, oldstack);  /* change offsets back to pointers */
-    if (raiseerror)
-      luaM_error(L);
-    else return 0;  /* do not raise an error */
-  }
-  L->stack.p = newstack;
-  correctstack(L, oldstack);  /* change offsets back to pointers */
-  L->stack_last.p = L->stack.p + newsize;
-  for (i = oldsize + EXTRA_STACK; i < newsize + EXTRA_STACK; i++)
-    setnilvalue(s2v(newstack + i)); /* erase new segment */
-  return 1;
-}
+// Phase 26: Removed luaD_reallocstack - now lua_State::reallocStack() method
 
 
-/*
-** Try to grow the stack by at least 'n' elements. When 'raiseerror'
-** is true, raises any error; otherwise, return 0 in case of errors.
-*/
-int luaD_growstack (lua_State *L, int n, int raiseerror) {
-  int size = stacksize(L);
-  if (l_unlikely(size > MAXSTACK)) {
-    /* if stack is larger than maximum, thread is already using the
-       extra space reserved for errors, that is, thread is handling
-       a stack error; cannot grow further than that. */
-    lua_assert(stacksize(L) == ERRORSTACKSIZE);
-    if (raiseerror)
-      luaD_errerr(L);  /* stack error inside message handler */
-    return 0;  /* if not 'raiseerror', just signal it */
-  }
-  else if (n < MAXSTACK) {  /* avoids arithmetic overflows */
-    int newsize = size + (size >> 1);  /* tentative new size (size * 1.5) */
-    int needed = cast_int(L->top.p - L->stack.p) + n;
-    if (newsize > MAXSTACK)  /* cannot cross the limit */
-      newsize = MAXSTACK;
-    if (newsize < needed)  /* but must respect what was asked for */
-      newsize = needed;
-    if (l_likely(newsize <= MAXSTACK))
-      return luaD_reallocstack(L, newsize, raiseerror);
-  }
-  /* else stack overflow */
-  /* add extra size to be able to handle the error message */
-  luaD_reallocstack(L, ERRORSTACKSIZE, raiseerror);
-  if (raiseerror)
-    luaG_runerror(L, "stack overflow");
-  return 0;
-}
+// Phase 26: Removed luaD_growstack - now lua_State::growStack() method
 
 
 /*
@@ -388,34 +328,10 @@ static int stackinuse (lua_State *L) {
 }
 
 
-/*
-** If stack size is more than 3 times the current use, reduce that size
-** to twice the current use. (So, the final stack size is at most 2/3 the
-** previous size, and half of its entries are empty.)
-** As a particular case, if stack was handling a stack overflow and now
-** it is not, 'max' (limited by MAXSTACK) will be smaller than
-** stacksize (equal to ERRORSTACKSIZE in this case), and so the stack
-** will be reduced to a "regular" size.
-*/
-void luaD_shrinkstack (lua_State *L) {
-  int inuse = stackinuse(L);
-  int max = (inuse > MAXSTACK / 3) ? MAXSTACK : inuse * 3;
-  /* if thread is currently not handling a stack overflow and its
-     size is larger than maximum "reasonable" size, shrink it */
-  if (inuse <= MAXSTACK && stacksize(L) > max) {
-    int nsize = (inuse > MAXSTACK / 2) ? MAXSTACK : inuse * 2;
-    luaD_reallocstack(L, nsize, 0);  /* ok if that fails */
-  }
-  else  /* don't change stack */
-    condmovestack(L,(void)0,(void)0);  /* (change only for debugging) */
-  luaE_shrinkCI(L);  /* shrink CI list */
-}
+// Phase 26: Removed luaD_shrinkstack - now lua_State::shrinkStack() method
 
 
-void luaD_inctop (lua_State *L) {
-  L->top.p++;
-  luaD_checkstack(L, 1);
-}
+// Phase 26: Removed luaD_inctop - now lua_State::inctop() method
 
 /* }================================================================== */
 
@@ -1156,20 +1072,79 @@ TStatus luaD_protectedparser (lua_State *L, ZIO *z, const char *name,
 ** Phase 25e: lua_State method implementations
 */
 
+// Phase 26: Full implementations (moved from luaD_* functions)
 void lua_State::inctop() {
-  luaD_inctop(this);
+  this->top.p++;
+  luaD_checkstack(this, 1);
 }
 
 void lua_State::shrinkStack() {
-  luaD_shrinkstack(this);
+  int inuse = stackinuse(this);
+  int max = (inuse > MAXSTACK / 3) ? MAXSTACK : inuse * 3;
+  /* if thread is currently not handling a stack overflow and its
+     size is larger than maximum "reasonable" size, shrink it */
+  if (inuse <= MAXSTACK && stacksize(this) > max) {
+    int nsize = (inuse > MAXSTACK / 2) ? MAXSTACK : inuse * 2;
+    this->reallocStack(nsize, 0);  /* ok if that fails */
+  }
+  else  /* don't change stack */
+    condmovestack(this,(void)0,(void)0);  /* (change only for debugging) */
+  luaE_shrinkCI(this);  /* shrink CI list */
 }
 
 int lua_State::growStack(int n, int raiseerror) {
-  return luaD_growstack(this, n, raiseerror);
+  int size = stacksize(this);
+  if (l_unlikely(size > MAXSTACK)) {
+    /* if stack is larger than maximum, thread is already using the
+       extra space reserved for errors, that is, thread is handling
+       a stack error; cannot grow further than that. */
+    lua_assert(stacksize(this) == ERRORSTACKSIZE);
+    if (raiseerror)
+      luaD_errerr(this);  /* stack error inside message handler */
+    return 0;  /* if not 'raiseerror', just signal it */
+  }
+  else if (n < MAXSTACK) {  /* avoids arithmetic overflows */
+    int newsize = size + (size >> 1);  /* tentative new size (size * 1.5) */
+    int needed = cast_int(this->top.p - this->stack.p) + n;
+    if (newsize > MAXSTACK)  /* cannot cross the limit */
+      newsize = MAXSTACK;
+    if (newsize < needed)  /* but must respect what was asked for */
+      newsize = needed;
+    if (l_likely(newsize <= MAXSTACK))
+      return this->reallocStack(newsize, raiseerror);
+  }
+  /* else stack overflow */
+  /* add extra size to be able to handle the error message */
+  this->reallocStack(ERRORSTACKSIZE, raiseerror);
+  if (raiseerror)
+    luaG_runerror(this, "stack overflow");
+  return 0;
 }
 
 int lua_State::reallocStack(int newsize, int raiseerror) {
-  return luaD_reallocstack(this, newsize, raiseerror);
+  int oldsize = stacksize(this);
+  int i;
+  StkId newstack;
+  StkId oldstack = this->stack.p;
+  lu_byte oldgcstop = G(this)->gcstopem;
+  lua_assert(newsize <= MAXSTACK || newsize == ERRORSTACKSIZE);
+  relstack(this);  /* change pointers to offsets */
+  G(this)->gcstopem = 1;  /* stop emergency collection */
+  newstack = luaM_reallocvector(this, oldstack, oldsize + EXTRA_STACK,
+                                   newsize + EXTRA_STACK, StackValue);
+  G(this)->gcstopem = oldgcstop;  /* restore emergency collection */
+  if (l_unlikely(newstack == NULL)) {  /* reallocation failed? */
+    correctstack(this, oldstack);  /* change offsets back to pointers */
+    if (raiseerror)
+      luaM_error(this);
+    else return 0;  /* do not raise an error */
+  }
+  this->stack.p = newstack;
+  correctstack(this, oldstack);  /* change offsets back to pointers */
+  this->stack_last.p = this->stack.p + newsize;
+  for (i = oldsize + EXTRA_STACK; i < newsize + EXTRA_STACK; i++)
+    setnilvalue(s2v(newstack + i)); /* erase new segment */
+  return 1;
 }
 
 #endif

@@ -59,21 +59,7 @@ void LClosure::initUpvals(lua_State* L) {
 }
 #endif
 
-void luaF_initupvals (lua_State *L, LClosure *cl) {
-#ifdef __cplusplus
-  cl->initUpvals(L);
-#else
-  int i;
-  for (i = 0; i < cl->nupvalues; i++) {
-    GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
-    UpVal *uv = gco2upv(o);
-    uv->v.p = &uv->u.value;  /* make it closed */
-    setnilvalue(uv->v.p);
-    cl->upvals[i] = uv;
-    luaC_objbarrier(L, cl, uv);
-  }
-#endif
-}
+// Phase 26: Removed luaF_initupvals - now LClosure::initUpvals() method
 
 
 /*
