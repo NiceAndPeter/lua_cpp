@@ -403,6 +403,15 @@ public:
   inline lu_byte getMarked() const noexcept { return marked; }
   inline void setMarked(lu_byte m) noexcept { marked = m; }
   inline bool isMarked() const noexcept { return marked != 0; }
+
+  // Phase 20: GC color and age methods (requires lgc.h constants)
+  // These will be defined after lgc.h is included
+  inline bool isWhite() const noexcept;
+  inline bool isBlack() const noexcept;
+  inline bool isGray() const noexcept;
+  inline lu_byte getAge() const noexcept;
+  inline void setAge(lu_byte age) noexcept;
+  inline bool isOld() const noexcept;
 };
 
 /*

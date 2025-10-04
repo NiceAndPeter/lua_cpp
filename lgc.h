@@ -103,11 +103,75 @@ inline constexpr bool testbit(lu_byte x, int b) noexcept {
 
 #define WHITEBITS	bit2mask(WHITE0BIT, WHITE1BIT)
 
+/* object age in generational mode */
+#define G_NEW		0	/* created in current cycle */
+#define G_SURVIVAL	1	/* created in previous cycle */
+#define G_OLD0		2	/* marked old by frw. barrier in this cycle */
+#define G_OLD1		3	/* first full cycle as old */
+#define G_OLD		4	/* really old object (not to be visited) */
+#define G_TOUCHED1	5	/* old object touched this cycle */
+#define G_TOUCHED2	6	/* old object touched in previous cycle */
 
-#define iswhite(x)      testbits((x)->marked, WHITEBITS)
-#define isblack(x)      testbit((x)->marked, BLACKBIT)
-#define isgray(x)  /* neither white nor black */  \
-	(!testbits((x)->marked, WHITEBITS | bitmask(BLACKBIT)))
+#define AGEBITS		7  /* all age bits (111) */
+
+// Phase 20: GC color macros converted to inline functions and GCObject methods
+
+// GCObject method implementations (declared in lobject.h)
+inline bool GCObject::isWhite() const noexcept {
+  return testbits(marked, WHITEBITS);
+}
+
+inline bool GCObject::isBlack() const noexcept {
+  return testbit(marked, BLACKBIT);
+}
+
+inline bool GCObject::isGray() const noexcept {
+  return !testbits(marked, WHITEBITS | bitmask(BLACKBIT));
+}
+
+inline lu_byte GCObject::getAge() const noexcept {
+  return marked & AGEBITS;
+}
+
+inline void GCObject::setAge(lu_byte age) noexcept {
+  marked = cast_byte((marked & (~AGEBITS)) | age);
+}
+
+inline bool GCObject::isOld() const noexcept {
+  return getAge() > G_SURVIVAL;
+}
+
+// Wrapper functions for backward compatibility
+// Accept any GC-managed type pointer (uses reinterpret_cast like original macros)
+template<typename T>
+inline bool iswhite(const T* x) noexcept {
+  return reinterpret_cast<const GCObject*>(x)->isWhite();
+}
+
+template<typename T>
+inline bool isblack(const T* x) noexcept {
+  return reinterpret_cast<const GCObject*>(x)->isBlack();
+}
+
+template<typename T>
+inline bool isgray(const T* x) noexcept {
+  return reinterpret_cast<const GCObject*>(x)->isGray();
+}
+
+template<typename T>
+inline lu_byte getage(const T* o) noexcept {
+  return reinterpret_cast<const GCObject*>(o)->getAge();
+}
+
+template<typename T>
+inline void setage(T* o, lu_byte a) noexcept {
+  reinterpret_cast<GCObject*>(o)->setAge(a);
+}
+
+template<typename T>
+inline bool isold(const T* o) noexcept {
+  return reinterpret_cast<const GCObject*>(o)->isOld();
+}
 
 #define tofinalize(x)	testbit((x)->marked, FINALIZEDBIT)
 
@@ -121,21 +185,8 @@ inline constexpr bool testbit(lu_byte x, int b) noexcept {
 
 #define luaC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
 
-
-/* object age in generational mode */
-#define G_NEW		0	/* created in current cycle */
-#define G_SURVIVAL	1	/* created in previous cycle */
-#define G_OLD0		2	/* marked old by frw. barrier in this cycle */
-#define G_OLD1		3	/* first full cycle as old */
-#define G_OLD		4	/* really old object (not to be visited) */
-#define G_TOUCHED1	5	/* old object touched this cycle */
-#define G_TOUCHED2	6	/* old object touched in previous cycle */
-
-#define AGEBITS		7  /* all age bits (111) */
-
-#define getage(o)	((o)->marked & AGEBITS)
-#define setage(o,a)  ((o)->marked = cast_byte(((o)->marked & (~AGEBITS)) | a))
-#define isold(o)	(getage(o) > G_SURVIVAL)
+/* Note: G_NEW, G_SURVIVAL, G_OLD*, G_TOUCHED*, AGEBITS moved above for inline functions */
+/* Note: getage, setage, isold are now inline functions defined above */
 
 
 /*
