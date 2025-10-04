@@ -118,6 +118,38 @@ public:
   // Number value (returns int or float depending on type)
   // Note: Actual conversion logic is in nvalue() wrapper below (needs type constants)
   inline lua_Number numberValue() const noexcept;
+
+  // Phase 17: Setter methods (HOT PATH - performance critical!)
+  // Note: These need type constants, so implementations are below
+  inline void setNil() noexcept;
+  inline void setFalse() noexcept;
+  inline void setTrue() noexcept;
+  inline void setInt(lua_Integer i) noexcept;
+  inline void setFloat(lua_Number n) noexcept;
+  inline void setPointer(void* p) noexcept;
+  inline void setFunction(lua_CFunction f) noexcept;
+  inline void setString(lua_State* L, TString* s) noexcept;
+  inline void setUserdata(lua_State* L, Udata* u) noexcept;
+  inline void setTable(lua_State* L, Table* t) noexcept;
+  inline void setLClosure(lua_State* L, LClosure* cl) noexcept;
+  inline void setCClosure(lua_State* L, CClosure* cl) noexcept;
+  inline void setThread(lua_State* L, lua_State* th) noexcept;
+  inline void setGCObject(lua_State* L, GCObject* gc) noexcept;
+
+  // Change value (no type change - for optimization)
+  inline void changeInt(lua_Integer i) noexcept { value_.i = i; }
+  inline void changeFloat(lua_Number n) noexcept { value_.n = n; }
+
+  // Copy from another TValue
+  inline void copy(const TValue* other) noexcept {
+    value_ = other->value_;
+    tt_ = other->tt_;
+  }
+
+  // Low-level field access (for macros during transition)
+  inline Value& valueField() noexcept { return value_; }
+  inline const Value& valueField() const noexcept { return value_; }
+  inline void setType(lu_byte t) noexcept { tt_ = t; }
 };
 #else
 typedef struct TValue {
@@ -313,7 +345,11 @@ inline constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(
 #endif
 
 
+#ifdef __cplusplus
+inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
+#else
 #define setnilvalue(obj) settt_(obj, LUA_VNIL)
+#endif
 
 
 #define isabstkey(v)		checktag((v), LUA_VABSTKEY)
@@ -376,8 +412,13 @@ inline constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || no
 
 
 
+#ifdef __cplusplus
+inline void setbfvalue(TValue* obj) noexcept { obj->setFalse(); }
+inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
+#else
 #define setbfvalue(obj)		settt_(obj, LUA_VFALSE)
 #define setbtvalue(obj)		settt_(obj, LUA_VTRUE)
+#endif
 
 /* }================================================================== */
 
@@ -402,10 +443,12 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 #define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
 #endif
 
+#ifndef __cplusplus
 #define setthvalue(L,obj,x) \
   { TValue *io = (obj); lua_State *x_ = (x); \
     val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VTHREAD)); \
     checkliveness(L,io); }
+#endif
 
 #define setthvalue2s(L,o,t)	setthvalue(L,s2v(o),t)
 
@@ -489,15 +532,14 @@ inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o)
 
 #ifdef __cplusplus
 inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
+// Note: setobj() kept as macro - needs G() from lstate.h at expansion site
 #else
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
 #endif
 
 #define gcvalueraw(v)	((v).gc)
 
-#define setgcovalue(L,obj,x) \
-  { TValue *io = (obj); GCObject *i_g=(x); \
-    val_(io).gc = i_g; settt_(io, ctb(i_g->tt)); }
+/* setgcovalue now defined as inline function below */
 
 /* }================================================================== */
 
@@ -545,6 +587,12 @@ inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
 #define fltvalueraw(v)	((v).n)
 #define ivalueraw(v)	((v).i)
 
+#ifdef __cplusplus
+inline void setfltvalue(TValue* obj, lua_Number x) noexcept { obj->setFloat(x); }
+inline void chgfltvalue(TValue* obj, lua_Number x) noexcept { obj->changeFloat(x); }
+inline void setivalue(TValue* obj, lua_Integer x) noexcept { obj->setInt(x); }
+inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); }
+#else
 #define setfltvalue(obj,x) \
   { TValue *io=(obj); val_(io).n=(x); settt_(io, LUA_VNUMFLT); }
 
@@ -556,6 +604,7 @@ inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
 
 #define chgivalue(obj,x) \
   { TValue *io=(obj); lua_assert(ttisinteger(io)); val_(io).i=(x); }
+#endif
 
 /* }================================================================== */
 
@@ -588,7 +637,8 @@ inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 #define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gc))
 #endif
 
-#define setsvalue(L,obj,x) \
+/* setsvalue now defined as inline function below */
+// #define setsvalue(L,obj,x) \
   { TValue *io = (obj); TString *x_ = (x); \
     val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
     checkliveness(L,io); }
@@ -730,13 +780,7 @@ inline Udata* uvalue(const TValue* o) noexcept { return o->userdataValue(); }
 
 #define pvalueraw(v)	((v).p)
 
-#define setpvalue(obj,x) \
-  { TValue *io=(obj); val_(io).p=(x); settt_(io, LUA_VLIGHTUSERDATA); }
-
-#define setuvalue(L,obj,x) \
-  { TValue *io = (obj); Udata *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VUSERDATA)); \
-    checkliveness(L,io); }
+/* setpvalue and setuvalue now defined as inline functions below */
 
 
 /* Ensures that addresses after this type are always fully aligned. */
@@ -1050,17 +1094,20 @@ inline lua_CFunction fvalue(const TValue* o) noexcept { return o->functionValue(
 
 #define fvalueraw(v)	((v).f)
 
-#define setclLvalue(L,obj,x) \
+/* setclLvalue now defined as inline function below */
+// #define setclLvalue(L,obj,x) \
   { TValue *io = (obj); LClosure *x_ = (x); \
     val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VLCL)); \
     checkliveness(L,io); }
 
 #define setclLvalue2s(L,o,cl)	setclLvalue(L,s2v(o),cl)
 
-#define setfvalue(obj,x) \
+/* setfvalue now defined as inline function below */
+// #define setfvalue(obj,x) \
   { TValue *io=(obj); val_(io).f=(x); settt_(io, LUA_VLCF); }
 
-#define setclCvalue(L,obj,x) \
+/* setclCvalue now defined as inline function below */
+// #define setclCvalue(L,obj,x) \
   { TValue *io = (obj); CClosure *x_ = (x); \
     val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VCCL)); \
     checkliveness(L,io); }
@@ -1190,10 +1237,90 @@ inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
 #endif
 
-#define sethvalue(L,obj,x) \
-  { TValue *io = (obj); Table *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VTABLE)); \
-    checkliveness(L,io); }
+/*
+** Phase 17: TValue setter method implementations
+** These need all type constants, so they're defined here at the end
+*/
+#ifdef __cplusplus
+inline void TValue::setNil() noexcept { tt_ = LUA_VNIL; }
+inline void TValue::setFalse() noexcept { tt_ = LUA_VFALSE; }
+inline void TValue::setTrue() noexcept { tt_ = LUA_VTRUE; }
+
+inline void TValue::setInt(lua_Integer i) noexcept {
+  value_.i = i;
+  tt_ = LUA_VNUMINT;
+}
+
+inline void TValue::setFloat(lua_Number n) noexcept {
+  value_.n = n;
+  tt_ = LUA_VNUMFLT;
+}
+
+inline void TValue::setPointer(void* p) noexcept {
+  value_.p = p;
+  tt_ = LUA_VLIGHTUSERDATA;
+}
+
+inline void TValue::setFunction(lua_CFunction f) noexcept {
+  value_.f = f;
+  tt_ = LUA_VLCF;
+}
+
+inline void TValue::setString(lua_State* L, TString* s) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(s);
+  tt_ = ctb(s->tt);
+  (void)L; // checkliveness removed - needs lstate.h
+}
+
+inline void TValue::setUserdata(lua_State* L, Udata* u) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(u);
+  tt_ = ctb(LUA_VUSERDATA);
+  (void)L;
+}
+
+inline void TValue::setTable(lua_State* L, Table* t) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(t);
+  tt_ = ctb(LUA_VTABLE);
+  (void)L;
+}
+
+inline void TValue::setLClosure(lua_State* L, LClosure* cl) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(cl);
+  tt_ = ctb(LUA_VLCL);
+  (void)L;
+}
+
+inline void TValue::setCClosure(lua_State* L, CClosure* cl) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(cl);
+  tt_ = ctb(LUA_VCCL);
+  (void)L;
+}
+
+inline void TValue::setThread(lua_State* L, lua_State* th) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(th);
+  tt_ = ctb(LUA_VTHREAD);
+  (void)L;
+}
+
+inline void TValue::setGCObject(lua_State* L, GCObject* gc) noexcept {
+  value_.gc = gc;
+  tt_ = ctb(gc->tt);
+  (void)L;
+}
+
+// Wrapper functions to replace setter macros
+inline void setpvalue(TValue* obj, void* p) noexcept { obj->setPointer(p); }
+inline void setfvalue(TValue* obj, lua_CFunction f) noexcept { obj->setFunction(f); }
+inline void setsvalue(lua_State* L, TValue* obj, TString* s) noexcept { obj->setString(L, s); }
+inline void setuvalue(lua_State* L, TValue* obj, Udata* u) noexcept { obj->setUserdata(L, u); }
+inline void sethvalue(lua_State* L, TValue* obj, Table* t) noexcept { obj->setTable(L, t); }
+inline void setthvalue(lua_State* L, TValue* obj, lua_State* th) noexcept { obj->setThread(L, th); }
+inline void setclLvalue(lua_State* L, TValue* obj, LClosure* cl) noexcept { obj->setLClosure(L, cl); }
+inline void setclCvalue(lua_State* L, TValue* obj, CClosure* cl) noexcept { obj->setCClosure(L, cl); }
+inline void setgcovalue(lua_State* L, TValue* obj, GCObject* gc) noexcept { obj->setGCObject(L, gc); }
+#endif
+
+/* Note: sethvalue and other setter macros are now defined as inline functions above in C++ */
 
 #define sethvalue2s(L,o,h)	sethvalue(L,s2v(o),h)
 
