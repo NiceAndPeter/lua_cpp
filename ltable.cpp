@@ -109,7 +109,7 @@ typedef union {
 ** for other types, it is better to avoid modulo by power of 2, as
 ** they can have many 2 factors.
 */
-#define hashmod(t,n)	(gnode(t, ((n) % ((sizenode(t)-1u)|1u))))
+#define hashmod(t,n)	(gnode(t, cast_uint((n) % ((sizenode(t)-1u)|1u))))
 
 
 #define hashstr(t,str)		hashpow2(t, (str)->hash)

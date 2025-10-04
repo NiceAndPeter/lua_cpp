@@ -883,11 +883,11 @@ static void freeobj (lua_State *L, GCObject *o) {
 */
 static GCObject **sweeplist (lua_State *L, GCObject **p, l_mem countin) {
   global_State *g = G(L);
-  int ow = otherwhite(g);
-  int white = luaC_white(g);  /* current white */
+  lu_byte ow = otherwhite(g);
+  lu_byte white = luaC_white(g);  /* current white */
   while (*p != NULL && countin-- > 0) {
     GCObject *curr = *p;
-    int marked = curr->marked;
+    lu_byte marked = curr->marked;
     if (isdeadm(ow, marked)) {  /* is 'curr' dead? */
       *p = curr->next;  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */

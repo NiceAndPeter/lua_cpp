@@ -67,8 +67,8 @@ constexpr int bitmask(int b) noexcept {
     return (1 << b);
 }
 
-constexpr int bit2mask(int b1, int b2) noexcept {
-    return (bitmask(b1) | bitmask(b2));
+constexpr lu_byte bit2mask(int b1, int b2) noexcept {
+    return cast_byte(bitmask(b1) | bitmask(b2));
 }
 
 // Bit testing
@@ -81,7 +81,7 @@ constexpr bool testbit(lu_byte x, int b) noexcept {
 }
 
 // Bit manipulation - keep as macros since they modify arguments
-#define setbits(x,m)		((x) |= (m))
+#define setbits(x,m)		((x) = cast_byte((x) | (m)))
 #define resetbits(x,m)		((x) &= cast_byte(~(m)))
 #define l_setbit(x,b)		setbits(x, bitmask(b))
 #define resetbit(x,b)		resetbits(x, bitmask(b))

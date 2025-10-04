@@ -165,7 +165,7 @@ constexpr int novariant(int t) noexcept { return (t & 0x0F); }
 /* type tag of a TValue (bits 0-3 for tags + variant bits 4-5) */
 constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
 
-constexpr int ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
+constexpr lu_byte ttypetag(const TValue* o) noexcept { return cast_byte(withvariant(rawtt(o))); }
 
 /* type of a TValue */
 constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
@@ -179,7 +179,7 @@ constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t
 #define BIT_ISCOLLECTABLE	(1 << 6)
 
 /* mark a tag as collectable */
-constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
+constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCOLLECTABLE); }
 
 
 /* Macros for internal tests */
