@@ -74,13 +74,25 @@ typedef struct TValue {
 
 
 /* raw type tag of a TValue */
+#ifdef __cplusplus
+inline constexpr lu_byte rawtt(const TValue* o) noexcept { return o->tt_; }
+#else
 #define rawtt(o)	((o)->tt_)
+#endif
 
 /* tag with no variants (bits 0-3) */
+#ifdef __cplusplus
+inline constexpr int novariant(int t) noexcept { return (t & 0x0F); }
+#else
 #define novariant(t)	((t) & 0x0F)
+#endif
 
 /* type tag of a TValue (bits 0-3 for tags + variant bits 4-5) */
+#ifdef __cplusplus
+inline constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
+#else
 #define withvariant(t)	((t) & 0x3F)
+#endif
 #define ttypetag(o)	withvariant(rawtt(o))
 
 /* type of a TValue */
@@ -88,8 +100,13 @@ typedef struct TValue {
 
 
 /* Macros to test type */
+#ifdef __cplusplus
+inline constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t; }
+inline constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
+#else
 #define checktag(o,t)		(rawtt(o) == (t))
 #define checktype(o,t)		(ttype(o) == (t))
+#endif
 
 
 /* Macros for internal tests */
