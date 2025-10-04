@@ -58,6 +58,20 @@ typedef union Value {
 
 
 /*
+** Forward declarations for TValue accessor methods
+*/
+#ifdef __cplusplus
+class TString;
+class Udata;
+class Table;
+union Closure;
+class LClosure;
+class CClosure;
+class lua_State;
+#endif
+
+
+/*
 ** Tagged Values. This is the basic representation of values in Lua:
 ** an actual value plus a tag with its type.
 */
@@ -74,7 +88,7 @@ public:
   inline const Value& getValue() const noexcept { return value_; }
   inline Value& getValue() noexcept { return value_; }
 
-  // Value accessors (Phase 15: Macro reduction)
+  // Value accessors (Phase 15-16: Macro reduction)
   // Integer value (for VKINT/VNUMINT types)
   inline lua_Integer intValue() const noexcept { return value_.i; }
 
@@ -89,6 +103,21 @@ public:
 
   // C function value (for light C functions)
   inline lua_CFunction functionValue() const noexcept { return value_.f; }
+
+  // Phase 16: Type-specific value accessors
+  // Note: These return pointers to specific types from GC union
+  // The gco2* conversion happens in the inline wrapper functions below
+  inline TString* stringValue() const noexcept { return reinterpret_cast<TString*>(value_.gc); }
+  inline Udata* userdataValue() const noexcept { return reinterpret_cast<Udata*>(value_.gc); }
+  inline Table* tableValue() const noexcept { return reinterpret_cast<Table*>(value_.gc); }
+  inline Closure* closureValue() const noexcept { return reinterpret_cast<Closure*>(value_.gc); }
+  inline LClosure* lClosureValue() const noexcept { return reinterpret_cast<LClosure*>(value_.gc); }
+  inline CClosure* cClosureValue() const noexcept { return reinterpret_cast<CClosure*>(value_.gc); }
+  inline lua_State* threadValue() const noexcept { return reinterpret_cast<lua_State*>(value_.gc); }
+
+  // Number value (returns int or float depending on type)
+  // Note: Actual conversion logic is in nvalue() wrapper below (needs type constants)
+  inline lua_Number numberValue() const noexcept;
 };
 #else
 typedef struct TValue {
@@ -367,7 +396,11 @@ inline constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, 
 #define ttisthread(o)		checktag((o), ctb(LUA_VTHREAD))
 #endif
 
+#ifdef __cplusplus
+inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
+#else
 #define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
+#endif
 
 #define setthvalue(L,obj,x) \
   { TValue *io = (obj); lua_State *x_ = (x); \
@@ -489,8 +522,17 @@ inline constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o,
 #define ttisinteger(o)		checktag((o), LUA_VNUMINT)
 #endif
 
+#ifdef __cplusplus
+// TValue::numberValue() implementation (needs LUA_VNUMINT constant)
+inline lua_Number TValue::numberValue() const noexcept {
+  return (tt_ == LUA_VNUMINT) ? static_cast<lua_Number>(value_.i) : value_.n;
+}
+
+inline lua_Number nvalue(const TValue* o) noexcept { return o->numberValue(); }
+#else
 #define nvalue(o)	check_exp(ttisnumber(o), \
 	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
+#endif
 
 #ifdef __cplusplus
 inline lua_Number fltvalue(const TValue* o) noexcept { return o->floatValue(); }
@@ -540,7 +582,11 @@ inline constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(
 
 #define tsvalueraw(v)	(gco2ts((v).gc))
 
+#ifdef __cplusplus
+inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
+#else
 #define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gc))
+#endif
 
 #define setsvalue(L,obj,x) \
   { TValue *io = (obj); TString *x_ = (x); \
@@ -676,7 +722,11 @@ inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #endif
 
+#ifdef __cplusplus
+inline Udata* uvalue(const TValue* o) noexcept { return o->userdataValue(); }
+#else
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
+#endif
 
 #define pvalueraw(v)	((v).p)
 
@@ -982,9 +1032,15 @@ inline constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosur
 
 #define isLfunction(o)	ttisLclosure(o)
 
+#ifdef __cplusplus
+inline Closure* clvalue(const TValue* o) noexcept { return o->closureValue(); }
+inline LClosure* clLvalue(const TValue* o) noexcept { return o->lClosureValue(); }
+inline CClosure* clCvalue(const TValue* o) noexcept { return o->cClosureValue(); }
+#else
 #define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
 #define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
 #define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
+#endif
 
 #ifdef __cplusplus
 inline lua_CFunction fvalue(const TValue* o) noexcept { return o->functionValue(); }
@@ -1128,7 +1184,11 @@ inline constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, c
 #define ttistable(o)		checktag((o), ctb(LUA_VTABLE))
 #endif
 
+#ifdef __cplusplus
+inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
+#else
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
+#endif
 
 #define sethvalue(L,obj,x) \
   { TValue *io = (obj); Table *x_ = (x); \
