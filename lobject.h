@@ -74,11 +74,10 @@ class lua_State;
 ** an actual value plus a tag with its type.
 */
 
-#define TValuefields	Value value_; lu_byte tt_
-
 class TValue {
 public:
-  TValuefields;
+  Value value_;
+  lu_byte tt_;
 
   // Inline accessors for hot-path access
   inline lu_byte getType() const noexcept { return tt_; }
@@ -150,8 +149,11 @@ public:
 };
 
 
-#define val_(o)		((o)->value_)
-#define valraw(o)	(val_(o))
+/* Access to TValue's internal value union */
+inline constexpr Value& val_(TValue* o) noexcept { return o->value_; }
+inline constexpr const Value& val_(const TValue* o) noexcept { return o->value_; }
+inline constexpr Value& valraw(TValue* o) noexcept { return val_(o); }
+inline constexpr const Value& valraw(const TValue* o) noexcept { return val_(o); }
 
 
 /* raw type tag of a TValue */
@@ -199,30 +201,13 @@ inline constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
 /* Macros to set values */
 
 /* set a value's tag */
-#define settt_(o,t)	((o)->tt_=(t))
+inline void settt_(TValue* o, lu_byte t) noexcept { o->tt_ = t; }
 
-
-/* main macro to copy values (from 'obj2' to 'obj1') */
-#define setobj(L,obj1,obj2) \
-	{ TValue *io1=(obj1); const TValue *io2=(obj2); \
-          io1->value_ = io2->value_; settt_(io1, io2->tt_); \
-	  checkliveness(L,io1); lua_assert(!isnonstrictnil(io1)); }
 
 /*
-** Different types of assignments, according to source and destination.
-** (They are mostly equal now, but may be different in the future.)
+** setobj() moved to after type check functions are defined.
+** See below after Collectable Types section.
 */
-
-/* from stack to stack */
-#define setobjs2s(L,o1,o2)	setobj(L,s2v(o1),s2v(o2))
-/* to stack (not from same stack) */
-#define setobj2s(L,o1,o2)	setobj(L,s2v(o1),o2)
-/* from table to same table */
-#define setobjt2t	setobj
-/* to new object */
-#define setobj2n	setobj
-/* to table */
-#define setobj2t	setobj
 
 
 /*
@@ -236,7 +221,8 @@ inline constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
 typedef union StackValue {
   TValue val;
   struct {
-    TValuefields;
+    Value value_;
+    lu_byte tt_;
     unsigned short delta;
   } tbclist;
 } StackValue;
@@ -257,7 +243,8 @@ typedef union {
 
 
 /* convert a 'StackValue' to a 'TValue' */
-#define s2v(o)	(&(o)->val)
+inline constexpr TValue* s2v(StackValue* o) noexcept { return &(o)->val; }
+inline constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 
 
 
@@ -303,9 +290,11 @@ inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
 
 
 /*
-** macro to detect non-standard nils (used only in assertions)
+** function to detect non-standard nils (used only in assertions)
 */
-#define isnonstrictnil(v)	(ttisnil(v) && !ttisstrictnil(v))
+inline constexpr bool isnonstrictnil(const TValue* v) noexcept {
+	return ttisnil(v) && !ttisstrictnil(v);
+}
 
 
 /*
@@ -321,7 +310,7 @@ inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
 
 
 /* mark an entry as empty */
-#define setempty(v)		settt_(v, LUA_VEMPTY)
+inline void setempty(TValue* v) noexcept { settt_(v, LUA_VEMPTY); }
 
 
 
@@ -451,11 +440,31 @@ public:
 inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
 
 inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
-// Note: setobj() kept as macro - needs G() from lstate.h at expansion site
 
 #define gcvalueraw(v)	((v).gc)
 
 /* setgcovalue now defined as inline function below */
+
+/* }================================================================== */
+
+
+/*
+** {==================================================================
+** TValue assignment functions
+** ===================================================================
+*/
+
+/*
+** NOTE: setobj(), setobjs2s(), setobj2s() are inline functions defined
+** in lgc.h (after all dependencies) because they need G() from lstate.h
+** and isdead() from lgc.h.
+**
+** setobjt2t, setobj2n, setobj2t are simple aliases to setobj.
+*/
+
+#define setobjt2t setobj
+#define setobj2n setobj
+#define setobj2t setobj
 
 /* }================================================================== */
 
@@ -1044,7 +1053,8 @@ inline void setgcovalue(lua_State* L, TValue* obj, GCObject* gc) noexcept { obj-
 */
 typedef union Node {
   struct NodeKey {
-    TValuefields;  /* fields for value */
+    Value value_;  /* value */
+    lu_byte tt_;   /* value type tag */
     lu_byte key_tt;  /* key type */
     int next;  /* for chaining */
     Value key_val;  /* key value */

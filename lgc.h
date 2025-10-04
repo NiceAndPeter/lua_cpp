@@ -175,9 +175,26 @@ inline bool isold(const T* o) noexcept {
 
 #define tofinalize(x)	testbit((x)->marked, FINALIZEDBIT)
 
-#define otherwhite(g)	((g)->currentwhite ^ WHITEBITS)
-#define isdeadm(ow,m)	((m) & (ow))
-#define isdead(g,v)	isdeadm(otherwhite(g), (v)->marked)
+/* Get the "other" white color (for dead object detection) */
+inline constexpr lu_byte otherwhite(const global_State* g) noexcept {
+	return g->currentwhite ^ WHITEBITS;
+}
+
+/* Check if marked value is dead given other-white bits */
+inline constexpr bool isdeadm(lu_byte ow, lu_byte m) noexcept {
+	return (m & ow) != 0;
+}
+
+/* Check if a GC object is dead */
+inline constexpr bool isdead(const global_State* g, const GCObject* v) noexcept {
+	return isdeadm(otherwhite(g), v->marked);
+}
+
+/* Template version for any GC-able type (Table, TString, UpVal, etc.) */
+template<typename T>
+inline constexpr bool isdead(const global_State* g, const T* v) noexcept {
+	return isdeadm(otherwhite(g), reinterpret_cast<const GCObject*>(v)->marked);
+}
 
 #define changewhite(x)	((x)->marked ^= WHITEBITS)
 #define nw2black(x)  \
@@ -330,6 +347,36 @@ LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
 LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
 LUAI_FUNC void luaC_checkfinalizer (lua_State *L, GCObject *o, Table *mt);
 LUAI_FUNC void luaC_changemode (lua_State *L, int newmode);
+
+
+/*
+** {==================================================================
+** TValue assignment inline functions
+** Defined here (not in lobject.h) because they need:
+**   - G() from lstate.h
+**   - isdead() from lgc.h
+** ===================================================================
+*/
+
+/* Main function to copy values (from 'obj2' to 'obj1') */
+inline void setobj(lua_State* L, TValue* obj1, const TValue* obj2) noexcept {
+	obj1->value_ = obj2->value_;
+	settt_(obj1, obj2->tt_);
+	checkliveness(L, obj1);
+	lua_assert(!isnonstrictnil(obj1));
+}
+
+/* from stack to stack */
+inline void setobjs2s(lua_State* L, StackValue* o1, StackValue* o2) noexcept {
+	setobj(L, s2v(o1), s2v(o2));
+}
+
+/* to stack (not from same stack) */
+inline void setobj2s(lua_State* L, StackValue* o1, const TValue* o2) noexcept {
+	setobj(L, s2v(o1), o2);
+}
+
+/* }================================================================== */
 
 
 #endif

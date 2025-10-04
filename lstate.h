@@ -400,8 +400,13 @@ public:
 };
 
 
-#define G(L)	(L->l_G)
-#define mainthread(G)	(&(G)->mainth.l)
+/* Get global state from lua_State (returns reference to allow assignment) */
+inline constexpr global_State*& G(lua_State* L) noexcept { return L->l_G; }
+inline constexpr global_State* const& G(const lua_State* L) noexcept { return L->l_G; }
+
+/* Get main thread from global_State */
+inline constexpr lua_State* mainthread(global_State* g) noexcept { return &g->mainth.l; }
+inline constexpr const lua_State* mainthread(const global_State* g) noexcept { return &g->mainth.l; }
 
 /*
 ** 'g->nilvalue' being a nil value flags that the state was completely
