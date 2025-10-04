@@ -64,9 +64,21 @@ typedef union Value {
 
 #define TValuefields	Value value_; lu_byte tt_
 
+#ifdef __cplusplus
+class TValue {
+public:
+  TValuefields;
+
+  // Inline accessors for hot-path access
+  inline lu_byte getType() const noexcept { return tt_; }
+  inline const Value& getValue() const noexcept { return value_; }
+  inline Value& getValue() noexcept { return value_; }
+};
+#else
 typedef struct TValue {
   TValuefields;
 } TValue;
+#endif
 
 
 #define val_(o)		((o)->value_)
@@ -365,9 +377,24 @@ inline constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, 
 
 
 /* Common type for all collectable objects */
+#ifdef __cplusplus
+class GCObject {
+public:
+  CommonHeader;
+
+  // Inline accessors
+  inline GCObject* getNext() const noexcept { return next; }
+  inline void setNext(GCObject* n) noexcept { next = n; }
+  inline lu_byte getType() const noexcept { return tt; }
+  inline lu_byte getMarked() const noexcept { return marked; }
+  inline void setMarked(lu_byte m) noexcept { marked = m; }
+  inline bool isMarked() const noexcept { return marked != 0; }
+};
+#else
 typedef struct GCObject {
   CommonHeader;
 } GCObject;
+#endif
 
 #ifdef __cplusplus
 /*
