@@ -361,7 +361,11 @@ typedef struct GCObject {
 } GCObject;
 
 
+#ifdef __cplusplus
+inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
+#else
 #define iscollectable(o)	(rawtt(o) & BIT_ISCOLLECTABLE)
+#endif
 
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
 
