@@ -80,106 +80,106 @@ public:
   lu_byte tt_;
 
   // Inline accessors for hot-path access
-  inline lu_byte getType() const noexcept { return tt_; }
-  inline const Value& getValue() const noexcept { return value_; }
-  inline Value& getValue() noexcept { return value_; }
+  lu_byte getType() const noexcept { return tt_; }
+  const Value& getValue() const noexcept { return value_; }
+  Value& getValue() noexcept { return value_; }
 
   // Value accessors (Phase 15-16: Macro reduction)
   // Integer value (for VKINT/VNUMINT types)
-  inline lua_Integer intValue() const noexcept { return value_.i; }
+  lua_Integer intValue() const noexcept { return value_.i; }
 
   // Float value (for VNUMFLT types)
-  inline lua_Number floatValue() const noexcept { return value_.n; }
+  lua_Number floatValue() const noexcept { return value_.n; }
 
   // Pointer value (for VLIGHTUSERDATA)
-  inline void* pointerValue() const noexcept { return value_.p; }
+  void* pointerValue() const noexcept { return value_.p; }
 
   // GC object value (for collectable types)
-  inline GCObject* gcValue() const noexcept { return value_.gc; }
+  GCObject* gcValue() const noexcept { return value_.gc; }
 
   // C function value (for light C functions)
-  inline lua_CFunction functionValue() const noexcept { return value_.f; }
+  lua_CFunction functionValue() const noexcept { return value_.f; }
 
   // Phase 16: Type-specific value accessors
   // Note: These return pointers to specific types from GC union
   // The gco2* conversion happens in the inline wrapper functions below
-  inline TString* stringValue() const noexcept { return reinterpret_cast<TString*>(value_.gc); }
-  inline Udata* userdataValue() const noexcept { return reinterpret_cast<Udata*>(value_.gc); }
-  inline Table* tableValue() const noexcept { return reinterpret_cast<Table*>(value_.gc); }
-  inline Closure* closureValue() const noexcept { return reinterpret_cast<Closure*>(value_.gc); }
-  inline LClosure* lClosureValue() const noexcept { return reinterpret_cast<LClosure*>(value_.gc); }
-  inline CClosure* cClosureValue() const noexcept { return reinterpret_cast<CClosure*>(value_.gc); }
-  inline lua_State* threadValue() const noexcept { return reinterpret_cast<lua_State*>(value_.gc); }
+  TString* stringValue() const noexcept { return reinterpret_cast<TString*>(value_.gc); }
+  Udata* userdataValue() const noexcept { return reinterpret_cast<Udata*>(value_.gc); }
+  Table* tableValue() const noexcept { return reinterpret_cast<Table*>(value_.gc); }
+  Closure* closureValue() const noexcept { return reinterpret_cast<Closure*>(value_.gc); }
+  LClosure* lClosureValue() const noexcept { return reinterpret_cast<LClosure*>(value_.gc); }
+  CClosure* cClosureValue() const noexcept { return reinterpret_cast<CClosure*>(value_.gc); }
+  lua_State* threadValue() const noexcept { return reinterpret_cast<lua_State*>(value_.gc); }
 
   // Number value (returns int or float depending on type)
   // Note: Actual conversion logic is in nvalue() wrapper below (needs type constants)
-  inline lua_Number numberValue() const noexcept;
+  lua_Number numberValue() const noexcept;
 
   // Phase 17: Setter methods (HOT PATH - performance critical!)
   // Note: These need type constants, so implementations are below
-  inline void setNil() noexcept;
-  inline void setFalse() noexcept;
-  inline void setTrue() noexcept;
-  inline void setInt(lua_Integer i) noexcept;
-  inline void setFloat(lua_Number n) noexcept;
-  inline void setPointer(void* p) noexcept;
-  inline void setFunction(lua_CFunction f) noexcept;
-  inline void setString(lua_State* L, TString* s) noexcept;
-  inline void setUserdata(lua_State* L, Udata* u) noexcept;
-  inline void setTable(lua_State* L, Table* t) noexcept;
-  inline void setLClosure(lua_State* L, LClosure* cl) noexcept;
-  inline void setCClosure(lua_State* L, CClosure* cl) noexcept;
-  inline void setThread(lua_State* L, lua_State* th) noexcept;
-  inline void setGCObject(lua_State* L, GCObject* gc) noexcept;
+  void setNil() noexcept;
+  void setFalse() noexcept;
+  void setTrue() noexcept;
+  void setInt(lua_Integer i) noexcept;
+  void setFloat(lua_Number n) noexcept;
+  void setPointer(void* p) noexcept;
+  void setFunction(lua_CFunction f) noexcept;
+  void setString(lua_State* L, TString* s) noexcept;
+  void setUserdata(lua_State* L, Udata* u) noexcept;
+  void setTable(lua_State* L, Table* t) noexcept;
+  void setLClosure(lua_State* L, LClosure* cl) noexcept;
+  void setCClosure(lua_State* L, CClosure* cl) noexcept;
+  void setThread(lua_State* L, lua_State* th) noexcept;
+  void setGCObject(lua_State* L, GCObject* gc) noexcept;
 
   // Change value (no type change - for optimization)
-  inline void changeInt(lua_Integer i) noexcept { value_.i = i; }
-  inline void changeFloat(lua_Number n) noexcept { value_.n = n; }
+  void changeInt(lua_Integer i) noexcept { value_.i = i; }
+  void changeFloat(lua_Number n) noexcept { value_.n = n; }
 
   // Copy from another TValue
-  inline void copy(const TValue* other) noexcept {
+  void copy(const TValue* other) noexcept {
     value_ = other->value_;
     tt_ = other->tt_;
   }
 
   // Low-level field access (for macros during transition)
-  inline Value& valueField() noexcept { return value_; }
-  inline const Value& valueField() const noexcept { return value_; }
-  inline void setType(lu_byte t) noexcept { tt_ = t; }
+  Value& valueField() noexcept { return value_; }
+  const Value& valueField() const noexcept { return value_; }
+  void setType(lu_byte t) noexcept { tt_ = t; }
 };
 
 
 /* Access to TValue's internal value union */
-inline constexpr Value& val_(TValue* o) noexcept { return o->value_; }
-inline constexpr const Value& val_(const TValue* o) noexcept { return o->value_; }
-inline constexpr Value& valraw(TValue* o) noexcept { return val_(o); }
-inline constexpr const Value& valraw(const TValue* o) noexcept { return val_(o); }
+constexpr Value& val_(TValue* o) noexcept { return o->value_; }
+constexpr const Value& val_(const TValue* o) noexcept { return o->value_; }
+constexpr Value& valraw(TValue* o) noexcept { return val_(o); }
+constexpr const Value& valraw(const TValue* o) noexcept { return val_(o); }
 
 
 /* raw type tag of a TValue */
-inline constexpr lu_byte rawtt(const TValue* o) noexcept { return o->tt_; }
+constexpr lu_byte rawtt(const TValue* o) noexcept { return o->tt_; }
 
 /* tag with no variants (bits 0-3) */
-inline constexpr int novariant(int t) noexcept { return (t & 0x0F); }
+constexpr int novariant(int t) noexcept { return (t & 0x0F); }
 
 /* type tag of a TValue (bits 0-3 for tags + variant bits 4-5) */
-inline constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
+constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
 
-inline constexpr int ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
+constexpr int ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
 
 /* type of a TValue */
-inline constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
+constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
 
 
 /* Macros to test type */
-inline constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t; }
-inline constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
+constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t; }
+constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
 
 /* Bit mark for collectable types */
 #define BIT_ISCOLLECTABLE	(1 << 6)
 
 /* mark a tag as collectable */
-inline constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
+constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
 
 
 /* Macros for internal tests */
@@ -243,8 +243,8 @@ typedef union {
 
 
 /* convert a 'StackValue' to a 'TValue' */
-inline constexpr TValue* s2v(StackValue* o) noexcept { return &(o)->val; }
-inline constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
+constexpr TValue* s2v(StackValue* o) noexcept { return &(o)->val; }
+constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 
 
 
@@ -268,7 +268,7 @@ inline constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->
 
 
 /* macro to test for (any kind of) nil */
-inline constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
+constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
 
 /*
 ** Macro to test the result of a table access. Formally, it should
@@ -276,11 +276,11 @@ inline constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LU
 ** other tags. As currently nil is equivalent to LUA_VEMPTY, it is
 ** simpler to just test whether the value is nil.
 */
-inline constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL; }
+constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL; }
 
 
 /* macro to test for a standard nil */
-inline constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LUA_VNIL); }
+constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LUA_VNIL); }
 
 
 inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
@@ -292,7 +292,7 @@ inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
 /*
 ** function to detect non-standard nils (used only in assertions)
 */
-inline constexpr bool isnonstrictnil(const TValue* v) noexcept {
+constexpr bool isnonstrictnil(const TValue* v) noexcept {
 	return ttisnil(v) && !ttisstrictnil(v);
 }
 
@@ -327,13 +327,13 @@ inline void setempty(TValue* v) noexcept { settt_(v, LUA_VEMPTY); }
 #define LUA_VFALSE	makevariant(LUA_TBOOLEAN, 0)
 #define LUA_VTRUE	makevariant(LUA_TBOOLEAN, 1)
 
-inline constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_TBOOLEAN); }
-inline constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
-inline constexpr bool ttistrue(const TValue* o) noexcept { return checktag(o, LUA_VTRUE); }
+constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_TBOOLEAN); }
+constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
+constexpr bool ttistrue(const TValue* o) noexcept { return checktag(o, LUA_VTRUE); }
 
 
-inline constexpr bool l_isfalse(const TValue* o) noexcept { return ttisfalse(o) || ttisnil(o); }
-inline constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || novariant(t) == LUA_TNIL); }
+constexpr bool l_isfalse(const TValue* o) noexcept { return ttisfalse(o) || ttisnil(o); }
+constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || novariant(t) == LUA_TNIL); }
 
 
 
@@ -351,7 +351,7 @@ inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
 
 #define LUA_VTHREAD		makevariant(LUA_TTHREAD, 0)
 
-inline constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
+constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
 
 inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
@@ -386,12 +386,12 @@ public:
   CommonHeader;
 
   // Inline accessors
-  inline GCObject* getNext() const noexcept { return next; }
-  inline void setNext(GCObject* n) noexcept { next = n; }
-  inline lu_byte getType() const noexcept { return tt; }
-  inline lu_byte getMarked() const noexcept { return marked; }
-  inline void setMarked(lu_byte m) noexcept { marked = m; }
-  inline bool isMarked() const noexcept { return marked != 0; }
+  GCObject* getNext() const noexcept { return next; }
+  void setNext(GCObject* n) noexcept { next = n; }
+  lu_byte getType() const noexcept { return tt; }
+  lu_byte getMarked() const noexcept { return marked; }
+  void setMarked(lu_byte m) noexcept { marked = m; }
+  bool isMarked() const noexcept { return marked != 0; }
 
   // Phase 20: GC color and age methods (requires lgc.h constants)
   // These will be defined after lgc.h is included
@@ -437,7 +437,7 @@ public:
     }
 };
 
-inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
+constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
 
 inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 
@@ -479,9 +479,9 @@ inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 #define LUA_VNUMINT	makevariant(LUA_TNUMBER, 0)  /* integer numbers */
 #define LUA_VNUMFLT	makevariant(LUA_TNUMBER, 1)  /* float numbers */
 
-inline constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TNUMBER); }
-inline constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
-inline constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o, LUA_VNUMINT); }
+constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TNUMBER); }
+constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
+constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o, LUA_VNUMINT); }
 
 // TValue::numberValue() implementation (needs LUA_VNUMINT constant)
 inline lua_Number TValue::numberValue() const noexcept {
@@ -514,9 +514,9 @@ inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); 
 #define LUA_VSHRSTR	makevariant(LUA_TSTRING, 0)  /* short strings */
 #define LUA_VLNGSTR	makevariant(LUA_TSTRING, 1)  /* long strings */
 
-inline constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
-inline constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
-inline constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
+constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
+constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
+constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
 
 #define tsvalueraw(v)	(gco2ts((v).gc))
 
@@ -554,22 +554,22 @@ public:
   lua_Alloc falloc;  /* deallocation function for external strings */
   void *ud;  /* user data for external strings */
 
-  // Inline type checks
-  inline bool isShort() const noexcept { return shrlen >= 0; }
-  inline bool isLong() const noexcept { return shrlen < 0; }
+  // Type checks
+  bool isShort() const noexcept { return shrlen >= 0; }
+  bool isLong() const noexcept { return shrlen < 0; }
 
-  // Inline accessors
-  inline size_t length() const noexcept {
+  // Accessors
+  size_t length() const noexcept {
     return isShort() ? static_cast<size_t>(shrlen) : u.lnglen;
   }
-  inline unsigned int getHash() const noexcept { return hash; }
-  inline const char* c_str() const noexcept {
+  unsigned int getHash() const noexcept { return hash; }
+  const char* c_str() const noexcept {
     return isShort() ? cast_charp(&contents) : contents;
   }
 
-  // Hash table operations (inline)
-  inline TString* getNext() const noexcept { return u.hnext; }
-  inline void setNext(TString* next_str) noexcept { u.hnext = next_str; }
+  // Hash table operations
+  TString* getNext() const noexcept { return u.hnext; }
+  void setNext(TString* next_str) noexcept { u.hnext = next_str; }
 
   // Method declarations (implemented in lstring.cpp)
   unsigned hashLongStr();
@@ -623,8 +623,8 @@ public:
 
 #define LUA_VUSERDATA		makevariant(LUA_TUSERDATA, 0)
 
-inline constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
-inline constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
+constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
+constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
 
 inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
 
@@ -656,12 +656,12 @@ public:
   UValue uv[1];  /* user values */
 
   // Inline accessors
-  inline size_t getLen() const noexcept { return len; }
-  inline unsigned short getNumUserValues() const noexcept { return nuvalue; }
-  inline Table* getMetatable() const noexcept { return metatable; }
-  inline void setMetatable(Table* mt) noexcept { metatable = mt; }
-  inline UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
-  inline const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
+  size_t getLen() const noexcept { return len; }
+  unsigned short getNumUserValues() const noexcept { return nuvalue; }
+  Table* getMetatable() const noexcept { return metatable; }
+  void setMetatable(Table* mt) noexcept { metatable = mt; }
+  UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
+  const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
   // Note: getMemory() uses macro udatamemoffset which requires Udata0 to be defined
   inline void* getMemory() noexcept;
   inline const void* getMemory() const noexcept;
@@ -731,10 +731,10 @@ public:
   lu_byte kind;  /* kind of corresponding variable */
 
   // Inline accessors
-  inline TString* getName() const noexcept { return name; }
-  inline bool isInStack() const noexcept { return instack != 0; }
-  inline lu_byte getIndex() const noexcept { return idx; }
-  inline lu_byte getKind() const noexcept { return kind; }
+  TString* getName() const noexcept { return name; }
+  bool isInStack() const noexcept { return instack != 0; }
+  lu_byte getIndex() const noexcept { return idx; }
+  lu_byte getKind() const noexcept { return kind; }
 };
 
 
@@ -749,10 +749,10 @@ public:
   int endpc;    /* first point where variable is dead */
 
   // Inline accessors
-  inline TString* getVarName() const noexcept { return varname; }
-  inline int getStartPC() const noexcept { return startpc; }
-  inline int getEndPC() const noexcept { return endpc; }
-  inline bool isActive(int pc) const noexcept { return startpc <= pc && pc < endpc; }
+  TString* getVarName() const noexcept { return varname; }
+  int getStartPC() const noexcept { return startpc; }
+  int getEndPC() const noexcept { return endpc; }
+  bool isActive(int pc) const noexcept { return startpc <= pc && pc < endpc; }
 };
 
 
@@ -772,8 +772,8 @@ public:
   int line;
 
   // Inline accessors
-  inline int getPC() const noexcept { return pc; }
-  inline int getLine() const noexcept { return line; }
+  int getPC() const noexcept { return pc; }
+  int getLine() const noexcept { return line; }
 };
 
 
@@ -813,16 +813,16 @@ public:
   GCObject *gclist;
 
   // Inline accessors
-  inline lu_byte getNumParams() const noexcept { return numparams; }
-  inline lu_byte getMaxStackSize() const noexcept { return maxstacksize; }
-  inline int getCodeSize() const noexcept { return sizecode; }
-  inline int getConstantsSize() const noexcept { return sizek; }
-  inline int getUpvaluesSize() const noexcept { return sizeupvalues; }
-  inline int getProtosSize() const noexcept { return sizep; }
-  inline TString* getSource() const noexcept { return source; }
-  inline bool isVarArg() const noexcept { return flag != 0; }
-  inline Instruction* getCode() const noexcept { return code; }
-  inline TValue* getConstants() const noexcept { return k; }
+  lu_byte getNumParams() const noexcept { return numparams; }
+  lu_byte getMaxStackSize() const noexcept { return maxstacksize; }
+  int getCodeSize() const noexcept { return sizecode; }
+  int getConstantsSize() const noexcept { return sizek; }
+  int getUpvaluesSize() const noexcept { return sizeupvalues; }
+  int getProtosSize() const noexcept { return sizep; }
+  TString* getSource() const noexcept { return source; }
+  bool isVarArg() const noexcept { return flag != 0; }
+  Instruction* getCode() const noexcept { return code; }
+  TValue* getConstants() const noexcept { return k; }
 
   // Methods (implemented in lfunc.cpp)
   lu_mem memorySize() const;
@@ -847,11 +847,11 @@ public:
 #define LUA_VLCF	makevariant(LUA_TFUNCTION, 1)  /* light C function */
 #define LUA_VCCL	makevariant(LUA_TFUNCTION, 2)  /* C closure */
 
-inline constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
-inline constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
-inline constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF); }
-inline constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
-inline constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
+constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
+constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
+constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF); }
+constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
+constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
 
 
 #define isLfunction(o)	ttisLclosure(o)
@@ -892,9 +892,9 @@ public:
   } u;
 
   // Inline accessors
-  inline bool isOpen() const noexcept { return v.p != &u.value; }
-  inline TValue* getValue() noexcept { return v.p; }
-  inline const TValue* getValue() const noexcept { return v.p; }
+  bool isOpen() const noexcept { return v.p != &u.value; }
+  TValue* getValue() noexcept { return v.p; }
+  const TValue* getValue() const noexcept { return v.p; }
 
   // Methods (implemented in lfunc.cpp)
   void unlink();
@@ -912,10 +912,10 @@ public:
   TValue upvalue[1];  /* list of upvalues */
 
   // Inline accessors
-  inline lua_CFunction getFunction() const noexcept { return f; }
-  inline lu_byte getNumUpvalues() const noexcept { return nupvalues; }
-  inline TValue* getUpvalue(int idx) noexcept { return &upvalue[idx]; }
-  inline const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
+  lua_CFunction getFunction() const noexcept { return f; }
+  lu_byte getNumUpvalues() const noexcept { return nupvalues; }
+  TValue* getUpvalue(int idx) noexcept { return &upvalue[idx]; }
+  const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
 };
 
 class LClosure {
@@ -925,10 +925,10 @@ public:
   UpVal *upvals[1];  /* list of upvalues */
 
   // Inline accessors
-  inline Proto* getProto() const noexcept { return p; }
-  inline lu_byte getNumUpvalues() const noexcept { return nupvalues; }
-  inline UpVal* getUpval(int idx) const noexcept { return upvals[idx]; }
-  inline void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }
+  Proto* getProto() const noexcept { return p; }
+  lu_byte getNumUpvalues() const noexcept { return nupvalues; }
+  UpVal* getUpval(int idx) const noexcept { return upvals[idx]; }
+  void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }
 
   // Methods (implemented in lfunc.cpp)
   void initUpvals(lua_State* L);
@@ -954,7 +954,7 @@ typedef union Closure {
 
 #define LUA_VTABLE	makevariant(LUA_TTABLE, 0)
 
-inline constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
+constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
 
 inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
 
@@ -1092,21 +1092,21 @@ public:
   GCObject *gclist;
 
   // Inline accessors
-  inline unsigned int arraySize() const noexcept { return asize; }
-  inline unsigned int nodeSize() const noexcept { return (1u << lsizenode); }
-  inline Table* getMetatable() const noexcept { return metatable; }
-  inline void setMetatable(Table* mt) noexcept { metatable = mt; }
+  unsigned int arraySize() const noexcept { return asize; }
+  unsigned int nodeSize() const noexcept { return (1u << lsizenode); }
+  Table* getMetatable() const noexcept { return metatable; }
+  void setMetatable(Table* mt) noexcept { metatable = mt; }
 
   // Flag operations (inline for performance)
   // Note: BITDUMMY = (1 << 6), defined in ltable.h
-  inline bool isDummy() const noexcept { return (flags & (1 << 6)) != 0; }
-  inline void setDummy() noexcept { flags |= (1 << 6); }
-  inline void setNoDummy() noexcept { flags &= cast_byte(~(1 << 6)); }
+  bool isDummy() const noexcept { return (flags & (1 << 6)) != 0; }
+  void setDummy() noexcept { flags |= (1 << 6); }
+  void setNoDummy() noexcept { flags &= cast_byte(~(1 << 6)); }
   // invalidateTMCache uses maskflags from ltm.h, so can't inline here - use macro instead
 
   // Node accessors (Phase 19: Table macro reduction)
-  inline Node* getNode(unsigned int i) noexcept { return &node[i]; }
-  inline const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
+  Node* getNode(unsigned int i) noexcept { return &node[i]; }
+  const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
 
   // Method declarations (implemented in ltable.cpp)
   lu_byte get(const TValue* key, TValue* res);

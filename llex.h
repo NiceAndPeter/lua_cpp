@@ -80,10 +80,10 @@ public:
   TString *glbn;  /* "global" name (when not a reserved word) */
 
   // Inline accessors
-  inline int getCurrentChar() const noexcept { return current; }
-  inline int getLineNumber() const noexcept { return linenumber; }
-  inline TString* getSource() const noexcept { return source; }
-  inline const Token& getCurrentToken() const noexcept { return t; }
+  int getCurrentChar() const noexcept { return current; }
+  int getLineNumber() const noexcept { return linenumber; }
+  TString* getSource() const noexcept { return source; }
+  const Token& getCurrentToken() const noexcept { return t; }
 };
 
 

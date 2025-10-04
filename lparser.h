@@ -94,9 +94,9 @@ public:
   int f;  /* patch list of 'exit when false' */
 
   // Inline accessors
-  inline expkind getKind() const noexcept { return k; }
-  inline bool isConstant() const noexcept { return k == VNIL || k == VFALSE || k == VTRUE || k == VKINT || k == VKFLT || k == VKSTR; }
-  inline int getInfo() const noexcept { return u.info; }
+  expkind getKind() const noexcept { return k; }
+  bool isConstant() const noexcept { return k == VNIL || k == VFALSE || k == VTRUE || k == VKINT || k == VKFLT || k == VKSTR; }
+  int getInfo() const noexcept { return u.info; }
 };
 
 
@@ -188,12 +188,12 @@ public:
   lu_byte needclose;  /* function needs to close upvalues when returning */
 
   // Inline accessors
-  inline Proto* getProto() const noexcept { return f; }
-  inline FuncState* getPrev() const noexcept { return prev; }
-  inline int getPC() const noexcept { return pc; }
-  inline lu_byte getFreeReg() const noexcept { return freereg; }
-  inline lu_byte getNumUpvalues() const noexcept { return nups; }
-  inline short getNumActiveVars() const noexcept { return nactvar; }
+  Proto* getProto() const noexcept { return f; }
+  FuncState* getPrev() const noexcept { return prev; }
+  int getPC() const noexcept { return pc; }
+  lu_byte getFreeReg() const noexcept { return freereg; }
+  lu_byte getNumUpvalues() const noexcept { return nups; }
+  short getNumActiveVars() const noexcept { return nactvar; }
 };
 
 

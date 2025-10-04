@@ -171,9 +171,9 @@ public:
   int size;  /* number of buckets */
 
   // Inline accessors
-  inline TString** getHash() const noexcept { return hash; }
-  inline int getNumElements() const noexcept { return nuse; }
-  inline int getSize() const noexcept { return size; }
+  TString** getHash() const noexcept { return hash; }
+  int getNumElements() const noexcept { return nuse; }
+  int getSize() const noexcept { return size; }
 };
 
 
@@ -215,12 +215,12 @@ public:
   l_uint32 callstatus;
 
   // Inline accessors
-  inline CallInfo* getPrevious() const noexcept { return previous; }
-  inline CallInfo* getNext() const noexcept { return next; }
-  inline l_uint32 getCallStatus() const noexcept { return callstatus; }
-  inline bool isLua() const noexcept { return (callstatus & (1 << 0)) == 0; }  // CIST_LUA = bit 0
-  inline const Instruction* getSavedPC() const noexcept { return u.l.savedpc; }
-  inline void setSavedPC(const Instruction* pc) noexcept { u.l.savedpc = pc; }
+  CallInfo* getPrevious() const noexcept { return previous; }
+  CallInfo* getNext() const noexcept { return next; }
+  l_uint32 getCallStatus() const noexcept { return callstatus; }
+  bool isLua() const noexcept { return (callstatus & (1 << 0)) == 0; }  // CIST_LUA = bit 0
+  const Instruction* getSavedPC() const noexcept { return u.l.savedpc; }
+  void setSavedPC(const Instruction* pc) noexcept { u.l.savedpc = pc; }
 };
 
 
@@ -327,9 +327,9 @@ public:
   } transferinfo;
 
   // Inline accessors (ULTRA CONSERVATIVE - only 3 essential)
-  inline global_State* getGlobalState() const noexcept { return l_G; }
-  inline CallInfo* getCallInfo() const noexcept { return ci; }
-  inline TStatus getStatus() const noexcept { return status; }
+  global_State* getGlobalState() const noexcept { return l_G; }
+  CallInfo* getCallInfo() const noexcept { return ci; }
+  TStatus getStatus() const noexcept { return status; }
 };
 
 
@@ -393,20 +393,20 @@ public:
   LX mainth;  /* main thread of this state */
 
   // Inline accessors (very conservative - only most commonly used)
-  inline stringtable* getStringTable() noexcept { return &strt; }
-  inline TValue* getRegistry() noexcept { return &l_registry; }
-  inline lu_byte getGCState() const noexcept { return gcstate; }
-  inline Table* getMetatable(int type) const noexcept { return mt[type]; }
+  stringtable* getStringTable() noexcept { return &strt; }
+  TValue* getRegistry() noexcept { return &l_registry; }
+  lu_byte getGCState() const noexcept { return gcstate; }
+  Table* getMetatable(int type) const noexcept { return mt[type]; }
 };
 
 
 /* Get global state from lua_State (returns reference to allow assignment) */
-inline constexpr global_State*& G(lua_State* L) noexcept { return L->l_G; }
-inline constexpr global_State* const& G(const lua_State* L) noexcept { return L->l_G; }
+constexpr global_State*& G(lua_State* L) noexcept { return L->l_G; }
+constexpr global_State* const& G(const lua_State* L) noexcept { return L->l_G; }
 
 /* Get main thread from global_State */
-inline constexpr lua_State* mainthread(global_State* g) noexcept { return &g->mainth.l; }
-inline constexpr const lua_State* mainthread(const global_State* g) noexcept { return &g->mainth.l; }
+constexpr lua_State* mainthread(global_State* g) noexcept { return &g->mainth.l; }
+constexpr const lua_State* mainthread(const global_State* g) noexcept { return &g->mainth.l; }
 
 /*
 ** 'g->nilvalue' being a nil value flags that the state was completely

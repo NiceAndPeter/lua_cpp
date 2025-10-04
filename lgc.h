@@ -63,20 +63,20 @@
 */
 
 // Bit mask generation
-inline constexpr int bitmask(int b) noexcept {
+constexpr int bitmask(int b) noexcept {
     return (1 << b);
 }
 
-inline constexpr int bit2mask(int b1, int b2) noexcept {
+constexpr int bit2mask(int b1, int b2) noexcept {
     return (bitmask(b1) | bitmask(b2));
 }
 
 // Bit testing
-inline constexpr lu_byte testbits(lu_byte x, lu_byte m) noexcept {
+constexpr lu_byte testbits(lu_byte x, lu_byte m) noexcept {
     return (x & m);
 }
 
-inline constexpr bool testbit(lu_byte x, int b) noexcept {
+constexpr bool testbit(lu_byte x, int b) noexcept {
     return (testbits(x, cast_byte(bitmask(b))) != 0);
 }
 
@@ -176,23 +176,23 @@ inline bool isold(const T* o) noexcept {
 #define tofinalize(x)	testbit((x)->marked, FINALIZEDBIT)
 
 /* Get the "other" white color (for dead object detection) */
-inline constexpr lu_byte otherwhite(const global_State* g) noexcept {
+constexpr lu_byte otherwhite(const global_State* g) noexcept {
 	return g->currentwhite ^ WHITEBITS;
 }
 
 /* Check if marked value is dead given other-white bits */
-inline constexpr bool isdeadm(lu_byte ow, lu_byte m) noexcept {
+constexpr bool isdeadm(lu_byte ow, lu_byte m) noexcept {
 	return (m & ow) != 0;
 }
 
 /* Check if a GC object is dead */
-inline constexpr bool isdead(const global_State* g, const GCObject* v) noexcept {
+constexpr bool isdead(const global_State* g, const GCObject* v) noexcept {
 	return isdeadm(otherwhite(g), v->marked);
 }
 
 /* Template version for any GC-able type (Table, TString, UpVal, etc.) */
 template<typename T>
-inline constexpr bool isdead(const global_State* g, const T* v) noexcept {
+constexpr bool isdead(const global_State* g, const T* v) noexcept {
 	return isdeadm(otherwhite(g), reinterpret_cast<const GCObject*>(v)->marked);
 }
 
