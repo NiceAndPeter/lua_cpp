@@ -744,6 +744,50 @@ typedef struct AbsLineInfo {
 /*
 ** Function Prototypes
 */
+#ifdef __cplusplus
+class Proto {
+public:
+  CommonHeader;
+  lu_byte numparams;  /* number of fixed (named) parameters */
+  lu_byte flag;
+  lu_byte maxstacksize;  /* number of registers needed by this function */
+  int sizeupvalues;  /* size of 'upvalues' */
+  int sizek;  /* size of 'k' */
+  int sizecode;
+  int sizelineinfo;
+  int sizep;  /* size of 'p' */
+  int sizelocvars;
+  int sizeabslineinfo;  /* size of 'abslineinfo' */
+  int linedefined;  /* debug information  */
+  int lastlinedefined;  /* debug information  */
+  TValue *k;  /* constants used by the function */
+  Instruction *code;  /* opcodes */
+  struct Proto **p;  /* functions defined inside the function */
+  Upvaldesc *upvalues;  /* upvalue information */
+  ls_byte *lineinfo;  /* information about source lines (debug information) */
+  AbsLineInfo *abslineinfo;  /* idem */
+  LocVar *locvars;  /* information about local variables (debug information) */
+  TString  *source;  /* used for debug information */
+  GCObject *gclist;
+
+  // Inline accessors
+  inline lu_byte getNumParams() const noexcept { return numparams; }
+  inline lu_byte getMaxStackSize() const noexcept { return maxstacksize; }
+  inline int getCodeSize() const noexcept { return sizecode; }
+  inline int getConstantsSize() const noexcept { return sizek; }
+  inline int getUpvaluesSize() const noexcept { return sizeupvalues; }
+  inline int getProtosSize() const noexcept { return sizep; }
+  inline TString* getSource() const noexcept { return source; }
+  inline bool isVarArg() const noexcept { return flag != 0; }
+  inline Instruction* getCode() const noexcept { return code; }
+  inline TValue* getConstants() const noexcept { return k; }
+
+  // Methods (implemented in lfunc.cpp)
+  lu_mem memorySize() const;
+  void free(lua_State* L);
+  const char* getLocalName(int local_number, int pc) const;
+};
+#else
 typedef struct Proto {
   CommonHeader;
   lu_byte numparams;  /* number of fixed (named) parameters */
@@ -768,6 +812,7 @@ typedef struct Proto {
   TString  *source;  /* used for debug information */
   GCObject *gclist;
 } Proto;
+#endif
 
 /* }================================================================== */
 
@@ -829,6 +874,31 @@ inline constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosur
 /*
 ** Upvalues for Lua closures
 */
+#ifdef __cplusplus
+class UpVal {
+public:
+  CommonHeader;
+  union {
+    TValue *p;  /* points to stack or to its own value */
+    ptrdiff_t offset;  /* used while the stack is being reallocated */
+  } v;
+  union {
+    struct {  /* (when open) */
+      struct UpVal *next;  /* linked list */
+      struct UpVal **previous;
+    } open;
+    TValue value;  /* the value (when closed) */
+  } u;
+
+  // Inline accessors
+  inline bool isOpen() const noexcept { return v.p != &u.value; }
+  inline TValue* getValue() noexcept { return v.p; }
+  inline const TValue* getValue() const noexcept { return v.p; }
+
+  // Methods (implemented in lfunc.cpp)
+  void unlink();
+};
+#else
 typedef struct UpVal {
   CommonHeader;
   union {
@@ -843,24 +913,55 @@ typedef struct UpVal {
     TValue value;  /* the value (when closed) */
   } u;
 } UpVal;
+#endif
 
 
 
 #define ClosureHeader \
 	CommonHeader; lu_byte nupvalues; GCObject *gclist
 
+#ifdef __cplusplus
+class CClosure {
+public:
+  ClosureHeader;
+  lua_CFunction f;
+  TValue upvalue[1];  /* list of upvalues */
+
+  // Inline accessors
+  inline lua_CFunction getFunction() const noexcept { return f; }
+  inline lu_byte getNumUpvalues() const noexcept { return nupvalues; }
+  inline TValue* getUpvalue(int idx) noexcept { return &upvalue[idx]; }
+  inline const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
+};
+
+class LClosure {
+public:
+  ClosureHeader;
+  struct Proto *p;
+  UpVal *upvals[1];  /* list of upvalues */
+
+  // Inline accessors
+  inline Proto* getProto() const noexcept { return p; }
+  inline lu_byte getNumUpvalues() const noexcept { return nupvalues; }
+  inline UpVal* getUpval(int idx) const noexcept { return upvals[idx]; }
+  inline void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }
+
+  // Methods (implemented in lfunc.cpp)
+  void initUpvals(lua_State* L);
+};
+#else
 typedef struct CClosure {
   ClosureHeader;
   lua_CFunction f;
   TValue upvalue[1];  /* list of upvalues */
 } CClosure;
 
-
 typedef struct LClosure {
   ClosureHeader;
   struct Proto *p;
   UpVal *upvals[1];  /* list of upvalues */
 } LClosure;
+#endif
 
 
 typedef union Closure {

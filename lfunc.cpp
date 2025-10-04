@@ -45,7 +45,24 @@ LClosure *luaF_newLclosure (lua_State *L, int nupvals) {
 /*
 ** fill a closure with new closed upvalues
 */
+#ifdef __cplusplus
+void LClosure::initUpvals(lua_State* L) {
+  int i;
+  for (i = 0; i < nupvalues; i++) {
+    GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
+    UpVal *uv = gco2upv(o);
+    uv->v.p = &uv->u.value;  /* make it closed */
+    setnilvalue(uv->v.p);
+    upvals[i] = uv;
+    luaC_objbarrier(L, this, uv);
+  }
+}
+#endif
+
 void luaF_initupvals (lua_State *L, LClosure *cl) {
+#ifdef __cplusplus
+  cl->initUpvals(L);
+#else
   int i;
   for (i = 0; i < cl->nupvalues; i++) {
     GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
@@ -55,6 +72,7 @@ void luaF_initupvals (lua_State *L, LClosure *cl) {
     cl->upvals[i] = uv;
     luaC_objbarrier(L, cl, uv);
   }
+#endif
 }
 
 
@@ -183,11 +201,24 @@ void luaF_newtbcupval (lua_State *L, StkId level) {
 }
 
 
+#ifdef __cplusplus
+void UpVal::unlink() {
+  lua_assert(upisopen(this));
+  *u.open.previous = u.open.next;
+  if (u.open.next)
+    u.open.next->u.open.previous = u.open.previous;
+}
+#endif
+
 void luaF_unlinkupval (UpVal *uv) {
+#ifdef __cplusplus
+  uv->unlink();
+#else
   lua_assert(upisopen(uv));
   *uv->u.open.previous = uv->u.open.next;
   if (uv->u.open.next)
     uv->u.open.next->u.open.previous = uv->u.open.previous;
+#endif
 }
 
 
@@ -267,7 +298,26 @@ Proto *luaF_newproto (lua_State *L) {
 }
 
 
+#ifdef __cplusplus
+lu_mem Proto::memorySize() const {
+  lu_mem sz = cast(lu_mem, sizeof(Proto))
+            + cast_uint(sizep) * sizeof(Proto*)
+            + cast_uint(sizek) * sizeof(TValue)
+            + cast_uint(sizelocvars) * sizeof(LocVar)
+            + cast_uint(sizeupvalues) * sizeof(Upvaldesc);
+  if (!(flag & PF_FIXED)) {
+    sz += cast_uint(sizecode) * sizeof(Instruction);
+    sz += cast_uint(sizelineinfo) * sizeof(lu_byte);
+    sz += cast_uint(sizeabslineinfo) * sizeof(AbsLineInfo);
+  }
+  return sz;
+}
+#endif
+
 lu_mem luaF_protosize (Proto *p) {
+#ifdef __cplusplus
+  return p->memorySize();
+#else
   lu_mem sz = cast(lu_mem, sizeof(Proto))
             + cast_uint(p->sizep) * sizeof(Proto*)
             + cast_uint(p->sizek) * sizeof(TValue)
@@ -279,10 +329,29 @@ lu_mem luaF_protosize (Proto *p) {
     sz += cast_uint(p->sizeabslineinfo) * sizeof(AbsLineInfo);
   }
   return sz;
+#endif
 }
 
 
+#ifdef __cplusplus
+void Proto::free(lua_State* L) {
+  if (!(flag & PF_FIXED)) {
+    luaM_freearray(L, code, cast_sizet(sizecode));
+    luaM_freearray(L, lineinfo, cast_sizet(sizelineinfo));
+    luaM_freearray(L, abslineinfo, cast_sizet(sizeabslineinfo));
+  }
+  luaM_freearray(L, p, cast_sizet(sizep));
+  luaM_freearray(L, k, cast_sizet(sizek));
+  luaM_freearray(L, locvars, cast_sizet(sizelocvars));
+  luaM_freearray(L, upvalues, cast_sizet(sizeupvalues));
+  luaM_free(L, this);
+}
+#endif
+
 void luaF_freeproto (lua_State *L, Proto *f) {
+#ifdef __cplusplus
+  f->free(L);
+#else
   if (!(f->flag & PF_FIXED)) {
     luaM_freearray(L, f->code, cast_sizet(f->sizecode));
     luaM_freearray(L, f->lineinfo, cast_sizet(f->sizelineinfo));
@@ -293,6 +362,7 @@ void luaF_freeproto (lua_State *L, Proto *f) {
   luaM_freearray(L, f->locvars, cast_sizet(f->sizelocvars));
   luaM_freearray(L, f->upvalues, cast_sizet(f->sizeupvalues));
   luaM_free(L, f);
+#endif
 }
 
 
@@ -300,7 +370,24 @@ void luaF_freeproto (lua_State *L, Proto *f) {
 ** Look for n-th local variable at line 'line' in function 'func'.
 ** Returns NULL if not found.
 */
+#ifdef __cplusplus
+const char* Proto::getLocalName(int local_number, int pc) const {
+  int i;
+  for (i = 0; i<sizelocvars && locvars[i].startpc <= pc; i++) {
+    if (pc < locvars[i].endpc) {  /* is variable active? */
+      local_number--;
+      if (local_number == 0)
+        return getstr(locvars[i].varname);
+    }
+  }
+  return NULL;  /* not found */
+}
+#endif
+
 const char *luaF_getlocalname (const Proto *f, int local_number, int pc) {
+#ifdef __cplusplus
+  return f->getLocalName(local_number, pc);
+#else
   int i;
   for (i = 0; i<f->sizelocvars && f->locvars[i].startpc <= pc; i++) {
     if (pc < f->locvars[i].endpc) {  /* is variable active? */
@@ -310,5 +397,6 @@ const char *luaF_getlocalname (const Proto *f, int local_number, int pc) {
     }
   }
   return NULL;  /* not found */
+#endif
 }
 
