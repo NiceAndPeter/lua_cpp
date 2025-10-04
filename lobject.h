@@ -510,6 +510,46 @@ inline constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(
 /*
 ** Header for a string value.
 */
+#ifdef __cplusplus
+class TString {
+public:
+  CommonHeader;  // GC fields: next, tt, marked
+  lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
+  ls_byte shrlen;  /* length for short strings, negative for long strings */
+  unsigned int hash;
+  union {
+    size_t lnglen;  /* length for long strings */
+    TString *hnext;  /* linked list for hash table */
+  } u;
+  char *contents;  /* pointer to content in long strings */
+  lua_Alloc falloc;  /* deallocation function for external strings */
+  void *ud;  /* user data for external strings */
+
+  // Inline type checks
+  inline bool isShort() const noexcept { return shrlen >= 0; }
+  inline bool isLong() const noexcept { return shrlen < 0; }
+
+  // Inline accessors
+  inline size_t length() const noexcept {
+    return isShort() ? static_cast<size_t>(shrlen) : u.lnglen;
+  }
+  inline unsigned int getHash() const noexcept { return hash; }
+  inline const char* c_str() const noexcept {
+    return isShort() ? cast_charp(&contents) : contents;
+  }
+
+  // Hash table operations (inline)
+  inline TString* getNext() const noexcept { return u.hnext; }
+  inline void setNext(TString* next_str) noexcept { u.hnext = next_str; }
+
+  // Method declarations (implemented in lstring.cpp)
+  unsigned hashLongStr();
+  bool equals(TString* other);
+
+  // Static factory-like functions (still use luaS_* for now)
+  // static TString* create(lua_State* L, const char* str, size_t len);
+};
+#else
 typedef struct TString {
   CommonHeader;
   lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
@@ -523,6 +563,7 @@ typedef struct TString {
   lua_Alloc falloc;  /* deallocation function for external strings */
   void *ud;  /* user data for external strings */
 } TString;
+#endif
 
 
 #define strisshr(ts)	((ts)->shrlen >= 0)

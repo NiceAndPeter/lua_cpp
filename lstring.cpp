@@ -351,3 +351,20 @@ TString *luaS_normstr (lua_State *L, TString *ts) {
   }
 }
 
+
+#ifdef __cplusplus
+/*
+** C++ TString method implementations
+** Forward to existing C-style functions for now
+*/
+
+unsigned TString::hashLongStr() {
+  return luaS_hashlongstr(this);
+}
+
+bool TString::equals(TString* other) {
+  return luaS_eqstr(this, other) != 0;
+}
+
+#endif
+
