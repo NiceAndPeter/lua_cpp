@@ -142,7 +142,6 @@ typedef LUAI_UACINT l_uacInt;
 ** - Avoid C-style casts in C++ code
 */
 
-#ifdef __cplusplus
 // Generic cast - Keep C-style cast for backward compatibility
 // (Lua code uses cast() for many purposes including const-casting)
 #define cast(t, exp)	((t)(exp))
@@ -163,25 +162,6 @@ typedef LUAI_UACINT l_uacInt;
 #define cast_voidp(i)	cast(void*, (i))
 #define cast_sizet(i)	cast(size_t, (i))
 #define cast_charp(i)	cast(char*, (i))
-
-#else
-// C version - traditional C-style casts
-#define cast(t, exp)	((t)(exp))
-
-#define cast_void(i)	cast(void, (i))
-#define cast_voidp(i)	cast(void *, (i))
-#define cast_num(i)	cast(lua_Number, (i))
-#define cast_int(i)	cast(int, (i))
-#define cast_short(i)	cast(short, (i))
-#define cast_uint(i)	cast(unsigned int, (i))
-#define cast_byte(i)	cast(lu_byte, (i))
-#define cast_uchar(i)	cast(unsigned char, (i))
-#define cast_char(i)	cast(char, (i))
-#define cast_charp(i)	cast(char *, (i))
-#define cast_sizet(i)	cast(size_t, (i))
-#define cast_Integer(i)	cast(lua_Integer, (i))
-#define cast_Inst(i)	cast(Instruction, (i))
-#endif
 
 
 /* cast a signed lua_Integer to lua_Unsigned */

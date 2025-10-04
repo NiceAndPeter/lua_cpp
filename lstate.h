@@ -164,7 +164,6 @@ struct lua_longjmp;  /* defined in ldo.c */
 #define KGC_GENMAJOR	2	/* generational in major mode */
 
 
-#ifdef __cplusplus
 class stringtable {
 public:
   TString **hash;  /* array of buckets (linked lists of strings) */
@@ -176,13 +175,6 @@ public:
   inline int getNumElements() const noexcept { return nuse; }
   inline int getSize() const noexcept { return size; }
 };
-#else
-typedef struct stringtable {
-  TString **hash;  /* array of buckets (linked lists of strings) */
-  int nuse;  /* number of elements */
-  int size;  /* number of buckets */
-} stringtable;
-#endif
 
 
 /*
@@ -198,7 +190,6 @@ typedef struct stringtable {
 ** - field 'nres' is used only while closing tbc variables when
 ** returning from a function;
 */
-#ifdef __cplusplus
 class CallInfo {
 public:
   StkIdRel func;  /* function index in the stack */
@@ -231,31 +222,6 @@ public:
   inline const Instruction* getSavedPC() const noexcept { return u.l.savedpc; }
   inline void setSavedPC(const Instruction* pc) noexcept { u.l.savedpc = pc; }
 };
-#else
-struct CallInfo {
-  StkIdRel func;  /* function index in the stack */
-  StkIdRel top;  /* top for this function */
-  struct CallInfo *previous, *next;  /* dynamic call link */
-  union {
-    struct {  /* only for Lua functions */
-      const Instruction *savedpc;
-      volatile l_signalT trap;  /* function is tracing lines/counts */
-      int nextraargs;  /* # of extra arguments in vararg functions */
-    } l;
-    struct {  /* only for C functions */
-      lua_KFunction k;  /* continuation in case of yields */
-      ptrdiff_t old_errfunc;
-      lua_KContext ctx;  /* context info. in case of yields */
-    } c;
-  } u;
-  union {
-    int funcidx;  /* called-function index */
-    int nyield;  /* number of values yielded */
-    int nres;  /* number of values returned */
-  } u2;
-  l_uint32 callstatus;
-};
-#endif
 
 
 /*
@@ -331,7 +297,6 @@ struct CallInfo {
 /*
 ** 'per thread' state
 */
-#ifdef __cplusplus
 class lua_State {
 public:
   CommonHeader;
@@ -366,36 +331,6 @@ public:
   inline CallInfo* getCallInfo() const noexcept { return ci; }
   inline TStatus getStatus() const noexcept { return status; }
 };
-#else
-struct lua_State {
-  CommonHeader;
-  lu_byte allowhook;
-  TStatus status;
-  StkIdRel top;  /* first free slot in the stack */
-  struct global_State *l_G;
-  CallInfo *ci;  /* call info for current function */
-  StkIdRel stack_last;  /* end of stack (last element + 1) */
-  StkIdRel stack;  /* stack base */
-  UpVal *openupval;  /* list of open upvalues in this stack */
-  StkIdRel tbclist;  /* list of to-be-closed variables */
-  GCObject *gclist;
-  struct lua_State *twups;  /* list of threads with open upvalues */
-  struct lua_longjmp *errorJmp;  /* current error recover point */
-  CallInfo base_ci;  /* CallInfo for first level (C host) */
-  volatile lua_Hook hook;
-  ptrdiff_t errfunc;  /* current error handling function (stack index) */
-  l_uint32 nCcalls;  /* number of nested non-yieldable or C calls */
-  int oldpc;  /* last pc traced */
-  int nci;  /* number of items in 'ci' list */
-  int basehookcount;
-  int hookcount;
-  volatile l_signalT hookmask;
-  struct {  /* info about transferred values (for call/return hooks) */
-    int ftransfer;  /* offset of first value transferred */
-    int ntransfer;  /* number of values transferred */
-  } transferinfo;
-};
-#endif
 
 
 /*
@@ -410,7 +345,6 @@ typedef struct LX {
 /*
 ** 'global state', shared by all threads of this state
 */
-#ifdef __cplusplus
 class global_State {
 public:
   lua_Alloc frealloc;  /* function to reallocate memory */
@@ -464,54 +398,6 @@ public:
   inline lu_byte getGCState() const noexcept { return gcstate; }
   inline Table* getMetatable(int type) const noexcept { return mt[type]; }
 };
-#else
-typedef struct global_State {
-  lua_Alloc frealloc;  /* function to reallocate memory */
-  void *ud;         /* auxiliary data to 'frealloc' */
-  l_mem GCtotalbytes;  /* number of bytes currently allocated + debt */
-  l_mem GCdebt;  /* bytes counted but not yet allocated */
-  l_mem GCmarked;  /* number of objects marked in a GC cycle */
-  l_mem GCmajorminor;  /* auxiliary counter to control major-minor shifts */
-  stringtable strt;  /* hash table for strings */
-  TValue l_registry;
-  TValue nilvalue;  /* a nil value */
-  unsigned int seed;  /* randomized seed for hashes */
-  lu_byte gcparams[LUA_GCPN];
-  lu_byte currentwhite;
-  lu_byte gcstate;  /* state of garbage collector */
-  lu_byte gckind;  /* kind of GC running */
-  lu_byte gcstopem;  /* stops emergency collections */
-  lu_byte gcstp;  /* control whether GC is running */
-  lu_byte gcemergency;  /* true if this is an emergency collection */
-  GCObject *allgc;  /* list of all collectable objects */
-  GCObject **sweepgc;  /* current position of sweep in list */
-  GCObject *finobj;  /* list of collectable objects with finalizers */
-  GCObject *gray;  /* list of gray objects */
-  GCObject *grayagain;  /* list of objects to be traversed atomically */
-  GCObject *weak;  /* list of tables with weak values */
-  GCObject *ephemeron;  /* list of ephemeron tables (weak keys) */
-  GCObject *allweak;  /* list of all-weak tables */
-  GCObject *tobefnz;  /* list of userdata to be GC */
-  GCObject *fixedgc;  /* list of objects not to be collected */
-  /* fields for generational collector */
-  GCObject *survival;  /* start of objects that survived one GC cycle */
-  GCObject *old1;  /* start of old1 objects */
-  GCObject *reallyold;  /* objects more than one cycle old ("really old") */
-  GCObject *firstold1;  /* first OLD1 object in the list (if any) */
-  GCObject *finobjsur;  /* list of survival objects with finalizers */
-  GCObject *finobjold1;  /* list of old1 objects with finalizers */
-  GCObject *finobjrold;  /* list of really old objects with finalizers */
-  struct lua_State *twups;  /* list of threads with open upvalues */
-  lua_CFunction panic;  /* to be called in unprotected errors */
-  TString *memerrmsg;  /* message for memory-allocation errors */
-  TString *tmname[TM_N];  /* array with tag-method names */
-  struct Table *mt[LUA_NUMTYPES];  /* metatables for basic types */
-  TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
-  lua_WarnFunction warnf;  /* warning function */
-  void *ud_warn;         /* auxiliary data to 'warnf' */
-  LX mainth;  /* main thread of this state */
-} global_State;
-#endif
 
 
 #define G(L)	(L->l_G)

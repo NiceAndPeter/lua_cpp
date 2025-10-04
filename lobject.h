@@ -60,7 +60,6 @@ typedef union Value {
 /*
 ** Forward declarations for TValue accessor methods
 */
-#ifdef __cplusplus
 class TString;
 class Udata;
 class Table;
@@ -68,7 +67,6 @@ union Closure;
 class LClosure;
 class CClosure;
 class lua_State;
-#endif
 
 
 /*
@@ -78,7 +76,6 @@ class lua_State;
 
 #define TValuefields	Value value_; lu_byte tt_
 
-#ifdef __cplusplus
 class TValue {
 public:
   TValuefields;
@@ -151,11 +148,6 @@ public:
   inline const Value& valueField() const noexcept { return value_; }
   inline void setType(lu_byte t) noexcept { tt_ = t; }
 };
-#else
-typedef struct TValue {
-  TValuefields;
-} TValue;
-#endif
 
 
 #define val_(o)		((o)->value_)
@@ -163,58 +155,29 @@ typedef struct TValue {
 
 
 /* raw type tag of a TValue */
-#ifdef __cplusplus
 inline constexpr lu_byte rawtt(const TValue* o) noexcept { return o->tt_; }
-#else
-#define rawtt(o)	((o)->tt_)
-#endif
 
 /* tag with no variants (bits 0-3) */
-#ifdef __cplusplus
 inline constexpr int novariant(int t) noexcept { return (t & 0x0F); }
-#else
-#define novariant(t)	((t) & 0x0F)
-#endif
 
 /* type tag of a TValue (bits 0-3 for tags + variant bits 4-5) */
-#ifdef __cplusplus
 inline constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
-#else
-#define withvariant(t)	((t) & 0x3F)
-#endif
 
-#ifdef __cplusplus
 inline constexpr int ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
-#else
-#define ttypetag(o)	withvariant(rawtt(o))
-#endif
 
 /* type of a TValue */
-#ifdef __cplusplus
 inline constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
-#else
-#define ttype(o)	(novariant(rawtt(o)))
-#endif
 
 
 /* Macros to test type */
-#ifdef __cplusplus
 inline constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t; }
 inline constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
-#else
-#define checktag(o,t)		(rawtt(o) == (t))
-#define checktype(o,t)		(ttype(o) == (t))
-#endif
 
 /* Bit mark for collectable types */
 #define BIT_ISCOLLECTABLE	(1 << 6)
 
 /* mark a tag as collectable */
-#ifdef __cplusplus
 inline constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
-#else
-#define ctb(t)			((t) | BIT_ISCOLLECTABLE)
-#endif
 
 
 /* Macros for internal tests */
@@ -318,11 +281,7 @@ typedef union {
 
 
 /* macro to test for (any kind of) nil */
-#ifdef __cplusplus
 inline constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
-#else
-#define ttisnil(v)		checktype((v), LUA_TNIL)
-#endif
 
 /*
 ** Macro to test the result of a table access. Formally, it should
@@ -330,26 +289,14 @@ inline constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LU
 ** other tags. As currently nil is equivalent to LUA_VEMPTY, it is
 ** simpler to just test whether the value is nil.
 */
-#ifdef __cplusplus
 inline constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL; }
-#else
-#define tagisempty(tag)		(novariant(tag) == LUA_TNIL)
-#endif
 
 
 /* macro to test for a standard nil */
-#ifdef __cplusplus
 inline constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LUA_VNIL); }
-#else
-#define ttisstrictnil(o)	checktag((o), LUA_VNIL)
-#endif
 
 
-#ifdef __cplusplus
 inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
-#else
-#define setnilvalue(obj) settt_(obj, LUA_VNIL)
-#endif
 
 
 #define isabstkey(v)		checktag((v), LUA_VABSTKEY)
@@ -391,34 +338,18 @@ inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
 #define LUA_VFALSE	makevariant(LUA_TBOOLEAN, 0)
 #define LUA_VTRUE	makevariant(LUA_TBOOLEAN, 1)
 
-#ifdef __cplusplus
 inline constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_TBOOLEAN); }
 inline constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
 inline constexpr bool ttistrue(const TValue* o) noexcept { return checktag(o, LUA_VTRUE); }
-#else
-#define ttisboolean(o)		checktype((o), LUA_TBOOLEAN)
-#define ttisfalse(o)		checktag((o), LUA_VFALSE)
-#define ttistrue(o)		checktag((o), LUA_VTRUE)
-#endif
 
 
-#ifdef __cplusplus
 inline constexpr bool l_isfalse(const TValue* o) noexcept { return ttisfalse(o) || ttisnil(o); }
 inline constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || novariant(t) == LUA_TNIL); }
-#else
-#define l_isfalse(o)	(ttisfalse(o) || ttisnil(o))
-#define tagisfalse(t)	((t) == LUA_VFALSE || novariant(t) == LUA_TNIL)
-#endif
 
 
 
-#ifdef __cplusplus
 inline void setbfvalue(TValue* obj) noexcept { obj->setFalse(); }
 inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
-#else
-#define setbfvalue(obj)		settt_(obj, LUA_VFALSE)
-#define setbtvalue(obj)		settt_(obj, LUA_VTRUE)
-#endif
 
 /* }================================================================== */
 
@@ -431,17 +362,9 @@ inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
 
 #define LUA_VTHREAD		makevariant(LUA_TTHREAD, 0)
 
-#ifdef __cplusplus
 inline constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
-#else
-#define ttisthread(o)		checktag((o), ctb(LUA_VTHREAD))
-#endif
 
-#ifdef __cplusplus
 inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
-#else
-#define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
-#endif
 
 #ifndef __cplusplus
 #define setthvalue(L,obj,x) \
@@ -469,7 +392,6 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
 
 /* Common type for all collectable objects */
-#ifdef __cplusplus
 class GCObject {
 public:
   CommonHeader;
@@ -482,13 +404,7 @@ public:
   inline void setMarked(lu_byte m) noexcept { marked = m; }
   inline bool isMarked() const noexcept { return marked != 0; }
 };
-#else
-typedef struct GCObject {
-  CommonHeader;
-} GCObject;
-#endif
 
-#ifdef __cplusplus
 /*
 ** CRTP Base class for all GC-managed objects
 ** Provides common GC fields and operations without vtable overhead
@@ -522,20 +438,11 @@ public:
         return reinterpret_cast<const GCObject*>(static_cast<const Derived*>(this));
     }
 };
-#endif
 
-#ifdef __cplusplus
 inline constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
-#else
-#define iscollectable(o)	(rawtt(o) & BIT_ISCOLLECTABLE)
-#endif
 
-#ifdef __cplusplus
 inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 // Note: setobj() kept as macro - needs G() from lstate.h at expansion site
-#else
-#define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
-#endif
 
 #define gcvalueraw(v)	((v).gc)
 
@@ -554,57 +461,27 @@ inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 #define LUA_VNUMINT	makevariant(LUA_TNUMBER, 0)  /* integer numbers */
 #define LUA_VNUMFLT	makevariant(LUA_TNUMBER, 1)  /* float numbers */
 
-#ifdef __cplusplus
 inline constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TNUMBER); }
 inline constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
 inline constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o, LUA_VNUMINT); }
-#else
-#define ttisnumber(o)		checktype((o), LUA_TNUMBER)
-#define ttisfloat(o)		checktag((o), LUA_VNUMFLT)
-#define ttisinteger(o)		checktag((o), LUA_VNUMINT)
-#endif
 
-#ifdef __cplusplus
 // TValue::numberValue() implementation (needs LUA_VNUMINT constant)
 inline lua_Number TValue::numberValue() const noexcept {
   return (tt_ == LUA_VNUMINT) ? static_cast<lua_Number>(value_.i) : value_.n;
 }
 
 inline lua_Number nvalue(const TValue* o) noexcept { return o->numberValue(); }
-#else
-#define nvalue(o)	check_exp(ttisnumber(o), \
-	(ttisinteger(o) ? cast_num(ivalue(o)) : fltvalue(o)))
-#endif
 
-#ifdef __cplusplus
 inline lua_Number fltvalue(const TValue* o) noexcept { return o->floatValue(); }
 inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
-#else
-#define fltvalue(o)	check_exp(ttisfloat(o), val_(o).n)
-#define ivalue(o)	check_exp(ttisinteger(o), val_(o).i)
-#endif
 
 #define fltvalueraw(v)	((v).n)
 #define ivalueraw(v)	((v).i)
 
-#ifdef __cplusplus
 inline void setfltvalue(TValue* obj, lua_Number x) noexcept { obj->setFloat(x); }
 inline void chgfltvalue(TValue* obj, lua_Number x) noexcept { obj->changeFloat(x); }
 inline void setivalue(TValue* obj, lua_Integer x) noexcept { obj->setInt(x); }
 inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); }
-#else
-#define setfltvalue(obj,x) \
-  { TValue *io=(obj); val_(io).n=(x); settt_(io, LUA_VNUMFLT); }
-
-#define chgfltvalue(obj,x) \
-  { TValue *io=(obj); lua_assert(ttisfloat(io)); val_(io).n=(x); }
-
-#define setivalue(obj,x) \
-  { TValue *io=(obj); val_(io).i=(x); settt_(io, LUA_VNUMINT); }
-
-#define chgivalue(obj,x) \
-  { TValue *io=(obj); lua_assert(ttisinteger(io)); val_(io).i=(x); }
-#endif
 
 /* }================================================================== */
 
@@ -619,29 +496,15 @@ inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); 
 #define LUA_VSHRSTR	makevariant(LUA_TSTRING, 0)  /* short strings */
 #define LUA_VLNGSTR	makevariant(LUA_TSTRING, 1)  /* long strings */
 
-#ifdef __cplusplus
 inline constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
 inline constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
 inline constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
-#else
-#define ttisstring(o)		checktype((o), LUA_TSTRING)
-#define ttisshrstring(o)	checktag((o), ctb(LUA_VSHRSTR))
-#define ttislngstring(o)	checktag((o), ctb(LUA_VLNGSTR))
-#endif
 
 #define tsvalueraw(v)	(gco2ts((v).gc))
 
-#ifdef __cplusplus
 inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
-#else
-#define tsvalue(o)	check_exp(ttisstring(o), gco2ts(val_(o).gc))
-#endif
 
 /* setsvalue now defined as inline function below */
-// #define setsvalue(L,obj,x) \
-  { TValue *io = (obj); TString *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(x_->tt)); \
-    checkliveness(L,io); }
 
 /* set a string to the stack */
 #define setsvalue2s(L,o,s)	setsvalue(L,s2v(o),s)
@@ -659,7 +522,6 @@ inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 /*
 ** Header for a string value.
 */
-#ifdef __cplusplus
 class TString {
 public:
   CommonHeader;  // GC fields: next, tt, marked
@@ -698,21 +560,6 @@ public:
   // Static factory-like functions (still use luaS_* for now)
   // static TString* create(lua_State* L, const char* str, size_t len);
 };
-#else
-typedef struct TString {
-  CommonHeader;
-  lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
-  ls_byte shrlen;  /* length for short strings, negative for long strings */
-  unsigned int hash;
-  union {
-    size_t lnglen;  /* length for long strings */
-    struct TString *hnext;  /* linked list for hash table */
-  } u;
-  char *contents;  /* pointer to content in long strings */
-  lua_Alloc falloc;  /* deallocation function for external strings */
-  void *ud;  /* user data for external strings */
-} TString;
-#endif
 
 
 #define strisshr(ts)	((ts)->shrlen >= 0)
@@ -758,25 +605,12 @@ typedef struct TString {
 
 #define LUA_VUSERDATA		makevariant(LUA_TUSERDATA, 0)
 
-#ifdef __cplusplus
 inline constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
 inline constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
-#else
-#define ttislightuserdata(o)	checktag((o), LUA_VLIGHTUSERDATA)
-#define ttisfulluserdata(o)	checktag((o), ctb(LUA_VUSERDATA))
-#endif
 
-#ifdef __cplusplus
 inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
-#else
-#define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
-#endif
 
-#ifdef __cplusplus
 inline Udata* uvalue(const TValue* o) noexcept { return o->userdataValue(); }
-#else
-#define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
-#endif
 
 #define pvalueraw(v)	((v).p)
 
@@ -794,7 +628,6 @@ typedef union UValue {
 ** Header for userdata with user values;
 ** memory area follows the end of this structure.
 */
-#ifdef __cplusplus
 class Udata {
 public:
   CommonHeader;
@@ -815,16 +648,6 @@ public:
   inline void* getMemory() noexcept;
   inline const void* getMemory() const noexcept;
 };
-#else
-typedef struct Udata {
-  CommonHeader;
-  unsigned short nuvalue;  /* number of user values */
-  size_t len;  /* number of bytes */
-  struct Table *metatable;
-  GCObject *gclist;
-  UValue uv[1];  /* user values */
-} Udata;
-#endif
 
 
 /*
@@ -856,7 +679,6 @@ typedef struct Udata0 {
 /* compute the size of a userdata */
 #define sizeudata(nuv,nb)	(udatamemoffset(nuv) + (nb))
 
-#ifdef __cplusplus
 // Implementation of Udata::getMemory() now that Udata0 is defined
 inline void* Udata::getMemory() noexcept {
   return getudatamem(this);
@@ -864,7 +686,6 @@ inline void* Udata::getMemory() noexcept {
 inline const void* Udata::getMemory() const noexcept {
   return getudatamem(const_cast<Udata*>(this));
 }
-#endif
 
 /* }================================================================== */
 
@@ -884,7 +705,6 @@ typedef l_uint32 Instruction;
 /*
 ** Description of an upvalue for function prototypes
 */
-#ifdef __cplusplus
 class Upvaldesc {
 public:
   TString *name;  /* upvalue name (for debug information) */
@@ -898,21 +718,12 @@ public:
   inline lu_byte getIndex() const noexcept { return idx; }
   inline lu_byte getKind() const noexcept { return kind; }
 };
-#else
-typedef struct Upvaldesc {
-  TString *name;  /* upvalue name (for debug information) */
-  lu_byte instack;  /* whether it is in stack (register) */
-  lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
-  lu_byte kind;  /* kind of corresponding variable */
-} Upvaldesc;
-#endif
 
 
 /*
 ** Description of a local variable for function prototypes
 ** (used for debug information)
 */
-#ifdef __cplusplus
 class LocVar {
 public:
   TString *varname;
@@ -925,13 +736,6 @@ public:
   inline int getEndPC() const noexcept { return endpc; }
   inline bool isActive(int pc) const noexcept { return startpc <= pc && pc < endpc; }
 };
-#else
-typedef struct LocVar {
-  TString *varname;
-  int startpc;  /* first point where variable is active */
-  int endpc;    /* first point where variable is dead */
-} LocVar;
-#endif
 
 
 /*
@@ -944,7 +748,6 @@ typedef struct LocVar {
 ** absolute-line array, but we must traverse the 'lineinfo' array
 ** linearly to compute a line.)
 */
-#ifdef __cplusplus
 class AbsLineInfo {
 public:
   int pc;
@@ -954,12 +757,6 @@ public:
   inline int getPC() const noexcept { return pc; }
   inline int getLine() const noexcept { return line; }
 };
-#else
-typedef struct AbsLineInfo {
-  int pc;
-  int line;
-} AbsLineInfo;
-#endif
 
 
 /*
@@ -972,7 +769,6 @@ typedef struct AbsLineInfo {
 /*
 ** Function Prototypes
 */
-#ifdef __cplusplus
 class Proto {
 public:
   CommonHeader;
@@ -1015,32 +811,6 @@ public:
   void free(lua_State* L);
   const char* getLocalName(int local_number, int pc) const;
 };
-#else
-typedef struct Proto {
-  CommonHeader;
-  lu_byte numparams;  /* number of fixed (named) parameters */
-  lu_byte flag;
-  lu_byte maxstacksize;  /* number of registers needed by this function */
-  int sizeupvalues;  /* size of 'upvalues' */
-  int sizek;  /* size of 'k' */
-  int sizecode;
-  int sizelineinfo;
-  int sizep;  /* size of 'p' */
-  int sizelocvars;
-  int sizeabslineinfo;  /* size of 'abslineinfo' */
-  int linedefined;  /* debug information  */
-  int lastlinedefined;  /* debug information  */
-  TValue *k;  /* constants used by the function */
-  Instruction *code;  /* opcodes */
-  struct Proto **p;  /* functions defined inside the function */
-  Upvaldesc *upvalues;  /* upvalue information */
-  ls_byte *lineinfo;  /* information about source lines (debug information) */
-  AbsLineInfo *abslineinfo;  /* idem */
-  LocVar *locvars;  /* information about local variables (debug information) */
-  TString  *source;  /* used for debug information */
-  GCObject *gclist;
-} Proto;
-#endif
 
 /* }================================================================== */
 
@@ -1059,64 +829,35 @@ typedef struct Proto {
 #define LUA_VLCF	makevariant(LUA_TFUNCTION, 1)  /* light C function */
 #define LUA_VCCL	makevariant(LUA_TFUNCTION, 2)  /* C closure */
 
-#ifdef __cplusplus
 inline constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
 inline constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
 inline constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF); }
 inline constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
 inline constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
-#else
-#define ttisfunction(o)		checktype(o, LUA_TFUNCTION)
-#define ttisLclosure(o)		checktag((o), ctb(LUA_VLCL))
-#define ttislcf(o)		checktag((o), LUA_VLCF)
-#define ttisCclosure(o)		checktag((o), ctb(LUA_VCCL))
-#define ttisclosure(o)         (ttisLclosure(o) || ttisCclosure(o))
-#endif
 
 
 #define isLfunction(o)	ttisLclosure(o)
 
-#ifdef __cplusplus
 inline Closure* clvalue(const TValue* o) noexcept { return o->closureValue(); }
 inline LClosure* clLvalue(const TValue* o) noexcept { return o->lClosureValue(); }
 inline CClosure* clCvalue(const TValue* o) noexcept { return o->cClosureValue(); }
-#else
-#define clvalue(o)	check_exp(ttisclosure(o), gco2cl(val_(o).gc))
-#define clLvalue(o)	check_exp(ttisLclosure(o), gco2lcl(val_(o).gc))
-#define clCvalue(o)	check_exp(ttisCclosure(o), gco2ccl(val_(o).gc))
-#endif
 
-#ifdef __cplusplus
 inline lua_CFunction fvalue(const TValue* o) noexcept { return o->functionValue(); }
-#else
-#define fvalue(o)	check_exp(ttislcf(o), val_(o).f)
-#endif
 
 #define fvalueraw(v)	((v).f)
 
 /* setclLvalue now defined as inline function below */
-// #define setclLvalue(L,obj,x) \
-  { TValue *io = (obj); LClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VLCL)); \
-    checkliveness(L,io); }
 
 #define setclLvalue2s(L,o,cl)	setclLvalue(L,s2v(o),cl)
 
 /* setfvalue now defined as inline function below */
-// #define setfvalue(obj,x) \
-  { TValue *io=(obj); val_(io).f=(x); settt_(io, LUA_VLCF); }
 
 /* setclCvalue now defined as inline function below */
-// #define setclCvalue(L,obj,x) \
-  { TValue *io = (obj); CClosure *x_ = (x); \
-    val_(io).gc = obj2gco(x_); settt_(io, ctb(LUA_VCCL)); \
-    checkliveness(L,io); }
 
 
 /*
 ** Upvalues for Lua closures
 */
-#ifdef __cplusplus
 class UpVal {
 public:
   CommonHeader;
@@ -1140,29 +881,12 @@ public:
   // Methods (implemented in lfunc.cpp)
   void unlink();
 };
-#else
-typedef struct UpVal {
-  CommonHeader;
-  union {
-    TValue *p;  /* points to stack or to its own value */
-    ptrdiff_t offset;  /* used while the stack is being reallocated */
-  } v;
-  union {
-    struct {  /* (when open) */
-      struct UpVal *next;  /* linked list */
-      struct UpVal **previous;
-    } open;
-    TValue value;  /* the value (when closed) */
-  } u;
-} UpVal;
-#endif
 
 
 
 #define ClosureHeader \
 	CommonHeader; lu_byte nupvalues; GCObject *gclist
 
-#ifdef __cplusplus
 class CClosure {
 public:
   ClosureHeader;
@@ -1191,19 +915,6 @@ public:
   // Methods (implemented in lfunc.cpp)
   void initUpvals(lua_State* L);
 };
-#else
-typedef struct CClosure {
-  ClosureHeader;
-  lua_CFunction f;
-  TValue upvalue[1];  /* list of upvalues */
-} CClosure;
-
-typedef struct LClosure {
-  ClosureHeader;
-  struct Proto *p;
-  UpVal *upvals[1];  /* list of upvalues */
-} LClosure;
-#endif
 
 
 typedef union Closure {
@@ -1225,23 +936,14 @@ typedef union Closure {
 
 #define LUA_VTABLE	makevariant(LUA_TTABLE, 0)
 
-#ifdef __cplusplus
 inline constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
-#else
-#define ttistable(o)		checktag((o), ctb(LUA_VTABLE))
-#endif
 
-#ifdef __cplusplus
 inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
-#else
-#define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
-#endif
 
 /*
 ** Phase 17: TValue setter method implementations
 ** These need all type constants, so they're defined here at the end
 */
-#ifdef __cplusplus
 inline void TValue::setNil() noexcept { tt_ = LUA_VNIL; }
 inline void TValue::setFalse() noexcept { tt_ = LUA_VFALSE; }
 inline void TValue::setTrue() noexcept { tt_ = LUA_VTRUE; }
@@ -1318,7 +1020,6 @@ inline void setthvalue(lua_State* L, TValue* obj, lua_State* th) noexcept { obj-
 inline void setclLvalue(lua_State* L, TValue* obj, LClosure* cl) noexcept { obj->setLClosure(L, cl); }
 inline void setclCvalue(lua_State* L, TValue* obj, CClosure* cl) noexcept { obj->setCClosure(L, cl); }
 inline void setgcovalue(lua_State* L, TValue* obj, GCObject* gc) noexcept { obj->setGCObject(L, gc); }
-#endif
 
 /* Note: sethvalue and other setter macros are now defined as inline functions above in C++ */
 
@@ -1357,7 +1058,6 @@ typedef union Node {
 
 
 
-#ifdef __cplusplus
 // Table class - using CRTP for GC management
 // NOTE: For now keeping CommonHeader instead of inheriting to maintain macro compatibility
 // Will gradually migrate macros to use methods
@@ -1407,18 +1107,6 @@ public:
   int tableNext(lua_State* L, StkId key);  // renamed from next() to avoid conflict with GC field
   lua_Unsigned getn(lua_State* L);
 };
-#else
-typedef struct Table {
-  CommonHeader;
-  lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
-  lu_byte lsizenode;  /* log2 of number of slots of 'node' array */
-  unsigned int asize;  /* number of slots in 'array' array */
-  Value *array;  /* array part */
-  Node *node;
-  struct Table *metatable;
-  GCObject *gclist;
-} Table;
-#endif
 
 
 /*

@@ -793,10 +793,38 @@ git commit -m "Phase N: Description"
 
 ---
 
+## Project Constraints & Rules
+
+### Process Rules (CRITICAL)
+1. **ASK before running benchmarks** - Never run benchmark commands without user permission
+2. **NO Python scripts for file manipulation** - Use Edit/Read/Write tools only
+3. **Manual file editing** - No automation scripts for code changes
+4. **Incremental changes** - Test and benchmark after every phase
+5. **Immediate revert** - If performance regresses beyond 2.21s target
+
+### Architecture Rules
+1. **C compatibility ONLY for public API**:
+   - lua.h, lauxlib.h, lualib.h must remain C-compatible
+   - Keep `#ifdef __cplusplus` guards in public headers
+2. **Internal code is pure C++**:
+   - Remove `#ifdef __cplusplus` from lobject.h, lstate.h, lparser.h, etc.
+   - No C fallback code needed
+   - Can use classes, inline functions, templates freely
+3. **Performance target**: ≤2.21s (strict requirement)
+4. **Zero C API breakage** - Public interface unchanged
+
+### Conditional Compilation Removal
+- **Remove from internal headers**: All files except lua.h, lauxlib.h, lualib.h
+- **Pattern**: Delete `#ifdef __cplusplus`, `#else` branches, `#endif`
+- **Keep**: Only C++ code (classes, inline functions)
+- **Simplifies**: No more dual C/C++ code paths internally
+
+---
+
 ## Contact & Collaboration
 
 This is a personal learning project converting Lua to modern C++23 while maintaining performance and C API compatibility. The work is incremental, tested thoroughly, and follows a proven pattern.
 
-**Last Updated**: Phase 14 complete - **STRUCT CONVERSION COMPLETE** (19 classes)
-**Next**: Macro reduction - convert function-like macros to inline functions
+**Last Updated**: Phase 17 complete - TValue setter macros converted (2.10s performance)
+**Next**: Remove conditional compilation from internal headers
 **Status**: ✅ All major structs converted, performance within target (2.21s ≤ 2.21s target)

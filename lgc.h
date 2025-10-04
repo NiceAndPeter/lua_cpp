@@ -62,9 +62,6 @@
 ** some useful bit tricks
 */
 
-#ifdef __cplusplus
-// C++ versions: Try inline constexpr for better optimization
-
 // Bit mask generation
 inline constexpr int bitmask(int b) noexcept {
     return (1 << b);
@@ -88,18 +85,6 @@ inline constexpr bool testbit(lu_byte x, int b) noexcept {
 #define resetbits(x,m)		((x) &= cast_byte(~(m)))
 #define l_setbit(x,b)		setbits(x, bitmask(b))
 #define resetbit(x,b)		resetbits(x, bitmask(b))
-
-#else
-// C version: Traditional macros
-#define resetbits(x,m)		((x) &= cast_byte(~(m)))
-#define setbits(x,m)		((x) |= (m))
-#define testbits(x,m)		((x) & (m))
-#define bitmask(b)		(1<<(b))
-#define bit2mask(b1,b2)		(bitmask(b1) | bitmask(b2))
-#define l_setbit(x,b)		setbits(x, bitmask(b))
-#define resetbit(x,b)		resetbits(x, bitmask(b))
-#define testbit(x,b)		testbits(x, bitmask(b))
-#endif
 
 
 /*
