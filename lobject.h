@@ -108,6 +108,16 @@ inline constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(
 #define checktype(o,t)		(ttype(o) == (t))
 #endif
 
+/* Bit mark for collectable types */
+#define BIT_ISCOLLECTABLE	(1 << 6)
+
+/* mark a tag as collectable */
+#ifdef __cplusplus
+inline constexpr int ctb(int t) noexcept { return (t | BIT_ISCOLLECTABLE); }
+#else
+#define ctb(t)			((t) | BIT_ISCOLLECTABLE)
+#endif
+
 
 /* Macros for internal tests */
 
@@ -314,7 +324,11 @@ inline constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || no
 
 #define LUA_VTHREAD		makevariant(LUA_TTHREAD, 0)
 
+#ifdef __cplusplus
+inline constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
+#else
 #define ttisthread(o)		checktag((o), ctb(LUA_VTHREAD))
+#endif
 
 #define thvalue(o)	check_exp(ttisthread(o), gco2th(val_(o).gc))
 
@@ -347,13 +361,7 @@ typedef struct GCObject {
 } GCObject;
 
 
-/* Bit mark for collectable types */
-#define BIT_ISCOLLECTABLE	(1 << 6)
-
 #define iscollectable(o)	(rawtt(o) & BIT_ISCOLLECTABLE)
-
-/* mark a tag as collectable */
-#define ctb(t)			((t) | BIT_ISCOLLECTABLE)
 
 #define gcvalue(o)	check_exp(iscollectable(o), val_(o).gc)
 
@@ -512,8 +520,13 @@ typedef struct TString {
 
 #define LUA_VUSERDATA		makevariant(LUA_TUSERDATA, 0)
 
+#ifdef __cplusplus
+inline constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
+inline constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
+#else
 #define ttislightuserdata(o)	checktag((o), LUA_VLIGHTUSERDATA)
 #define ttisfulluserdata(o)	checktag((o), ctb(LUA_VUSERDATA))
+#endif
 
 #define pvalue(o)	check_exp(ttislightuserdata(o), val_(o).p)
 #define uvalue(o)	check_exp(ttisfulluserdata(o), gco2u(val_(o).gc))
@@ -684,11 +697,19 @@ typedef struct Proto {
 #define LUA_VLCF	makevariant(LUA_TFUNCTION, 1)  /* light C function */
 #define LUA_VCCL	makevariant(LUA_TFUNCTION, 2)  /* C closure */
 
+#ifdef __cplusplus
+inline constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
+inline constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
+inline constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF); }
+inline constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
+inline constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
+#else
 #define ttisfunction(o)		checktype(o, LUA_TFUNCTION)
 #define ttisLclosure(o)		checktag((o), ctb(LUA_VLCL))
 #define ttislcf(o)		checktag((o), LUA_VLCF)
 #define ttisCclosure(o)		checktag((o), ctb(LUA_VCCL))
 #define ttisclosure(o)         (ttisLclosure(o) || ttisCclosure(o))
+#endif
 
 
 #define isLfunction(o)	ttisLclosure(o)
@@ -772,7 +793,11 @@ typedef union Closure {
 
 #define LUA_VTABLE	makevariant(LUA_TTABLE, 0)
 
+#ifdef __cplusplus
+inline constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
+#else
 #define ttistable(o)		checktag((o), ctb(LUA_VTABLE))
+#endif
 
 #define hvalue(o)	check_exp(ttistable(o), gco2t(val_(o).gc))
 
