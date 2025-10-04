@@ -396,6 +396,10 @@ public:
   inline lu_byte getAge() const noexcept;
   inline void setAge(lu_byte age) noexcept;
   inline bool isOld() const noexcept;
+
+  // Phase 25c: GC operations (implemented in lgc.cpp)
+  void fix(lua_State* L);
+  void checkFinalizer(lua_State* L, Table* mt);
 };
 
 /*

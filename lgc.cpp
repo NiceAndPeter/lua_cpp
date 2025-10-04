@@ -1801,3 +1801,19 @@ void luaC_fullgc (lua_State *L, int isemergency) {
 /* }====================================================== */
 
 
+#ifdef __cplusplus
+/*
+** Phase 25c: GCObject method implementations
+*/
+
+void GCObject::fix(lua_State* L) {
+  luaC_fix(L, this);
+}
+
+void GCObject::checkFinalizer(lua_State* L, Table* mt) {
+  luaC_checkfinalizer(L, this, mt);
+}
+
+#endif
+
+

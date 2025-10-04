@@ -978,7 +978,7 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
       hvalue(obj)->metatable = mt;
       if (mt) {
         luaC_objbarrier(L, gcvalue(obj), mt);
-        luaC_checkfinalizer(L, gcvalue(obj), mt);
+        gcvalue(obj)->checkFinalizer(L, mt);  /* Phase 25c */
       }
       break;
     }
@@ -986,7 +986,7 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
       uvalue(obj)->metatable = mt;
       if (mt) {
         luaC_objbarrier(L, uvalue(obj), mt);
-        luaC_checkfinalizer(L, gcvalue(obj), mt);
+        gcvalue(obj)->checkFinalizer(L, mt);  /* Phase 25c */
       }
       break;
     }
