@@ -31,6 +31,7 @@
 
 
 
+/* Phase 28b: Both CClosure and LClosure have tt at same offset (from GCBase) */
 #define LuaClosure(f)		((f) != NULL && (f)->c.tt == LUA_VLCL)
 
 static const char strlocal[] = "local";
@@ -265,7 +266,7 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
     ar->what = "C";
   }
   else {
-    const Proto *p = cl->l.p;
+    const Proto *p = reinterpret_cast<LClosure*>(cl)->p;
     if (p->source) {
       ar->source = getlstr(p->source, ar->srclen);
     }
@@ -295,7 +296,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
     api_incr_top(L);
   }
   else {
-    const Proto *p = f->l.p;
+    const Proto *p = reinterpret_cast<LClosure*>(f)->p;
     int currentline = p->linedefined;
     Table *t = luaH_new(L);  /* new table to store active lines */
     sethvalue2s(L, L->top.p, t);  /* push it on stack */
@@ -348,8 +349,9 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
           ar->nparams = 0;
         }
         else {
-          ar->isvararg = (f->l.p->flag & PF_ISVARARG) ? 1 : 0;
-          ar->nparams = f->l.p->numparams;
+          LClosure* lf = reinterpret_cast<LClosure*>(f);
+          ar->isvararg = (lf->p->flag & PF_ISVARARG) ? 1 : 0;
+          ar->nparams = lf->p->numparams;
         }
         break;
       }

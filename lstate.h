@@ -421,32 +421,11 @@ constexpr const lua_State* mainthread(const global_State* g) noexcept { return &
 
 
 /*
-** Union of all collectable objects (only for conversions)
-** ISO C99, 6.5.2.3 p.5:
-** "if a union contains several structures that share a common initial
-** sequence [...], and if the union object currently contains one
-** of these structures, it is permitted to inspect the common initial
-** part of any of them anywhere that a declaration of the complete type
-** of the union is visible."
+** Phase 28b: GCUnion and cast_u REMOVED
+** All GC object conversions now use type-safe reinterpret_cast via gco2* functions.
+** The old GCUnion was only used for pointer casting, not actual memory allocation.
+** Each GC type inherits from GCBase<T> and has proper memory layout.
 */
-union GCUnion {
-  GCObject gc;  /* common header */
-  struct TString ts;
-  struct Udata u;
-  union Closure cl;
-  struct Table h;
-  struct Proto p;
-  struct lua_State th;  /* thread */
-  struct UpVal upv;
-};
-
-
-/*
-** ISO C99, 6.7.2.1 p.14:
-** "A pointer to a union object, suitably converted, points to each of
-** its members [...], and vice versa."
-*/
-#define cast_u(o)	cast(union GCUnion *, (o))
 
 /* Phase 28: Convert GCObject to specific types - now using reinterpret_cast */
 inline TString* gco2ts(GCObject* o) noexcept {
@@ -461,17 +440,17 @@ inline Udata* gco2u(GCObject* o) noexcept {
 
 inline LClosure* gco2lcl(GCObject* o) noexcept {
 	lua_assert(o->tt == LUA_VLCL);
-	return &(cast_u(o)->cl.l);  // Still need union for Closure union type
+	return reinterpret_cast<LClosure*>(o);
 }
 
 inline CClosure* gco2ccl(GCObject* o) noexcept {
 	lua_assert(o->tt == LUA_VCCL);
-	return &(cast_u(o)->cl.c);  // Still need union for Closure union type
+	return reinterpret_cast<CClosure*>(o);
 }
 
 inline Closure* gco2cl(GCObject* o) noexcept {
 	lua_assert(novariant(o->tt) == LUA_TFUNCTION);
-	return &(cast_u(o)->cl);  // Still need union for Closure union type
+	return reinterpret_cast<Closure*>(o);
 }
 
 inline Table* gco2t(GCObject* o) noexcept {
@@ -486,7 +465,7 @@ inline Proto* gco2p(GCObject* o) noexcept {
 
 inline lua_State* gco2th(GCObject* o) noexcept {
 	lua_assert(o->tt == LUA_VTHREAD);
-	return &(cast_u(o)->th);  // Still need union for lua_State
+	return reinterpret_cast<lua_State*>(o);
 }
 
 inline UpVal* gco2upv(GCObject* o) noexcept {
