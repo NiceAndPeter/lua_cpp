@@ -183,7 +183,7 @@ lmem.o: lmem.cpp lprefix.h lua.h luaconf.h ldebug.h lstate.h lobject.h \
 loadlib.o: loadlib.cpp lprefix.h lua.h luaconf.h lauxlib.h lualib.h \
  llimits.h
 lobject.o: lobject.cpp lprefix.h lua.h luaconf.h lctype.h llimits.h \
- ldebug.h lstate.h lobject.h ltm.h lzio.h lmem.h ldo.h lstring.h lgc.h \
+ ldebug.h lstate.h lobject.h ltvalue.h ltm.h lzio.h lmem.h ldo.h lstring.h lgc.h \
  lvm.h
 lopcodes.o: lopcodes.cpp lprefix.h lopcodes.h llimits.h lua.h luaconf.h \
  lobject.h
