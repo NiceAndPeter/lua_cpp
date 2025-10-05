@@ -141,6 +141,37 @@ inline bool GCObject::isOld() const noexcept {
   return getAge() > G_SURVIVAL;
 }
 
+// Phase 28: GCBase<Derived> method implementations
+template<typename Derived>
+inline bool GCBase<Derived>::isWhite() const noexcept {
+  return testbits(marked, WHITEBITS);
+}
+
+template<typename Derived>
+inline bool GCBase<Derived>::isBlack() const noexcept {
+  return testbit(marked, BLACKBIT);
+}
+
+template<typename Derived>
+inline bool GCBase<Derived>::isGray() const noexcept {
+  return !testbits(marked, WHITEBITS | bitmask(BLACKBIT));
+}
+
+template<typename Derived>
+inline lu_byte GCBase<Derived>::getAge() const noexcept {
+  return marked & AGEBITS;
+}
+
+template<typename Derived>
+inline void GCBase<Derived>::setAge(lu_byte age) noexcept {
+  marked = cast_byte((marked & (~AGEBITS)) | age);
+}
+
+template<typename Derived>
+inline bool GCBase<Derived>::isOld() const noexcept {
+  return getAge() > G_SURVIVAL;
+}
+
 // Wrapper functions for backward compatibility
 // Accept any GC-managed type pointer (uses reinterpret_cast like original macros)
 template<typename T>

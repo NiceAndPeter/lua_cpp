@@ -297,9 +297,8 @@ public:
 /*
 ** 'per thread' state
 */
-class lua_State {
+class lua_State : public GCBase<lua_State> {
 public:
-  CommonHeader;
   lu_byte allowhook;
   TStatus status;
   StkIdRel top;  /* first free slot in the stack */
@@ -449,25 +448,64 @@ union GCUnion {
 */
 #define cast_u(o)	cast(union GCUnion *, (o))
 
-/* macros to convert a GCObject into a specific value */
-#define gco2ts(o)  \
-	check_exp(novariant((o)->tt) == LUA_TSTRING, &((cast_u(o))->ts))
-#define gco2u(o)  check_exp((o)->tt == LUA_VUSERDATA, &((cast_u(o))->u))
-#define gco2lcl(o)  check_exp((o)->tt == LUA_VLCL, &((cast_u(o))->cl.l))
-#define gco2ccl(o)  check_exp((o)->tt == LUA_VCCL, &((cast_u(o))->cl.c))
-#define gco2cl(o)  \
-	check_exp(novariant((o)->tt) == LUA_TFUNCTION, &((cast_u(o))->cl))
-#define gco2t(o)  check_exp((o)->tt == LUA_VTABLE, &((cast_u(o))->h))
-#define gco2p(o)  check_exp((o)->tt == LUA_VPROTO, &((cast_u(o))->p))
-#define gco2th(o)  check_exp((o)->tt == LUA_VTHREAD, &((cast_u(o))->th))
-#define gco2upv(o)	check_exp((o)->tt == LUA_VUPVAL, &((cast_u(o))->upv))
+/* Phase 28: Convert GCObject to specific types - now using reinterpret_cast */
+inline TString* gco2ts(GCObject* o) noexcept {
+	lua_assert(novariant(o->tt) == LUA_TSTRING);
+	return reinterpret_cast<TString*>(o);
+}
+
+inline Udata* gco2u(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VUSERDATA);
+	return reinterpret_cast<Udata*>(o);
+}
+
+inline LClosure* gco2lcl(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VLCL);
+	return &(cast_u(o)->cl.l);  // Still need union for Closure union type
+}
+
+inline CClosure* gco2ccl(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VCCL);
+	return &(cast_u(o)->cl.c);  // Still need union for Closure union type
+}
+
+inline Closure* gco2cl(GCObject* o) noexcept {
+	lua_assert(novariant(o->tt) == LUA_TFUNCTION);
+	return &(cast_u(o)->cl);  // Still need union for Closure union type
+}
+
+inline Table* gco2t(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VTABLE);
+	return reinterpret_cast<Table*>(o);
+}
+
+inline Proto* gco2p(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VPROTO);
+	return reinterpret_cast<Proto*>(o);
+}
+
+inline lua_State* gco2th(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VTHREAD);
+	return &(cast_u(o)->th);  // Still need union for lua_State
+}
+
+inline UpVal* gco2upv(GCObject* o) noexcept {
+	lua_assert(o->tt == LUA_VUPVAL);
+	return reinterpret_cast<UpVal*>(o);
+}
 
 
 /*
-** macro to convert a Lua object into a GCObject
+** Phase 28: Convert a Lua object to GCObject - using reinterpret_cast
+** Note: Returns non-const even for const input (for GC marking compatibility)
 */
-#define obj2gco(v)  \
-	check_exp(novariant((v)->tt) >= LUA_TSTRING, &(cast_u(v)->gc))
+inline GCObject* obj2gco(void* v) noexcept {
+	return reinterpret_cast<GCObject*>(v);
+}
+
+inline GCObject* obj2gco(const void* v) noexcept {
+	return reinterpret_cast<GCObject*>(const_cast<void*>(v));
+}
 
 
 /* actual number of total memory allocated */

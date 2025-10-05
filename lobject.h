@@ -215,16 +215,19 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 */
 
 /*
-** Common Header for all collectable objects (in macro form, to be
-** included in other objects)
+** Phase 28: CommonHeader macro DEPRECATED - all GC objects now inherit from GCBase
+** Old definition (kept for reference):
+** #define CommonHeader	struct GCObject *next; lu_byte tt; lu_byte marked
 */
-#define CommonHeader	struct GCObject *next; lu_byte tt; lu_byte marked
+/* #define CommonHeader	struct GCObject *next; lu_byte tt; lu_byte marked */
 
 
 /* Common type for all collectable objects */
 class GCObject {
 public:
-  CommonHeader;
+  GCObject* next;
+  lu_byte tt;
+  lu_byte marked;
 
   // Inline accessors
   GCObject* getNext() const noexcept { return next; }
@@ -251,29 +254,41 @@ public:
 /*
 ** CRTP Base class for all GC-managed objects
 ** Provides common GC fields and operations without vtable overhead
-** Usage: class Table : public GCBase<Table> { ... };
+** Phase 28: Activated - replaces CommonHeader macro
+**
+** Memory layout MUST match CommonHeader exactly:
+**   struct GCObject *next; lu_byte tt; lu_byte marked
 */
 template<typename Derived>
 class GCBase {
-protected:
-    GCObject* next_;
-    lu_byte tt_;
-    lu_byte marked_;
-
 public:
-    // GC operations
-    constexpr GCObject* getNext() const noexcept { return next_; }
-    constexpr void setNext(GCObject* n) noexcept { next_ = n; }
+    // Phase 28: Public fields for compatibility with union GCUnion layout
+    // These MUST be first and in this exact order
+    GCObject* next;
+    lu_byte tt;
+    lu_byte marked;
 
-    constexpr lu_byte getType() const noexcept { return tt_; }
-    constexpr void setType(lu_byte t) noexcept { tt_ = t; }
+    // Accessor methods (preferred over direct field access)
+    constexpr GCObject* getNext() const noexcept { return next; }
+    constexpr void setNext(GCObject* n) noexcept { next = n; }
 
-    constexpr lu_byte getMarked() const noexcept { return marked_; }
-    constexpr void setMarked(lu_byte m) noexcept { marked_ = m; }
+    constexpr lu_byte getType() const noexcept { return tt; }
+    constexpr void setType(lu_byte t) noexcept { tt = t; }
 
-    constexpr bool isMarked() const noexcept { return marked_ != 0; }
+    constexpr lu_byte getMarked() const noexcept { return marked; }
+    constexpr void setMarked(lu_byte m) noexcept { marked = m; }
 
-    // Cast to GCObject* for compatibility with existing C code
+    constexpr bool isMarked() const noexcept { return marked != 0; }
+
+    // Phase 20: GC color and age methods (defined in lgc.h after constants)
+    inline bool isWhite() const noexcept;
+    inline bool isBlack() const noexcept;
+    inline bool isGray() const noexcept;
+    inline lu_byte getAge() const noexcept;
+    inline void setAge(lu_byte age) noexcept;
+    inline bool isOld() const noexcept;
+
+    // Cast to GCObject* for compatibility
     GCObject* toGCObject() noexcept {
         return reinterpret_cast<GCObject*>(static_cast<Derived*>(this));
     }
@@ -394,9 +409,9 @@ inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 /*
 ** Header for a string value.
 */
-class TString {
+// Phase 28: TString now inherits from GCBase (CRTP)
+class TString : public GCBase<TString> {
 public:
-  CommonHeader;  // GC fields: next, tt, marked
   lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
   ls_byte shrlen;  /* length for short strings, negative for long strings */
   unsigned int hash;
@@ -518,9 +533,9 @@ typedef union UValue {
 ** Header for userdata with user values;
 ** memory area follows the end of this structure.
 */
-class Udata {
+// Phase 28: Udata now inherits from GCBase (CRTP)
+class Udata : public GCBase<Udata> {
 public:
-  CommonHeader;
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
   struct Table *metatable;
@@ -549,8 +564,8 @@ public:
 ** this representation. (The 'bindata' field in its end ensures correct
 ** alignment for binary data following this header.)
 */
-typedef struct Udata0 {
-  CommonHeader;
+// Phase 28: Udata0 now inherits from GCBase (CRTP)
+typedef struct Udata0 : public GCBase<Udata0> {
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
   struct Table *metatable;
@@ -659,9 +674,9 @@ public:
 /*
 ** Function Prototypes
 */
-class Proto {
+// Phase 28: Proto now inherits from GCBase (CRTP)
+class Proto : public GCBase<Proto> {
 public:
-  CommonHeader;
   lu_byte numparams;  /* number of fixed (named) parameters */
   lu_byte flag;
   lu_byte maxstacksize;  /* number of registers needed by this function */
@@ -753,9 +768,9 @@ constexpr lua_CFunction fvalueraw(const Value& v) noexcept { return v.f; }
 /*
 ** Upvalues for Lua closures
 */
-class UpVal {
+// Phase 28: UpVal now inherits from GCBase (CRTP)
+class UpVal : public GCBase<UpVal> {
 public:
-  CommonHeader;
   union {
     TValue *p;  /* points to stack or to its own value */
     ptrdiff_t offset;  /* used while the stack is being reallocated */
@@ -779,12 +794,13 @@ public:
 
 
 
-#define ClosureHeader \
-	CommonHeader; lu_byte nupvalues; GCObject *gclist
+// Phase 28: Closures now inherit from GCBase (CRTP)
+// ClosureHeader fields: nupvalues, gclist (GC fields inherited from GCBase)
 
-class CClosure {
+class CClosure : public GCBase<CClosure> {
 public:
-  ClosureHeader;
+  lu_byte nupvalues;
+  GCObject *gclist;
   lua_CFunction f;
   TValue upvalue[1];  /* list of upvalues */
 
@@ -795,9 +811,10 @@ public:
   const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
 };
 
-class LClosure {
+class LClosure : public GCBase<LClosure> {
 public:
-  ClosureHeader;
+  lu_byte nupvalues;
+  GCObject *gclist;
   struct Proto *p;
   UpVal *upvals[1];  /* list of upvalues */
 
@@ -975,12 +992,9 @@ typedef union Node {
 
 
 
-// Table class - using CRTP for GC management
-// NOTE: For now keeping CommonHeader instead of inheriting to maintain macro compatibility
-// Will gradually migrate macros to use methods
-class Table {
+// Phase 28: Table now inherits from GCBase (CRTP) - macro compatibility achieved!
+class Table : public GCBase<Table> {
 public:
-  CommonHeader;  // GC fields: next, tt, marked
   lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
   lu_byte lsizenode;  /* log2 of number of slots of 'node' array */
   unsigned int asize;  /* number of slots in 'array' array */
