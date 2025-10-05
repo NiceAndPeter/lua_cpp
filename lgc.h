@@ -360,8 +360,8 @@ LUAI_FUNC void luaC_changemode (lua_State *L, int newmode);
 
 /* Main function to copy values (from 'obj2' to 'obj1') */
 inline void setobj(lua_State* L, TValue* obj1, const TValue* obj2) noexcept {
-	obj1->value_ = obj2->value_;
-	settt_(obj1, obj2->tt_);
+	obj1->valueField() = obj2->getValue();
+	settt_(obj1, obj2->getType());
 	checkliveness(L, obj1);
 	lua_assert(!isnonstrictnil(obj1));
 }

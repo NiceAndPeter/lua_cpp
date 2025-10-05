@@ -194,6 +194,47 @@ public:
   lu_byte getFreeReg() const noexcept { return freereg; }
   lu_byte getNumUpvalues() const noexcept { return nups; }
   short getNumActiveVars() const noexcept { return nactvar; }
+
+  // Code generation methods (from lcode.h) - Phase 27c
+  // Note: OpCode is typedef'd in lopcodes.h, we use int to avoid circular deps
+  int code(Instruction i);
+  int codeABx(int o, int A, int Bx);
+  int codeABCk(int o, int A, int B, int C, int k);
+  int codeABC(int o, int A, int B, int C) { return codeABCk(o, A, B, C, 0); }
+  int codevABCk(int o, int A, int B, int C, int k);
+  int codesJ(int o, int sj, int k);
+  int exp2const(const expdesc *e, TValue *v);
+  void fixline(int line);
+  void nil(int from, int n);
+  void reserveregs(int n);
+  void checkstack(int n);
+  void intCode(int reg, lua_Integer n);
+  void dischargevars(expdesc *e);
+  int exp2anyreg(expdesc *e);
+  void exp2anyregup(expdesc *e);
+  void exp2nextreg(expdesc *e);
+  void exp2val(expdesc *e);
+  void self(expdesc *e, expdesc *key);
+  void indexed(expdesc *t, expdesc *k);
+  void goiftrue(expdesc *e);
+  void goiffalse(expdesc *e);
+  void storevar(expdesc *var, expdesc *e);
+  void setreturns(expdesc *e, int nresults);
+  void setoneret(expdesc *e);
+  int jump();
+  void ret(int first, int nret);
+  void patchlist(int list, int target);
+  void patchtohere(int list);
+  void concat(int *l1, int l2);
+  int getlabel();
+  // Note: prefix, infix, posfix use UnOpr/BinOpr types from lcode.h
+  // We use int here to avoid circular dependency, will cast in implementation
+  void prefix(int op, expdesc *v, int line);
+  void infix(int op, expdesc *v);
+  void posfix(int op, expdesc *v1, expdesc *v2, int line);
+  void settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize);
+  void setlist(int base, int nelems, int tostore);
+  void finish();
 };
 
 

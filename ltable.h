@@ -58,7 +58,7 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
   { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
     if ((u < h->asize)) { \
       tag = *getArrTag(h, u); \
-      if (!tagisempty(tag)) { farr2val(h, u, tag, res); }} \
+      if (!tagisempty(tag)) { farr2val(h, u, tag, (res)); }} \
     else { tag = luaH_getint(h, (k), res); }}
 
 
@@ -67,7 +67,7 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
     if ((u < h->asize)) { \
       lu_byte *tag = getArrTag(h, u); \
       if (checknoTM(h->metatable, TM_NEWINDEX) || !tagisempty(*tag)) \
-        { fval2arr(h, u, tag, val); hres = HOK; } \
+        { fval2arr(h, u, tag, (val)); hres = HOK; } \
       else hres = ~cast_int(u); } \
     else { hres = luaH_psetint(h, k, val); }}
 
@@ -134,24 +134,32 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 /*
 ** Move TValues to/from arrays, using C indices
+** Phase 27: Converted to inline functions using TValue methods
 */
-#define arr2obj(h,k,val)  \
-  ((val)->tt_ = *getArrTag(h,(k)), (val)->value_ = *getArrVal(h,(k)))
+inline void arr2obj(const Table* h, lua_Unsigned k, TValue* val) noexcept {
+  val->setType(*getArrTag(const_cast<Table*>(h), k));
+  val->valueField() = *getArrVal(const_cast<Table*>(h), k);
+}
 
-#define obj2arr(h,k,val)  \
-  (*getArrTag(h,(k)) = (val)->tt_, *getArrVal(h,(k)) = (val)->value_)
-
+inline void obj2arr(Table* h, lua_Unsigned k, const TValue* val) noexcept {
+  *getArrTag(h, k) = val->getType();
+  *getArrVal(h, k) = val->getValue();
+}
 
 /*
 ** Often, we need to check the tag of a value before moving it. The
-** following macros also move TValues to/from arrays, but receive the
+** following inline functions also move TValues to/from arrays, but receive the
 ** precomputed tag value or address as an extra argument.
 */
-#define farr2val(h,k,tag,res)  \
-  ((res)->tt_ = tag, (res)->value_ = *getArrVal(h,(k)))
+inline void farr2val(const Table* h, lua_Unsigned k, lu_byte tag, TValue* res) noexcept {
+  res->setType(tag);
+  res->valueField() = *getArrVal(const_cast<Table*>(h), k);
+}
 
-#define fval2arr(h,k,tag,val)  \
-  (*tag = (val)->tt_, *getArrVal(h,(k)) = (val)->value_)
+inline void fval2arr(Table* h, lua_Unsigned k, lu_byte* tag, const TValue* val) noexcept {
+  *tag = val->getType();
+  *getArrVal(h, k) = val->getValue();
+}
 
 
 LUAI_FUNC lu_byte luaH_get (Table *t, const TValue *key, TValue *res);

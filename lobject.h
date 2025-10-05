@@ -75,9 +75,16 @@ class lua_State;
 */
 
 class TValue {
-public:
+private:
   Value value_;
   lu_byte tt_;
+
+public:
+  // Phase 27: Constexpr constructor for static initialization
+  constexpr TValue(Value v, lu_byte t) noexcept : value_(v), tt_(t) {}
+
+  // Default constructor
+  TValue() = default;
 
   // Inline accessors for hot-path access
   lu_byte getType() const noexcept { return tt_; }
@@ -138,26 +145,78 @@ public:
 
   // Copy from another TValue
   void copy(const TValue* other) noexcept {
-    value_ = other->value_;
-    tt_ = other->tt_;
+    value_ = other->getValue();
+    tt_ = other->getType();
   }
 
   // Low-level field access (for macros during transition)
   Value& valueField() noexcept { return value_; }
   const Value& valueField() const noexcept { return value_; }
   void setType(lu_byte t) noexcept { tt_ = t; }
+
+  // Phase 27: Type checking methods (implementations below after constants are defined)
+  // Nil checks
+  constexpr bool isNil() const noexcept;
+  constexpr bool isStrictNil() const noexcept;
+  constexpr bool isAbstKey() const noexcept;
+  constexpr bool isNonStrictNil() const noexcept;
+  constexpr bool isEmpty() const noexcept;
+
+  // Boolean checks
+  constexpr bool isBoolean() const noexcept;
+  constexpr bool isFalse() const noexcept;
+  constexpr bool isTrue() const noexcept;
+  constexpr bool isFalseLike() const noexcept; // nil or false
+
+  // Number checks
+  constexpr bool isNumber() const noexcept;
+  constexpr bool isInteger() const noexcept;
+  constexpr bool isFloat() const noexcept;
+
+  // String checks
+  constexpr bool isString() const noexcept;
+  constexpr bool isShortString() const noexcept;
+  constexpr bool isLongString() const noexcept;
+  bool isExtString() const noexcept;
+
+  // Userdata checks
+  constexpr bool isLightUserdata() const noexcept;
+  constexpr bool isFullUserdata() const noexcept;
+
+  // Thread check
+  constexpr bool isThread() const noexcept;
+
+  // Function checks
+  constexpr bool isFunction() const noexcept;
+  constexpr bool isLClosure() const noexcept;
+  constexpr bool isLightCFunction() const noexcept;
+  constexpr bool isCClosure() const noexcept;
+  constexpr bool isClosure() const noexcept;
+  constexpr bool isLuaFunction() const noexcept;
+
+  // Table check
+  constexpr bool isTable() const noexcept;
+
+  // GC checks
+  constexpr bool isCollectable() const noexcept;
+  bool hasRightType() const noexcept; // GC object has same tag as value
+
+  // Low-level type accessors
+  constexpr lu_byte rawType() const noexcept { return tt_; }
+  constexpr int baseType() const noexcept;
+  constexpr lu_byte typeTag() const noexcept;
 };
 
 
 /* Access to TValue's internal value union */
-constexpr Value& val_(TValue* o) noexcept { return o->value_; }
-constexpr const Value& val_(const TValue* o) noexcept { return o->value_; }
+constexpr Value& val_(TValue* o) noexcept { return o->valueField(); }
+constexpr const Value& val_(const TValue* o) noexcept { return o->valueField(); }
 constexpr Value& valraw(TValue* o) noexcept { return val_(o); }
 constexpr const Value& valraw(const TValue* o) noexcept { return val_(o); }
 
 
 /* raw type tag of a TValue */
-constexpr lu_byte rawtt(const TValue* o) noexcept { return o->tt_; }
+constexpr lu_byte rawtt(const TValue* o) noexcept { return o->getType(); }
 
 /* tag with no variants (bits 0-3) */
 constexpr int novariant(int t) noexcept { return (t & 0x0F); }
@@ -170,6 +229,9 @@ constexpr lu_byte ttypetag(const TValue* o) noexcept { return cast_byte(withvari
 /* type of a TValue */
 constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
 
+// Phase 27: TValue low-level type accessor implementations
+constexpr int TValue::baseType() const noexcept { return novariant(tt_); }
+constexpr lu_byte TValue::typeTag() const noexcept { return cast_byte(withvariant(tt_)); }
 
 /* Macros to test type */
 constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t; }
@@ -201,7 +263,7 @@ constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCO
 /* Macros to set values */
 
 /* set a value's tag */
-inline void settt_(TValue* o, lu_byte t) noexcept { o->tt_ = t; }
+inline void settt_(TValue* o, lu_byte t) noexcept { o->setType(t); }
 
 
 /*
@@ -270,6 +332,9 @@ constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 /* macro to test for (any kind of) nil */
 constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
 
+// Phase 27: TValue::isNil() implementation
+constexpr bool TValue::isNil() const noexcept { return checktype(this, LUA_TNIL); }
+
 /*
 ** Macro to test the result of a table access. Formally, it should
 ** distinguish between LUA_VEMPTY/LUA_VABSTKEY/LUA_VNOTABLE and
@@ -282,11 +347,14 @@ constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL;
 /* macro to test for a standard nil */
 constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LUA_VNIL); }
 
+constexpr bool TValue::isStrictNil() const noexcept { return checktag(this, LUA_VNIL); }
 
 inline void setnilvalue(TValue* obj) noexcept { obj->setNil(); }
 
 
 constexpr bool isabstkey(const TValue* v) noexcept { return checktag(v, LUA_VABSTKEY); }
+
+constexpr bool TValue::isAbstKey() const noexcept { return checktag(this, LUA_VABSTKEY); }
 
 
 /*
@@ -296,6 +364,9 @@ constexpr bool isnonstrictnil(const TValue* v) noexcept {
 	return ttisnil(v) && !ttisstrictnil(v);
 }
 
+constexpr bool TValue::isNonStrictNil() const noexcept {
+	return isNil() && !isStrictNil();
+}
 
 /*
 ** By default, entries with any kind of nil are considered empty.
@@ -303,6 +374,8 @@ constexpr bool isnonstrictnil(const TValue* v) noexcept {
 ** be accepted as empty.)
 */
 constexpr bool isempty(const TValue* v) noexcept { return ttisnil(v); }
+
+constexpr bool TValue::isEmpty() const noexcept { return isNil(); }
 
 
 /* macro defining a value corresponding to an absent key */
@@ -331,9 +404,14 @@ constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_T
 constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
 constexpr bool ttistrue(const TValue* o) noexcept { return checktag(o, LUA_VTRUE); }
 
+constexpr bool TValue::isBoolean() const noexcept { return checktype(this, LUA_TBOOLEAN); }
+constexpr bool TValue::isFalse() const noexcept { return checktag(this, LUA_VFALSE); }
+constexpr bool TValue::isTrue() const noexcept { return checktag(this, LUA_VTRUE); }
 
 constexpr bool l_isfalse(const TValue* o) noexcept { return ttisfalse(o) || ttisnil(o); }
 constexpr bool tagisfalse(int t) noexcept { return (t == LUA_VFALSE || novariant(t) == LUA_TNIL); }
+
+constexpr bool TValue::isFalseLike() const noexcept { return isFalse() || isNil(); }
 
 
 
@@ -352,6 +430,8 @@ inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
 #define LUA_VTHREAD		makevariant(LUA_TTHREAD, 0)
 
 constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
+
+constexpr bool TValue::isThread() const noexcept { return checktag(this, ctb(LUA_VTHREAD)); }
 
 inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
@@ -438,6 +518,8 @@ public:
 
 constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
 
+constexpr bool TValue::isCollectable() const noexcept { return (tt_ & BIT_ISCOLLECTABLE) != 0; }
+
 inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 
 constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
@@ -446,6 +528,8 @@ constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
 
 /* collectable object has the same tag as the original value (inline version) */
 inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == gcvalue(obj)->tt; }
+
+inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue()->tt; }
 
 /* }================================================================== */
 
@@ -485,6 +569,10 @@ constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TN
 constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
 constexpr bool ttisinteger(const TValue* o) noexcept { return checktag(o, LUA_VNUMINT); }
 
+constexpr bool TValue::isNumber() const noexcept { return checktype(this, LUA_TNUMBER); }
+constexpr bool TValue::isFloat() const noexcept { return checktag(this, LUA_VNUMFLT); }
+constexpr bool TValue::isInteger() const noexcept { return checktag(this, LUA_VNUMINT); }
+
 // TValue::numberValue() implementation (needs LUA_VNUMINT constant)
 inline lua_Number TValue::numberValue() const noexcept {
   return (tt_ == LUA_VNUMINT) ? static_cast<lua_Number>(value_.i) : value_.n;
@@ -519,6 +607,10 @@ inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); 
 constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
 constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
 constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
+
+constexpr bool TValue::isString() const noexcept { return checktype(this, LUA_TSTRING); }
+constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LUA_VSHRSTR)); }
+constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LUA_VLNGSTR)); }
 
 #define tsvalueraw(v)	(gco2ts((v).gc))
 
@@ -586,6 +678,10 @@ inline bool isextstr(const TValue* v) noexcept {
 	return ttislngstring(v) && tsvalue(v)->shrlen != LSTRREG;
 }
 
+inline bool TValue::isExtString() const noexcept {
+	return isLongString() && stringValue()->shrlen != LSTRREG;
+}
+
 /*
 ** Get the actual string (array of bytes) from a 'TString'. (Generic
 ** version and specialized versions for long and short strings.)
@@ -632,6 +728,9 @@ inline const char* rawgetshrstr(const TString* ts) noexcept {
 
 constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
 constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
+
+constexpr bool TValue::isLightUserdata() const noexcept { return checktag(this, LUA_VLIGHTUSERDATA); }
+constexpr bool TValue::isFullUserdata() const noexcept { return checktag(this, ctb(LUA_VUSERDATA)); }
 
 inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
 
@@ -860,8 +959,15 @@ constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF);
 constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
 constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
 
+constexpr bool TValue::isFunction() const noexcept { return checktype(this, LUA_TFUNCTION); }
+constexpr bool TValue::isLClosure() const noexcept { return checktag(this, ctb(LUA_VLCL)); }
+constexpr bool TValue::isLightCFunction() const noexcept { return checktag(this, LUA_VLCF); }
+constexpr bool TValue::isCClosure() const noexcept { return checktag(this, ctb(LUA_VCCL)); }
+constexpr bool TValue::isClosure() const noexcept { return isLClosure() || isCClosure(); }
 
 #define isLfunction(o)	ttisLclosure(o)
+
+constexpr bool TValue::isLuaFunction() const noexcept { return isLClosure(); }
 
 inline Closure* clvalue(const TValue* o) noexcept { return o->closureValue(); }
 inline LClosure* clLvalue(const TValue* o) noexcept { return o->lClosureValue(); }
@@ -960,6 +1066,8 @@ typedef union Closure {
 #define LUA_VTABLE	makevariant(LUA_TTABLE, 0)
 
 constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
+
+constexpr bool TValue::isTable() const noexcept { return checktag(this, ctb(LUA_VTABLE)); }
 
 inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
 
@@ -1090,13 +1198,13 @@ typedef union Node {
 /* copy a value into a key */
 #define setnodekey(node,obj) \
 	{ Node *n_=(node); const TValue *io_=(obj); \
-	  n_->u.key_val = io_->value_; n_->u.key_tt = io_->tt_; }
+	  n_->u.key_val = io_->getValue(); n_->u.key_tt = io_->getType(); }
 
 
 /* copy a value from a key */
 #define getnodekey(L,obj,node) \
 	{ TValue *io_=(obj); const Node *n_=(node); \
-	  io_->value_ = n_->u.key_val; io_->tt_ = n_->u.key_tt; \
+	  io_->valueField() = n_->u.key_val; io_->setType(n_->u.key_tt); \
 	  checkliveness(L,io_); }
 
 
