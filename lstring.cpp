@@ -22,6 +22,12 @@
 #include "lstring.h"
 
 
+// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
+// This triggers -Winvalid-offsetof but is safe because we control the memory layout
+inline constexpr size_t tstringFallocOffset() noexcept {
+  return offsetof(TString, falloc);
+}
+
 /*
 ** Maximum size for string table.
 */
@@ -140,10 +146,10 @@ size_t luaS_sizelngstr (size_t len, int kind) {
   switch (kind) {
     case LSTRREG:  /* regular long string */
       /* don't need 'falloc'/'ud', but need space for content */
-      return offsetof(TString, falloc) + (len + 1) * sizeof(char);
+      return tstringFallocOffset() + (len + 1) * sizeof(char);
     case LSTRFIX:  /* fixed external long string */
       /* don't need 'falloc'/'ud' */
-      return offsetof(TString, falloc);
+      return tstringFallocOffset();
     default:  /* external long string with deallocation */
       lua_assert(kind == LSTRMEM);
       return sizeof(TString);
@@ -171,7 +177,7 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
   TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->seed);
   ts->u.lnglen = l;
   ts->shrlen = LSTRREG;  /* signals that it is a regular long string */
-  ts->contents = cast_charp(ts) + offsetof(TString, falloc);
+  ts->contents = cast_charp(ts) + tstringFallocOffset();
   ts->contents[l] = '\0';  /* ending 0 */
   return ts;
 }
@@ -307,7 +313,7 @@ TString *luaS_newextlstr (lua_State *L,
   }
   else {
     ne.kind = LSTRMEM;
-    if (luaD_rawrunprotected(L, f_newext, &ne) != LUA_OK) {  /* mem. error? */
+    if (L->rawRunProtected( f_newext, &ne) != LUA_OK) {  /* mem. error? */
       (*falloc)(ud, cast_voidp(s), len + 1, 0);  /* free external string */
       luaM_error(L);  /* re-raise memory error */
     }

@@ -1047,10 +1047,10 @@ LUA_API void lua_callk (lua_State *L, int nargs, int nresults,
   if (k != NULL && yieldable(L)) {  /* need to prepare continuation? */
     L->ci->u.c.k = k;  /* save continuation */
     L->ci->u.c.ctx = ctx;  /* save context */
-    luaD_call(L, func, nresults);  /* do the call */
+    L->call( func, nresults);  /* do the call */
   }
   else  /* no continuation or no yieldable */
-    luaD_callnoyield(L, func, nresults);  /* just do the call */
+    L->callNoYield( func, nresults);  /* just do the call */
   adjustresults(L, nresults);
   lua_unlock(L);
 }
@@ -1068,7 +1068,7 @@ struct CallS {  /* data to 'f_call' */
 
 static void f_call (lua_State *L, void *ud) {
   struct CallS *c = cast(struct CallS *, ud);
-  luaD_callnoyield(L, c->func, c->nresults);
+  L->callNoYield( c->func, c->nresults);
 }
 
 
@@ -1094,7 +1094,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   c.func = L->top.p - (nargs+1);  /* function to be called */
   if (k == NULL || !yieldable(L)) {  /* no continuation or no yieldable? */
     c.nresults = nresults;  /* do a 'conventional' protected call */
-    status = luaD_pcall(L, f_call, &c, savestack(L, c.func), func);
+    status = L->pCall( f_call, &c, savestack(L, c.func), func);
   }
   else {  /* prepare continuation (call is already protected by 'resume') */
     CallInfo *ci = L->ci;
@@ -1106,7 +1106,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
     L->errfunc = func;
     setoah(ci, L->allowhook);  /* save value of 'allowhook' */
     ci->callstatus |= CIST_YPCALL;  /* function can do error recovery */
-    luaD_call(L, c.func, nresults);  /* do the call */
+    L->call( c.func, nresults);  /* do the call */
     ci->callstatus &= ~CIST_YPCALL;
     L->errfunc = ci->u.c.old_errfunc;
     status = LUA_OK;  /* if it is here, there were no errors */
@@ -1124,7 +1124,7 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
   lua_lock(L);
   if (!chunkname) chunkname = "?";
   luaZ_init(L, &z, reader, data);
-  status = luaD_protectedparser(L, &z, chunkname, mode);
+  status = L->protectedParser( &z, chunkname, mode);
   if (status == LUA_OK) {  /* no errors? */
     LClosure *f = clLvalue(s2v(L->top.p - 1));  /* get new function */
     if (f->nupvalues >= 1) {  /* does it have an upvalue? */

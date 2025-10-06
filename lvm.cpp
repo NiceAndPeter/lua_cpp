@@ -1713,7 +1713,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           L->top.p = ra + b;  /* top signals number of arguments */
         /* else previous instruction set top */
         savepc(ci);  /* in case of errors */
-        if ((newci = luaD_precall(L, ra, nresults)) == NULL)
+        if ((newci = L->preCall( ra, nresults)) == NULL)
           updatetrap(ci);  /* C call; nothing else to be done */
         else {  /* Lua call: run function in this same C frame */
           ci = newci;
@@ -1738,11 +1738,11 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           lua_assert(L->tbclist.p < base);  /* no pending tbc variables */
           lua_assert(base == ci->func.p + 1);
         }
-        if ((n = luaD_pretailcall(L, ci, ra, b, delta)) < 0)  /* Lua function? */
+        if ((n = L->preTailCall( ci, ra, b, delta)) < 0)  /* Lua function? */
           goto startfunc;  /* execute the callee */
         else {  /* C function? */
           ci->func.p -= delta;  /* restore 'func' (if vararg) */
-          luaD_poscall(L, ci, n);  /* finish caller */
+          L->postCall( ci, n);  /* finish caller */
           updatetrap(ci);  /* 'luaD_poscall' can change hooks */
           goto ret;  /* caller returns after the tail call */
         }
@@ -1765,7 +1765,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (nparams1)  /* vararg function? */
           ci->func.p -= ci->u.l.nextraargs + nparams1;
         L->top.p = ra + n;  /* set call for 'luaD_poscall' */
-        luaD_poscall(L, ci, n);
+        L->postCall( ci, n);
         updatetrap(ci);  /* 'luaD_poscall' can change hooks */
         goto ret;
       }
@@ -1774,7 +1774,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           StkId ra = RA(i);
           L->top.p = ra;
           savepc(ci);
-          luaD_poscall(L, ci, 0);  /* no hurry... */
+          L->postCall( ci, 0);  /* no hurry... */
           trap = 1;
         }
         else {  /* do the 'poscall' here */
@@ -1791,7 +1791,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           StkId ra = RA(i);
           L->top.p = ra + 1;
           savepc(ci);
-          luaD_poscall(L, ci, 1);  /* no hurry... */
+          L->postCall( ci, 1);  /* no hurry... */
           trap = 1;
         }
         else {  /* do the 'poscall' here */
@@ -1872,7 +1872,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         setobjs2s(L, ra + 4, ra + 1);  /* copy state */
         setobjs2s(L, ra + 3, ra);  /* copy function */
         L->top.p = ra + 3 + 3;
-        ProtectNT(luaD_call(L, ra + 3, GETARG_C(i)));  /* do the call */
+        ProtectNT(L->call( ra + 3, GETARG_C(i)));  /* do the call */
         updatestack(ci);  /* stack may have changed */
         i = *(pc++);  /* go to next instruction */
         lua_assert(GET_OPCODE(i) == OP_TFORLOOP && ra == RA(i));
@@ -1929,7 +1929,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_VARARGPREP) {
         ProtectNT(luaT_adjustvarargs(L, GETARG_A(i), ci, cl->p));
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
-          luaD_hookcall(L, ci);
+          L->hookCall( ci);
           L->oldpc = 1;  /* next opcode will be seen as a "new" line */
         }
         updatebase(ci);  /* function has new base after adjustment */

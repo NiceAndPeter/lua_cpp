@@ -838,13 +838,13 @@ l_noret luaG_errormsg (lua_State *L) {
     setobjs2s(L, L->top.p, L->top.p - 1);  /* move argument */
     setobjs2s(L, L->top.p - 1, errfunc);  /* push function */
     L->top.p++;  /* assume EXTRA_STACK */
-    luaD_callnoyield(L, L->top.p - 2, 1);  /* call it */
+    L->callNoYield( L->top.p - 2, 1);  /* call it */
   }
   if (ttisnil(s2v(L->top.p - 1))) {  /* error object is nil? */
     /* change it to a proper message */
     setsvalue2s(L, L->top.p - 1, luaS_newliteral(L, "<no error object>"));
   }
-  luaD_throw(L, LUA_ERRRUN);
+  L->doThrow( LUA_ERRRUN);
 }
 
 
@@ -909,7 +909,7 @@ int luaG_tracecall (lua_State *L) {
     if (p->flag & PF_ISVARARG)
       return 0;  /* hooks will start at VARARGPREP instruction */
     else if (!(ci->callstatus & CIST_HOOKYIELD))  /* not yielded? */
-      luaD_hookcall(L, ci);  /* check 'call' hook */
+      L->hookCall( ci);  /* check 'call' hook */
   }
   return 1;  /* keep 'trap' on */
 }
@@ -950,7 +950,7 @@ int luaG_traceexec (lua_State *L, const Instruction *pc) {
   if (!luaP_isIT(*(ci->u.l.savedpc - 1)))  /* top not being used? */
     L->top.p = ci->top.p;  /* correct top */
   if (counthook)
-    luaD_hook(L, LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
+    L->callHook( LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {
     /* 'L->oldpc' may be invalid; use zero in this case */
     int oldpc = (L->oldpc < p->sizecode) ? L->oldpc : 0;
@@ -958,7 +958,7 @@ int luaG_traceexec (lua_State *L, const Instruction *pc) {
     if (npci <= oldpc ||  /* call hook when jump back (loop), */
         changedline(p, oldpc, npci)) {  /* or when enter new line */
       int newline = luaG_getfuncline(p, npci);
-      luaD_hook(L, LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
+      L->callHook( LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
     }
     L->oldpc = npci;  /* 'pc' of last call to line hook */
   }
@@ -966,7 +966,7 @@ int luaG_traceexec (lua_State *L, const Instruction *pc) {
     if (counthook)
       L->hookcount = 1;  /* undo decrement to zero */
     ci->callstatus |= CIST_HOOKYIELD;  /* mark that it yielded */
-    luaD_throw(L, LUA_YIELD);
+    L->doThrow( LUA_YIELD);
   }
   return 1;  /* keep 'trap' on */
 }

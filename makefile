@@ -28,6 +28,7 @@ CWARNSCPP= \
 CWARNGCC= \
 	-Wlogical-op \
 	-Wno-aggressive-loop-optimizations \
+	-Wno-invalid-offsetof \
 
 
 # The next warnings are neither valid nor needed for C++
@@ -63,7 +64,7 @@ CWARNS= $(CWARNSCPP) $(CWARNGCC)
 # ASAN_OPTIONS="detect_invalid_pointer_pairs=2".
 # -fsanitize=undefined
 # -fsanitize=pointer-subtract -fsanitize=address -fsanitize=pointer-compare
-TESTS= -DLUA_USER_H='"ltests.h"'
+TESTS= -DLUA_USER_H='"ltests.h"' -DLUAI_ASSERT
 
 
 LOCAL = $(TESTS) $(CWARNS)

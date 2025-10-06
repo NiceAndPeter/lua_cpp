@@ -29,7 +29,16 @@
 
 
 
-#define fromstate(L)	(cast(LX *, cast(lu_byte *, (L)) - offsetof(LX, l)))
+// Phase 29: Replace offsetof with constexpr calculation for non-standard-layout type
+inline constexpr size_t lxOffset() noexcept {
+  // LX has: extra_[LUA_EXTRASPACE] + lua_State l
+  // lua_State inherits from GCBase, so offset is just the extra_ array size
+  return LUA_EXTRASPACE;
+}
+
+inline LX* fromstate(lua_State* L) noexcept {
+  return cast(LX *, cast(lu_byte *, (L)) - lxOffset());
+}
 
 
 /*
@@ -132,7 +141,7 @@ void luaE_checkcstack (lua_State *L) {
   if (getCcalls(L) == LUAI_MAXCCALLS)
     luaG_runerror(L, "C stack overflow");
   else if (getCcalls(L) >= (LUAI_MAXCCALLS / 10 * 11))
-    luaD_errerr(L);  /* error while handling stack error */
+    L->errorError();  /* error while handling stack error */
 }
 
 
@@ -258,7 +267,7 @@ static void close_state (lua_State *L) {
     luaC_freeallobjects(L);  /* just collect its objects */
   else {  /* closing a fully built state */
     resetCI(L);
-    luaD_closeprotected(L, 1, LUA_OK);  /* close all upvalues */
+    L->closeProtected( 1, LUA_OK);  /* close all upvalues */
     L->top.p = L->stack.p + 1;  /* empty the stack to run finalizers */
     luaC_freeallobjects(L);  /* collect all objects */
     luai_userstateclose(L);
@@ -277,7 +286,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   lua_lock(L);
   luaC_checkGC(L);
   /* create new thread */
-  o = luaC_newobjdt(L, LUA_TTHREAD, sizeof(LX), offsetof(LX, l));
+  o = luaC_newobjdt(L, LUA_TTHREAD, sizeof(LX), lxOffset());
   L1 = gco2th(o);
   /* anchor it on L stack */
   setthvalue2s(L, L->top.p, L1);
@@ -311,9 +320,9 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
   resetCI(L);
   if (status == LUA_YIELD)
     status = LUA_OK;
-  status = luaD_closeprotected(L, 1, status);
+  status = L->closeProtected( 1, status);
   if (status != LUA_OK)  /* errors? */
-    luaD_seterrorobj(L, status, L->stack.p + 1);
+    L->setErrorObj( status, L->stack.p + 1);
   else
     L->top.p = L->stack.p + 1;
   L->reallocStack(cast_int(L->ci->top.p - L->stack.p), 0);
@@ -327,7 +336,7 @@ LUA_API int lua_closethread (lua_State *L, lua_State *from) {
   L->nCcalls = (from) ? getCcalls(from) : 0;
   status = luaE_resetthread(L, L->status);
   if (L == from)  /* closing itself? */
-    luaD_throwbaselevel(L, status);
+    L->throwBaseLevel( status);
   lua_unlock(L);
   return APIstatus(status);
 }
@@ -379,7 +388,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   setgcparam(g, MINORMAJOR, LUAI_MINORMAJOR);
   setgcparam(g, MAJORMINOR, LUAI_MAJORMINOR);
   for (i=0; i < LUA_NUMTYPES; i++) g->mt[i] = NULL;
-  if (luaD_rawrunprotected(L, f_luaopen, NULL) != LUA_OK) {
+  if (L->rawRunProtected( f_luaopen, NULL) != LUA_OK) {
     /* memory allocation error: free partial state */
     close_state(L);
     L = NULL;

@@ -13,6 +13,9 @@
 /* Some header files included here need this definition */
 typedef struct CallInfo CallInfo;
 
+/* Phase 30: type of protected functions, to be ran by 'runprotected' */
+typedef void (*Pfunc) (lua_State *L, void *ud);
+
 
 #include "lobject.h"
 #include "ltm.h"
@@ -335,6 +338,29 @@ public:
   void shrinkStack();
   int growStack(int n, int raiseerror);
   int reallocStack(int newsize, int raiseerror);
+
+  // Phase 30: Error handling methods (implemented in ldo.cpp)
+  l_noret doThrow(TStatus errcode);
+  l_noret throwBaseLevel(TStatus errcode);
+  l_noret errorError();
+  void setErrorObj(TStatus errcode, StkId oldtop);
+
+  // Phase 30: Hook/debugging methods (implemented in ldo.cpp)
+  void callHook(int event, int line, int fTransfer, int nTransfer);
+  void hookCall(CallInfo *ci);
+
+  // Phase 30: Call operation methods (implemented in ldo.cpp)
+  CallInfo* preCall(StkId func, int nResults);
+  void postCall(CallInfo *ci, int nres);
+  int preTailCall(CallInfo *ci, StkId func, int narg1, int delta);
+  void call(StkId func, int nResults);
+  void callNoYield(StkId func, int nResults);
+
+  // Phase 30: Protected operation methods (implemented in ldo.cpp)
+  TStatus rawRunProtected(Pfunc f, void *ud);
+  TStatus pCall(Pfunc func, void *u, ptrdiff_t oldtop, ptrdiff_t ef);
+  TStatus closeProtected(ptrdiff_t level, TStatus status);
+  TStatus protectedParser(ZIO *z, const char *name, const char *mode);
 };
 
 

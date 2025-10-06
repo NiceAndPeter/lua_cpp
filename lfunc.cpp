@@ -118,9 +118,9 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
     setobj2s(L, top++, err);  /* then error object will be 2nd argument */
   L->top.p = top;  /* add function and arguments */
   if (yy)
-    luaD_call(L, func, 0);
+    L->call( func, 0);
   else
-    luaD_callnoyield(L, func, 0);
+    L->callNoYield( func, 0);
 }
 
 
@@ -159,7 +159,7 @@ static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
       break;
     default:  /* 'luaD_seterrorobj' will set top to level + 2 */
       errobj = s2v(level + 1);  /* error object goes after 'uv' */
-      luaD_seterrorobj(L, status, level + 1);  /* set error object */
+      L->setErrorObj( status, level + 1);  /* set error object */
       break;
   }
   callclosemethod(L, uv, errobj, yy);

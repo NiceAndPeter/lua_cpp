@@ -514,7 +514,7 @@ static void pushbuff (lua_State *L, void *ud) {
   BuffFS *buff = cast(BuffFS*, ud);
   switch (buff->err) {
     case 1:  /* memory error */
-      luaD_throw(L, LUA_ERRMEM);
+      L->doThrow( LUA_ERRMEM);
       break;
     case 2:  /* length overflow: Add "..." at the end of result */
       if (buff->buffsize - buff->blen < 3)
@@ -536,7 +536,7 @@ static void pushbuff (lua_State *L, void *ud) {
 static const char *clearbuff (BuffFS *buff) {
   lua_State *L = buff->L;
   const char *res;
-  if (luaD_rawrunprotected(L, pushbuff, buff) != LUA_OK)  /* errors? */
+  if (L->rawRunProtected( pushbuff, buff) != LUA_OK)  /* errors? */
     res = NULL;  /* error message is on the top of the stack */
   else
     res = getstr(tsvalue(s2v(L->top.p - 1)));
@@ -666,7 +666,7 @@ const char *luaO_pushfstring (lua_State *L, const char *fmt, ...) {
   msg = luaO_pushvfstring(L, fmt, argp);
   va_end(argp);
   if (msg == NULL)  /* error? */
-    luaD_throw(L, LUA_ERRMEM);
+    L->doThrow( LUA_ERRMEM);
   return msg;
 }
 

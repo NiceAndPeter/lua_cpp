@@ -110,9 +110,9 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
   L->top.p = func + 4;
   /* metamethod may yield only when called from Lua code */
   if (isLuacode(L->ci))
-    luaD_call(L, func, 0);
+    L->call( func, 0);
   else
-    luaD_callnoyield(L, func, 0);
+    L->callNoYield( func, 0);
 }
 
 
@@ -126,9 +126,9 @@ lu_byte luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
   L->top.p += 3;
   /* metamethod may yield only when called from Lua code */
   if (isLuacode(L->ci))
-    luaD_call(L, func, 1);
+    L->call( func, 1);
   else
-    luaD_callnoyield(L, func, 1);
+    L->callNoYield( func, 1);
   res = restorestack(L, result);
   setobjs2s(L, res, --L->top.p);  /* move result to its place */
   return ttypetag(s2v(res));  /* return tag of the result */

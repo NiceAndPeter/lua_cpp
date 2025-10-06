@@ -574,6 +574,8 @@ typedef struct Udata0 : public GCBase<Udata0> {
 
 
 /* compute the offset of the memory area of a userdata */
+// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
+// This triggers -Winvalid-offsetof but is safe because we control the memory layout
 #define udatamemoffset(nuv) \
        ((nuv) == 0 ? offsetof(Udata0, bindata)  \
 		   : offsetof(Udata, uv) + (sizeof(UValue) * (nuv)))
@@ -1097,7 +1099,7 @@ public:
   { va_start(argp, fmt); \
   msg = luaO_pushvfstring(L, fmt, argp); \
   va_end(argp); \
-  if (msg == NULL) luaD_throw(L, LUA_ERRMEM);  /* only after 'va_end' */ }
+  if (msg == NULL) (L)->doThrow(LUA_ERRMEM);  /* only after 'va_end' */ }
 
 
 LUAI_FUNC int luaO_utf8esc (char *buff, l_uint32 x);

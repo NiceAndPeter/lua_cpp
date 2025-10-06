@@ -11,6 +11,8 @@
 #include "lobject.h"
 
 
+// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
+// This triggers -Winvalid-offsetof but is safe because we control the memory layout
 #define sizeCclosure(n)  \
 	(offsetof(CClosure, upvalue) + sizeof(TValue) * cast_uint(n))
 
