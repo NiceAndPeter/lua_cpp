@@ -361,6 +361,29 @@ public:
   TStatus pCall(Pfunc func, void *u, ptrdiff_t oldtop, ptrdiff_t ef);
   TStatus closeProtected(ptrdiff_t level, TStatus status);
   TStatus protectedParser(ZIO *z, const char *name, const char *mode);
+
+  // Phase 30: Internal helper methods (used by Pfunc callbacks in ldo.cpp)
+  void cCall(StkId func, int nResults, l_uint32 inc);
+  void unrollContinuation(void *ud);
+  TStatus finishPCallK(CallInfo *ci);
+  void finishCCall(CallInfo *ci);
+  CallInfo* findPCall();
+
+private:
+  // Phase 30: Private helper methods (implementation details in ldo.cpp)
+
+  // Stack manipulation helpers
+  void relStack();
+  void correctStack(StkId oldstack);
+  int stackInUse();
+
+  // Call/hook helpers
+  void retHook(CallInfo *ci, int nres);
+  unsigned tryFuncTM(StkId func, unsigned status);
+  void genMoveResults(StkId res, int nres, int wanted);
+  void moveResults(StkId res, int nres, l_uint32 fwanted);
+  CallInfo* prepareCallInfo(StkId func, unsigned status, StkId top);
+  int preCallC(StkId func, unsigned status, lua_CFunction f);
 };
 
 
