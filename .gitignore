@@ -13,3 +13,8 @@ testes/libs/all
 
 temp
 lua
+
+# CMake build directories
+build/
+install_test/
+cmake-build-*/
