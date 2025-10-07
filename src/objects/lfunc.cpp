@@ -314,11 +314,11 @@ void luaF_freeproto (lua_State *L, Proto *f) {
 */
 const char* Proto::getLocalName(int local_number, int pc) const {
   int i;
-  for (i = 0; i<sizelocvars && locvars[i].startpc <= pc; i++) {
-    if (pc < locvars[i].endpc) {  /* is variable active? */
+  for (i = 0; i<sizelocvars && locvars[i].getStartPC() <= pc; i++) {
+    if (pc < locvars[i].getEndPC()) {  /* is variable active? */
       local_number--;
       if (local_number == 0)
-        return getstr(locvars[i].varname);
+        return getstr(locvars[i].getVarName());
     }
   }
   return NULL;  /* not found */

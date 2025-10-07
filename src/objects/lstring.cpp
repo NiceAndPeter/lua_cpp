@@ -90,19 +90,19 @@ static void tablerehash (TString **vect, int osize, int nsize) {
 */
 void luaS_resize (lua_State *L, int nsize) {
   stringtable *tb = &G(L)->strt;
-  int osize = tb->size;
+  int osize = tb->getSize();
   TString **newvect;
   if (nsize < osize)  /* shrinking table? */
-    tablerehash(tb->hash, osize, nsize);  /* depopulate shrinking part */
-  newvect = luaM_reallocvector(L, tb->hash, osize, nsize, TString*);
+    tablerehash(tb->getHash(), osize, nsize);  /* depopulate shrinking part */
+  newvect = luaM_reallocvector(L, tb->getHash(), osize, nsize, TString*);
   if (l_unlikely(newvect == NULL)) {  /* reallocation failed? */
     if (nsize < osize)  /* was it shrinking table? */
-      tablerehash(tb->hash, nsize, osize);  /* restore to original size */
+      tablerehash(tb->getHash(), nsize, osize);  /* restore to original size */
     /* leave table as it was */
   }
   else {  /* allocation succeeded */
-    tb->hash = newvect;
-    tb->size = nsize;
+    tb->setHash(newvect);
+    tb->setSize(nsize);
     if (nsize > osize)
       tablerehash(newvect, osize, nsize);  /* rehash for new size */
   }
@@ -130,9 +130,9 @@ void luaS_init (lua_State *L) {
   global_State *g = G(L);
   int i, j;
   stringtable *tb = &G(L)->strt;
-  tb->hash = luaM_newvector(L, MINSTRTABSIZE, TString*);
-  tablerehash(tb->hash, 0, MINSTRTABSIZE);  /* clear array */
-  tb->size = MINSTRTABSIZE;
+  tb->setHash(luaM_newvector(L, MINSTRTABSIZE, TString*));
+  tablerehash(tb->getHash(), 0, MINSTRTABSIZE);  /* clear array */
+  tb->setSize(MINSTRTABSIZE);
   /* pre-create memory-error message */
   g->memerrmsg = luaS_newliteral(L, MEMERRMSG);
   obj2gco(g->memerrmsg)->fix(L);  /* Phase 25c: it should never be collected */
@@ -187,13 +187,13 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
 
 
 static void growstrtab (lua_State *L, stringtable *tb) {
-  if (l_unlikely(tb->nuse == INT_MAX)) {  /* too many strings? */
+  if (l_unlikely(tb->getNumElements() == INT_MAX)) {  /* too many strings? */
     luaC_fullgc(L, 1);  /* try to free some... */
-    if (tb->nuse == INT_MAX)  /* still too many? */
+    if (tb->getNumElements() == INT_MAX)  /* still too many? */
       luaM_error(L);  /* cannot even create a message... */
   }
-  if (tb->size <= MAXSTRTB / 2)  /* can grow string table? */
-    luaS_resize(L, tb->size * 2);
+  if (tb->getSize() <= MAXSTRTB / 2)  /* can grow string table? */
+    luaS_resize(L, tb->getSize() * 2);
 }
 
 
@@ -205,7 +205,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   global_State *g = G(L);
   stringtable *tb = &g->strt;
   unsigned int h = luaS_hash(str, l, g->seed);
-  TString **list = &tb->hash[lmod(h, tb->size)];
+  TString **list = &tb->getHash()[lmod(h, tb->getSize())];
   lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
   for (ts = *list; ts != NULL; ts = ts->u.hnext) {
     if (l == cast_uint(ts->shrlen) &&
@@ -217,9 +217,9 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
     }
   }
   /* else must create a new string */
-  if (tb->nuse >= tb->size) {  /* need to grow string table? */
+  if (tb->getNumElements() >= tb->getSize()) {  /* need to grow string table? */
     growstrtab(L, tb);
-    list = &tb->hash[lmod(h, tb->size)];  /* rehash with new size */
+    list = &tb->getHash()[lmod(h, tb->getSize())];  /* rehash with new size */
   }
   ts = createstrobj(L, sizestrshr(l), LUA_VSHRSTR, h);
   ts->shrlen = cast(ls_byte, l);
@@ -227,7 +227,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   memcpy(getshrstr(ts), str, l * sizeof(char));
   ts->u.hnext = *list;
   *list = ts;
-  tb->nuse++;
+  tb->incrementNumElements();
   return ts;
 }
 
@@ -352,11 +352,11 @@ bool TString::equals(TString* other) {
 // Phase 25a: Convert luaS_remove to TString method
 void TString::remove(lua_State* L) {
   stringtable *tb = &G(L)->strt;
-  TString **p = &tb->hash[lmod(this->hash, tb->size)];
+  TString **p = &tb->getHash()[lmod(this->hash, tb->getSize())];
   while (*p != this)  /* find previous element */
     p = &(*p)->u.hnext;
   *p = (*p)->u.hnext;  /* remove element from its list */
-  tb->nuse--;
+  tb->decrementNumElements();
 }
 
 // Phase 25a: Convert luaS_normstr to TString method

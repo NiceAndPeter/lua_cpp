@@ -272,7 +272,7 @@ static void close_state (lua_State *L) {
     luaC_freeallobjects(L);  /* collect all objects */
     luai_userstateclose(L);
   }
-  luaM_freearray(L, G(L)->strt.hash, cast_sizet(G(L)->strt.size));
+  luaM_freearray(L, G(L)->strt.getHash(), cast_sizet(G(L)->strt.getSize()));
   freestack(L);
   lua_assert(gettotalbytes(g) == sizeof(global_State));
   (*g->frealloc)(g->ud, g, sizeof(global_State), 0);  /* free main block */
@@ -362,8 +362,9 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   g->ud_warn = NULL;
   g->seed = seed;
   g->gcstp = GCSTPGC;  /* no GC while building state */
-  g->strt.size = g->strt.nuse = 0;
-  g->strt.hash = NULL;
+  g->strt.setSize(0);
+  g->strt.setNumElements(0);
+  g->strt.setHash(NULL);
   setnilvalue(&g->l_registry);
   g->panic = NULL;
   g->gcstate = GCSpause;

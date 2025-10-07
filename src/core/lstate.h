@@ -170,15 +170,24 @@ struct lua_longjmp;
 
 
 class stringtable {
-public:
+private:
   TString **hash;  /* array of buckets (linked lists of strings) */
   int nuse;  /* number of elements */
   int size;  /* number of buckets */
 
+public:
   // Inline accessors
   TString** getHash() const noexcept { return hash; }
+  TString*** getHashPtr() noexcept { return &hash; }  // For reallocation
   int getNumElements() const noexcept { return nuse; }
   int getSize() const noexcept { return size; }
+
+  // Inline setters
+  void setHash(TString** h) noexcept { hash = h; }
+  void setNumElements(int n) noexcept { nuse = n; }
+  void setSize(int s) noexcept { size = s; }
+  void incrementNumElements() noexcept { nuse++; }
+  void decrementNumElements() noexcept { nuse--; }
 };
 
 

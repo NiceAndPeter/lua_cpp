@@ -179,9 +179,9 @@ static short registerlocalvar (LexState *ls, FuncState *fs,
   luaM_growvector(ls->L, f->locvars, fs->ndebugvars, f->sizelocvars,
                   LocVar, SHRT_MAX, "local variables");
   while (oldsize < f->sizelocvars)
-    f->locvars[oldsize++].varname = NULL;
-  f->locvars[fs->ndebugvars].varname = varname;
-  f->locvars[fs->ndebugvars].startpc = fs->pc;
+    f->locvars[oldsize++].setVarName(NULL);
+  f->locvars[fs->ndebugvars].setVarName(varname);
+  f->locvars[fs->ndebugvars].setStartPC(fs->pc);
   luaC_objbarrier(ls->L, f, varname);
   return fs->ndebugvars++;
 }
@@ -297,8 +297,8 @@ static void check_readonly (LexState *ls, expdesc *e) {
     }
     case VUPVAL: {
       Upvaldesc *up = &fs->f->upvalues[e->u.info];
-      if (up->kind != VDKREG)
-        varname = up->name;
+      if (up->getKind() != VDKREG)
+        varname = up->getName();
       break;
     }
     case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
@@ -342,7 +342,7 @@ static void removevars (FuncState *fs, int tolevel) {
   while (fs->nactvar > tolevel) {
     LocVar *var = localdebuginfo(fs, --fs->nactvar);
     if (var)  /* does it have debug information? */
-      var->endpc = fs->pc;
+      var->setEndPC(fs->pc);
   }
 }
 
@@ -355,7 +355,7 @@ static int searchupvalue (FuncState *fs, TString *name) {
   int i;
   Upvaldesc *up = fs->f->upvalues;
   for (i = 0; i < fs->nups; i++) {
-    if (eqstr(up[i].name, name)) return i;
+    if (eqstr(up[i].getName(), name)) return i;
   }
   return -1;  /* not found */
 }
@@ -368,7 +368,7 @@ static Upvaldesc *allocupvalue (FuncState *fs) {
   luaM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
                   Upvaldesc, MAXUPVAL, "upvalues");
   while (oldsize < f->sizeupvalues)
-    f->upvalues[oldsize++].name = NULL;
+    f->upvalues[oldsize++].setName(NULL);
   return &f->upvalues[fs->nups++];
 }
 
@@ -377,18 +377,18 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   Upvaldesc *up = allocupvalue(fs);
   FuncState *prev = fs->prev;
   if (v->k == VLOCAL) {
-    up->instack = 1;
-    up->idx = v->u.var.ridx;
-    up->kind = getlocalvardesc(prev, v->u.var.vidx)->vd.kind;
+    up->setInStack(1);
+    up->setIndex(v->u.var.ridx);
+    up->setKind(getlocalvardesc(prev, v->u.var.vidx)->vd.kind);
     lua_assert(eqstr(name, getlocalvardesc(prev, v->u.var.vidx)->vd.name));
   }
   else {
-    up->instack = 0;
-    up->idx = cast_byte(v->u.info);
-    up->kind = prev->f->upvalues[v->u.info].kind;
-    lua_assert(eqstr(name, prev->f->upvalues[v->u.info].name));
+    up->setInStack(0);
+    up->setIndex(cast_byte(v->u.info));
+    up->setKind(prev->f->upvalues[v->u.info].getKind());
+    lua_assert(eqstr(name, prev->f->upvalues[v->u.info].getName()));
   }
-  up->name = name;
+  up->setName(name);
   luaC_objbarrier(fs->ls->L, fs->f, name);
   return fs->nups - 1;
 }
@@ -1764,7 +1764,7 @@ static void localfunc (LexState *ls) {
   adjustlocalvars(ls, 1);  /* enter its scope */
   body(ls, &b, 0, ls->linenumber);  /* function created in next register */
   /* debug information will only see the variable after this point! */
-  localdebuginfo(fs, fvar)->startpc = fs->pc;
+  localdebuginfo(fs, fvar)->setStartPC(fs->pc);
 }
 
 
@@ -2101,11 +2101,11 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   open_func(ls, fs, &bl);
   setvararg(fs, 0);  /* main function is always declared vararg */
   env = allocupvalue(fs);  /* ...set environment upvalue */
-  env->instack = 1;
-  env->idx = 0;
-  env->kind = VDKREG;
-  env->name = ls->envn;
-  luaC_objbarrier(ls->L, fs->f, env->name);
+  env->setInStack(1);
+  env->setIndex(0);
+  env->setKind(VDKREG);
+  env->setName(ls->envn);
+  luaC_objbarrier(ls->L, fs->f, env->getName());
   luaX_next(ls);  /* read first token */
   statlist(ls);  /* parse main body */
   check(ls, TK_EOS);

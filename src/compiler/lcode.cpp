@@ -333,8 +333,8 @@ static void savelineinfo (FuncState *fs, Proto *f, int line) {
   if (abs(linedif) >= LIMLINEDIFF || fs->iwthabs++ >= MAXIWTHABS) {
     luaM_growvector(fs->ls->L, f->abslineinfo, fs->nabslineinfo,
                     f->sizeabslineinfo, AbsLineInfo, INT_MAX, "lines");
-    f->abslineinfo[fs->nabslineinfo].pc = pc;
-    f->abslineinfo[fs->nabslineinfo++].line = line;
+    f->abslineinfo[fs->nabslineinfo].setPC(pc);
+    f->abslineinfo[fs->nabslineinfo++].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     fs->iwthabs = 1;  /* restart counter */
   }
@@ -359,7 +359,7 @@ static void removelastlineinfo (FuncState *fs) {
     fs->iwthabs--;  /* undo previous increment */
   }
   else {  /* absolute line information */
-    lua_assert(f->abslineinfo[fs->nabslineinfo - 1].pc == pc);
+    lua_assert(f->abslineinfo[fs->nabslineinfo - 1].getPC() == pc);
     fs->nabslineinfo--;  /* remove it */
     fs->iwthabs = MAXIWTHABS + 1;  /* force next line info to be absolute */
   }

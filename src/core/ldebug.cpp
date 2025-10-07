@@ -61,7 +61,7 @@ static int currentpc (CallInfo *ci) {
 ** smaller value.)
 */
 static int getbaseline (const Proto *f, int pc, int *basepc) {
-  if (f->sizeabslineinfo == 0 || pc < f->abslineinfo[0].pc) {
+  if (f->sizeabslineinfo == 0 || pc < f->abslineinfo[0].getPC()) {
     *basepc = -1;  /* start from the beginning */
     return f->linedefined;
   }
@@ -69,11 +69,11 @@ static int getbaseline (const Proto *f, int pc, int *basepc) {
     int i = pc / MAXIWTHABS - 1;  /* get an estimate */
     /* estimate must be a lower bound of the correct base */
     lua_assert(i < 0 ||
-              (i < f->sizeabslineinfo && f->abslineinfo[i].pc <= pc));
-    while (i + 1 < f->sizeabslineinfo && pc >= f->abslineinfo[i + 1].pc)
+              (i < f->sizeabslineinfo && f->abslineinfo[i].getPC() <= pc));
+    while (i + 1 < f->sizeabslineinfo && pc >= f->abslineinfo[i + 1].getPC())
       i++;  /* low estimate; adjust it */
-    *basepc = f->abslineinfo[i].pc;
-    return f->abslineinfo[i].line;
+    *basepc = f->abslineinfo[i].getPC();
+    return f->abslineinfo[i].getLine();
   }
 }
 
@@ -178,7 +178,7 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
 
 
 static const char *upvalname (const Proto *p, int uv) {
-  TString *s = check_exp(uv < p->sizeupvalues, p->upvalues[uv].name);
+  TString *s = check_exp(uv < p->sizeupvalues, p->upvalues[uv].getName());
   if (s == NULL) return "?";
   else return getstr(s);
 }

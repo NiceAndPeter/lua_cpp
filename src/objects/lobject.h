@@ -595,17 +595,26 @@ typedef l_uint32 Instruction;
 ** Description of an upvalue for function prototypes
 */
 class Upvaldesc {
-public:
+private:
   TString *name;  /* upvalue name (for debug information) */
   lu_byte instack;  /* whether it is in stack (register) */
   lu_byte idx;  /* index of upvalue (in stack or in outer function's list) */
   lu_byte kind;  /* kind of corresponding variable */
 
+public:
   // Inline accessors
   TString* getName() const noexcept { return name; }
+  TString** getNamePtr() noexcept { return &name; }  // For serialization
   bool isInStack() const noexcept { return instack != 0; }
+  lu_byte getInStackRaw() const noexcept { return instack; }
   lu_byte getIndex() const noexcept { return idx; }
   lu_byte getKind() const noexcept { return kind; }
+
+  // Inline setters
+  void setName(TString* n) noexcept { name = n; }
+  void setInStack(lu_byte val) noexcept { instack = val; }
+  void setIndex(lu_byte i) noexcept { idx = i; }
+  void setKind(lu_byte k) noexcept { kind = k; }
 };
 
 
@@ -614,16 +623,23 @@ public:
 ** (used for debug information)
 */
 class LocVar {
-public:
+private:
   TString *varname;
   int startpc;  /* first point where variable is active */
   int endpc;    /* first point where variable is dead */
 
+public:
   // Inline accessors
   TString* getVarName() const noexcept { return varname; }
+  TString** getVarNamePtr() noexcept { return &varname; }  // For serialization
   int getStartPC() const noexcept { return startpc; }
   int getEndPC() const noexcept { return endpc; }
   bool isActive(int pc) const noexcept { return startpc <= pc && pc < endpc; }
+
+  // Inline setters
+  void setVarName(TString* name) noexcept { varname = name; }
+  void setStartPC(int pc) noexcept { startpc = pc; }
+  void setEndPC(int pc) noexcept { endpc = pc; }
 };
 
 
@@ -638,13 +654,18 @@ public:
 ** linearly to compute a line.)
 */
 class AbsLineInfo {
-public:
+private:
   int pc;
   int line;
 
+public:
   // Inline accessors
   int getPC() const noexcept { return pc; }
   int getLine() const noexcept { return line; }
+
+  // Inline setters
+  void setPC(int p) noexcept { pc = p; }
+  void setLine(int l) noexcept { line = l; }
 };
 
 

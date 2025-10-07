@@ -213,9 +213,9 @@ static void dumpUpvalues (DumpState *D, const Proto *f) {
   int i, n = f->sizeupvalues;
   dumpInt(D, n);
   for (i = 0; i < n; i++) {
-    dumpByte(D, f->upvalues[i].instack);
-    dumpByte(D, f->upvalues[i].idx);
-    dumpByte(D, f->upvalues[i].kind);
+    dumpByte(D, f->upvalues[i].getInStackRaw());
+    dumpByte(D, f->upvalues[i].getIndex());
+    dumpByte(D, f->upvalues[i].getKind());
   }
 }
 
@@ -236,14 +236,14 @@ static void dumpDebug (DumpState *D, const Proto *f) {
   n = (D->strip) ? 0 : f->sizelocvars;
   dumpInt(D, n);
   for (i = 0; i < n; i++) {
-    dumpString(D, f->locvars[i].varname);
-    dumpInt(D, f->locvars[i].startpc);
-    dumpInt(D, f->locvars[i].endpc);
+    dumpString(D, f->locvars[i].getVarName());
+    dumpInt(D, f->locvars[i].getStartPC());
+    dumpInt(D, f->locvars[i].getEndPC());
   }
   n = (D->strip) ? 0 : f->sizeupvalues;
   dumpInt(D, n);
   for (i = 0; i < n; i++)
-    dumpString(D, f->upvalues[i].name);
+    dumpString(D, f->upvalues[i].getName());
 }
 
 

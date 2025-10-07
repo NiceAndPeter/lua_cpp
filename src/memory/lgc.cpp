@@ -640,11 +640,11 @@ static l_mem traverseproto (global_State *g, Proto *f) {
   for (i = 0; i < f->sizek; i++)  /* mark literals */
     markvalue(g, &f->k[i]);
   for (i = 0; i < f->sizeupvalues; i++)  /* mark upvalue names */
-    markobjectN(g, f->upvalues[i].name);
+    markobjectN(g, f->upvalues[i].getName());
   for (i = 0; i < f->sizep; i++)  /* mark nested protos */
     markobjectN(g, f->p[i]);
   for (i = 0; i < f->sizelocvars; i++)  /* mark local-variable names */
-    markobjectN(g, f->locvars[i].varname);
+    markobjectN(g, f->locvars[i].getVarName());
   return 1 + f->sizek + f->sizeupvalues + f->sizep + f->sizelocvars;
 }
 
@@ -925,8 +925,8 @@ static GCObject **sweeptolive (lua_State *L, GCObject **p) {
 */
 static void checkSizes (lua_State *L, global_State *g) {
   if (!g->gcemergency) {
-    if (g->strt.nuse < g->strt.size / 4)  /* string table too big? */
-      luaS_resize(L, g->strt.size / 2);
+    if (g->strt.getNumElements() < g->strt.getSize() / 4)  /* string table too big? */
+      luaS_resize(L, g->strt.getSize() / 2);
   }
 }
 
@@ -1504,7 +1504,7 @@ void luaC_freeallobjects (lua_State *L) {
   deletelist(L, g->allgc, obj2gco(mainthread(g)));
   lua_assert(g->finobj == NULL);  /* no new finalizers */
   deletelist(L, g->fixedgc, NULL);  /* collect fixed objects */
-  lua_assert(g->strt.nuse == 0);
+  lua_assert(g->strt.getNumElements() == 0);
 }
 
 

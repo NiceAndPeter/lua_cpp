@@ -438,11 +438,11 @@ static void checkproto (global_State *g, Proto *f) {
       checkobjref(g, fgc, gcvalue(f->k + i));
   }
   for (i=0; i<f->sizeupvalues; i++)
-    checkobjrefN(g, fgc, f->upvalues[i].name);
+    checkobjrefN(g, fgc, f->upvalues[i].getName());
   for (i=0; i<f->sizep; i++)
     checkobjrefN(g, fgc, f->p[i]);
   for (i=0; i<f->sizelocvars; i++)
-    checkobjrefN(g, fgc, f->locvars[i].varname);
+    checkobjrefN(g, fgc, f->locvars[i].getVarName());
 }
 
 
@@ -836,9 +836,9 @@ static int listabslineinfo (lua_State *L) {
   luaL_argcheck(L, p->abslineinfo != NULL, 1, "function has no debug info");
   lua_createtable(L, 2 * p->sizeabslineinfo, 0);
   for (i=0; i < p->sizeabslineinfo; i++) {
-    lua_pushinteger(L, p->abslineinfo[i].pc);
+    lua_pushinteger(L, p->abslineinfo[i].getPC());
     lua_rawseti(L, -2, 2 * i + 1);
-    lua_pushinteger(L, p->abslineinfo[i].line);
+    lua_pushinteger(L, p->abslineinfo[i].getLine());
     lua_rawseti(L, -2, 2 * i + 2);
   }
   return 1;
@@ -1181,14 +1181,14 @@ static int string_query (lua_State *L) {
   stringtable *tb = &G(L)->strt;
   int s = cast_int(luaL_optinteger(L, 1, 0)) - 1;
   if (s == -1) {
-    lua_pushinteger(L ,tb->size);
-    lua_pushinteger(L ,tb->nuse);
+    lua_pushinteger(L ,tb->getSize());
+    lua_pushinteger(L ,tb->getNumElements());
     return 2;
   }
-  else if (s < tb->size) {
+  else if (s < tb->getSize()) {
     TString *ts;
     int n = 0;
-    for (ts = tb->hash[s]; ts != NULL; ts = ts->u.hnext) {
+    for (ts = tb->getHash()[s]; ts != NULL; ts = ts->u.hnext) {
       setsvalue2s(L, L->top.p, ts);
       api_incr_top(L);
       n++;

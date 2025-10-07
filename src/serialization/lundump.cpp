@@ -271,11 +271,11 @@ static void loadUpvalues (LoadState *S, Proto *f) {
   f->upvalues = luaM_newvectorchecked(S->L, n, Upvaldesc);
   f->sizeupvalues = n;
   for (i = 0; i < n; i++)  /* make array valid for GC */
-    f->upvalues[i].name = NULL;
+    f->upvalues[i].setName(NULL);
   for (i = 0; i < n; i++) {  /* following calls can raise errors */
-    f->upvalues[i].instack = loadByte(S);
-    f->upvalues[i].idx = loadByte(S);
-    f->upvalues[i].kind = loadByte(S);
+    f->upvalues[i].setInStack(loadByte(S));
+    f->upvalues[i].setIndex(loadByte(S));
+    f->upvalues[i].setKind(loadByte(S));
   }
 }
 
@@ -309,17 +309,17 @@ static void loadDebug (LoadState *S, Proto *f) {
   f->locvars = luaM_newvectorchecked(S->L, n, LocVar);
   f->sizelocvars = n;
   for (i = 0; i < n; i++)
-    f->locvars[i].varname = NULL;
+    f->locvars[i].setVarName(NULL);
   for (i = 0; i < n; i++) {
-    loadString(S, f, &f->locvars[i].varname);
-    f->locvars[i].startpc = loadInt(S);
-    f->locvars[i].endpc = loadInt(S);
+    loadString(S, f, f->locvars[i].getVarNamePtr());
+    f->locvars[i].setStartPC(loadInt(S));
+    f->locvars[i].setEndPC(loadInt(S));
   }
   n = loadInt(S);
   if (n != 0)  /* does it have debug information? */
     n = f->sizeupvalues;  /* must be this many */
   for (i = 0; i < n; i++)
-    loadString(S, f, &f->upvalues[i].name);
+    loadString(S, f, f->upvalues[i].getNamePtr());
 }
 
 

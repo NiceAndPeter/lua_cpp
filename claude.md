@@ -163,7 +163,26 @@ Converting the Lua interpreter from C to modern C++23, focusing on:
 - **Compilation now produces zero warnings** ✓
 - Performance: **~3.2s wall time (2.1s CPU)** ✓
 
-**Total Progress**: ~200+ methods/accessors added, **19 structs → classes**, **~450 macros converted**, **STRUCT AND MACRO CONVERSION COMPLETE**
+### Phase 27: Encapsulation - POD Classes (Current commit)
+- **Phase 27a**: LocVar class - 3 fields made private
+  - Added setters: setVarName(), setStartPC(), setEndPC()
+  - Added getVarNamePtr() for serialization
+  - Files: lobject.h, lparser.cpp, lfunc.cpp, lgc.cpp, lundump.cpp, ldump.cpp, ltests.cpp
+- **Phase 27b**: AbsLineInfo class - 2 fields made private
+  - Added setters: setPC(), setLine()
+  - Files: lobject.h, ldebug.cpp, lcode.cpp, ltests.cpp
+- **Phase 27c**: Upvaldesc class - 4 fields made private
+  - Added setters: setName(), setInStack(), setIndex(), setKind()
+  - Added getNamePtr() for serialization, getInStackRaw() for byte value
+  - Files: lobject.h, lgc.cpp, ldebug.cpp, lapi.cpp, lparser.cpp, ldump.cpp, lundump.cpp, ltests.cpp, lvm.cpp
+- **Phase 27d**: stringtable class - 3 fields made private
+  - Added setters: setHash(), setSize(), setNumElements()
+  - Added helpers: incrementNumElements(), decrementNumElements(), getHashPtr()
+  - Files: lstate.h, lgc.cpp, lstate.cpp, lstring.cpp, ltests.cpp
+- **All fields now properly encapsulated with accessors**
+- Performance: **2.18s avg ✓ (matches baseline!)**
+
+**Total Progress**: ~200+ methods/accessors added, **19 structs → classes**, **~450 macros converted**, **4 classes fully encapsulated**
 
 ---
 
@@ -172,7 +191,7 @@ Converting the Lua interpreter from C to modern C++23, focusing on:
 ### Critical Constraint
 **ZERO regression tolerance** - User enforces strict performance requirements:
 - Target: ≤2.21s (≤1% from baseline 2.17s)
-- Current: 2.11s ✓ (3% faster than baseline!)
+- Current: 2.18s ✓ (matches baseline!)
 - Must benchmark after EVERY phase
 - Revert immediately if regression detected
 
@@ -205,6 +224,7 @@ for i in 1 2 3 4 5; do ../lua all.lua 2>&1 | grep "total time:"; done
 | Phase 25 | Function→method migration | 2.10s | **-3.2%** |
 | Phase 26 | Remove old C functions | 2.10s | **-3.2%** |
 | Warning fixes | Type conversion fixes | 2.1s CPU | **-3.2%** |
+| Phase 27 | Encapsulate POD classes | 2.18s | +0.5% |
 
 ---
 
@@ -878,6 +898,6 @@ git commit -m "Phase N: Description"
 
 This is a personal learning project converting Lua to modern C++23 while maintaining performance and C API compatibility. The work is incremental, tested thoroughly, and follows a proven pattern.
 
-**Last Updated**: Phase 26 complete + warning fixes (commit 4da28126)
-**Current Performance**: ~3.2s wall time (2.1s CPU)
-**Status**: ✅ All structs converted, ✅ All macros converted to methods/functions, ✅ Zero warnings
+**Last Updated**: POD class encapsulation complete (Phase 27)
+**Current Performance**: 2.18s average (matches 2.17s baseline)
+**Status**: ✅ All structs converted, ✅ All macros converted, ✅ Zero warnings, ✅ 4 POD classes encapsulated
