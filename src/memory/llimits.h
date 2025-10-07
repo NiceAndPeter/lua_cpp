@@ -228,17 +228,8 @@ typedef void (*voidf)(void);
 
 
 /*
-** Inline functions
+** Inline functions (l_inline and l_sinline removed - use 'inline' directly in C++)
 */
-#if !defined(LUA_USE_C89)
-#define l_inline	inline
-#elif defined(__GNUC__)
-#define l_inline	__inline__
-#else
-#define l_inline	/* empty */
-#endif
-
-#define l_sinline	static l_inline
 
 
 /*

@@ -461,7 +461,7 @@ LUA_API lua_CFunction lua_tocfunction (lua_State *L, int idx) {
 }
 
 
-l_sinline void *touserdata (const TValue *o) {
+static inline void *touserdata (const TValue *o) {
   switch (ttype(o)) {
     case LUA_TUSERDATA: return getudatamem(uvalue(o));
     case LUA_TLIGHTUSERDATA: return pvalue(o);
@@ -750,7 +750,7 @@ static int finishrawget (lua_State *L, lu_byte tag) {
 }
 
 
-l_sinline Table *gettable (lua_State *L, int idx) {
+static inline Table *gettable (lua_State *L, int idx) {
   TValue *t = index2value(L, idx);
   api_check(L, ttistable(t), "table expected");
   return hvalue(t);

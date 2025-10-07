@@ -223,7 +223,7 @@ static Node *mainpositionTV (const Table *t, const TValue *key) {
 }
 
 
-l_sinline Node *mainpositionfromnode (const Table *t, Node *nd) {
+static inline Node *mainpositionfromnode (const Table *t, Node *nd) {
   TValue key;
   getnodekey(cast(lua_State *, NULL), &key, nd);
   return mainpositionTV(t, &key);
@@ -476,7 +476,7 @@ static void countint (lua_Integer key, Counters *ct) {
 }
 
 
-l_sinline int arraykeyisempty (const Table *t, unsigned key) {
+static inline int arraykeyisempty (const Table *t, unsigned key) {
   int tag = *getArrTag(t, key - 1);
   return tagisempty(tag);
 }

@@ -1392,7 +1392,7 @@ static int constfolding (FuncState *fs, int op, expdesc *e1,
 /*
 ** Convert a BinOpr to an OpCode  (ORDER OPR - ORDER OP)
 */
-l_sinline OpCode binopr2op (BinOpr opr, BinOpr baser, OpCode base) {
+static inline OpCode binopr2op (BinOpr opr, BinOpr baser, OpCode base) {
   lua_assert(baser <= opr &&
             ((baser == OPR_ADD && opr <= OPR_SHR) ||
              (baser == OPR_LT && opr <= OPR_LE)));
@@ -1403,7 +1403,7 @@ l_sinline OpCode binopr2op (BinOpr opr, BinOpr baser, OpCode base) {
 /*
 ** Convert a UnOpr to an OpCode  (ORDER OPR - ORDER OP)
 */
-l_sinline OpCode unopr2op (UnOpr opr) {
+static inline OpCode unopr2op (UnOpr opr) {
   return cast(OpCode, (cast_int(opr) - cast_int(OPR_MINUS)) +
                                        cast_int(OP_UNM));
 }
@@ -1412,7 +1412,7 @@ l_sinline OpCode unopr2op (UnOpr opr) {
 /*
 ** Convert a BinOpr to a tag method  (ORDER OPR - ORDER TM)
 */
-l_sinline TMS binopr2TM (BinOpr opr) {
+static inline TMS binopr2TM (BinOpr opr) {
   lua_assert(OPR_ADD <= opr && opr <= OPR_SHR);
   return cast(TMS, (cast_int(opr) - cast_int(OPR_ADD)) + cast_int(TM_ADD));
 }

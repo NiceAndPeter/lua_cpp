@@ -415,7 +415,7 @@ static int l_strcmp (const TString *ts1, const TString *ts2) {
 ** from float to int.)
 ** When 'f' is NaN, comparisons must result in false.
 */
-l_sinline int LTintfloat (lua_Integer i, lua_Number f) {
+static inline int LTintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
     return luai_numlt(cast_num(i), f);  /* compare them as floats */
   else {  /* i < f <=> i < ceil(f) */
@@ -432,7 +432,7 @@ l_sinline int LTintfloat (lua_Integer i, lua_Number f) {
 ** Check whether integer 'i' is less than or equal to float 'f'.
 ** See comments on previous function.
 */
-l_sinline int LEintfloat (lua_Integer i, lua_Number f) {
+static inline int LEintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
     return luai_numle(cast_num(i), f);  /* compare them as floats */
   else {  /* i <= f <=> i <= floor(f) */
@@ -449,7 +449,7 @@ l_sinline int LEintfloat (lua_Integer i, lua_Number f) {
 ** Check whether float 'f' is less than integer 'i'.
 ** See comments on previous function.
 */
-l_sinline int LTfloatint (lua_Number f, lua_Integer i) {
+static inline int LTfloatint (lua_Number f, lua_Integer i) {
   if (l_intfitsf(i))
     return luai_numlt(f, cast_num(i));  /* compare them as floats */
   else {  /* f < i <=> floor(f) < i */
@@ -466,7 +466,7 @@ l_sinline int LTfloatint (lua_Number f, lua_Integer i) {
 ** Check whether float 'f' is less than or equal to integer 'i'.
 ** See comments on previous function.
 */
-l_sinline int LEfloatint (lua_Number f, lua_Integer i) {
+static inline int LEfloatint (lua_Number f, lua_Integer i) {
   if (l_intfitsf(i))
     return luai_numle(f, cast_num(i));  /* compare them as floats */
   else {  /* f <= i <=> ceil(f) <= i */
@@ -482,7 +482,7 @@ l_sinline int LEfloatint (lua_Number f, lua_Integer i) {
 /*
 ** Return 'l < r', for numbers.
 */
-l_sinline int LTnum (const TValue *l, const TValue *r) {
+static inline int LTnum (const TValue *l, const TValue *r) {
   lua_assert(ttisnumber(l) && ttisnumber(r));
   if (ttisinteger(l)) {
     lua_Integer li = ivalue(l);
@@ -504,7 +504,7 @@ l_sinline int LTnum (const TValue *l, const TValue *r) {
 /*
 ** Return 'l <= r', for numbers.
 */
-l_sinline int LEnum (const TValue *l, const TValue *r) {
+static inline int LEnum (const TValue *l, const TValue *r) {
   lua_assert(ttisnumber(l) && ttisnumber(r));
   if (ttisinteger(l)) {
     lua_Integer li = ivalue(l);
