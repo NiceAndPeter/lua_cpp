@@ -91,7 +91,7 @@ struct lua_longjmp {
 };
 
 
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 void lua_State::setErrorObj(TStatus errcode, StkId oldtop) {
   if (errcode == LUA_ERRMEM) {  /* memory error? */
     setsvalue2s(this, oldtop, G(this)->memerrmsg); /* reuse preregistered msg. */
@@ -105,7 +105,7 @@ void lua_State::setErrorObj(TStatus errcode, StkId oldtop) {
 }
 
 
-// Phase 31: Use C++ exceptions instead of longjmp
+// Use C++ exceptions instead of longjmp
 l_noret lua_State::doThrow(TStatus errcode) {
   if (errorJmp) {  /* thread has an error handler? */
     errorJmp->status = errcode;  /* set status */
@@ -131,7 +131,7 @@ l_noret lua_State::doThrow(TStatus errcode) {
 }
 
 
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 l_noret lua_State::throwBaseLevel(TStatus errcode) {
   if (errorJmp) {
     /* unroll error entries up to the first level */
@@ -142,7 +142,7 @@ l_noret lua_State::throwBaseLevel(TStatus errcode) {
 }
 
 
-// Phase 31: Use C++ try-catch instead of longjmp
+// Use C++ try-catch instead of longjmp
 TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
   l_uint32 oldnCcalls = nCcalls;
   lua_longjmp lj;
@@ -210,7 +210,7 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
 
 
 /* raise a stack error while running the message handler */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 l_noret lua_State::errorError() {
   TString *msg = luaS_newliteral(this, "error in error handling");
   setsvalue2s(this, top.p, msg);
@@ -302,17 +302,17 @@ static void correctstack (lua_State *L, StkId oldstack) {
 #endif
 
 
-// Phase 26: Removed luaD_reallocstack - now lua_State::reallocStack() method
+// Removed luaD_reallocstack - now lua_State::reallocStack() method
 
 
-// Phase 26: Removed luaD_growstack - now lua_State::growStack() method
+// Removed luaD_growstack - now lua_State::growStack() method
 
 
 /*
 ** Compute how much of the stack is being used, by computing the
 ** maximum top of all call frames in the stack and the current top.
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 int lua_State::stackInUse() {
   CallInfo *ci_iter;
   int res;
@@ -328,10 +328,10 @@ int lua_State::stackInUse() {
 }
 
 
-// Phase 26: Removed luaD_shrinkstack - now lua_State::shrinkStack() method
+// Removed luaD_shrinkstack - now lua_State::shrinkStack() method
 
 
-// Phase 26: Removed luaD_inctop - now lua_State::inctop() method
+// Removed luaD_inctop - now lua_State::inctop() method
 
 /* }================================================================== */
 
@@ -341,7 +341,7 @@ int lua_State::stackInUse() {
 ** called. (Both 'L->hook' and 'L->hookmask', which trigger this
 ** function, can be changed asynchronously by signals.)
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 void lua_State::callHook(int event, int line,
                               int ftransfer, int ntransfer) {
   lua_Hook hook_func = this->hook;
@@ -379,7 +379,7 @@ void lua_State::callHook(int event, int line,
 ** whenever 'hookmask' is not zero, so it checks whether call hooks are
 ** active.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 void lua_State::hookCall(CallInfo *ci_arg) {
   oldpc = 0;  /* set 'oldpc' for new function */
   if (hookmask & LUA_MASKCALL) {  /* is call hook on? */
@@ -398,7 +398,7 @@ void lua_State::hookCall(CallInfo *ci_arg) {
 ** 'oldpc'. (Note that this correction is needed by the line hook, so it
 ** is done even when return hooks are off.)
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 void lua_State::retHook(CallInfo *ci_arg, int nres) {
   if (hookmask & LUA_MASKRET) {  /* is return hook on? */
     StkId firstres = top.p - nres;  /* index of first result */
@@ -428,7 +428,7 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
 ** (This count will be saved in the 'callstatus' of the call).
 **  Raise an error if this counter overflows.
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
   const TValue *tm;
   StkId p;
@@ -446,7 +446,7 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
 
 
 /* Generic case for 'moveresult' */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 void lua_State::genMoveResults(StkId res, int nres,
                                              int wanted) {
   StkId firstresult = top.p - nres;  /* index of first result */
@@ -468,7 +468,7 @@ void lua_State::genMoveResults(StkId res, int nres,
 ** parameters) separated. The flag CIST_TBC in 'fwanted', if set,
 ** forces the switch to go to the default case.
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 void lua_State::moveResults(StkId res, int nres,
                                           l_uint32 fwanted) {
   switch (fwanted) {  /* handle typical cases separately */
@@ -513,7 +513,7 @@ void lua_State::moveResults(StkId res, int nres,
 ** info. If function has to close variables, hook must be called after
 ** that.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 void lua_State::postCall(CallInfo *ci_arg, int nres) {
   l_uint32 fwanted = ci_arg->callstatus & (CIST_TBC | CIST_NRESULTS);
   if (l_unlikely(hookmask) && !(fwanted & CIST_TBC))
@@ -537,7 +537,7 @@ void lua_State::postCall(CallInfo *ci_arg, int nres) {
 ** CIST_C (if it's a C function), and number of extra arguments.
 ** (All these bit-fields fit in 16-bit values.)
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 CallInfo* lua_State::prepareCallInfo(StkId func, unsigned status_val,
                                                 StkId top_arg) {
   CallInfo *ci_new = this->ci = next_ci(this);  /* new frame */
@@ -552,7 +552,7 @@ CallInfo* lua_State::prepareCallInfo(StkId func, unsigned status_val,
 /*
 ** precall for C functions
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 int lua_State::preCallC(StkId func, unsigned status_val,
                                             lua_CFunction f) {
   int n;  /* number of returns */
@@ -580,7 +580,7 @@ int lua_State::preCallC(StkId func, unsigned status_val,
 ** (so that it includes the function itself). Return the number of
 ** results, if it was a C function, or -1 for a Lua function.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
                                     int narg1, int delta) {
   unsigned status_val = LUA_MULTRET + 1;
@@ -627,7 +627,7 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
 ** returns NULL, with all the results on the stack, starting at the
 ** original function position.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 CallInfo* lua_State::preCall(StkId func, int nresults) {
   unsigned status_val = cast_uint(nresults + 1);
   lua_assert(status_val <= MAXRESULTS + 1);
@@ -670,7 +670,7 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
 ** check the stack before doing anything else. 'luaD_precall' already
 ** does that.
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 void lua_State::cCall(StkId func, int nResults, l_uint32 inc) {
   CallInfo *ci_result;
   nCcalls += inc;
@@ -689,7 +689,7 @@ void lua_State::cCall(StkId func, int nResults, l_uint32 inc) {
 /*
 ** External interface for 'ccall'
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 void lua_State::call(StkId func, int nResults) {
   this->cCall( func, nResults, 1);
 }
@@ -698,7 +698,7 @@ void lua_State::call(StkId func, int nResults) {
 /*
 ** Similar to 'call', but does not allow yields during the call.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 void lua_State::callNoYield(StkId func, int nResults) {
   this->cCall( func, nResults, nyci);
 }
@@ -720,7 +720,7 @@ void lua_State::callNoYield(StkId func, int nResults) {
 ** particular, field CIST_RECST preserves the error status across these
 ** multiple runs, changing only if there is a new error.
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 TStatus lua_State::finishPCallK(CallInfo *ci_arg) {
   TStatus status_val = getcistrecst(ci_arg);  /* get original status */
   if (l_likely(status_val == LUA_OK))  /* no error? */
@@ -730,7 +730,7 @@ TStatus lua_State::finishPCallK(CallInfo *ci_arg) {
     allowhook = getoah(ci_arg);  /* restore 'allowhook' */
     func = luaF_close(this, func, status_val, 1);  /* can yield or raise an error */
     this->setErrorObj(status_val, func);
-    this->shrinkStack();  /* Phase 25e: restore stack size in case of overflow */
+    this->shrinkStack();  /* restore stack size in case of overflow */
     setcistrecst(ci_arg, LUA_OK);  /* clear original status */
   }
   ci_arg->callstatus &= ~CIST_YPCALL;
@@ -754,7 +754,7 @@ TStatus lua_State::finishPCallK(CallInfo *ci_arg) {
 ** of the function called by 'lua_callk'/'lua_pcallk', so we are
 ** conservative and use LUA_MULTRET (always adjust).
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 void lua_State::finishCCall(CallInfo *ci_arg) {
   int n;  /* actual number of results from C function */
   if (ci_arg->callstatus & CIST_CLSRET) {  /* was closing TBC variable? */
@@ -784,7 +784,7 @@ void lua_State::finishCCall(CallInfo *ci_arg) {
 ** previously interrupted coroutine until the stack is empty (or another
 ** interruption long-jumps out of the loop).
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 void lua_State::unrollContinuation(void *ud) {
   CallInfo *ci_current;
   UNUSED(ud);
@@ -811,7 +811,7 @@ static void unroll (lua_State *L, void *ud) {
 ** Try to find a suspended protected call (a "recover point") for the
 ** given thread.
 */
-// Phase 30: Convert to private lua_State method
+// Convert to private lua_State method
 CallInfo* lua_State::findPCall() {
   CallInfo *ci_iter;
   for (ci_iter = this->ci; ci_iter != NULL; ci_iter = ci_iter->previous) {  /* search for a pcall */
@@ -987,7 +987,7 @@ static void closepaux (lua_State *L, void *ud) {
 ** Calls 'luaF_close' in protected mode. Return the original status
 ** or, in case of errors, the new status.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 TStatus lua_State::closeProtected(ptrdiff_t level, TStatus status_arg) {
   CallInfo *old_ci = ci;
   lu_byte old_allowhooks = allowhook;
@@ -1010,7 +1010,7 @@ TStatus lua_State::closeProtected(ptrdiff_t level, TStatus status_arg) {
 ** thread information ('allowhook', etc.) and in particular
 ** its stack level in case of errors.
 */
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 TStatus lua_State::pCall(Pfunc func, void *u, ptrdiff_t old_top,
                                   ptrdiff_t ef) {
   TStatus status_result;
@@ -1024,7 +1024,7 @@ TStatus lua_State::pCall(Pfunc func, void *u, ptrdiff_t old_top,
     allowhook = old_allowhooks;
     status_result = this->closeProtected(old_top, status_result);
     this->setErrorObj(status_result, restorestack(this, old_top));
-    this->shrinkStack();  /* Phase 25e: restore stack size in case of overflow */
+    this->shrinkStack();  /* restore stack size in case of overflow */
   }
   errfunc = old_errfunc;
   return status_result;
@@ -1075,7 +1075,7 @@ static void f_parser (lua_State *L, void *ud) {
 }
 
 
-// Phase 30: Convert to lua_State method
+// Convert to lua_State method
 TStatus lua_State::protectedParser(ZIO *z, const char *name,
                                             const char *mode) {
   struct SParser p;
@@ -1096,12 +1096,9 @@ TStatus lua_State::protectedParser(ZIO *z, const char *name,
 }
 
 
-#ifdef __cplusplus
 /*
-** Phase 25e: lua_State method implementations
+** lua_State method implementations
 */
-
-// Phase 26: Full implementations (moved from luaD_* functions)
 void lua_State::inctop() {
   top.p++;
   luaD_checkstack(this, 1);
@@ -1175,7 +1172,5 @@ int lua_State::reallocStack(int newsize, int raiseerror) {
     setnilvalue(s2v(newstack + i)); /* erase new segment */
   return 1;
 }
-
-#endif
 
 

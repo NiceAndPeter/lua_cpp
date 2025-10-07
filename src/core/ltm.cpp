@@ -48,7 +48,7 @@ void luaT_init (lua_State *L) {
   int i;
   for (i=0; i<TM_N; i++) {
     G(L)->tmname[i] = luaS_new(L, luaT_eventname[i]);
-    obj2gco(G(L)->tmname[i])->fix(L);  /* Phase 25c: never collect these names */
+    obj2gco(G(L)->tmname[i])->fix(L);  /* never collect these names */
   }
 }
 

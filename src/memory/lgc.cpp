@@ -279,7 +279,6 @@ void luaC_barrierback_ (lua_State *L, GCObject *o) {
 }
 
 
-// Phase 26: Removed luaC_fix - now GCObject::fix() method
 
 
 /*
@@ -699,7 +698,7 @@ static l_mem traversethread (global_State *g, lua_State *th) {
     markobject(g, uv);  /* open upvalues cannot be collected */
   if (g->gcstate == GCSatomic) {  /* final traversal? */
     if (!g->gcemergency)
-      th->shrinkStack();  /* Phase 25e: do not change stack in emergency cycle */
+      th->shrinkStack();  /* do not change stack in emergency cycle */
     for (o = th->top.p; o < th->stack_last.p + EXTRA_STACK; o++)
       setnilvalue(s2v(o));  /* clear dead stack slice */
     /* 'remarkupvals' may have removed thread from 'twups' list */
@@ -857,7 +856,7 @@ static void freeobj (lua_State *L, GCObject *o) {
     }
     case LUA_VSHRSTR: {
       TString *ts = gco2ts(o);
-      ts->remove(L);  /* Phase 25a: use method instead of free function */
+      ts->remove(L);  /* use method instead of free function */
       luaM_freemem(L, ts, sizestrshr(cast_uint(ts->shrlen)));
       break;
     }
@@ -1057,7 +1056,6 @@ static void correctpointers (global_State *g, GCObject *o) {
 ** if object 'o' has a finalizer, remove it from 'allgc' list (must
 ** search the list to find it) and link it in 'finobj' list.
 */
-// Phase 26: Removed luaC_checkfinalizer - now GCObject::checkFinalizer() method
 
 /* }====================================================== */
 
@@ -1771,12 +1769,9 @@ void luaC_fullgc (lua_State *L, int isemergency) {
 /* }====================================================== */
 
 
-#ifdef __cplusplus
 /*
-** Phase 25c: GCObject method implementations
+** GCObject method implementations
 */
-
-// Phase 26: Full implementations (moved from luaC_* functions)
 void GCObject::fix(lua_State* L) {
   global_State *g = G(L);
   lua_assert(g->allgc == this);  /* object must be 1st in 'allgc' list! */
@@ -1810,7 +1805,5 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     l_setbit(this->marked, FINALIZEDBIT);  /* mark it as such */
   }
 }
-
-#endif
 
 

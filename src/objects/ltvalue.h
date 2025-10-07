@@ -59,7 +59,7 @@ private:
   lu_byte tt_;
 
 public:
-  // Phase 27: Constexpr constructor for static initialization
+  // Constexpr constructor for static initialization
   constexpr TValue(Value v, lu_byte t) noexcept : value_(v), tt_(t) {}
 
   // Default constructor
@@ -70,7 +70,7 @@ public:
   const Value& getValue() const noexcept { return value_; }
   Value& getValue() noexcept { return value_; }
 
-  // Value accessors (Phase 15-16: Macro reduction)
+  // Value accessors
   // Integer value (for VKINT/VNUMINT types)
   lua_Integer intValue() const noexcept { return value_.i; }
 
@@ -86,9 +86,7 @@ public:
   // C function value (for light C functions)
   lua_CFunction functionValue() const noexcept { return value_.f; }
 
-  // Phase 16: Type-specific value accessors
-  // Note: These return pointers to specific types from GC union
-  // The gco2* conversion happens in the inline wrapper functions below
+  // Type-specific value accessors (return pointers from GC union)
   TString* stringValue() const noexcept { return reinterpret_cast<TString*>(value_.gc); }
   Udata* userdataValue() const noexcept { return reinterpret_cast<Udata*>(value_.gc); }
   Table* tableValue() const noexcept { return reinterpret_cast<Table*>(value_.gc); }
@@ -101,7 +99,7 @@ public:
   // Note: Actual conversion logic is in nvalue() wrapper below (needs type constants)
   lua_Number numberValue() const noexcept;
 
-  // Phase 17: Setter methods (HOT PATH - performance critical!)
+  // Setter methods (HOT PATH - performance critical!)
   // Note: These need type constants, so implementations are below
   void setNil() noexcept;
   void setFalse() noexcept;
@@ -133,7 +131,7 @@ public:
   const Value& valueField() const noexcept { return value_; }
   void setType(lu_byte t) noexcept { tt_ = t; }
 
-  // Phase 27: Type checking methods (implementations below after constants are defined)
+  // Type checking methods (implementations below after constants are defined)
   // Nil checks
   constexpr bool isNil() const noexcept;
   constexpr bool isStrictNil() const noexcept;
@@ -208,7 +206,7 @@ constexpr lu_byte ttypetag(const TValue* o) noexcept { return cast_byte(withvari
 /* type of a TValue */
 constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
 
-// Phase 27: TValue low-level type accessor implementations
+// TValue low-level type accessor implementations
 constexpr int TValue::baseType() const noexcept { return novariant(tt_); }
 constexpr lu_byte TValue::typeTag() const noexcept { return cast_byte(withvariant(tt_)); }
 

@@ -1188,11 +1188,8 @@ Node *luaH_mainposition (const Table *t, const TValue *key) {
 #endif
 
 
-#ifdef __cplusplus
 /*
-** C++ Table method implementations
-** These forward to the existing C-style functions for now
-** Gradual migration: later we'll move logic into methods
+** Table method implementations
 */
 
 lu_byte Table::get(const TValue* key, TValue* res) {
@@ -1419,5 +1416,3 @@ void Table::destroy(lua_State* L) {
 Node* Table::mainPosition(const TValue* key) const {
   return mainpositionTV(this, key);
 }
-
-#endif

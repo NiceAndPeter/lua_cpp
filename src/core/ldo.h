@@ -64,8 +64,8 @@
 #endif
 
 
-/* Phase 26: Removed luaD_reallocstack, luaD_growstack, luaD_shrinkstack, luaD_inctop - now lua_State methods */
-/* Phase 30: Removed all luaD_* functions - now lua_State methods (Pfunc typedef moved to lstate.h) */
+/* Removed luaD_reallocstack, luaD_growstack, luaD_shrinkstack, luaD_inctop - now lua_State methods */
+/* Removed all luaD_* functions - now lua_State methods (Pfunc typedef moved to lstate.h) */
 
 #endif
 

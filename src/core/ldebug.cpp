@@ -31,7 +31,7 @@
 
 
 
-/* Phase 28b: Both CClosure and LClosure have tt at same offset (from GCBase) */
+/* Both CClosure and LClosure have tt at same offset (from GCBase) */
 #define LuaClosure(f)		((f) != NULL && (f)->c.tt == LUA_VLCL)
 
 static const char strlocal[] = "local";
@@ -196,7 +196,7 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
   StkId base = ci_arg->func.p + 1;
   const char *name = NULL;
@@ -761,7 +761,7 @@ static l_noret typeerror (lua_State *L, const TValue *o, const char *op,
 ** Raise a type error with "standard" information about the faulty
 ** object 'o' (using 'varinfo').
 */
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::typeError(const TValue *o, const char *op) {
   typeerror(this, o, op, varinfo(this, o));
 }
@@ -776,7 +776,7 @@ l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
 ** for the object based on how it was called ('funcnamefromcall'); if it
 ** cannot get a name there, try 'varinfo'.
 */
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::callError(const TValue *o) {
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = funcnamefromcall(this, ci, &name);
@@ -789,7 +789,7 @@ l_noret luaG_callerror (lua_State *L, const TValue *o) {
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::forError(const TValue *o, const char *what) {
   this->runError("bad 'for' %s (number expected, got %s)",
                  what, luaT_objtypename(this, o));
@@ -800,7 +800,7 @@ l_noret luaG_forerror (lua_State *L, const TValue *o, const char *what) {
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::concatError(const TValue *p1, const TValue *p2) {
   if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
   this->typeError(p1, "concatenate");
@@ -811,7 +811,7 @@ l_noret luaG_concaterror (lua_State *L, const TValue *p1, const TValue *p2) {
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::opinterError(const TValue *p1, const TValue *p2, const char *msg) {
   if (!ttisnumber(p1))  /* first operand is wrong? */
     p2 = p1;  /* now second is wrong */
@@ -827,7 +827,7 @@ l_noret luaG_opinterror (lua_State *L, const TValue *p1,
 /*
 ** Error when both values are convertible to numbers, but not to integers
 */
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::toIntError(const TValue *p1, const TValue *p2) {
   lua_Integer temp;
   if (!luaV_tointegerns(p1, &temp, LUA_FLOORN2I))
@@ -840,7 +840,7 @@ l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::orderError(const TValue *p1, const TValue *p2) {
   const char *t1 = luaT_objtypename(this, p1);
   const char *t2 = luaT_objtypename(this, p2);
@@ -856,7 +856,7 @@ l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
 
 
 /* add src:line information to 'msg' */
-// Phase 32: Convert to lua_State method
+// lua_State method
 const char *lua_State::addInfo(const char *msg, TString *src, int line) {
   if (src == NULL)  /* no debug information? */
     return luaO_pushfstring(this, "?:?: %s", msg);
@@ -875,7 +875,7 @@ const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::errorMsg() {
   if (errfunc != 0) {  /* is there an error handling function? */
     StkId errfunc_ptr = restorestack(this, errfunc);
@@ -897,7 +897,7 @@ l_noret luaG_errormsg (lua_State *L) {
 }
 
 
-// Phase 32: Convert to lua_State method
+// lua_State method
 l_noret lua_State::runError(const char *fmt, ...) {
   const char *msg;
   va_list argp;
@@ -964,7 +964,7 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
 ** a line/count hook before the call hook. Functions coming from
 ** an yield already called 'luaD_hookcall' before yielding.)
 */
-// Phase 32: Convert to lua_State method
+// lua_State method
 int lua_State::traceCall() {
   CallInfo *ci_local = ci;
   Proto *p = ci_func(ci_local)->p;
@@ -995,7 +995,7 @@ int luaG_tracecall (lua_State *L) {
 ** This function is not "Protected" when called, so it should correct
 ** 'L->top.p' before calling anything that can run the GC.
 */
-// Phase 32: Convert to lua_State method
+// lua_State method
 int lua_State::traceExec(const Instruction *pc) {
   CallInfo *ci_local = ci;
   lu_byte mask = cast_byte(hookmask);

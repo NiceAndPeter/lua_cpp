@@ -13,7 +13,7 @@
 /* Some header files included here need this definition */
 typedef struct CallInfo CallInfo;
 
-/* Phase 30: type of protected functions, to be ran by 'runprotected' */
+/* Type of protected functions, to be run by 'runprotected' */
 typedef void (*Pfunc) (lua_State *L, void *ud);
 
 
@@ -121,7 +121,7 @@ typedef void (*Pfunc) (lua_State *L, void *ud);
 
 
 /*
-** Phase 31: lua_longjmp now defined in ldo.cpp (no longer uses jmp_buf)
+** lua_longjmp now defined in ldo.cpp (no longer uses jmp_buf)
 ** Forward declaration for error handler chain
 */
 struct lua_longjmp;
@@ -335,43 +335,43 @@ public:
   CallInfo* getCallInfo() const noexcept { return ci; }
   TStatus getStatus() const noexcept { return status; }
 
-  // Phase 25e: Stack operation methods (implemented in ldo.cpp)
+  // Stack operation methods (implemented in ldo.cpp)
   void inctop();
   void shrinkStack();
   int growStack(int n, int raiseerror);
   int reallocStack(int newsize, int raiseerror);
 
-  // Phase 30: Error handling methods (implemented in ldo.cpp)
+  // Error handling methods (implemented in ldo.cpp)
   l_noret doThrow(TStatus errcode);
   l_noret throwBaseLevel(TStatus errcode);
   l_noret errorError();
   void setErrorObj(TStatus errcode, StkId oldtop);
 
-  // Phase 30: Hook/debugging methods (implemented in ldo.cpp)
+  // Hook/debugging methods (implemented in ldo.cpp)
   void callHook(int event, int line, int fTransfer, int nTransfer);
   void hookCall(CallInfo *ci);
 
-  // Phase 30: Call operation methods (implemented in ldo.cpp)
+  // Call operation methods (implemented in ldo.cpp)
   CallInfo* preCall(StkId func, int nResults);
   void postCall(CallInfo *ci, int nres);
   int preTailCall(CallInfo *ci, StkId func, int narg1, int delta);
   void call(StkId func, int nResults);
   void callNoYield(StkId func, int nResults);
 
-  // Phase 30: Protected operation methods (implemented in ldo.cpp)
+  // Protected operation methods (implemented in ldo.cpp)
   TStatus rawRunProtected(Pfunc f, void *ud);
   TStatus pCall(Pfunc func, void *u, ptrdiff_t oldtop, ptrdiff_t ef);
   TStatus closeProtected(ptrdiff_t level, TStatus status);
   TStatus protectedParser(ZIO *z, const char *name, const char *mode);
 
-  // Phase 30: Internal helper methods (used by Pfunc callbacks in ldo.cpp)
+  // Internal helper methods (used by Pfunc callbacks in ldo.cpp)
   void cCall(StkId func, int nResults, l_uint32 inc);
   void unrollContinuation(void *ud);
   TStatus finishPCallK(CallInfo *ci);
   void finishCCall(CallInfo *ci);
   CallInfo* findPCall();
 
-  // Phase 32: Error and debug methods (implemented in ldebug.cpp)
+  // Error and debug methods (implemented in ldebug.cpp)
   const char* findLocal(CallInfo *ci, int n, StkId *pos);
   l_noret typeError(const TValue *o, const char *opname);
   l_noret callError(const TValue *o);
@@ -387,7 +387,7 @@ public:
   int traceCall();
 
 private:
-  // Phase 30: Private helper methods (implementation details in ldo.cpp)
+  // Private helper methods (implementation details in ldo.cpp)
 
   // Stack manipulation helpers
   void relStack();
@@ -487,13 +487,13 @@ constexpr const lua_State* mainthread(const global_State* g) noexcept { return &
 
 
 /*
-** Phase 28b: GCUnion and cast_u REMOVED
+** GCUnion and cast_u removed (no longer needed)
 ** All GC object conversions now use type-safe reinterpret_cast via gco2* functions.
 ** The old GCUnion was only used for pointer casting, not actual memory allocation.
 ** Each GC type inherits from GCBase<T> and has proper memory layout.
 */
 
-/* Phase 28: Convert GCObject to specific types - now using reinterpret_cast */
+/* Convert GCObject to specific types using reinterpret_cast */
 inline TString* gco2ts(GCObject* o) noexcept {
 	lua_assert(novariant(o->tt) == LUA_TSTRING);
 	return reinterpret_cast<TString*>(o);
@@ -541,7 +541,7 @@ inline UpVal* gco2upv(GCObject* o) noexcept {
 
 
 /*
-** Phase 28: Convert a Lua object to GCObject - using reinterpret_cast
+** Convert a Lua object to GCObject using reinterpret_cast
 ** Note: Returns non-const even for const input (for GC marking compatibility)
 */
 inline GCObject* obj2gco(void* v) noexcept {

@@ -29,7 +29,7 @@
 
 
 
-// Phase 29: Replace offsetof with constexpr calculation for non-standard-layout type
+// Replace offsetof with constexpr calculation for non-standard-layout type
 inline constexpr size_t lxOffset() noexcept {
   // LX has: extra_[LUA_EXTRASPACE] + lua_State l
   // lua_State inherits from GCBase, so offset is just the extra_ array size

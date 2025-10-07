@@ -114,9 +114,8 @@ constexpr bool testbit(lu_byte x, int b) noexcept {
 
 #define AGEBITS		7  /* all age bits (111) */
 
-// Phase 20: GC color macros converted to inline functions and GCObject methods
+// GCObject color and age inline method implementations
 
-// GCObject method implementations (declared in lobject.h)
 inline bool GCObject::isWhite() const noexcept {
   return testbits(marked, WHITEBITS);
 }
@@ -126,7 +125,7 @@ inline bool GCObject::isBlack() const noexcept {
 }
 
 inline bool GCObject::isGray() const noexcept {
-  return !testbits(marked, WHITEBITS | bitmask(BLACKBIT));
+  return !testbits(marked, bitmask(BLACKBIT) | WHITEBITS);
 }
 
 inline lu_byte GCObject::getAge() const noexcept {
@@ -139,27 +138,6 @@ inline void GCObject::setAge(lu_byte age) noexcept {
 
 inline bool GCObject::isOld() const noexcept {
   return getAge() > G_SURVIVAL;
-}
-
-// Phase 28: GCBase<Derived> method implementations
-template<typename Derived>
-inline bool GCBase<Derived>::isWhite() const noexcept {
-  return testbits(marked, WHITEBITS);
-}
-
-template<typename Derived>
-inline bool GCBase<Derived>::isBlack() const noexcept {
-  return testbit(marked, BLACKBIT);
-}
-
-template<typename Derived>
-inline bool GCBase<Derived>::isGray() const noexcept {
-  return !testbits(marked, WHITEBITS | bitmask(BLACKBIT));
-}
-
-template<typename Derived>
-inline lu_byte GCBase<Derived>::getAge() const noexcept {
-  return marked & AGEBITS;
 }
 
 template<typename Derived>
@@ -366,7 +344,7 @@ constexpr bool isdead(const global_State* g, const T* v) noexcept {
 #define luaC_barrierback(L,p,v) (  \
 	iscollectable(v) ? luaC_objbarrierback(L, p, gcvalue(v)) : cast_void(0))
 
-/* Phase 26: luaC_fix removed - now GCObject::fix() method */
+/* Use GCObject::fix() method instead of luaC_fix */
 LUAI_FUNC void luaC_freeallobjects (lua_State *L);
 LUAI_FUNC void luaC_step (lua_State *L);
 LUAI_FUNC void luaC_runtilstate (lua_State *L, int state, int fast);
@@ -376,7 +354,7 @@ LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz,
                                                  size_t offset);
 LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
 LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
-/* Phase 26: luaC_checkfinalizer removed - now GCObject::checkFinalizer() method */
+/* Use GCObject::checkFinalizer() method instead of luaC_checkfinalizer */
 LUAI_FUNC void luaC_changemode (lua_State *L, int newmode);
 
 

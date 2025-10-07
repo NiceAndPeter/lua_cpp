@@ -327,13 +327,8 @@ TString *luaS_newextlstr (lua_State *L,
 }
 
 
-// Phase 26: Removed luaS_normstr - now TString::normalize() method
-
-
-#ifdef __cplusplus
 /*
-** C++ TString method implementations
-** Forward to existing C-style functions for now
+** TString method implementations
 */
 
 unsigned TString::hashLongStr() {
@@ -374,6 +369,4 @@ TString* TString::normalize(lua_State* L) {
     return internshrstr(L, str, len);
   }
 }
-
-#endif
 

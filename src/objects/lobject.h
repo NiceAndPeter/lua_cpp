@@ -98,7 +98,6 @@ constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 /* macro to test for (any kind of) nil */
 constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
 
-// Phase 27: TValue::isNil() implementation
 constexpr bool TValue::isNil() const noexcept { return checktype(this, LUA_TNIL); }
 
 /*
@@ -203,7 +202,6 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
 /* setthvalue now defined as inline function below */
 
-// Phase 24: setthvalue defined at line 1056, wrapper at end of file
 
 /* }================================================================== */
 
@@ -215,11 +213,8 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 */
 
 /*
-** Phase 28: CommonHeader macro DEPRECATED - all GC objects now inherit from GCBase
-** Old definition (kept for reference):
-** #define CommonHeader	struct GCObject *next; lu_byte tt; lu_byte marked
+** CommonHeader macro deprecated - GC objects now inherit from GCBase
 */
-/* #define CommonHeader	struct GCObject *next; lu_byte tt; lu_byte marked */
 
 
 /* Common type for all collectable objects */
@@ -237,8 +232,7 @@ public:
   void setMarked(lu_byte m) noexcept { marked = m; }
   bool isMarked() const noexcept { return marked != 0; }
 
-  // Phase 20: GC color and age methods (requires lgc.h constants)
-  // These will be defined after lgc.h is included
+  // GC color and age methods (defined in lgc.h after constants are available)
   inline bool isWhite() const noexcept;
   inline bool isBlack() const noexcept;
   inline bool isGray() const noexcept;
@@ -246,7 +240,7 @@ public:
   inline void setAge(lu_byte age) noexcept;
   inline bool isOld() const noexcept;
 
-  // Phase 25c: GC operations (implemented in lgc.cpp)
+  // GC operations (implemented in lgc.cpp)
   void fix(lua_State* L);
   void checkFinalizer(lua_State* L, Table* mt);
 };
@@ -254,20 +248,13 @@ public:
 /*
 ** CRTP Base class for all GC-managed objects
 ** Provides common GC fields and operations without vtable overhead
-** Phase 28: Activated - replaces CommonHeader macro
 **
-** Memory layout MUST match CommonHeader exactly:
-**   struct GCObject *next; lu_byte tt; lu_byte marked
+** Memory layout MUST match GCObject exactly:
+**   GCObject *next; lu_byte tt; lu_byte marked
 */
 template<typename Derived>
-class GCBase {
+class GCBase: public GCObject {
 public:
-    // Phase 28: Public fields for compatibility with union GCUnion layout
-    // These MUST be first and in this exact order
-    GCObject* next;
-    lu_byte tt;
-    lu_byte marked;
-
     // Accessor methods (preferred over direct field access)
     constexpr GCObject* getNext() const noexcept { return next; }
     constexpr void setNext(GCObject* n) noexcept { next = n; }
@@ -280,11 +267,7 @@ public:
 
     constexpr bool isMarked() const noexcept { return marked != 0; }
 
-    // Phase 20: GC color and age methods (defined in lgc.h after constants)
-    inline bool isWhite() const noexcept;
-    inline bool isBlack() const noexcept;
-    inline bool isGray() const noexcept;
-    inline lu_byte getAge() const noexcept;
+    // GC color and age methods (defined in lgc.h after constants)
     inline void setAge(lu_byte age) noexcept;
     inline bool isOld() const noexcept;
 
@@ -397,7 +380,6 @@ constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb
 
 inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 
-// Phase 24: setsvalue defined at line 1053, wrappers at end of file
 
 
 /* Kinds of long strings (stored in 'shrlen') */
@@ -409,7 +391,7 @@ inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 /*
 ** Header for a string value.
 */
-// Phase 28: TString now inherits from GCBase (CRTP)
+// TString inherits from GCBase (CRTP)
 class TString : public GCBase<TString> {
 public:
   lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
@@ -533,7 +515,7 @@ typedef union UValue {
 ** Header for userdata with user values;
 ** memory area follows the end of this structure.
 */
-// Phase 28: Udata now inherits from GCBase (CRTP)
+// Udata inherits from GCBase (CRTP)
 class Udata : public GCBase<Udata> {
 public:
   unsigned short nuvalue;  /* number of user values */
@@ -564,7 +546,7 @@ public:
 ** this representation. (The 'bindata' field in its end ensures correct
 ** alignment for binary data following this header.)
 */
-// Phase 28: Udata0 now inherits from GCBase (CRTP)
+// Udata0 inherits from GCBase (CRTP)
 typedef struct Udata0 : public GCBase<Udata0> {
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
@@ -574,7 +556,7 @@ typedef struct Udata0 : public GCBase<Udata0> {
 
 
 /* compute the offset of the memory area of a userdata */
-// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
+// offsetof for non-standard-layout types (classes with GCBase inheritance)
 // This triggers -Winvalid-offsetof but is safe because we control the memory layout
 #define udatamemoffset(nuv) \
        ((nuv) == 0 ? offsetof(Udata0, bindata)  \
@@ -676,7 +658,7 @@ public:
 /*
 ** Function Prototypes
 */
-// Phase 28: Proto now inherits from GCBase (CRTP)
+// Proto inherits from GCBase (CRTP)
 class Proto : public GCBase<Proto> {
 public:
   lu_byte numparams;  /* number of fixed (named) parameters */
@@ -760,7 +742,6 @@ inline lua_CFunction fvalue(const TValue* o) noexcept { return o->functionValue(
 
 constexpr lua_CFunction fvalueraw(const Value& v) noexcept { return v.f; }
 
-// Phase 24: setclLvalue defined at line 1057, wrapper at end of file
 
 /* setfvalue now defined as inline function below */
 
@@ -770,7 +751,7 @@ constexpr lua_CFunction fvalueraw(const Value& v) noexcept { return v.f; }
 /*
 ** Upvalues for Lua closures
 */
-// Phase 28: UpVal now inherits from GCBase (CRTP)
+// UpVal inherits from GCBase (CRTP)
 class UpVal : public GCBase<UpVal> {
 public:
   union {
@@ -796,7 +777,7 @@ public:
 
 
 
-// Phase 28: Closures now inherit from GCBase (CRTP)
+// Closures inherit from GCBase (CRTP)
 // ClosureHeader fields: nupvalues, gclist (GC fields inherited from GCBase)
 
 class CClosure : public GCBase<CClosure> {
@@ -943,7 +924,7 @@ inline void sethvalue2s(lua_State* L, StackValue* o, Table* h) noexcept {
 	sethvalue(L, s2v(o), h);
 }
 
-// Phase 24: Setter wrapper functions (converted from macros)
+// Setter wrapper functions
 inline void setthvalue2s(lua_State* L, StackValue* o, lua_State* t) noexcept {
 	setthvalue(L, s2v(o), t);
 }
@@ -994,7 +975,7 @@ typedef union Node {
 
 
 
-// Phase 28: Table now inherits from GCBase (CRTP) - macro compatibility achieved!
+// Table inherits from GCBase (CRTP)
 class Table : public GCBase<Table> {
 public:
   lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
