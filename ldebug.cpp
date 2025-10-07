@@ -197,20 +197,20 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
 
 
 // Phase 32: Convert to lua_State method
-const char *lua_State::findLocal(CallInfo *ci, int n, StkId *pos) {
-  StkId base = ci->func.p + 1;
+const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
+  StkId base = ci_arg->func.p + 1;
   const char *name = NULL;
-  if (isLua(ci)) {
+  if (isLua(ci_arg)) {
     if (n < 0)  /* access to vararg values? */
-      return findvararg(ci, n, pos);
+      return findvararg(ci_arg, n, pos);
     else
-      name = ci_func(ci)->p->getLocalName(n, currentpc(ci));  /* Phase 25b */
+      name = ci_func(ci_arg)->p->getLocalName(n, currentpc(ci_arg));  /* Phase 25b */
   }
   if (name == NULL) {  /* no 'standard' name? */
-    StkId limit = (ci == this->ci) ? top.p : ci->next->func.p;
+    StkId limit = (ci_arg == this->ci) ? top.p : ci_arg->next->func.p;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
-      name = isLua(ci) ? "(temporary)" : "(C temporary)";
+      name = isLua(ci_arg) ? "(temporary)" : "(C temporary)";
     }
     else
       return NULL;  /* no name */

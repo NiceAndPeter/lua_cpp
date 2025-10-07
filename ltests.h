@@ -20,7 +20,9 @@
 
 
 /* turn on assertions */
+#ifndef LUAI_ASSERT
 #define LUAI_ASSERT
+#endif
 
 
 /* to avoid warnings, and to make sure value is really unused */

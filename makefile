@@ -5,6 +5,7 @@
 
 # Warnings valid for both C and C++
 CWARNSCPP= \
+	-Werror \
 	-Wfatal-errors \
 	-Wextra \
 	-Wshadow \
@@ -18,7 +19,6 @@ CWARNSCPP= \
 	-Wstrict-overflow=2 \
         # the next warnings might be useful sometimes,
 	# but usually they generate too much noise
-	# -Werror \
 	# -pedantic   # warns if we use jump tables \
 	# -Wformat=2 \
 	# -Wcast-qual \
