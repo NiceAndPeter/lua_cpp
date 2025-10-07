@@ -1043,6 +1043,12 @@ public:
   lu_mem size() const;
   int tableNext(lua_State* L, StkId key);  // renamed from next() to avoid conflict with GC field
   lua_Unsigned getn(lua_State* L);
+
+  // Phase 33: Constructor/destructor/factory pattern
+  Table();  // Constructor for initialization
+  static Table* create(lua_State* L);  // Factory method (replaces luaH_new)
+  void destroy(lua_State* L);  // Explicit destructor (replaces luaH_free)
+  Node* mainPosition(const TValue* key) const;  // replaces luaH_mainposition
 };
 
 

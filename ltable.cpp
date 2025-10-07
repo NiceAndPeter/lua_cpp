@@ -796,15 +796,9 @@ static void rehash (lua_State *L, Table *t, const TValue *ek) {
 */
 
 
+// Phase 33: Wrapper for Table::create
 Table *luaH_new (lua_State *L) {
-  GCObject *o = luaC_newobj(L, LUA_VTABLE, sizeof(Table));
-  Table *t = gco2t(o);
-  t->metatable = NULL;
-  t->flags = maskflags;  /* table has no metamethod fields */
-  t->array = NULL;
-  t->asize = 0;
-  setnodevector(L, t, 0);
-  return t;
+  return Table::create(L);
 }
 
 
@@ -818,11 +812,10 @@ lu_mem luaH_size (Table *t) {
 
 /*
 ** Frees a table.
+** Phase 33: Wrapper for Table::destroy
 */
 void luaH_free (lua_State *L, Table *t) {
-  freehash(L, t);
-  resizearray(L, t, t->asize, 0);
-  luaM_free(L, t);
+  t->destroy(L);
 }
 
 
@@ -1187,8 +1180,9 @@ lua_Unsigned luaH_getn (lua_State *L, Table *t) {
 
 /* export this function for the test library */
 
+// Phase 33: Wrapper for Table::mainPosition
 Node *luaH_mainposition (const Table *t, const TValue *key) {
-  return mainpositionTV(t, key);
+  return t->mainPosition(key);
 }
 
 #endif
@@ -1393,6 +1387,37 @@ int Table::tableNext(lua_State* L, StkId key) {
 
 lua_Unsigned Table::getn(lua_State* L) {
   return luaH_getn(L, this);
+}
+
+// Phase 33: Constructor/destructor/factory pattern
+Table::Table() {
+  // Constructor: initialize table fields
+  this->metatable = NULL;
+  this->flags = maskflags;  /* table has no metamethod fields */
+  this->array = NULL;
+  this->asize = 0;
+  this->gclist = NULL;
+  // Note: node initialization requires lua_State, done in create()
+}
+
+Table* Table::create(lua_State* L) {
+  // Factory method: allocate + construct table
+  GCObject *o = luaC_newobj(L, LUA_VTABLE, sizeof(Table));
+  Table *t = gco2t(o);
+  new (t) Table();  // Placement new to call constructor
+  setnodevector(L, t, 0);  // Initialize node vector (needs L for allocation)
+  return t;
+}
+
+void Table::destroy(lua_State* L) {
+  // Explicit destructor: free resources
+  freehash(L, this);
+  resizearray(L, this, this->asize, 0);
+  luaM_free(L, this);
+}
+
+Node* Table::mainPosition(const TValue* key) const {
+  return mainpositionTV(this, key);
 }
 
 #endif
