@@ -120,9 +120,11 @@ typedef void (*Pfunc) (lua_State *L, void *ud);
 #define nyci	(0x10000 | 1)
 
 
-
-
-struct lua_longjmp;  /* defined in ldo.c */
+/*
+** Phase 31: lua_longjmp now defined in ldo.cpp (no longer uses jmp_buf)
+** Forward declaration for error handler chain
+*/
+struct lua_longjmp;
 
 
 /*
