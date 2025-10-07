@@ -196,7 +196,8 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
 }
 
 
-const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n, StkId *pos) {
+// Phase 32: Convert to lua_State method
+const char *lua_State::findLocal(CallInfo *ci, int n, StkId *pos) {
   StkId base = ci->func.p + 1;
   const char *name = NULL;
   if (isLua(ci)) {
@@ -206,7 +207,7 @@ const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n, StkId *pos) {
       name = ci_func(ci)->p->getLocalName(n, currentpc(ci));  /* Phase 25b */
   }
   if (name == NULL) {  /* no 'standard' name? */
-    StkId limit = (ci == L->ci) ? L->top.p : ci->next->func.p;
+    StkId limit = (ci == this->ci) ? top.p : ci->next->func.p;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
       name = isLua(ci) ? "(temporary)" : "(C temporary)";
@@ -217,6 +218,10 @@ const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n, StkId *pos) {
   if (pos)
     *pos = base + (n - 1);
   return name;
+}
+
+const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n, StkId *pos) {
+  return L->findLocal(ci, n, pos);
 }
 
 
@@ -756,8 +761,13 @@ static l_noret typeerror (lua_State *L, const TValue *o, const char *op,
 ** Raise a type error with "standard" information about the faulty
 ** object 'o' (using 'varinfo').
 */
+// Phase 32: Convert to lua_State method
+l_noret lua_State::typeError(const TValue *o, const char *op) {
+  typeerror(this, o, op, varinfo(this, o));
+}
+
 l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
-  typeerror(L, o, op, varinfo(L, o));
+  L->typeError(o, op);
 }
 
 
@@ -766,101 +776,154 @@ l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
 ** for the object based on how it was called ('funcnamefromcall'); if it
 ** cannot get a name there, try 'varinfo'.
 */
-l_noret luaG_callerror (lua_State *L, const TValue *o) {
-  CallInfo *ci = L->ci;
+// Phase 32: Convert to lua_State method
+l_noret lua_State::callError(const TValue *o) {
   const char *name = NULL;  /* to avoid warnings */
-  const char *kind = funcnamefromcall(L, ci, &name);
-  const char *extra = kind ? formatvarinfo(L, kind, name) : varinfo(L, o);
-  typeerror(L, o, "call", extra);
+  const char *kind = funcnamefromcall(this, ci, &name);
+  const char *extra = kind ? formatvarinfo(this, kind, name) : varinfo(this, o);
+  typeerror(this, o, "call", extra);
 }
 
+l_noret luaG_callerror (lua_State *L, const TValue *o) {
+  L->callError(o);
+}
+
+
+// Phase 32: Convert to lua_State method
+l_noret lua_State::forError(const TValue *o, const char *what) {
+  this->runError("bad 'for' %s (number expected, got %s)",
+                 what, luaT_objtypename(this, o));
+}
 
 l_noret luaG_forerror (lua_State *L, const TValue *o, const char *what) {
-  luaG_runerror(L, "bad 'for' %s (number expected, got %s)",
-                   what, luaT_objtypename(L, o));
+  L->forError(o, what);
 }
 
+
+// Phase 32: Convert to lua_State method
+l_noret lua_State::concatError(const TValue *p1, const TValue *p2) {
+  if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
+  this->typeError(p1, "concatenate");
+}
 
 l_noret luaG_concaterror (lua_State *L, const TValue *p1, const TValue *p2) {
-  if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
-  luaG_typeerror(L, p1, "concatenate");
+  L->concatError(p1, p2);
 }
 
+
+// Phase 32: Convert to lua_State method
+l_noret lua_State::opinterError(const TValue *p1, const TValue *p2, const char *msg) {
+  if (!ttisnumber(p1))  /* first operand is wrong? */
+    p2 = p1;  /* now second is wrong */
+  this->typeError(p2, msg);
+}
 
 l_noret luaG_opinterror (lua_State *L, const TValue *p1,
                          const TValue *p2, const char *msg) {
-  if (!ttisnumber(p1))  /* first operand is wrong? */
-    p2 = p1;  /* now second is wrong */
-  luaG_typeerror(L, p2, msg);
+  L->opinterError(p1, p2, msg);
 }
 
 
 /*
 ** Error when both values are convertible to numbers, but not to integers
 */
-l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
+// Phase 32: Convert to lua_State method
+l_noret lua_State::toIntError(const TValue *p1, const TValue *p2) {
   lua_Integer temp;
   if (!luaV_tointegerns(p1, &temp, LUA_FLOORN2I))
     p2 = p1;
-  luaG_runerror(L, "number%s has no integer representation", varinfo(L, p2));
+  this->runError("number%s has no integer representation", varinfo(this, p2));
+}
+
+l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
+  L->toIntError(p1, p2);
 }
 
 
-l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
-  const char *t1 = luaT_objtypename(L, p1);
-  const char *t2 = luaT_objtypename(L, p2);
+// Phase 32: Convert to lua_State method
+l_noret lua_State::orderError(const TValue *p1, const TValue *p2) {
+  const char *t1 = luaT_objtypename(this, p1);
+  const char *t2 = luaT_objtypename(this, p2);
   if (strcmp(t1, t2) == 0)
-    luaG_runerror(L, "attempt to compare two %s values", t1);
+    this->runError("attempt to compare two %s values", t1);
   else
-    luaG_runerror(L, "attempt to compare %s with %s", t1, t2);
+    this->runError("attempt to compare %s with %s", t1, t2);
+}
+
+l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
+  L->orderError(p1, p2);
 }
 
 
 /* add src:line information to 'msg' */
-const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
-                                        int line) {
+// Phase 32: Convert to lua_State method
+const char *lua_State::addInfo(const char *msg, TString *src, int line) {
   if (src == NULL)  /* no debug information? */
-    return luaO_pushfstring(L, "?:?: %s", msg);
+    return luaO_pushfstring(this, "?:?: %s", msg);
   else {
     char buff[LUA_IDSIZE];
     size_t idlen;
     const char *id = getlstr(src, idlen);
     luaO_chunkid(buff, id, idlen);
-    return luaO_pushfstring(L, "%s:%d: %s", buff, line, msg);
+    return luaO_pushfstring(this, "%s:%d: %s", buff, line, msg);
   }
 }
 
+const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
+                                        int line) {
+  return L->addInfo(msg, src, line);
+}
+
+
+// Phase 32: Convert to lua_State method
+l_noret lua_State::errorMsg() {
+  if (errfunc != 0) {  /* is there an error handling function? */
+    StkId errfunc_ptr = restorestack(this, errfunc);
+    lua_assert(ttisfunction(s2v(errfunc_ptr)));
+    setobjs2s(this, top.p, top.p - 1);  /* move argument */
+    setobjs2s(this, top.p - 1, errfunc_ptr);  /* push function */
+    top.p++;  /* assume EXTRA_STACK */
+    this->callNoYield(top.p - 2, 1);  /* call it */
+  }
+  if (ttisnil(s2v(top.p - 1))) {  /* error object is nil? */
+    /* change it to a proper message */
+    setsvalue2s(this, top.p - 1, luaS_newliteral(this, "<no error object>"));
+  }
+  this->doThrow(LUA_ERRRUN);
+}
 
 l_noret luaG_errormsg (lua_State *L) {
-  if (L->errfunc != 0) {  /* is there an error handling function? */
-    StkId errfunc = restorestack(L, L->errfunc);
-    lua_assert(ttisfunction(s2v(errfunc)));
-    setobjs2s(L, L->top.p, L->top.p - 1);  /* move argument */
-    setobjs2s(L, L->top.p - 1, errfunc);  /* push function */
-    L->top.p++;  /* assume EXTRA_STACK */
-    L->callNoYield( L->top.p - 2, 1);  /* call it */
-  }
-  if (ttisnil(s2v(L->top.p - 1))) {  /* error object is nil? */
-    /* change it to a proper message */
-    setsvalue2s(L, L->top.p - 1, luaS_newliteral(L, "<no error object>"));
-  }
-  L->doThrow( LUA_ERRRUN);
+  L->errorMsg();
 }
 
 
+// Phase 32: Convert to lua_State method
+l_noret lua_State::runError(const char *fmt, ...) {
+  const char *msg;
+  va_list argp;
+  luaC_checkGC(this);  /* error message uses memory */
+  pushvfstring(this, argp, fmt, msg);
+  if (isLua(ci)) {  /* Lua function? */
+    /* add source:line information */
+    this->addInfo(msg, ci_func(ci)->p->source, getcurrentline(ci));
+    setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
+    top.p--;
+  }
+  this->errorMsg();
+}
+
 l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
-  CallInfo *ci = L->ci;
   const char *msg;
   va_list argp;
   luaC_checkGC(L);  /* error message uses memory */
   pushvfstring(L, argp, fmt, msg);
-  if (isLua(ci)) {  /* Lua function? */
+  if (isLua(L->ci)) {  /* Lua function? */
     /* add source:line information */
-    luaG_addinfo(L, msg, ci_func(ci)->p->source, getcurrentline(ci));
+    L->addInfo(msg, ci_func(L->ci)->p->source, getcurrentline(L->ci));
     setobjs2s(L, L->top.p - 2, L->top.p - 1);  /* remove 'msg' */
     L->top.p--;
   }
-  luaG_errormsg(L);
+  L->errorMsg();
 }
 
 
@@ -901,17 +964,22 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
 ** a line/count hook before the call hook. Functions coming from
 ** an yield already called 'luaD_hookcall' before yielding.)
 */
-int luaG_tracecall (lua_State *L) {
-  CallInfo *ci = L->ci;
-  Proto *p = ci_func(ci)->p;
-  ci->u.l.trap = 1;  /* ensure hooks will be checked */
-  if (ci->u.l.savedpc == p->code) {  /* first instruction (not resuming)? */
+// Phase 32: Convert to lua_State method
+int lua_State::traceCall() {
+  CallInfo *ci_local = ci;
+  Proto *p = ci_func(ci_local)->p;
+  ci_local->u.l.trap = 1;  /* ensure hooks will be checked */
+  if (ci_local->u.l.savedpc == p->code) {  /* first instruction (not resuming)? */
     if (p->flag & PF_ISVARARG)
       return 0;  /* hooks will start at VARARGPREP instruction */
-    else if (!(ci->callstatus & CIST_HOOKYIELD))  /* not yielded? */
-      L->hookCall( ci);  /* check 'call' hook */
+    else if (!(ci_local->callstatus & CIST_HOOKYIELD))  /* not yielded? */
+      this->hookCall(ci_local);  /* check 'call' hook */
   }
   return 1;  /* keep 'trap' on */
+}
+
+int luaG_tracecall (lua_State *L) {
+  return L->traceCall();
 }
 
 
@@ -927,47 +995,52 @@ int luaG_tracecall (lua_State *L) {
 ** This function is not "Protected" when called, so it should correct
 ** 'L->top.p' before calling anything that can run the GC.
 */
-int luaG_traceexec (lua_State *L, const Instruction *pc) {
-  CallInfo *ci = L->ci;
-  lu_byte mask = cast_byte(L->hookmask);
-  const Proto *p = ci_func(ci)->p;
+// Phase 32: Convert to lua_State method
+int lua_State::traceExec(const Instruction *pc) {
+  CallInfo *ci_local = ci;
+  lu_byte mask = cast_byte(hookmask);
+  const Proto *p = ci_func(ci_local)->p;
   int counthook;
   if (!(mask & (LUA_MASKLINE | LUA_MASKCOUNT))) {  /* no hooks? */
-    ci->u.l.trap = 0;  /* don't need to stop again */
+    ci_local->u.l.trap = 0;  /* don't need to stop again */
     return 0;  /* turn off 'trap' */
   }
   pc++;  /* reference is always next instruction */
-  ci->u.l.savedpc = pc;  /* save 'pc' */
-  counthook = (mask & LUA_MASKCOUNT) && (--L->hookcount == 0);
+  ci_local->u.l.savedpc = pc;  /* save 'pc' */
+  counthook = (mask & LUA_MASKCOUNT) && (--hookcount == 0);
   if (counthook)
-    resethookcount(L);  /* reset count */
+    resethookcount(this);  /* reset count */
   else if (!(mask & LUA_MASKLINE))
     return 1;  /* no line hook and count != 0; nothing to be done now */
-  if (ci->callstatus & CIST_HOOKYIELD) {  /* hook yielded last time? */
-    ci->callstatus &= ~CIST_HOOKYIELD;  /* erase mark */
+  if (ci_local->callstatus & CIST_HOOKYIELD) {  /* hook yielded last time? */
+    ci_local->callstatus &= ~CIST_HOOKYIELD;  /* erase mark */
     return 1;  /* do not call hook again (VM yielded, so it did not move) */
   }
-  if (!luaP_isIT(*(ci->u.l.savedpc - 1)))  /* top not being used? */
-    L->top.p = ci->top.p;  /* correct top */
+  if (!luaP_isIT(*(ci_local->u.l.savedpc - 1)))  /* top not being used? */
+    top.p = ci_local->top.p;  /* correct top */
   if (counthook)
-    L->callHook( LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
+    this->callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {
-    /* 'L->oldpc' may be invalid; use zero in this case */
-    int oldpc = (L->oldpc < p->sizecode) ? L->oldpc : 0;
+    /* 'oldpc' may be invalid; use zero in this case */
+    int oldpc_val = (oldpc < p->sizecode) ? oldpc : 0;
     int npci = pcRel(pc, p);
-    if (npci <= oldpc ||  /* call hook when jump back (loop), */
-        changedline(p, oldpc, npci)) {  /* or when enter new line */
+    if (npci <= oldpc_val ||  /* call hook when jump back (loop), */
+        changedline(p, oldpc_val, npci)) {  /* or when enter new line */
       int newline = luaG_getfuncline(p, npci);
-      L->callHook( LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
+      this->callHook(LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
     }
-    L->oldpc = npci;  /* 'pc' of last call to line hook */
+    oldpc = npci;  /* 'pc' of last call to line hook */
   }
-  if (L->status == LUA_YIELD) {  /* did hook yield? */
+  if (status == LUA_YIELD) {  /* did hook yield? */
     if (counthook)
-      L->hookcount = 1;  /* undo decrement to zero */
-    ci->callstatus |= CIST_HOOKYIELD;  /* mark that it yielded */
-    L->doThrow( LUA_YIELD);
+      hookcount = 1;  /* undo decrement to zero */
+    ci_local->callstatus |= CIST_HOOKYIELD;  /* mark that it yielded */
+    this->doThrow(LUA_YIELD);
   }
   return 1;  /* keep 'trap' on */
+}
+
+int luaG_traceexec (lua_State *L, const Instruction *pc) {
+  return L->traceExec(pc);
 }
 

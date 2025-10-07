@@ -371,6 +371,21 @@ public:
   void finishCCall(CallInfo *ci);
   CallInfo* findPCall();
 
+  // Phase 32: Error and debug methods (implemented in ldebug.cpp)
+  const char* findLocal(CallInfo *ci, int n, StkId *pos);
+  l_noret typeError(const TValue *o, const char *opname);
+  l_noret callError(const TValue *o);
+  l_noret forError(const TValue *o, const char *what);
+  l_noret concatError(const TValue *p1, const TValue *p2);
+  l_noret opinterError(const TValue *p1, const TValue *p2, const char *msg);
+  l_noret toIntError(const TValue *p1, const TValue *p2);
+  l_noret orderError(const TValue *p1, const TValue *p2);
+  l_noret runError(const char *fmt, ...);
+  const char* addInfo(const char *msg, TString *src, int line);
+  l_noret errorMsg();
+  int traceExec(const Instruction *pc);
+  int traceCall();
+
 private:
   // Phase 30: Private helper methods (implementation details in ldo.cpp)
 
