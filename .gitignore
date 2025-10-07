@@ -12,7 +12,6 @@ testes/time-debug.txt
 testes/libs/all
 
 temp
-lua
 
 # CMake build directories
 build/

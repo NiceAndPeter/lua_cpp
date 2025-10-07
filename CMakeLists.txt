@@ -87,66 +87,93 @@ if(LUA_ENABLE_LTO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-# Source files for Lua library
+# Source files organized by subdirectory
 set(LUA_CORE_SOURCES
-    lapi.cpp
-    lcode.cpp
-    lctype.cpp
-    ldebug.cpp
-    ldo.cpp
-    ldump.cpp
-    lfunc.cpp
-    lgc.cpp
-    llex.cpp
-    lmem.cpp
-    lobject.cpp
-    lopcodes.cpp
-    lparser.cpp
-    lstate.cpp
-    lstring.cpp
-    ltable.cpp
-    ltm.cpp
-    lundump.cpp
-    lvm.cpp
-    lzio.cpp
+    src/core/lapi.cpp
+    src/core/ldo.cpp
+    src/core/lstate.cpp
+    src/core/ltm.cpp
+    src/core/ldebug.cpp
+)
+
+set(LUA_COMPILER_SOURCES
+    src/compiler/lcode.cpp
+    src/compiler/llex.cpp
+    src/compiler/lparser.cpp
+    src/compiler/lopcodes.cpp
+)
+
+set(LUA_VM_SOURCES
+    src/vm/lvm.cpp
+)
+
+set(LUA_OBJECT_SOURCES
+    src/objects/lobject.cpp
+    src/objects/ltable.cpp
+    src/objects/lstring.cpp
+    src/objects/lfunc.cpp
+    src/objects/lctype.cpp
+)
+
+set(LUA_MEMORY_SOURCES
+    src/memory/lgc.cpp
+    src/memory/lmem.cpp
+)
+
+set(LUA_SERIALIZATION_SOURCES
+    src/serialization/lundump.cpp
+    src/serialization/ldump.cpp
+    src/serialization/lzio.cpp
+)
+
+set(LUA_AUX_SOURCES
+    src/auxiliary/lauxlib.cpp
+    src/auxiliary/linit.cpp
+)
+
+set(LUA_LIB_SOURCES
+    src/libraries/lbaselib.cpp
+    src/libraries/ldblib.cpp
+    src/libraries/liolib.cpp
+    src/libraries/lmathlib.cpp
+    src/libraries/loslib.cpp
+    src/libraries/ltablib.cpp
+    src/libraries/lstrlib.cpp
+    src/libraries/lutf8lib.cpp
+    src/libraries/loadlib.cpp
+    src/libraries/lcorolib.cpp
 )
 
 # Test source (only in test mode)
 if(LUA_BUILD_TESTS)
-    list(APPEND LUA_CORE_SOURCES ltests.cpp)
+    set(LUA_TEST_SOURCES src/testing/ltests.cpp)
+else()
+    set(LUA_TEST_SOURCES "")
 endif()
-
-set(LUA_AUX_SOURCES
-    lauxlib.cpp
-)
-
-set(LUA_LIB_SOURCES
-    lbaselib.cpp
-    ldblib.cpp
-    liolib.cpp
-    lmathlib.cpp
-    loslib.cpp
-    ltablib.cpp
-    lstrlib.cpp
-    lutf8lib.cpp
-    loadlib.cpp
-    lcorolib.cpp
-    linit.cpp
-)
 
 # Public headers
 set(LUA_PUBLIC_HEADERS
-    lua.h
-    luaconf.h
-    lualib.h
-    lauxlib.h
+    include/lua.h
+    include/luaconf.h
+    include/lualib.h
+)
+
+# All library sources
+set(LUA_ALL_SOURCES
+    ${LUA_CORE_SOURCES}
+    ${LUA_COMPILER_SOURCES}
+    ${LUA_VM_SOURCES}
+    ${LUA_OBJECT_SOURCES}
+    ${LUA_MEMORY_SOURCES}
+    ${LUA_SERIALIZATION_SOURCES}
+    ${LUA_AUX_SOURCES}
+    ${LUA_LIB_SOURCES}
+    ${LUA_TEST_SOURCES}
 )
 
 # Static library target
 add_library(liblua_static STATIC
-    ${LUA_CORE_SOURCES}
-    ${LUA_AUX_SOURCES}
-    ${LUA_LIB_SOURCES}
+    ${LUA_ALL_SOURCES}
 )
 
 # Set output name to liblua.a (remove double lib prefix)
@@ -173,16 +200,24 @@ target_link_options(liblua_static PUBLIC
 
 target_include_directories(liblua_static
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include/lua>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary>
+        $<INSTALL_INTERFACE:include>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/libraries
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
 )
 
 # Optional shared library
 if(LUA_BUILD_SHARED)
     add_library(liblua_shared SHARED
-        ${LUA_CORE_SOURCES}
-        ${LUA_AUX_SOURCES}
-        ${LUA_LIB_SOURCES}
+        ${LUA_ALL_SOURCES}
     )
 
     set_target_properties(liblua_shared PROPERTIES
@@ -203,14 +238,24 @@ if(LUA_BUILD_SHARED)
 
     target_include_directories(liblua_shared
         PUBLIC
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-            $<INSTALL_INTERFACE:include/lua>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary>
+            $<INSTALL_INTERFACE:include>
+        PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/libraries
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
     )
 endif()
 
 # Lua interpreter executable
 add_executable(lua
-    lua.cpp
+    src/interpreter/lua.cpp
 )
 
 target_link_libraries(lua PRIVATE
@@ -223,6 +268,16 @@ target_compile_options(lua PRIVATE
     ${OPTIMIZE_FLAGS}
 )
 
+target_include_directories(lua PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
+)
+
 # Install targets
 include(GNUInstallDirs)
 
@@ -231,7 +286,7 @@ install(TARGETS liblua_static lua
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/lua
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
 if(LUA_BUILD_SHARED)
@@ -239,7 +294,7 @@ if(LUA_BUILD_SHARED)
         EXPORT LuaTargets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/lua
+        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
 endif()
 
