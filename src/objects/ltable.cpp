@@ -112,7 +112,7 @@ typedef union {
 #define hashmod(t,n)	(gnode(t, cast_uint((n) % ((sizenode(t)-1u)|1u))))
 
 
-#define hashstr(t,str)		hashpow2(t, (str)->hash)
+#define hashstr(t,str)		hashpow2(t, (str)->getHash())
 #define hashboolean(t,p)	hashpow2(t, p)
 
 

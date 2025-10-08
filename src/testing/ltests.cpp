@@ -1082,7 +1082,7 @@ static int hash_query (lua_State *L) {
     ts = tsvalue(obj_at(L, 1));
     if (ts->getType() == LUA_VLNGSTR)
       luaS_hashlongstr(ts);  /* make sure long string has a hash */
-    lua_pushinteger(L, cast_int(ts->hash));
+    lua_pushinteger(L, cast_int(ts->getHash()));
   }
   else {
     TValue *o = obj_at(L, 1);
@@ -1188,7 +1188,7 @@ static int string_query (lua_State *L) {
   else if (s < tb->getSize()) {
     TString *ts;
     int n = 0;
-    for (ts = tb->getHash()[s]; ts != NULL; ts = ts->u.hnext) {
+    for (ts = tb->getHash()[s]; ts != NULL; ts = ts->getNext()) {
       setsvalue2s(L, L->top.p, ts);
       api_incr_top(L);
       n++;

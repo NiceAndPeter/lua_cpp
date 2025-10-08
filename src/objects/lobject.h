@@ -399,7 +399,7 @@ inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 */
 // TString inherits from GCBase (CRTP)
 class TString : public GCBase<TString> {
-public:
+private:
   lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
   ls_byte shrlen;  /* length for short strings, negative for long strings */
   unsigned int hash;
@@ -411,22 +411,70 @@ public:
   lua_Alloc falloc;  /* deallocation function for external strings */
   void *ud;  /* user data for external strings */
 
+public:
   // Type checks
   bool isShort() const noexcept { return shrlen >= 0; }
   bool isLong() const noexcept { return shrlen < 0; }
+  bool isExternal() const noexcept { return isLong() && shrlen != LSTRREG; }
 
   // Accessors
   size_t length() const noexcept {
     return isShort() ? static_cast<size_t>(shrlen) : u.lnglen;
   }
+  ls_byte getShrlen() const noexcept { return shrlen; }
+  size_t getLnglen() const noexcept { return u.lnglen; }
   unsigned int getHash() const noexcept { return hash; }
+  lu_byte getExtra() const noexcept { return extra; }
   const char* c_str() const noexcept {
     return isShort() ? cast_charp(&contents) : contents;
   }
+  char* getContentsPtr() noexcept { return isShort() ? cast_charp(&contents) : contents; }
+  char* getContentsField() noexcept { return contents; }
+  const char* getContentsField() const noexcept { return contents; }
+  char* getContentsAddr() noexcept { return cast_charp(&contents); }
+  const char* getContentsAddr() const noexcept { return cast_charp(&contents); }
+  lua_Alloc getFalloc() const noexcept { return falloc; }
+  void* getUserData() const noexcept { return ud; }
+
+  // Setters
+  void setExtra(lu_byte e) noexcept { extra = e; }
+  void setShrlen(ls_byte len) noexcept { shrlen = len; }
+  void setHash(unsigned int h) noexcept { hash = h; }
+  void setLnglen(size_t len) noexcept { u.lnglen = len; }
+  void setContents(char* c) noexcept { contents = c; }
+  void setFalloc(lua_Alloc f) noexcept { falloc = f; }
+  void setUserData(void* data) noexcept { ud = data; }
 
   // Hash table operations
   TString* getNext() const noexcept { return u.hnext; }
   void setNext(TString* next_str) noexcept { u.hnext = next_str; }
+
+  // Helper for offset calculations
+  static constexpr size_t fallocOffset() noexcept {
+    // Offset of falloc field accounting for alignment
+    // Must include GCObject base!
+    struct OffsetHelper {
+      GCObject base;
+      lu_byte extra;
+      ls_byte shrlen;
+      unsigned int hash;
+      union { size_t lnglen; TString* hnext; } u;
+      char* contents;
+    };
+    return sizeof(OffsetHelper);
+  }
+
+  static constexpr size_t contentsOffset() noexcept {
+    // Offset of contents field accounting for GCObject base and alignment
+    struct OffsetHelper {
+      GCObject base;
+      lu_byte extra;
+      ls_byte shrlen;
+      unsigned int hash;
+      union { size_t lnglen; TString* hnext; } u;
+    };
+    return sizeof(OffsetHelper);
+  }
 
   // Method declarations (implemented in lstring.cpp)
   unsigned hashLongStr();
@@ -444,11 +492,11 @@ inline bool strisshr(const TString* ts) noexcept { return ts->isShort(); }
 
 /* Check if string is external (fixed or with custom deallocator) */
 inline bool isextstr(const TValue* v) noexcept {
-	return ttislngstring(v) && tsvalue(v)->shrlen != LSTRREG;
+	return ttislngstring(v) && tsvalue(v)->isExternal();
 }
 
 inline bool TValue::isExtString() const noexcept {
-	return isLongString() && stringValue()->shrlen != LSTRREG;
+	return isLongString() && stringValue()->isExternal();
 }
 
 /*
@@ -456,26 +504,27 @@ inline bool TValue::isExtString() const noexcept {
 ** version and specialized versions for long and short strings.)
 */
 inline char* rawgetshrstr(TString* ts) noexcept {
-	return cast_charp(&ts->contents);
+	return ts->getContentsAddr();
 }
 inline const char* rawgetshrstr(const TString* ts) noexcept {
-	return cast_charp(&ts->contents);
+	return ts->getContentsAddr();
 }
 #define getshrstr(ts)	check_exp(strisshr(ts), rawgetshrstr(ts))
-#define getlngstr(ts)	check_exp(!strisshr(ts), (ts)->contents)
-#define getstr(ts) 	(strisshr(ts) ? rawgetshrstr(ts) : (ts)->contents)
+#define getlngstr(ts)	check_exp(!strisshr(ts), (ts)->getContentsField())
+#define getstr(ts) 	(strisshr(ts) ? rawgetshrstr(ts) : (ts)->getContentsField())
 
 
 /* get string length from 'TString *ts' */
-#define tsslen(ts)  \
-	(strisshr(ts) ? cast_sizet((ts)->shrlen) : (ts)->u.lnglen)
+inline size_t tsslen(const TString* ts) noexcept {
+	return ts->length();
+}
 
 /*
 ** Get string and length */
-#define getlstr(ts, len)  \
-	(strisshr(ts) \
-	? (cast_void((len) = cast_sizet((ts)->shrlen)), rawgetshrstr(ts)) \
-	: (cast_void((len) = (ts)->u.lnglen), (ts)->contents))
+inline const char* getlstr(const TString* ts, size_t& len) noexcept {
+	len = ts->length();
+	return ts->c_str();
+}
 
 /* }================================================================== */
 

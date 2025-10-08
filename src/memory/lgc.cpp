@@ -145,12 +145,12 @@ static l_mem objsize (GCObject *o) {
     }
     case LUA_VSHRSTR: {
       TString *ts = gco2ts(o);
-      res = sizestrshr(cast_uint(ts->shrlen));
+      res = sizestrshr(cast_uint(ts->getShrlen()));
       break;
     }
     case LUA_VLNGSTR: {
       TString *ts = gco2ts(o);
-      res = luaS_sizelngstr(ts->u.lnglen, ts->shrlen);
+      res = luaS_sizelngstr(ts->getLnglen(), ts->getShrlen());
       break;
     }
     case LUA_VUPVAL: {
@@ -860,14 +860,14 @@ static void freeobj (lua_State *L, GCObject *o) {
     case LUA_VSHRSTR: {
       TString *ts = gco2ts(o);
       ts->remove(L);  /* use method instead of free function */
-      luaM_freemem(L, ts, sizestrshr(cast_uint(ts->shrlen)));
+      luaM_freemem(L, ts, sizestrshr(cast_uint(ts->getShrlen())));
       break;
     }
     case LUA_VLNGSTR: {
       TString *ts = gco2ts(o);
-      if (ts->shrlen == LSTRMEM)  /* must free external string? */
-        (*ts->falloc)(ts->ud, ts->contents, ts->u.lnglen + 1, 0);
-      luaM_freemem(L, ts, luaS_sizelngstr(ts->u.lnglen, ts->shrlen));
+      if (ts->getShrlen() == LSTRMEM)  /* must free external string? */
+        (*ts->getFalloc())(ts->getUserData(), ts->getContentsField(), ts->getLnglen() + 1, 0);
+      luaM_freemem(L, ts, luaS_sizelngstr(ts->getLnglen(), ts->getShrlen()));
       break;
     }
     default: lua_assert(0);

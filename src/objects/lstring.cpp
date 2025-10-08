@@ -22,10 +22,9 @@
 #include "lstring.h"
 
 
-// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
-// This triggers -Winvalid-offsetof but is safe because we control the memory layout
+// Phase 29: Get offset of falloc field in TString
 inline constexpr size_t tstringFallocOffset() noexcept {
-  return offsetof(TString, falloc);
+  return TString::fallocOffset();
 }
 
 /*
@@ -73,9 +72,9 @@ static void tablerehash (TString **vect, int osize, int nsize) {
     TString *p = vect[i];
     vect[i] = NULL;
     while (p) {  /* for each string in the list */
-      TString *hnext = p->u.hnext;  /* save next */
-      unsigned int h = lmod(p->hash, nsize);  /* new position */
-      p->u.hnext = vect[h];  /* chain it into array */
+      TString *hnext = p->getNext();  /* save next */
+      unsigned int h = lmod(p->getHash(), nsize);  /* new position */
+      p->setNext(vect[h]);  /* chain it into array */
       vect[h] = p;
       p = hnext;
     }
@@ -166,8 +165,8 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
   GCObject *o;
   o = luaC_newobj(L, tag, totalsize);
   ts = gco2ts(o);
-  ts->hash = h;
-  ts->extra = 0;
+  ts->setHash(h);
+  ts->setExtra(0);
   return ts;
 }
 
@@ -175,10 +174,10 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
 TString *luaS_createlngstrobj (lua_State *L, size_t l) {
   size_t totalsize = luaS_sizelngstr(l, LSTRREG);
   TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->seed);
-  ts->u.lnglen = l;
-  ts->shrlen = LSTRREG;  /* signals that it is a regular long string */
-  ts->contents = cast_charp(ts) + tstringFallocOffset();
-  ts->contents[l] = '\0';  /* ending 0 */
+  ts->setLnglen(l);
+  ts->setShrlen(LSTRREG);  /* signals that it is a regular long string */
+  ts->setContents(cast_charp(ts) + tstringFallocOffset());
+  ts->getContentsField()[l] = '\0';  /* ending 0 */
   return ts;
 }
 
@@ -207,8 +206,8 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   unsigned int h = luaS_hash(str, l, g->seed);
   TString **list = &tb->getHash()[lmod(h, tb->getSize())];
   lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
-  for (ts = *list; ts != NULL; ts = ts->u.hnext) {
-    if (l == cast_uint(ts->shrlen) &&
+  for (ts = *list; ts != NULL; ts = ts->getNext()) {
+    if (l == cast_uint(ts->getShrlen()) &&
         (memcmp(str, getshrstr(ts), l * sizeof(char)) == 0)) {
       /* found! */
       if (isdead(g, ts))  /* dead (but not collected yet)? */
@@ -222,10 +221,10 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
     list = &tb->getHash()[lmod(h, tb->getSize())];  /* rehash with new size */
   }
   ts = createstrobj(L, sizestrshr(l), LUA_VSHRSTR, h);
-  ts->shrlen = cast(ls_byte, l);
+  ts->setShrlen(cast(ls_byte, l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
   memcpy(getshrstr(ts), str, l * sizeof(char));
-  ts->u.hnext = *list;
+  ts->setNext(*list);
   *list = ts;
   tb->incrementNumElements();
   return ts;
@@ -317,12 +316,12 @@ TString *luaS_newextlstr (lua_State *L,
       (*falloc)(ud, cast_voidp(s), len + 1, 0);  /* free external string */
       luaM_error(L);  /* re-raise memory error */
     }
-    ne.ts->falloc = falloc;
-    ne.ts->ud = ud;
+    ne.ts->setFalloc(falloc);
+    ne.ts->setUserData(ud);
   }
-  ne.ts->shrlen = ne.kind;
-  ne.ts->u.lnglen = len;
-  ne.ts->contents = cast_charp(s);
+  ne.ts->setShrlen(ne.kind);
+  ne.ts->setLnglen(len);
+  ne.ts->setContents(cast_charp(s));
   return ne.ts;
 }
 
@@ -333,12 +332,12 @@ TString *luaS_newextlstr (lua_State *L,
 
 unsigned TString::hashLongStr() {
   lua_assert(this->getType() == LUA_VLNGSTR);
-  if (this->extra == 0) {  /* no hash? */
-    size_t len = this->u.lnglen;
-    this->hash = luaS_hash(getlngstr(this), len, this->hash);
-    this->extra = 1;  /* now it has its hash */
+  if (this->getExtra() == 0) {  /* no hash? */
+    size_t len = this->getLnglen();
+    this->setHash(luaS_hash(getlngstr(this), len, this->getHash()));
+    this->setExtra(1);  /* now it has its hash */
   }
-  return this->hash;
+  return this->getHash();
 }
 
 bool TString::equals(TString* other) {
@@ -352,7 +351,7 @@ bool TString::equals(TString* other) {
 // Phase 25a: Convert luaS_remove to TString method
 void TString::remove(lua_State* L) {
   stringtable *tb = &G(L)->strt;
-  TString **p = &tb->getHash()[lmod(this->hash, tb->getSize())];
+  TString **p = &tb->getHash()[lmod(this->getHash(), tb->getSize())];
   while (*p != this)  /* find previous element */
     p = &(*p)->u.hnext;
   *p = (*p)->u.hnext;  /* remove element from its list */

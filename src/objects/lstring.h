@@ -34,10 +34,10 @@
 ** Size of a short TString: Size of the header plus space for the string
 ** itself (including final '\0').
 */
-// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
-// This triggers -Winvalid-offsetof but is safe because we control the memory layout
-#define sizestrshr(l)  \
-	(offsetof(TString, contents) + ((l) + 1) * sizeof(char))
+// Phase 29: Size of short string including the struct itself and string data
+inline constexpr size_t sizestrshr(size_t l) noexcept {
+	return TString::contentsOffset() + ((l) + 1) * sizeof(char);
+}
 
 
 #define luaS_newliteral(L, s)	(luaS_newlstr(L, "" s, \
@@ -47,7 +47,7 @@
 /*
 ** test whether a string is a reserved word
 */
-#define isreserved(s)	(strisshr(s) && (s)->extra > 0)
+#define isreserved(s)	(strisshr(s) && (s)->getExtra() > 0)
 
 
 /*

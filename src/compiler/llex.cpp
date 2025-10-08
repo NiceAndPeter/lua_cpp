@@ -79,7 +79,7 @@ void luaX_init (lua_State *L) {
   for (i=0; i<NUM_RESERVED; i++) {
     TString *ts = luaS_new(L, luaX_tokens[i]);
     obj2gco(ts)->fix(L);  /* Phase 25c: reserved words are never collected */
-    ts->extra = cast_byte(i+1);  /* reserved word */
+    ts->setExtra(cast_byte(i+1));  /* reserved word */
   }
 }
 
@@ -191,7 +191,7 @@ void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source,
 #if defined(LUA_COMPAT_GLOBAL)
   /* compatibility mode: "global" is not a reserved word */
   ls->glbn = luaS_newliteral(L, "global");  /* get "global" string */
-  ls->glbn->extra = 0;  /* mark it as not reserved */
+  ls->glbn->getExtra() = 0;  /* mark it as not reserved */
 #endif
   luaZ_resizebuffer(ls->L, ls->buff, LUA_MINBUFFER);  /* initialize buffer */
 }
@@ -568,7 +568,7 @@ static int llex (LexState *ls, SemInfo *seminfo) {
           ts = luaS_newlstr(ls->L, luaZ_buffer(ls->buff),
                                    luaZ_bufflen(ls->buff));
           if (isreserved(ts))   /* reserved word? */
-            return ts->extra - 1 + FIRST_RESERVED;
+            return ts->getExtra() - 1 + FIRST_RESERVED;
           else {
             seminfo->ts = anchorstr(ls, ts);
             return TK_NAME;
