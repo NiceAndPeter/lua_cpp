@@ -38,10 +38,10 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 #define BITDUMMY		(1 << 6)
 #define NOTBITDUMMY		cast_byte(~BITDUMMY)
-#define isdummy(t)		((t)->flags & BITDUMMY)
+#define isdummy(t)		((t)->getFlags() & BITDUMMY)
 
-#define setnodummy(t)		((t)->flags &= NOTBITDUMMY)
-#define setdummy(t)		((t)->flags |= BITDUMMY)
+#define setnodummy(t)		((t)->getFlagsRef() &= NOTBITDUMMY)
+#define setdummy(t)		((t)->getFlagsRef() |= BITDUMMY)
 
 
 
@@ -56,7 +56,7 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 #define luaH_fastgeti(t,k,res,tag) \
   { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
-    if ((u < h->asize)) { \
+    if ((u < h->arraySize())) { \
       tag = *getArrTag(h, u); \
       if (!tagisempty(tag)) { farr2val(h, u, tag, (res)); }} \
     else { tag = luaH_getint(h, (k), res); }}
@@ -64,9 +64,9 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 #define luaH_fastseti(t,k,val,hres) \
   { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
-    if ((u < h->asize)) { \
+    if ((u < h->arraySize())) { \
       lu_byte *tag = getArrTag(h, u); \
-      if (checknoTM(h->metatable, TM_NEWINDEX) || !tagisempty(*tag)) \
+      if (checknoTM(h->getMetatable(), TM_NEWINDEX) || !tagisempty(*tag)) \
         { fval2arr(h, u, tag, (val)); hres = HOK; } \
       else hres = ~cast_int(u); } \
     else { hres = luaH_psetint(h, k, val); }}
@@ -118,10 +118,10 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 */
 
 /* Computes the address of the tag for the abstract C-index 'k' */
-#define getArrTag(t,k)	(cast(lu_byte*, (t)->array) + sizeof(unsigned) + (k))
+#define getArrTag(t,k)	(cast(lu_byte*, (t)->getArray()) + sizeof(unsigned) + (k))
 
 /* Computes the address of the value for the abstract C-index 'k' */
-#define getArrVal(t,k)	((t)->array - 1 - (k))
+#define getArrVal(t,k)	((t)->getArray() - 1 - (k))
 
 
 /*
@@ -129,7 +129,7 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 ** see luaH_getn. It is stored there to avoid wasting space in
 ** the structure Table for tables with no array part.
 */
-#define lenhint(t)	cast(unsigned*, (t)->array)
+#define lenhint(t)	cast(unsigned*, (t)->getArray())
 
 
 /*

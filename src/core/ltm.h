@@ -55,7 +55,7 @@ typedef enum {
 
 // Phase 19: Convert invalidateTMcache macro to inline function
 inline void invalidateTMcache(Table* t) noexcept {
-  t->flags &= cast_byte(~maskflags);
+  t->getFlagsRef() &= cast_byte(~maskflags);
 }
 
 /*
@@ -64,7 +64,7 @@ inline void invalidateTMcache(Table* t) noexcept {
 */
 #define notm(tm)	ttisnil(tm)
 
-#define checknoTM(mt,e)	((mt) == NULL || (mt)->flags & (1u<<(e)))
+#define checknoTM(mt,e)	((mt) == NULL || (mt)->getFlags() & (1u<<(e)))
 
 #define gfasttm(g,mt,e)  \
   (checknoTM(mt, e) ? NULL : luaT_gettm(mt, e, (g)->tmname[e]))

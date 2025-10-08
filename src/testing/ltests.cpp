@@ -399,10 +399,10 @@ static void checkvalref (global_State *g, GCObject *f, const TValue *t) {
 
 static void checktable (global_State *g, Table *h) {
   unsigned int i;
-  unsigned int asize = h->asize;
+  unsigned int asize = h->arraySize();
   Node *n, *limit = gnode(h, sizenode(h));
   GCObject *hgc = obj2gco(h);
-  checkobjrefN(g, hgc, h->metatable);
+  checkobjrefN(g, hgc, h->getMetatable());
   for (i = 0; i < asize; i++) {
     TValue aux;
     arr2obj(h, i, &aux);
@@ -587,7 +587,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
       l_setbit(o->getMarkedRef(), TESTBIT);  /* mark that object is in a gray list */
     total++;
     switch (o->getType()) {
-      case LUA_VTABLE: o = gco2t(o)->gclist; break;
+      case LUA_VTABLE: o = gco2t(o)->getGclist(); break;
       case LUA_VLCL: o = gco2lcl(o)->gclist; break;
       case LUA_VCCL: o = gco2ccl(o)->gclist; break;
       case LUA_VTHREAD: o = gco2th(o)->gclist; break;
@@ -1089,7 +1089,7 @@ static int hash_query (lua_State *L) {
     Table *t;
     luaL_checktype(L, 2, LUA_TTABLE);
     t = hvalue(obj_at(L, 2));
-    lua_pushinteger(L, cast_Integer(luaH_mainposition(t, o) - t->node));
+    lua_pushinteger(L, cast_Integer(luaH_mainposition(t, o) - t->getNodeArray()));
   }
   return 1;
 }
@@ -1112,7 +1112,7 @@ static int table_query (lua_State *L) {
   unsigned int asize;
   luaL_checktype(L, 1, LUA_TTABLE);
   t = hvalue(obj_at(L, 1));
-  asize = t->asize;
+  asize = t->arraySize();
   if (i == -1) {
     lua_pushinteger(L, cast_Integer(asize));
     lua_pushinteger(L, cast_Integer(allocsizenode(t)));
@@ -1142,7 +1142,7 @@ static int table_query (lua_State *L) {
       pushobject(L, gval(gnode(t, i)));
     else
       lua_pushnil(L);
-    lua_pushinteger(L, gnext(&t->node[i]));
+    lua_pushinteger(L, gnext(&t->getNodeArray()[i]));
   }
   return 3;
 }

@@ -61,7 +61,7 @@ const TValue *luaT_gettm (Table *events, TMS event, TString *ename) {
   const TValue *tm = luaH_Hgetshortstr(events, ename);
   lua_assert(event <= TM_EQ);
   if (notm(tm)) {  /* no tag method? */
-    events->flags |= cast_byte(1u<<event);  /* cache this fact */
+    events->getFlagsRef() |= cast_byte(1u<<event);  /* cache this fact */
     return NULL;
   }
   else return tm;
@@ -72,7 +72,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
   Table *mt;
   switch (ttype(o)) {
     case LUA_TTABLE:
-      mt = hvalue(o)->metatable;
+      mt = hvalue(o)->getMetatable();
       break;
     case LUA_TUSERDATA:
       mt = uvalue(o)->metatable;
@@ -90,7 +90,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
 */
 const char *luaT_objtypename (lua_State *L, const TValue *o) {
   Table *mt;
-  if ((ttistable(o) && (mt = hvalue(o)->metatable) != NULL) ||
+  if ((ttistable(o) && (mt = hvalue(o)->getMetatable()) != NULL) ||
       (ttisfulluserdata(o) && (mt = uvalue(o)->metatable) != NULL)) {
     const TValue *name = luaH_Hgetshortstr(mt, luaS_new(L, "__name"));
     if (ttisstring(name))  /* is '__name' a string? */

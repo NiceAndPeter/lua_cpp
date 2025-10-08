@@ -1053,7 +1053,7 @@ typedef union Node {
 
 // Table inherits from GCBase (CRTP)
 class Table : public GCBase<Table> {
-public:
+private:
   lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
   lu_byte lsizenode;  /* log2 of number of slots of 'node' array */
   unsigned int asize;  /* number of slots in 'array' array */
@@ -1062,11 +1062,33 @@ public:
   Table *metatable;
   GCObject *gclist;
 
+public:
   // Inline accessors
+  lu_byte getFlags() const noexcept { return flags; }
+  void setFlags(lu_byte f) noexcept { flags = f; }
+  lu_byte& getFlagsRef() noexcept { return flags; }
+
+  lu_byte getLsizenode() const noexcept { return lsizenode; }
+  void setLsizenode(lu_byte ls) noexcept { lsizenode = ls; }
+
   unsigned int arraySize() const noexcept { return asize; }
+  void setArraySize(unsigned int sz) noexcept { asize = sz; }
+
+  Value* getArray() noexcept { return array; }
+  const Value* getArray() const noexcept { return array; }
+  void setArray(Value* arr) noexcept { array = arr; }
+
+  Node* getNodeArray() noexcept { return node; }
+  const Node* getNodeArray() const noexcept { return node; }
+  void setNodeArray(Node* n) noexcept { node = n; }
+
   unsigned int nodeSize() const noexcept { return (1u << lsizenode); }
   Table* getMetatable() const noexcept { return metatable; }
   void setMetatable(Table* mt) noexcept { metatable = mt; }
+
+  GCObject* getGclist() noexcept { return gclist; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
 
   // Flag operations (inline for performance)
   // Note: BITDUMMY = (1 << 6), defined in ltable.h
@@ -1150,7 +1172,7 @@ public:
 
 
 #define twoto(x)	(1u<<(x))
-#define sizenode(t)	(twoto((t)->lsizenode))
+#define sizenode(t)	(twoto((t)->getLsizenode()))
 
 
 /* size of buffer for 'luaO_utf8esc' function */

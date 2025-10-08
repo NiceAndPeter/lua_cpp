@@ -165,7 +165,7 @@ static l_mem objsize (GCObject *o) {
 
 static GCObject **getgclist (GCObject *o) {
   switch (o->getType()) {
-    case LUA_VTABLE: return &gco2t(o)->gclist;
+    case LUA_VTABLE: return gco2t(o)->getGclistPtr();
     case LUA_VLCL: return &gco2lcl(o)->gclist;
     case LUA_VCCL: return &gco2ccl(o)->gclist;
     case LUA_VTHREAD: return &gco2th(o)->gclist;
@@ -180,17 +180,22 @@ static GCObject **getgclist (GCObject *o) {
 }
 
 
+static void linkgclist_ (GCObject *o, GCObject **pnext, GCObject **list) {
+  lua_assert(!isgray(o));  /* cannot be in a gray list */
+  *pnext = *list;
+  *list = o;
+  set2gray(o);  /* now it is */
+}
+
 /*
 ** Link a collectable object 'o' with a known type into the list 'p'.
 ** (Must be a macro to access the 'gclist' field in different types.)
 */
 #define linkgclist(o,p)	linkgclist_(obj2gco(o), &(o)->gclist, &(p))
 
-static void linkgclist_ (GCObject *o, GCObject **pnext, GCObject **list) {
-  lua_assert(!isgray(o));  /* cannot be in a gray list */
-  *pnext = *list;
-  *list = o;
-  set2gray(o);  /* now it is */
+/* Specialized version for Table (with encapsulated gclist) */
+inline void linkgclistTable(Table *h, GCObject *&p) {
+  linkgclist_(obj2gco(h), h->getGclistPtr(), &p);
 }
 
 
@@ -482,7 +487,7 @@ static void traverseweakvalue (global_State *g, Table *h) {
   Node *n, *limit = gnodelast(h);
   /* if there is array part, assume it may have white values (it is not
      worth traversing it now just to check) */
-  int hasclears = (h->asize > 0);
+  int hasclears = (h->arraySize() > 0);
   for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
     if (isempty(gval(n)))  /* entry is empty? */
       clearkey(n);  /* clear its key */
@@ -494,9 +499,9 @@ static void traverseweakvalue (global_State *g, Table *h) {
     }
   }
   if (g->gcstate == GCSpropagate)
-    linkgclist(h, g->grayagain);  /* must retraverse it in atomic phase */
+    linkgclistTable(h, g->grayagain);  /* must retraverse it in atomic phase */
   else if (hasclears)
-      linkgclist(h, g->weak);  /* has to be cleared later */
+      linkgclistTable(h, g->weak);  /* has to be cleared later */
   else
     genlink(g, obj2gco(h));
 }
@@ -506,7 +511,7 @@ static void traverseweakvalue (global_State *g, Table *h) {
 ** Traverse the array part of a table.
 */
 static int traversearray (global_State *g, Table *h) {
-  unsigned asize = h->asize;
+  unsigned asize = h->arraySize();
   int marked = 0;  /* true if some object is marked in this traversal */
   unsigned i;
   for (i = 0; i < asize; i++) {
@@ -556,11 +561,11 @@ static int traverseephemeron (global_State *g, Table *h, int inv) {
   }
   /* link table into proper list */
   if (g->gcstate == GCSpropagate)
-    linkgclist(h, g->grayagain);  /* must retraverse it in atomic phase */
+    linkgclistTable(h, g->grayagain);  /* must retraverse it in atomic phase */
   else if (hasww)  /* table has white->white entries? */
-    linkgclist(h, g->ephemeron);  /* have to propagate again */
+    linkgclistTable(h, g->ephemeron);  /* have to propagate again */
   else if (hasclears)  /* table has white keys? */
-    linkgclist(h, g->allweak);  /* may have to clean white keys */
+    linkgclistTable(h, g->allweak);  /* may have to clean white keys */
   else
     genlink(g, obj2gco(h));  /* check whether collector still needs to see it */
   return marked;
@@ -587,7 +592,7 @@ static void traversestrongtable (global_State *g, Table *h) {
 ** (result & 1) iff weak values; (result & 2) iff weak keys.
 */
 static int getmode (global_State *g, Table *h) {
-  const TValue *mode = gfasttm(g, h->metatable, TM_MODE);
+  const TValue *mode = gfasttm(g, h->getMetatable(), TM_MODE);
   if (mode == NULL || !ttisshrstring(mode))
     return 0;  /* ignore non-(short)string modes */
   else {
@@ -600,7 +605,7 @@ static int getmode (global_State *g, Table *h) {
 
 
 static l_mem traversetable (global_State *g, Table *h) {
-  markobjectN(g, h->metatable);
+  markobjectN(g, h->getMetatable());
   switch (getmode(g, h)) {
     case 0:  /* not weak */
       traversestrongtable(g, h);
@@ -613,12 +618,12 @@ static l_mem traversetable (global_State *g, Table *h) {
       break;
     case 3:  /* all weak; nothing to traverse */
       if (g->gcstate == GCSpropagate)
-        linkgclist(h, g->grayagain);  /* must visit again its metatable */
+        linkgclistTable(h, g->grayagain);  /* must visit again its metatable */
       else
-        linkgclist(h, g->allweak);  /* must clear collected entries */
+        linkgclistTable(h, g->allweak);  /* must clear collected entries */
       break;
   }
-  return cast(l_mem, 1 + 2*sizenode(h) + h->asize);
+  return cast(l_mem, 1 + 2*sizenode(h) + h->arraySize());
 }
 
 
@@ -756,7 +761,7 @@ static void convergeephemerons (global_State *g) {
     changed = 0;
     while ((w = next) != NULL) {  /* for each ephemeron table */
       Table *h = gco2t(w);
-      next = h->gclist;  /* list is rebuilt during loop */
+      next = h->getGclist();  /* list is rebuilt during loop */
       nw2black(h);  /* out of the list (for now) */
       if (traverseephemeron(g, h, dir)) {  /* marked some value? */
         propagateall(g);  /* propagate changes */
@@ -781,7 +786,7 @@ static void convergeephemerons (global_State *g) {
 ** clear entries with unmarked keys from all weaktables in list 'l'
 */
 static void clearbykeys (global_State *g, GCObject *l) {
-  for (; l; l = gco2t(l)->gclist) {
+  for (; l; l = gco2t(l)->getGclist()) {
     Table *h = gco2t(l);
     Node *limit = gnodelast(h);
     Node *n;
@@ -800,11 +805,11 @@ static void clearbykeys (global_State *g, GCObject *l) {
 ** to element 'f'
 */
 static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
-  for (; l != f; l = gco2t(l)->gclist) {
+  for (; l != f; l = gco2t(l)->getGclist()) {
     Table *h = gco2t(l);
     Node *n, *limit = gnodelast(h);
     unsigned int i;
-    unsigned int asize = h->asize;
+    unsigned int asize = h->arraySize();
     for (i = 0; i < asize; i++) {
       GCObject *o = gcvalarr(h, i);
       if (iscleared(g, o))  /* value was collected? */

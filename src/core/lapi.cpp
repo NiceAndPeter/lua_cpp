@@ -810,7 +810,7 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
   obj = index2value(L, objindex);
   switch (ttype(obj)) {
     case LUA_TTABLE:
-      mt = hvalue(obj)->metatable;
+      mt = hvalue(obj)->getMetatable();
       break;
     case LUA_TUSERDATA:
       mt = uvalue(obj)->metatable;
@@ -975,7 +975,7 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
   }
   switch (ttype(obj)) {
     case LUA_TTABLE: {
-      hvalue(obj)->metatable = mt;
+      hvalue(obj)->setMetatable(mt);
       if (mt) {
         luaC_objbarrier(L, gcvalue(obj), mt);
         gcvalue(obj)->checkFinalizer(L, mt);  /* Phase 25c */

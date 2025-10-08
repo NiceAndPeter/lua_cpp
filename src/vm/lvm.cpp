@@ -301,7 +301,7 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
       /* else will try the metamethod */
     }
     else {  /* 't' is a table */
-      tm = fasttm(L, hvalue(t)->metatable, TM_INDEX);  /* table's metamethod */
+      tm = fasttm(L, hvalue(t)->getMetatable(), TM_INDEX);  /* table's metamethod */
       if (tm == NULL) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
         return LUA_VNIL;
@@ -338,7 +338,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     const TValue *tm;  /* '__newindex' metamethod */
     if (hres != HNOTATABLE) {  /* is 't' a table? */
       Table *h = hvalue(t);  /* save 't' table */
-      tm = fasttm(L, h->metatable, TM_NEWINDEX);  /* get metamethod */
+      tm = fasttm(L, h->getMetatable(), TM_NEWINDEX);  /* get metamethod */
       if (tm == NULL) {  /* no metamethod? */
         sethvalue2s(L, L->top.p, h);  /* anchor 't' */
         L->top.p++;  /* assume EXTRA_STACK */
@@ -625,9 +625,9 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
       case LUA_VTABLE: {
         if (hvalue(t1) == hvalue(t2)) return 1;
         else if (L == NULL) return 0;
-        tm = fasttm(L, hvalue(t1)->metatable, TM_EQ);
+        tm = fasttm(L, hvalue(t1)->getMetatable(), TM_EQ);
         if (tm == NULL)
-          tm = fasttm(L, hvalue(t2)->metatable, TM_EQ);
+          tm = fasttm(L, hvalue(t2)->getMetatable(), TM_EQ);
         break;  /* will try TM */
       }
       case LUA_VLCF:
@@ -720,7 +720,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
   switch (ttypetag(rb)) {
     case LUA_VTABLE: {
       Table *h = hvalue(rb);
-      tm = fasttm(L, h->metatable, TM_LEN);
+      tm = fasttm(L, h->getMetatable(), TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
       setivalue(s2v(ra), l_castU2S(luaH_getn(L, h)));  /* else primitive len */
       return;
@@ -1900,7 +1900,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           pc++;
         }
         /* when 'n' is known, table should have proper size */
-        if (last > h->asize) {  /* needs more space? */
+        if (last > h->arraySize()) {  /* needs more space? */
           /* fixed-size sets should have space preallocated */
           lua_assert(GETARG_vB(i) == 0);
           luaH_resizearray(L, h, last);  /* preallocate it at once */
