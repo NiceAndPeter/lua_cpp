@@ -84,6 +84,13 @@ public:
   int getLineNumber() const noexcept { return linenumber; }
   TString* getSource() const noexcept { return source; }
   const Token& getCurrentToken() const noexcept { return t; }
+
+  // Inline helper methods (converted from macros)
+  void next() noexcept { current = zgetc(z); }
+  bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
+
+  // Method declaration (implemented in llex.cpp)
+  void saveAndNext();
 };
 
 
