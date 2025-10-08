@@ -182,7 +182,9 @@ inline bool isold(const T* o) noexcept {
   return reinterpret_cast<const GCObject*>(o)->isOld();
 }
 
-#define tofinalize(x)	testbit((x)->marked, FINALIZEDBIT)
+inline bool tofinalize(const GCObject* x) noexcept {
+	return testbit(x->getMarked(), FINALIZEDBIT);
+}
 
 /* Get the "other" white color (for dead object detection) */
 constexpr lu_byte otherwhite(const global_State* g) noexcept {
@@ -195,19 +197,23 @@ constexpr bool isdeadm(lu_byte ow, lu_byte m) noexcept {
 }
 
 /* Check if a GC object is dead */
-constexpr bool isdead(const global_State* g, const GCObject* v) noexcept {
-	return isdeadm(otherwhite(g), v->marked);
+inline bool isdead(const global_State* g, const GCObject* v) noexcept {
+	return isdeadm(otherwhite(g), v->getMarked());
 }
 
 /* Template version for any GC-able type (Table, TString, UpVal, etc.) */
 template<typename T>
-constexpr bool isdead(const global_State* g, const T* v) noexcept {
-	return isdeadm(otherwhite(g), reinterpret_cast<const GCObject*>(v)->marked);
+inline bool isdead(const global_State* g, const T* v) noexcept {
+	return isdeadm(otherwhite(g), reinterpret_cast<const GCObject*>(v)->getMarked());
 }
 
-#define changewhite(x)	((x)->marked ^= WHITEBITS)
-#define nw2black(x)  \
-	check_exp(!iswhite(x), l_setbit((x)->marked, BLACKBIT))
+inline void changewhite(GCObject* x) noexcept {
+	x->setMarked(x->getMarked() ^ WHITEBITS);
+}
+
+inline void nw2black(GCObject* x) noexcept {
+	l_setbit(x->getMarkedRef(), BLACKBIT);
+}
 
 #define luaC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
 

@@ -219,18 +219,24 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
 /* Common type for all collectable objects */
 class GCObject {
-public:
+protected:
   GCObject* next;
   lu_byte tt;
   lu_byte marked;
 
+public:
   // Inline accessors
   GCObject* getNext() const noexcept { return next; }
   void setNext(GCObject* n) noexcept { next = n; }
+  GCObject** getNextPtr() noexcept { return &next; }
   lu_byte getType() const noexcept { return tt; }
+  void setType(lu_byte t) noexcept { tt = t; }
   lu_byte getMarked() const noexcept { return marked; }
   void setMarked(lu_byte m) noexcept { marked = m; }
   bool isMarked() const noexcept { return marked != 0; }
+
+  // Marked field bit manipulation helpers
+  lu_byte& getMarkedRef() noexcept { return marked; }
 
   // GC color and age methods (defined in lgc.h after constants are available)
   inline bool isWhite() const noexcept;
@@ -291,9 +297,9 @@ constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
 /* setgcovalue now defined as inline function below */
 
 /* collectable object has the same tag as the original value (inline version) */
-inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == gcvalue(obj)->tt; }
+inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == gcvalue(obj)->getType(); }
 
-inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue()->tt; }
+inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue()->getType(); }
 
 /* }================================================================== */
 
@@ -888,7 +894,7 @@ inline void TValue::setFunction(lua_CFunction f) noexcept {
 
 inline void TValue::setString(lua_State* L, TString* s) noexcept {
   value_.gc = reinterpret_cast<GCObject*>(s);
-  tt_ = ctb(s->tt);
+  tt_ = ctb(s->getType());
   (void)L; // checkliveness removed - needs lstate.h
 }
 
@@ -924,7 +930,7 @@ inline void TValue::setThread(lua_State* L, lua_State* th) noexcept {
 
 inline void TValue::setGCObject(lua_State* L, GCObject* gc) noexcept {
   value_.gc = gc;
-  tt_ = ctb(gc->tt);
+  tt_ = ctb(gc->getType());
   (void)L;
 }
 

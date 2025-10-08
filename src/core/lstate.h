@@ -504,47 +504,47 @@ constexpr const lua_State* mainthread(const global_State* g) noexcept { return &
 
 /* Convert GCObject to specific types using reinterpret_cast */
 inline TString* gco2ts(GCObject* o) noexcept {
-	lua_assert(novariant(o->tt) == LUA_TSTRING);
+	lua_assert(novariant(o->getType()) == LUA_TSTRING);
 	return reinterpret_cast<TString*>(o);
 }
 
 inline Udata* gco2u(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VUSERDATA);
+	lua_assert(o->getType() == LUA_VUSERDATA);
 	return reinterpret_cast<Udata*>(o);
 }
 
 inline LClosure* gco2lcl(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VLCL);
+	lua_assert(o->getType() == LUA_VLCL);
 	return reinterpret_cast<LClosure*>(o);
 }
 
 inline CClosure* gco2ccl(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VCCL);
+	lua_assert(o->getType() == LUA_VCCL);
 	return reinterpret_cast<CClosure*>(o);
 }
 
 inline Closure* gco2cl(GCObject* o) noexcept {
-	lua_assert(novariant(o->tt) == LUA_TFUNCTION);
+	lua_assert(novariant(o->getType()) == LUA_TFUNCTION);
 	return reinterpret_cast<Closure*>(o);
 }
 
 inline Table* gco2t(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VTABLE);
+	lua_assert(o->getType() == LUA_VTABLE);
 	return reinterpret_cast<Table*>(o);
 }
 
 inline Proto* gco2p(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VPROTO);
+	lua_assert(o->getType() == LUA_VPROTO);
 	return reinterpret_cast<Proto*>(o);
 }
 
 inline lua_State* gco2th(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VTHREAD);
+	lua_assert(o->getType() == LUA_VTHREAD);
 	return reinterpret_cast<lua_State*>(o);
 }
 
 inline UpVal* gco2upv(GCObject* o) noexcept {
-	lua_assert(o->tt == LUA_VUPVAL);
+	lua_assert(o->getType() == LUA_VUPVAL);
 	return reinterpret_cast<UpVal*>(o);
 }
 

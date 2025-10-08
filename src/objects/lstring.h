@@ -53,7 +53,7 @@
 /*
 ** equality for short strings, which are always internalized
 */
-#define eqshrstr(a,b)	check_exp((a)->tt == LUA_VSHRSTR, (a) == (b))
+#define eqshrstr(a,b)	check_exp((a)->getType() == LUA_VSHRSTR, (a) == (b))
 
 
 LUAI_FUNC unsigned luaS_hash (const char *str, size_t l, unsigned seed);

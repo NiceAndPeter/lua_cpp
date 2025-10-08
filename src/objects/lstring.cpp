@@ -332,7 +332,7 @@ TString *luaS_newextlstr (lua_State *L,
 */
 
 unsigned TString::hashLongStr() {
-  lua_assert(this->tt == LUA_VLNGSTR);
+  lua_assert(this->getType() == LUA_VLNGSTR);
   if (this->extra == 0) {  /* no hash? */
     size_t len = this->u.lnglen;
     this->hash = luaS_hash(getlngstr(this), len, this->hash);

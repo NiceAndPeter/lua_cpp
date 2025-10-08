@@ -349,12 +349,12 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
                        (*f)(ud, NULL, LUA_TTHREAD, sizeof(global_State)));
   if (g == NULL) return NULL;
   L = &g->mainth.l;
-  L->tt = LUA_VTHREAD;
+  L->setType(LUA_VTHREAD);
   g->currentwhite = bitmask(WHITE0BIT);
-  L->marked = luaC_white(g);
+  L->setMarked(luaC_white(g));
   preinit_thread(L, g);
   g->allgc = obj2gco(L);  /* by now, only object is the main thread */
-  L->next = NULL;
+  L->setNext(NULL);
   incnny(L);  /* main thread is always non yieldable */
   g->frealloc = f;
   g->ud = ud;

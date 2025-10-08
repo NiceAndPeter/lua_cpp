@@ -48,16 +48,19 @@
 
 
 /* macro to erase all color bits then set only the current white bit */
-#define makewhite(g,x)	\
-  (x->marked = cast_byte((x->marked & ~maskcolors) | luaC_white(g)))
+inline void makewhite(global_State* g, GCObject* x) noexcept {
+  x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | luaC_white(g)));
+}
 
 /* make an object gray (neither white nor black) */
-#define set2gray(x)	resetbits(x->marked, maskcolors)
-
+inline void set2gray(GCObject* x) noexcept {
+  resetbits(x->getMarkedRef(), maskcolors);
+}
 
 /* make an object black (coming from any color) */
-#define set2black(x)  \
-  (x->marked = cast_byte((x->marked & ~WHITEBITS) | bitmask(BLACKBIT)))
+inline void set2black(GCObject* x) noexcept {
+  x->setMarked(cast_byte((x->getMarked() & ~WHITEBITS) | bitmask(BLACKBIT)));
+}
 
 
 #define valiswhite(x)   (iscollectable(x) && iswhite(gcvalue(x)))
@@ -112,7 +115,7 @@ static void entersweep (lua_State *L);
 
 static l_mem objsize (GCObject *o) {
   lu_mem res;
-  switch (o->tt) {
+  switch (o->getType()) {
     case LUA_VTABLE: {
       res = luaH_size(gco2t(o));
       break;
@@ -161,7 +164,7 @@ static l_mem objsize (GCObject *o) {
 
 
 static GCObject **getgclist (GCObject *o) {
-  switch (o->tt) {
+  switch (o->getType()) {
     case LUA_VTABLE: return &gco2t(o)->gclist;
     case LUA_VLCL: return &gco2lcl(o)->gclist;
     case LUA_VCCL: return &gco2ccl(o)->gclist;
@@ -222,7 +225,7 @@ static void clearkey (Node *n) {
 */
 static int iscleared (global_State *g, const GCObject *o) {
   if (o == NULL) return 0;  /* non-collectable value */
-  else if (novariant(o->tt) == LUA_TSTRING) {
+  else if (novariant(o->getType()) == LUA_TSTRING) {
     markobject(g, o);  /* strings are 'values', so are never weak */
     return 0;
   }
@@ -289,9 +292,9 @@ GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz, size_t offset) {
   global_State *g = G(L);
   char *p = cast_charp(luaM_newobject(L, novariant(tt), sz));
   GCObject *o = cast(GCObject *, p + offset);
-  o->marked = luaC_white(g);
-  o->tt = tt;
-  o->next = g->allgc;
+  o->setMarked(luaC_white(g));
+  o->setType(tt);
+  o->setNext(g->allgc);
   g->allgc = o;
   return o;
 }
@@ -329,7 +332,7 @@ GCObject *luaC_newobj (lua_State *L, lu_byte tt, size_t sz) {
 */
 static void reallymarkobject (global_State *g, GCObject *o) {
   g->GCmarked += objsize(o);
-  switch (o->tt) {
+  switch (o->getType()) {
     case LUA_VSHRSTR:
     case LUA_VLNGSTR: {
       set2black(o);  /* nothing to visit */
@@ -378,7 +381,7 @@ static void markmt (global_State *g) {
 */
 static void markbeingfnz (global_State *g) {
   GCObject *o;
-  for (o = g->tobefnz; o != NULL; o = o->next)
+  for (o = g->tobefnz; o != NULL; o = o->getNext())
     markobject(g, o);
 }
 
@@ -719,7 +722,7 @@ static l_mem propagatemark (global_State *g) {
   GCObject *o = g->gray;
   nw2black(o);
   g->gray = *getgclist(o);  /* remove from 'gray' list */
-  switch (o->tt) {
+  switch (o->getType()) {
     case LUA_VTABLE: return traversetable(g, gco2t(o));
     case LUA_VUSERDATA: return traverseudata(g, gco2u(o));
     case LUA_VLCL: return traverseLclosure(g, gco2lcl(o));
@@ -826,7 +829,7 @@ static void freeupval (lua_State *L, UpVal *uv) {
 
 static void freeobj (lua_State *L, GCObject *o) {
   assert_code(l_mem newmem = gettotalbytes(G(L)) - objsize(o));
-  switch (o->tt) {
+  switch (o->getType()) {
     case LUA_VPROTO:
       gco2p(o)->free(L);  /* Phase 25b */
       break;
@@ -886,14 +889,14 @@ static GCObject **sweeplist (lua_State *L, GCObject **p, l_mem countin) {
   lu_byte white = luaC_white(g);  /* current white */
   while (*p != NULL && countin-- > 0) {
     GCObject *curr = *p;
-    lu_byte marked = curr->marked;
+    lu_byte marked = curr->getMarked();
     if (isdeadm(ow, marked)) {  /* is 'curr' dead? */
-      *p = curr->next;  /* remove 'curr' from list */
+      *p = curr->getNext();  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* change mark to 'white' and age to 'new' */
-      curr->marked = cast_byte((marked & ~maskgcbits) | white | G_NEW);
-      p = &curr->next;  /* go to next element */
+      curr->setMarked(cast_byte((marked & ~maskgcbits) | white | G_NEW));
+      p = curr->getNextPtr();  /* go to next element */
     }
   }
   return (*p == NULL) ? NULL : p;
@@ -938,10 +941,10 @@ static void checkSizes (lua_State *L, global_State *g) {
 static GCObject *udata2finalize (global_State *g) {
   GCObject *o = g->tobefnz;  /* get first element */
   lua_assert(tofinalize(o));
-  g->tobefnz = o->next;  /* remove it from 'tobefnz' list */
-  o->next = g->allgc;  /* return it to 'allgc' list */
+  g->tobefnz = o->getNext();  /* remove it from 'tobefnz' list */
+  o->setNext(g->allgc);  /* return it to 'allgc' list */
   g->allgc = o;
-  resetbit(o->marked, FINALIZEDBIT);  /* object is "normal" again */
+  resetbit(o->getMarkedRef(), FINALIZEDBIT);  /* object is "normal" again */
   if (issweepphase(g))
     makewhite(g, o);  /* "sweep" object */
   else if (getage(o) == G_OLD1)
@@ -999,7 +1002,7 @@ static void callallpendingfinalizers (lua_State *L) {
 */
 static GCObject **findlast (GCObject **p) {
   while (*p != NULL)
-    p = &(*p)->next;
+    p = (*p)->getNextPtr();
   return p;
 }
 
@@ -1018,14 +1021,14 @@ static void separatetobefnz (global_State *g, int all) {
   while ((curr = *p) != g->finobjold1) {  /* traverse all finalizable objects */
     lua_assert(tofinalize(curr));
     if (!(iswhite(curr) || all))  /* not being collected? */
-      p = &curr->next;  /* don't bother with it */
+      p = curr->getNextPtr();  /* don't bother with it */
     else {
       if (curr == g->finobjsur)  /* removing 'finobjsur'? */
-        g->finobjsur = curr->next;  /* correct it */
-      *p = curr->next;  /* remove 'curr' from 'finobj' list */
-      curr->next = *lastnext;  /* link at the end of 'tobefnz' list */
+        g->finobjsur = curr->getNext();  /* correct it */
+      *p = curr->getNext();  /* remove 'curr' from 'finobj' list */
+      curr->setNext(*lastnext);  /* link at the end of 'tobefnz' list */
       *lastnext = curr;
-      lastnext = &curr->next;
+      lastnext = curr->getNextPtr();
     }
   }
 }
@@ -1036,7 +1039,7 @@ static void separatetobefnz (global_State *g, int all) {
 */
 static void checkpointer (GCObject **p, GCObject *o) {
   if (o == *p)
-    *p = o->next;
+    *p = o->getNext();
 }
 
 
@@ -1107,20 +1110,20 @@ static void sweep2old (lua_State *L, GCObject **p) {
   while ((curr = *p) != NULL) {
     if (iswhite(curr)) {  /* is 'curr' dead? */
       lua_assert(isdead(g, curr));
-      *p = curr->next;  /* remove 'curr' from list */
+      *p = curr->getNext();  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* all surviving objects become old */
       setage(curr, G_OLD);
-      if (curr->tt == LUA_VTHREAD) {  /* threads must be watched */
+      if (curr->getType() == LUA_VTHREAD) {  /* threads must be watched */
         lua_State *th = gco2th(curr);
         linkgclist(th, g->grayagain);  /* insert into 'grayagain' list */
       }
-      else if (curr->tt == LUA_VUPVAL && upisopen(gco2upv(curr)))
+      else if (curr->getType() == LUA_VUPVAL && upisopen(gco2upv(curr)))
         set2gray(curr);  /* open upvalues are always gray */
       else  /* everything else is black */
         nw2black(curr);
-      p = &curr->next;  /* go to next element */
+      p = curr->getNextPtr();  /* go to next element */
     }
   }
 }
@@ -1155,14 +1158,14 @@ static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
   while ((curr = *p) != limit) {
     if (iswhite(curr)) {  /* is 'curr' dead? */
       lua_assert(!isold(curr) && isdead(g, curr));
-      *p = curr->next;  /* remove 'curr' from list */
+      *p = curr->getNext();  /* remove 'curr' from list */
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* correct mark and age */
       int age = getage(curr);
       if (age == G_NEW) {  /* new objects go back to white */
-        int marked = curr->marked & ~maskgcbits;  /* erase GC bits */
-        curr->marked = cast_byte(marked | G_SURVIVAL | white);
+        int marked = curr->getMarked() & ~maskgcbits;  /* erase GC bits */
+        curr->setMarked(cast_byte(marked | G_SURVIVAL | white));
       }
       else {  /* all other objects will be old, and so keep their color */
         lua_assert(age != G_OLD1);  /* advanced in 'markold' */
@@ -1173,7 +1176,7 @@ static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
             *pfirstold1 = curr;  /* first OLD1 object in the list */
         }
       }
-      p = &curr->next;  /* go to next element */
+      p = curr->getNextPtr();  /* go to next element */
     }
   }
   *paddedold += addedold;
@@ -1204,7 +1207,7 @@ static GCObject **correctgraylist (GCObject **p) {
       setage(curr, G_TOUCHED2);
       goto remain;  /* keep it in the list and go to next element */
     }
-    else if (curr->tt == LUA_VTHREAD) {
+    else if (curr->getType() == LUA_VTHREAD) {
       lua_assert(isgray(curr));
       goto remain;  /* keep non-white threads on the list */
     }
@@ -1243,7 +1246,7 @@ static void correctgraylists (global_State *g) {
 */
 static void markold (global_State *g, GCObject *from, GCObject *to) {
   GCObject *p;
-  for (p = from; p != to; p = p->next) {
+  for (p = from; p != to; p = p->getNext()) {
     if (getage(p) == G_OLD1) {
       lua_assert(!iswhite(p));
       setage(p, G_OLD);  /* now they are old */
@@ -1483,7 +1486,7 @@ static void entersweep (lua_State *L) {
 */
 static void deletelist (lua_State *L, GCObject *p, GCObject *limit) {
   while (p != limit) {
-    GCObject *next = p->next;
+    GCObject *next = p->getNext();
     freeobj(L, p);
     p = next;
   }
@@ -1777,8 +1780,8 @@ void GCObject::fix(lua_State* L) {
   lua_assert(g->allgc == this);  /* object must be 1st in 'allgc' list! */
   set2gray(this);  /* they will be gray forever */
   setage(this, G_OLD);  /* and old forever */
-  g->allgc = this->next;  /* remove object from 'allgc' list */
-  this->next = g->fixedgc;  /* link it to 'fixedgc' list */
+  g->allgc = this->getNext();  /* remove object from 'allgc' list */
+  this->setNext(g->fixedgc);  /* link it to 'fixedgc' list */
   g->fixedgc = this;
 }
 
@@ -1798,11 +1801,11 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     else
       correctpointers(g, this);
     /* search for pointer pointing to 'this' */
-    for (p = &g->allgc; *p != this; p = &(*p)->next) { /* empty */ }
-    *p = this->next;  /* remove 'this' from 'allgc' list */
-    this->next = g->finobj;  /* link it in 'finobj' list */
+    for (p = &g->allgc; *p != this; p = (*p)->getNextPtr()) { /* empty */ }
+    *p = this->getNext();  /* remove 'this' from 'allgc' list */
+    this->setNext(g->finobj);  /* link it in 'finobj' list */
     g->finobj = this;
-    l_setbit(this->marked, FINALIZEDBIT);  /* mark it as such */
+    l_setbit(this->getMarkedRef(), FINALIZEDBIT);  /* mark it as such */
   }
 }
 

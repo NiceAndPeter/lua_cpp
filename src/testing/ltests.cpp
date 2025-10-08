@@ -313,10 +313,10 @@ static int testobjref1 (global_State *g, GCObject *f, GCObject *t) {
 
 static void printobj (global_State *g, GCObject *o) {
   printf("||%s(%p)-%c%c(%02X)||",
-           ttypename(novariant(o->tt)), (void *)o,
+           ttypename(novariant(o->getType())), (void *)o,
            isdead(g,o) ? 'd' : isblack(o) ? 'b' : iswhite(o) ? 'w' : 'g',
-           "ns01oTt"[getage(o)], o->marked);
-  if (o->tt == LUA_VSHRSTR || o->tt == LUA_VLNGSTR)
+           "ns01oTt"[getage(o)], o->getMarked());
+  if (o->getType() == LUA_VSHRSTR || o->getType() == LUA_VLNGSTR)
     printf(" '%s'", getstr(gco2ts(o)));
 }
 
@@ -503,7 +503,7 @@ static void check_stack (global_State *g, lua_State *L1) {
 
 
 static void checkrefs (global_State *g, GCObject *o) {
-  switch (o->tt) {
+  switch (o->getType()) {
     case LUA_VUSERDATA: {
       checkudata(g, gco2u(o));
       break;
@@ -567,8 +567,8 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
         assert(isblack(o) ||
         getage(o) == G_TOUCHED1 ||
         getage(o) == G_OLD0 ||
-        o->tt == LUA_VTHREAD ||
-        (o->tt == LUA_VUPVAL && upisopen(gco2upv(o))));
+        o->getType() == LUA_VTHREAD ||
+        (o->getType() == LUA_VUPVAL && upisopen(gco2upv(o))));
       }
       assert(getage(o) != G_TOUCHED1 || isgray(o));
     }
@@ -582,11 +582,11 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
   cast_void(g);  /* better to keep it if we need to print an object */
   while (o) {
     assert(!!isgray(o) ^ (getage(o) == G_TOUCHED2));
-    assert(!testbit(o->marked, TESTBIT));
+    assert(!testbit(o->getMarked(), TESTBIT));
     if (keepinvariant(g))
-      l_setbit(o->marked, TESTBIT);  /* mark that object is in a gray list */
+      l_setbit(o->getMarkedRef(), TESTBIT);  /* mark that object is in a gray list */
     total++;
-    switch (o->tt) {
+    switch (o->getType()) {
       case LUA_VTABLE: o = gco2t(o)->gclist; break;
       case LUA_VLCL: o = gco2lcl(o)->gclist; break;
       case LUA_VCCL: o = gco2ccl(o)->gclist; break;
@@ -626,7 +626,7 @@ static l_mem checkgrays (global_State *g) {
 static void incifingray (global_State *g, GCObject *o, l_mem *count) {
   if (!keepinvariant(g))
     return;  /* gray lists not being kept in these phases */
-  if (o->tt == LUA_VUPVAL) {
+  if (o->getType() == LUA_VUPVAL) {
     /* only open upvalues can be gray */
     assert(!isgray(o) || upisopen(gco2upv(o)));
     return;  /* upvalues are never in gray lists */
@@ -634,8 +634,8 @@ static void incifingray (global_State *g, GCObject *o, l_mem *count) {
   /* these are the ones that must be in gray lists */
   if (isgray(o) || getage(o) == G_TOUCHED2) {
     (*count)++;
-    assert(testbit(o->marked, TESTBIT));
-    resetbit(o->marked, TESTBIT);  /* prepare for next cycle */
+    assert(testbit(o->getMarked(), TESTBIT));
+    resetbit(o->getMarkedRef(), TESTBIT);  /* prepare for next cycle */
   }
 }
 
@@ -644,22 +644,22 @@ static l_mem checklist (global_State *g, int maybedead, int tof,
   GCObject *newl, GCObject *survival, GCObject *old, GCObject *reallyold) {
   GCObject *o;
   l_mem total = 0;  /* number of object that should be in  gray lists */
-  for (o = newl; o != survival; o = o->next) {
+  for (o = newl; o != survival; o = o->getNext()) {
     checkobject(g, o, maybedead, G_NEW);
     incifingray(g, o, &total);
     assert(!tof == !tofinalize(o));
   }
-  for (o = survival; o != old; o = o->next) {
+  for (o = survival; o != old; o = o->getNext()) {
     checkobject(g, o, 0, G_SURVIVAL);
     incifingray(g, o, &total);
     assert(!tof == !tofinalize(o));
   }
-  for (o = old; o != reallyold; o = o->next) {
+  for (o = old; o != reallyold; o = o->getNext()) {
     checkobject(g, o, 0, G_OLD1);
     incifingray(g, o, &total);
     assert(!tof == !tofinalize(o));
   }
-  for (o = reallyold; o != NULL; o = o->next) {
+  for (o = reallyold; o != NULL; o = o->getNext()) {
     checkobject(g, o, 0, G_OLD);
     incifingray(g, o, &total);
     assert(!tof == !tofinalize(o));
@@ -683,8 +683,8 @@ int lua_checkmemory (lua_State *L) {
   totalin = checkgrays(g);
 
   /* check 'fixedgc' list */
-  for (o = g->fixedgc; o != NULL; o = o->next) {
-    assert(o->tt == LUA_VSHRSTR && isgray(o) && getage(o) == G_OLD);
+  for (o = g->fixedgc; o != NULL; o = o->getNext()) {
+    assert(o->getType() == LUA_VSHRSTR && isgray(o) && getage(o) == G_OLD);
   }
 
   /* check 'allgc' list */
@@ -697,11 +697,11 @@ int lua_checkmemory (lua_State *L) {
                               g->finobjsur, g->finobjold1, g->finobjrold);
 
   /* check 'tobefnz' list */
-  for (o = g->tobefnz; o != NULL; o = o->next) {
+  for (o = g->tobefnz; o != NULL; o = o->getNext()) {
     checkobject(g, o, 0, G_NEW);
     incifingray(g, o, &totalshould);
     assert(tofinalize(o));
-    assert(o->tt == LUA_VUSERDATA || o->tt == LUA_VTABLE);
+    assert(o->getType() == LUA_VUSERDATA || o->getType() == LUA_VTABLE);
   }
   if (keepinvariant(g))
     assert(totalin == totalshould);
@@ -1080,7 +1080,7 @@ static int hash_query (lua_State *L) {
     TString *ts;
     luaL_argcheck(L, lua_type(L, 1) == LUA_TSTRING, 1, "string expected");
     ts = tsvalue(obj_at(L, 1));
-    if (ts->tt == LUA_VLNGSTR)
+    if (ts->getType() == LUA_VLNGSTR)
       luaS_hashlongstr(ts);  /* make sure long string has a hash */
     lua_pushinteger(L, cast_int(ts->hash));
   }
