@@ -1132,7 +1132,7 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
       TValue gt;
       getGlobalTable(L, &gt);
       /* set global table as 1st upvalue of 'f' (may be LUA_ENV) */
-      setobj(L, f->upvals[0]->v.p, &gt);
+      setobj(L, f->upvals[0]->getVP(), &gt);
       luaC_barrier(L, f->upvals[0], &gt);
     }
   }
@@ -1381,7 +1381,7 @@ static const char *aux_upvalue (TValue *fi, int n, TValue **val,
       Proto *p = f->p;
       if (!(cast_uint(n) - 1u  < cast_uint(p->getUpvaluesSize())))
         return NULL;  /* 'n' not in [1, p->getUpvaluesSize()] */
-      *val = f->upvals[n-1]->v.p;
+      *val = f->upvals[n-1]->getVP();
       if (owner) *owner = obj2gco(f->upvals[n - 1]);
       name = p->getUpvalues()[n-1].getName();
       return (name == NULL) ? "(no name)" : getstr(name);

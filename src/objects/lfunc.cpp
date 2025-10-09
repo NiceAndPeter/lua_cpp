@@ -50,8 +50,8 @@ void LClosure::initUpvals(lua_State* L) {
   for (i = 0; i < nupvalues; i++) {
     GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
     UpVal *uv = gco2upv(o);
-    uv->v.p = &uv->u.value;  /* make it closed */
-    setnilvalue(uv->v.p);
+    uv->setVP(uv->getValueSlot());  /* make it closed */
+    setnilvalue(uv->getVP());
     upvals[i] = uv;
     luaC_objbarrier(L, this, uv);
   }
@@ -66,11 +66,11 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
   GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
   UpVal *uv = gco2upv(o);
   UpVal *next = *prev;
-  uv->v.p = s2v(level);  /* current value lives in the stack */
-  uv->u.open.next = next;  /* link it to list of open upvalues */
-  uv->u.open.previous = prev;
+  uv->setVP(s2v(level));  /* current value lives in the stack */
+  uv->setOpenNext(next);  /* link it to list of open upvalues */
+  uv->setOpenPrevious(prev);
   if (next)
-    next->u.open.previous = &uv->u.open.next;
+    next->setOpenPrevious(uv->getOpenNextPtr());  /* link next's previous to our next field */
   *prev = uv;
   if (!isintwups(L)) {  /* thread not in list of threads with upvalues? */
     L->twups = G(L)->twups;  /* link it to the list */
@@ -92,7 +92,7 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
     lua_assert(!isdead(G(L), p));
     if (uplevel(p) == level)  /* corresponding upvalue? */
       return p;  /* return it */
-    pp = &p->u.open.next;
+    pp = p->getOpenNextPtr();
   }
   /* not found: create a new upvalue after 'pp' */
   return newupval(L, level, pp);
@@ -185,9 +185,9 @@ void luaF_newtbcupval (lua_State *L, StkId level) {
 
 void UpVal::unlink() {
   lua_assert(upisopen(this));
-  *u.open.previous = u.open.next;
-  if (u.open.next)
-    u.open.next->u.open.previous = u.open.previous;
+  *getOpenPrevious() = getOpenNext();
+  if (getOpenNext())
+    getOpenNext()->setOpenPrevious(getOpenPrevious());
 }
 
 void luaF_unlinkupval (UpVal *uv) {
@@ -201,11 +201,11 @@ void luaF_unlinkupval (UpVal *uv) {
 void luaF_closeupval (lua_State *L, StkId level) {
   UpVal *uv;
   while ((uv = L->openupval) != NULL && uplevel(uv) >= level) {
-    TValue *slot = &uv->u.value;  /* new position for value */
+    TValue *slot = uv->getValueSlot();  /* new position for value */
     lua_assert(uplevel(uv) < L->top.p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
-    setobj(L, slot, uv->v.p);  /* move value to upvalue slot */
-    uv->v.p = slot;  /* now current value lives here */
+    setobj(L, slot, uv->getVP());  /* move value to upvalue slot */
+    uv->setVP(slot);  /* now current value lives here */
     if (!iswhite(uv)) {  /* neither white nor dead? */
       nw2black(uv);  /* closed upvalues cannot be gray */
       luaC_barrier(L, uv, slot);

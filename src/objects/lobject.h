@@ -886,7 +886,7 @@ constexpr lua_CFunction fvalueraw(const Value& v) noexcept { return v.f; }
 */
 // UpVal inherits from GCBase (CRTP)
 class UpVal : public GCBase<UpVal> {
-public:
+private:
   union {
     TValue *p;  /* points to stack or to its own value */
     ptrdiff_t offset;  /* used while the stack is being reallocated */
@@ -899,8 +899,31 @@ public:
     TValue value;  /* the value (when closed) */
   } u;
 
-  // Inline accessors
+public:
+  // Inline accessors for v union
+  TValue* getVP() noexcept { return v.p; }
+  const TValue* getVP() const noexcept { return v.p; }
+  void setVP(TValue* ptr) noexcept { v.p = ptr; }
+
+  ptrdiff_t getOffset() const noexcept { return v.offset; }
+  void setOffset(ptrdiff_t off) noexcept { v.offset = off; }
+
+  // Inline accessors for u union (open upvalues)
+  UpVal* getOpenNext() const noexcept { return u.open.next; }
+  void setOpenNext(UpVal* next_uv) noexcept { u.open.next = next_uv; }
+  UpVal** getOpenNextPtr() noexcept { return &u.open.next; }
+
+  UpVal** getOpenPrevious() const noexcept { return u.open.previous; }
+  void setOpenPrevious(UpVal** prev) noexcept { u.open.previous = prev; }
+
+  // Accessor for u.value (closed upvalues)
+  TValue* getValueSlot() noexcept { return &u.value; }
+  const TValue* getValueSlot() const noexcept { return &u.value; }
+
+  // Status check
   bool isOpen() const noexcept { return v.p != &u.value; }
+
+  // Backward compatibility (getValue returns current value pointer)
   TValue* getValue() noexcept { return v.p; }
   const TValue* getValue() const noexcept { return v.p; }
 

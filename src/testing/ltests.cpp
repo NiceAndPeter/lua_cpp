@@ -463,7 +463,7 @@ static void checkLclosure (global_State *g, LClosure *cl) {
     if (uv) {
       checkobjrefN(g, clgc, uv);
       if (!upisopen(uv))
-        checkvalref(g, obj2gco(uv), uv->v.p);
+        checkvalref(g, obj2gco(uv), uv->getVP());
     }
   }
 }
@@ -489,7 +489,7 @@ static void check_stack (global_State *g, lua_State *L1) {
     assert(L1->openupval == NULL && L1->ci == NULL);
     return;
   }
-  for (uv = L1->openupval; uv != NULL; uv = uv->u.open.next)
+  for (uv = L1->openupval; uv != NULL; uv = uv->getOpenNext())
     assert(upisopen(uv));  /* must be open */
   assert(L1->top.p <= L1->stack_last.p);
   assert(L1->tbclist.p <= L1->top.p);
@@ -509,7 +509,7 @@ static void checkrefs (global_State *g, GCObject *o) {
       break;
     }
     case LUA_VUPVAL: {
-      checkvalref(g, o, gco2upv(o)->v.p);
+      checkvalref(g, o, gco2upv(o)->getVP());
       break;
     }
     case LUA_VTABLE: {

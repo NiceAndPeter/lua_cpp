@@ -242,8 +242,8 @@ static void relstack (lua_State *L) {
   UpVal *up;
   L->top.offset = savestack(L, L->top.p);
   L->tbclist.offset = savestack(L, L->tbclist.p);
-  for (up = L->openupval; up != NULL; up = up->u.open.next)
-    up->v.offset = savestack(L, uplevel(up));
+  for (up = L->openupval; up != NULL; up = up->getOpenNext())
+    up->setOffset(savestack(L, uplevel(up)));
   for (ci = L->ci; ci != NULL; ci = ci->previous) {
     ci->top.offset = savestack(L, ci->top.p);
     ci->func.offset = savestack(L, ci->func.p);
@@ -260,8 +260,8 @@ static void correctstack (lua_State *L, StkId oldstack) {
   UNUSED(oldstack);
   L->top.p = restorestack(L, L->top.offset);
   L->tbclist.p = restorestack(L, L->tbclist.offset);
-  for (up = L->openupval; up != NULL; up = up->u.open.next)
-    up->v.p = s2v(restorestack(L, up->v.offset));
+  for (up = L->openupval; up != NULL; up = up->getOpenNext())
+    up->setVP(s2v(restorestack(L, up->getOffset())));
   for (ci = L->ci; ci != NULL; ci = ci->previous) {
     ci->top.p = restorestack(L, ci->top.offset);
     ci->func.p = restorestack(L, ci->func.offset);
@@ -290,8 +290,8 @@ static void correctstack (lua_State *L, StkId oldstack) {
     return;
   L->top.p = L->top.p - oldstack + newstack;
   L->tbclist.p = L->tbclist.p - oldstack + newstack;
-  for (up = L->openupval; up != NULL; up = up->u.open.next)
-    up->v.p = s2v(uplevel(up) - oldstack + newstack);
+  for (up = L->openupval; up != NULL; up = up->getOpenNext())
+    up->setVP(s2v(uplevel(up) - oldstack + newstack));
   for (ci = L->ci; ci != NULL; ci = ci->previous) {
     ci->top.p = ci->top.p - oldstack + newstack;
     ci->func.p = ci->func.p - oldstack + newstack;

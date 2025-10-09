@@ -1274,19 +1274,19 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_GETUPVAL) {
         StkId ra = RA(i);
         int b = GETARG_B(i);
-        setobj2s(L, ra, cl->upvals[b]->v.p);
+        setobj2s(L, ra, cl->upvals[b]->getVP());
         vmbreak;
       }
       vmcase(OP_SETUPVAL) {
         StkId ra = RA(i);
         UpVal *uv = cl->upvals[GETARG_B(i)];
-        setobj(L, uv->v.p, s2v(ra));
+        setobj(L, uv->getVP(), s2v(ra));
         luaC_barrier(L, uv, s2v(ra));
         vmbreak;
       }
       vmcase(OP_GETTABUP) {
         StkId ra = RA(i);
-        TValue *upval = cl->upvals[GETARG_B(i)]->v.p;
+        TValue *upval = cl->upvals[GETARG_B(i)]->getVP();
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
         lu_byte tag;
@@ -1335,7 +1335,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_SETTABUP) {
         int hres;
-        TValue *upval = cl->upvals[GETARG_A(i)]->v.p;
+        TValue *upval = cl->upvals[GETARG_A(i)]->getVP();
         TValue *rb = KB(i);
         TValue *rc = RKC(i);
         TString *key = tsvalue(rb);  /* key must be a short string */
