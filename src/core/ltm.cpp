@@ -230,7 +230,7 @@ void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
   int actual = cast_int(L->top.p - ci->func.p) - 1;  /* number of arguments */
   int nextra = actual - nfixparams;  /* number of extra arguments */
   ci->u.l.nextraargs = nextra;
-  luaD_checkstack(L, p->maxstacksize + 1);
+  luaD_checkstack(L, p->getMaxStackSize() + 1);
   /* copy function to the top of the stack */
   setobjs2s(L, L->top.p++, ci->func.p);
   /* move fixed parameters to the top of the stack */

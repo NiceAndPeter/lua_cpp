@@ -387,7 +387,7 @@ void lua_State::hookCall(CallInfo *ci_arg) {
                                              : LUA_HOOKCALL;
     Proto *p = ci_func(ci_arg)->p;
     ci_arg->u.l.savedpc++;  /* hooks assume 'pc' is already incremented */
-    this->callHook(event, -1, 1, p->numparams);
+    this->callHook(event, -1, 1, p->getNumParams());
     ci_arg->u.l.savedpc--;  /* correct 'pc' */
   }
 }
@@ -406,8 +406,8 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
     int ftransfer;
     if (isLua(ci_arg)) {
       Proto *p = ci_func(ci_arg)->p;
-      if (p->flag & PF_ISVARARG)
-        delta = ci_arg->u.l.nextraargs + p->numparams + 1;
+      if (p->getFlag() & PF_ISVARARG)
+        delta = ci_arg->u.l.nextraargs + p->getNumParams() + 1;
     }
     ci_arg->func.p += delta;  /* if vararg, back to virtual 'func' */
     ftransfer = cast_int(firstres - ci_arg->func.p);
@@ -592,8 +592,8 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
       return this->preCallC(func, status_val, fvalue(s2v(func)));
     case LUA_VLCL: {  /* Lua function */
       Proto *p = clLvalue(s2v(func))->p;
-      int fsize = p->maxstacksize;  /* frame size */
-      int nfixparams = p->numparams;
+      int fsize = p->getMaxStackSize();  /* frame size */
+      int nfixparams = p->getNumParams();
       int i;
       checkstackp(this, fsize - delta, func);
       ci_arg->func.p -= delta;  /* restore 'func' (if vararg) */
@@ -604,7 +604,7 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
         setnilvalue(s2v(func + narg1));  /* complete missing arguments */
       ci_arg->top.p = func + 1 + fsize;  /* top for new function */
       lua_assert(ci_arg->top.p <= stack_last.p);
-      ci_arg->u.l.savedpc = p->code;  /* starting point */
+      ci_arg->u.l.savedpc = p->getCode();  /* starting point */
       ci_arg->callstatus |= CIST_TAIL;
       top.p = func + narg1;  /* set top */
       return -1;
@@ -643,11 +643,11 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
       CallInfo *ci_new;
       Proto *p = clLvalue(s2v(func))->p;
       int narg = cast_int(top.p - func) - 1;  /* number of real arguments */
-      int nfixparams = p->numparams;
-      int fsize = p->maxstacksize;  /* frame size */
+      int nfixparams = p->getNumParams();
+      int fsize = p->getMaxStackSize();  /* frame size */
       checkstackp(this, fsize, func);
       this->ci = ci_new = this->prepareCallInfo(func, status_val, func + 1 + fsize);
-      ci_new->u.l.savedpc = p->code;  /* starting point */
+      ci_new->u.l.savedpc = p->getCode();  /* starting point */
       for (; narg < nfixparams; narg++)
         setnilvalue(s2v(top.p++));  /* complete missing arguments */
       lua_assert(ci_new->top.p <= stack_last.p);
@@ -1070,7 +1070,7 @@ static void f_parser (lua_State *L, void *ud) {
     checkmode(L, mode, "text");
     cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
   }
-  lua_assert(cl->nupvalues == cl->p->sizeupvalues);
+  lua_assert(cl->nupvalues == cl->p->getUpvaluesSize());
   cl->initUpvals(L);  /* Phase 25d */
 }
 

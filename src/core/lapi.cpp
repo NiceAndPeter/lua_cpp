@@ -1379,11 +1379,11 @@ static const char *aux_upvalue (TValue *fi, int n, TValue **val,
       LClosure *f = clLvalue(fi);
       TString *name;
       Proto *p = f->p;
-      if (!(cast_uint(n) - 1u  < cast_uint(p->sizeupvalues)))
-        return NULL;  /* 'n' not in [1, p->sizeupvalues] */
+      if (!(cast_uint(n) - 1u  < cast_uint(p->getUpvaluesSize())))
+        return NULL;  /* 'n' not in [1, p->getUpvaluesSize()] */
       *val = f->upvals[n-1]->v.p;
       if (owner) *owner = obj2gco(f->upvals[n - 1]);
-      name = p->upvalues[n-1].getName();
+      name = p->getUpvalues()[n-1].getName();
       return (name == NULL) ? "(no name)" : getstr(name);
     }
     default: return NULL;  /* not a closure */
@@ -1431,7 +1431,7 @@ static UpVal **getupvalref (lua_State *L, int fidx, int n, LClosure **pf) {
   api_check(L, ttisLclosure(fi), "Lua function expected");
   f = clLvalue(fi);
   if (pf) *pf = f;
-  if (1 <= n && n <= f->p->sizeupvalues)
+  if (1 <= n && n <= f->p->getUpvaluesSize())
     return &f->upvals[n - 1];  /* get its upvalue pointer */
   else
     return (UpVal**)&nullup;

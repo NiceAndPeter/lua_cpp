@@ -116,7 +116,7 @@ int luaK_exp2const (FuncState *fs, const expdesc *e, TValue *v) {
 static Instruction *previousinstruction (FuncState *fs) {
   static const Instruction invalidinstruction = ~(Instruction)0;
   if (fs->pc > fs->lasttarget)
-    return &fs->f->code[fs->pc - 1];  /* previous instruction */
+    return &fs->f->getCode()[fs->pc - 1];  /* previous instruction */
   else
     return cast(Instruction*, &invalidinstruction);
 }
@@ -152,7 +152,7 @@ void luaK_nil (FuncState *fs, int from, int n) {
 ** a list of jumps.
 */
 static int getjump (FuncState *fs, int pc) {
-  int offset = GETARG_sJ(fs->f->code[pc]);
+  int offset = GETARG_sJ(fs->f->getCode()[pc]);
   if (offset == NO_JUMP)  /* point to itself represents end of list */
     return NO_JUMP;  /* end of list */
   else
@@ -165,7 +165,7 @@ static int getjump (FuncState *fs, int pc) {
 ** (Jump addresses are relative in Lua)
 */
 static void fixjump (FuncState *fs, int pc, int dest) {
-  Instruction *jmp = &fs->f->code[pc];
+  Instruction *jmp = &fs->f->getCode()[pc];
   int offset = dest - (pc + 1);
   lua_assert(dest != NO_JUMP);
   if (!(-OFFSET_sJ <= offset && offset <= MAXARG_sJ - OFFSET_sJ))
@@ -242,7 +242,7 @@ int luaK_getlabel (FuncState *fs) {
 ** unconditional.
 */
 static Instruction *getjumpcontrol (FuncState *fs, int pc) {
-  Instruction *pi = &fs->f->code[pc];
+  Instruction *pi = &fs->f->getCode()[pc];
   if (pc >= 1 && testTMode(GET_OPCODE(*(pi-1))))
     return pi-1;
   else
@@ -331,16 +331,16 @@ static void savelineinfo (FuncState *fs, Proto *f, int line) {
   int linedif = line - fs->previousline;
   int pc = fs->pc - 1;  /* last instruction coded */
   if (abs(linedif) >= LIMLINEDIFF || fs->iwthabs++ >= MAXIWTHABS) {
-    luaM_growvector(fs->ls->L, f->abslineinfo, fs->nabslineinfo,
-                    f->sizeabslineinfo, AbsLineInfo, INT_MAX, "lines");
-    f->abslineinfo[fs->nabslineinfo].setPC(pc);
-    f->abslineinfo[fs->nabslineinfo++].setLine(line);
+    luaM_growvector(fs->ls->L, f->getAbsLineInfoRef(), fs->nabslineinfo,
+                    f->getAbsLineInfoSizeRef(), AbsLineInfo, INT_MAX, "lines");
+    f->getAbsLineInfo()[fs->nabslineinfo].setPC(pc);
+    f->getAbsLineInfo()[fs->nabslineinfo++].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     fs->iwthabs = 1;  /* restart counter */
   }
-  luaM_growvector(fs->ls->L, f->lineinfo, pc, f->sizelineinfo, ls_byte,
+  luaM_growvector(fs->ls->L, f->getLineInfoRef(), pc, f->getLineInfoSizeRef(), ls_byte,
                   INT_MAX, "opcodes");
-  f->lineinfo[pc] = cast(ls_byte, linedif);
+  f->getLineInfo()[pc] = cast(ls_byte, linedif);
   fs->previousline = line;  /* last line saved */
 }
 
@@ -354,12 +354,12 @@ static void savelineinfo (FuncState *fs, Proto *f, int line) {
 static void removelastlineinfo (FuncState *fs) {
   Proto *f = fs->f;
   int pc = fs->pc - 1;  /* last instruction coded */
-  if (f->lineinfo[pc] != ABSLINEINFO) {  /* relative line info? */
-    fs->previousline -= f->lineinfo[pc];  /* correct last line saved */
+  if (f->getLineInfo()[pc] != ABSLINEINFO) {  /* relative line info? */
+    fs->previousline -= f->getLineInfo()[pc];  /* correct last line saved */
     fs->iwthabs--;  /* undo previous increment */
   }
   else {  /* absolute line information */
-    lua_assert(f->abslineinfo[fs->nabslineinfo - 1].getPC() == pc);
+    lua_assert(f->getAbsLineInfo()[fs->nabslineinfo - 1].getPC() == pc);
     fs->nabslineinfo--;  /* remove it */
     fs->iwthabs = MAXIWTHABS + 1;  /* force next line info to be absolute */
   }
@@ -383,9 +383,9 @@ static void removelastinstruction (FuncState *fs) {
 int luaK_code (FuncState *fs, Instruction i) {
   Proto *f = fs->f;
   /* put new instruction in code array */
-  luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
+  luaM_growvector(fs->ls->L, f->getCodeRef(), fs->pc, f->getCodeSizeRef(), Instruction,
                   INT_MAX, "opcodes");
-  f->code[fs->pc++] = i;
+  f->getCode()[fs->pc++] = i;
   savelineinfo(fs, f, fs->ls->lastline);
   return fs->pc - 1;  /* index of new instruction */
 }
@@ -474,9 +474,9 @@ static int luaK_codek (FuncState *fs, int reg, int k) {
 */
 void luaK_checkstack (FuncState *fs, int n) {
   int newstack = fs->freereg + n;
-  if (newstack > fs->f->maxstacksize) {
+  if (newstack > fs->f->getMaxStackSize()) {
     luaY_checklimit(fs, newstack, MAX_FSTACK, "registers");
-    fs->f->maxstacksize = cast_byte(newstack);
+    fs->f->setMaxStackSize(cast_byte(newstack));
   }
 }
 
@@ -543,12 +543,12 @@ static void freeexps (FuncState *fs, expdesc *e1, expdesc *e2) {
 */
 static int addk (FuncState *fs, Proto *f, TValue *v) {
   lua_State *L = fs->ls->L;
-  int oldsize = f->sizek;
+  int oldsize = f->getConstantsSize();
   int k = fs->nk;
-  luaM_growvector(L, f->k, k, f->sizek, TValue, MAXARG_Ax, "constants");
-  while (oldsize < f->sizek)
-    setnilvalue(&f->k[oldsize++]);
-  setobj(L, &f->k[k], v);
+  luaM_growvector(L, f->getConstantsRef(), k, f->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
+  while (oldsize < f->getConstantsSize())
+    setnilvalue(&f->getConstants()[oldsize++]);
+  setobj(L, &f->getConstants()[k], v);
   fs->nk++;
   luaC_barrier(L, f, v);
   return k;
@@ -568,7 +568,7 @@ static int k2proto (FuncState *fs, TValue *key, TValue *v) {
   if (!tagisempty(tag)) {  /* is there an index there? */
     int k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
-    lua_assert(ttisfloat(key) || luaV_rawequalobj(&f->k[k], v));
+    lua_assert(ttisfloat(key) || luaV_rawequalobj(&f->getConstants()[k], v));
     return k;  /* reuse index */
   }
   else {  /* constant not found; create a new entry */
@@ -628,7 +628,7 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
     setfltvalue(&kv, k);  /* key as a TValue */
     if (!luaV_flttointeger(k, &ik, F2Ieq)) {  /* not an integer value? */
       int n = k2proto(fs, &kv, &o);  /* use key */
-      if (luaV_rawequalobj(&fs->f->k[n], &o))  /* correct value? */
+      if (luaV_rawequalobj(&fs->f->getConstants()[n], &o))  /* correct value? */
         return n;
     }
     /* else, either key is still an integer or there was a collision;
@@ -1225,7 +1225,7 @@ static void codenot (FuncState *fs, expdesc *e) {
 */
 static int isKstr (FuncState *fs, expdesc *e) {
   return (e->k == VK && !hasjumps(e) && e->u.info <= MAXARG_B &&
-          ttisshrstring(&fs->f->k[e->u.info]));
+          ttisshrstring(&fs->f->getConstants()[e->u.info]));
 }
 
 /*
@@ -1507,7 +1507,7 @@ static int finishbinexpneg (FuncState *fs, expdesc *e1, expdesc *e2,
       int v2 = cast_int(i2);
       finishbinexpval(fs, e1, e2, op, int2sC(-v2), 0, line, OP_MMBINI, event);
       /* correct metamethod argument */
-      SETARG_B(fs->f->code[fs->pc - 1], int2sC(v2));
+      SETARG_B(fs->f->getCode()[fs->pc - 1], int2sC(v2));
       return 1;  /* successfully coded */
     }
   }
@@ -1825,7 +1825,7 @@ void luaK_fixline (FuncState *fs, int line) {
 
 
 void luaK_settablesize (FuncState *fs, int pc, int ra, int asize, int hsize) {
-  Instruction *inst = &fs->f->code[pc];
+  Instruction *inst = &fs->f->getCode()[pc];
   int extra = asize / (MAXARG_vC + 1);  /* higher bits of array size */
   int rc = asize % (MAXARG_vC + 1);  /* lower bits of array size */
   int k = (extra > 0);  /* true iff needs extra argument */
@@ -1883,13 +1883,13 @@ void luaK_finish (FuncState *fs) {
   int i;
   Proto *p = fs->f;
   for (i = 0; i < fs->pc; i++) {
-    Instruction *pc = &p->code[i];
+    Instruction *pc = &p->getCode()[i];
     /* avoid "not used" warnings when assert is off (for 'onelua.c') */
     (void)luaP_isOT; (void)luaP_isIT;
     lua_assert(i == 0 || luaP_isOT(*(pc - 1)) == luaP_isIT(*pc));
     switch (GET_OPCODE(*pc)) {
       case OP_RETURN0: case OP_RETURN1: {
-        if (!(fs->needclose || (p->flag & PF_ISVARARG)))
+        if (!(fs->needclose || (p->getFlag() & PF_ISVARARG)))
           break;  /* no extra work */
         /* else use OP_RETURN to do the extra work */
         SET_OPCODE(*pc, OP_RETURN);
@@ -1897,12 +1897,12 @@ void luaK_finish (FuncState *fs) {
       case OP_RETURN: case OP_TAILCALL: {
         if (fs->needclose)
           SETARG_k(*pc, 1);  /* signal that it needs to close */
-        if (p->flag & PF_ISVARARG)
-          SETARG_C(*pc, p->numparams + 1);  /* signal that it is vararg */
+        if (p->getFlag() & PF_ISVARARG)
+          SETARG_C(*pc, p->getNumParams() + 1);  /* signal that it is vararg */
         break;
       }
       case OP_JMP: {
-        int target = finaltarget(p->code, i);
+        int target = finaltarget(p->getCode(), i);
         fixjump(fs, i, target);
         break;
       }

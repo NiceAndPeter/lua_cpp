@@ -169,7 +169,7 @@ static GCObject **getgclist (GCObject *o) {
     case LUA_VLCL: return &gco2lcl(o)->gclist;
     case LUA_VCCL: return &gco2ccl(o)->gclist;
     case LUA_VTHREAD: return &gco2th(o)->gclist;
-    case LUA_VPROTO: return &gco2p(o)->gclist;
+    case LUA_VPROTO: return gco2p(o)->getGclistPtr();
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
       lua_assert(u->nuvalue > 0);
@@ -644,16 +644,16 @@ static l_mem traverseudata (global_State *g, Udata *u) {
 */
 static l_mem traverseproto (global_State *g, Proto *f) {
   int i;
-  markobjectN(g, f->source);
-  for (i = 0; i < f->sizek; i++)  /* mark literals */
-    markvalue(g, &f->k[i]);
-  for (i = 0; i < f->sizeupvalues; i++)  /* mark upvalue names */
-    markobjectN(g, f->upvalues[i].getName());
-  for (i = 0; i < f->sizep; i++)  /* mark nested protos */
-    markobjectN(g, f->p[i]);
-  for (i = 0; i < f->sizelocvars; i++)  /* mark local-variable names */
-    markobjectN(g, f->locvars[i].getVarName());
-  return 1 + f->sizek + f->sizeupvalues + f->sizep + f->sizelocvars;
+  markobjectN(g, f->getSource());
+  for (i = 0; i < f->getConstantsSize(); i++)  /* mark literals */
+    markvalue(g, &f->getConstants()[i]);
+  for (i = 0; i < f->getUpvaluesSize(); i++)  /* mark upvalue names */
+    markobjectN(g, f->getUpvalues()[i].getName());
+  for (i = 0; i < f->getProtosSize(); i++)  /* mark nested protos */
+    markobjectN(g, f->getProtos()[i]);
+  for (i = 0; i < f->getLocVarsSize(); i++)  /* mark local-variable names */
+    markobjectN(g, f->getLocVars()[i].getVarName());
+  return 1 + f->getConstantsSize() + f->getUpvaluesSize() + f->getProtosSize() + f->getLocVarsSize();
 }
 
 

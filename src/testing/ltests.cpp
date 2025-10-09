@@ -432,17 +432,17 @@ static void checkudata (global_State *g, Udata *u) {
 static void checkproto (global_State *g, Proto *f) {
   int i;
   GCObject *fgc = obj2gco(f);
-  checkobjrefN(g, fgc, f->source);
-  for (i=0; i<f->sizek; i++) {
-    if (iscollectable(f->k + i))
-      checkobjref(g, fgc, gcvalue(f->k + i));
+  checkobjrefN(g, fgc, f->getSource());
+  for (i=0; i<f->getConstantsSize(); i++) {
+    if (iscollectable(f->getConstants() + i))
+      checkobjref(g, fgc, gcvalue(f->getConstants() + i));
   }
-  for (i=0; i<f->sizeupvalues; i++)
-    checkobjrefN(g, fgc, f->upvalues[i].getName());
-  for (i=0; i<f->sizep; i++)
-    checkobjrefN(g, fgc, f->p[i]);
-  for (i=0; i<f->sizelocvars; i++)
-    checkobjrefN(g, fgc, f->locvars[i].getVarName());
+  for (i=0; i<f->getUpvaluesSize(); i++)
+    checkobjrefN(g, fgc, f->getUpvalues()[i].getName());
+  for (i=0; i<f->getProtosSize(); i++)
+    checkobjrefN(g, fgc, f->getProtos()[i]);
+  for (i=0; i<f->getLocVarsSize(); i++)
+    checkobjrefN(g, fgc, f->getLocVars()[i].getVarName());
 }
 
 
@@ -474,8 +474,8 @@ static int lua_checkpc (CallInfo *ci) {
   else {
     StkId f = ci->func.p;
     Proto *p = clLvalue(s2v(f))->p;
-    return p->code <= ci->u.l.savedpc &&
-           ci->u.l.savedpc <= p->code + p->sizecode;
+    return p->getCode() <= ci->u.l.savedpc &&
+           ci->u.l.savedpc <= p->getCode() + p->getCodeSize();
   }
 }
 
@@ -591,7 +591,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
       case LUA_VLCL: o = gco2lcl(o)->gclist; break;
       case LUA_VCCL: o = gco2ccl(o)->gclist; break;
       case LUA_VTHREAD: o = gco2th(o)->gclist; break;
-      case LUA_VPROTO: o = gco2p(o)->gclist; break;
+      case LUA_VPROTO: o = gco2p(o)->getGclist(); break;
       case LUA_VUSERDATA:
         assert(gco2u(o)->nuvalue > 0);
         o = gco2u(o)->gclist;
@@ -721,11 +721,11 @@ int lua_checkmemory (lua_State *L) {
 
 static char *buildop (Proto *p, int pc, char *buff) {
   char *obuff = buff;
-  Instruction i = p->code[pc];
+  Instruction i = p->getCode()[pc];
   OpCode o = GET_OPCODE(i);
   const char *name = opnames[o];
   int line = luaG_getfuncline(p, pc);
-  int lineinfo = (p->lineinfo != NULL) ? p->lineinfo[pc] : 0;
+  int lineinfo = (p->getLineInfo() != NULL) ? p->getLineInfo()[pc] : 0;
   if (lineinfo == ABSLINEINFO)
     buff += sprintf(buff, "(__");
   else
@@ -784,9 +784,9 @@ static int listcode (lua_State *L) {
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
   lua_newtable(L);
-  setnameval(L, "maxstack", p->maxstacksize);
-  setnameval(L, "numparams", p->numparams);
-  for (pc=0; pc<p->sizecode; pc++) {
+  setnameval(L, "maxstack", p->getMaxStackSize());
+  setnameval(L, "numparams", p->getNumParams());
+  for (pc=0; pc<p->getCodeSize(); pc++) {
     char buff[100];
     lua_pushinteger(L, pc+1);
     lua_pushstring(L, buildop(p, pc, buff));
@@ -802,9 +802,9 @@ static int printcode (lua_State *L) {
   luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1),
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
-  printf("maxstack: %d\n", p->maxstacksize);
-  printf("numparams: %d\n", p->numparams);
-  for (pc=0; pc<p->sizecode; pc++) {
+  printf("maxstack: %d\n", p->getMaxStackSize());
+  printf("numparams: %d\n", p->getNumParams());
+  for (pc=0; pc<p->getCodeSize(); pc++) {
     char buff[100];
     printf("%s\n", buildop(p, pc, buff));
   }
@@ -818,9 +818,9 @@ static int listk (lua_State *L) {
   luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1),
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
-  lua_createtable(L, p->sizek, 0);
-  for (i=0; i<p->sizek; i++) {
-    pushobject(L, p->k+i);
+  lua_createtable(L, p->getConstantsSize(), 0);
+  for (i=0; i<p->getConstantsSize(); i++) {
+    pushobject(L, p->getConstants()+i);
     lua_rawseti(L, -2, i+1);
   }
   return 1;
@@ -833,12 +833,12 @@ static int listabslineinfo (lua_State *L) {
   luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1),
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
-  luaL_argcheck(L, p->abslineinfo != NULL, 1, "function has no debug info");
-  lua_createtable(L, 2 * p->sizeabslineinfo, 0);
-  for (i=0; i < p->sizeabslineinfo; i++) {
-    lua_pushinteger(L, p->abslineinfo[i].getPC());
+  luaL_argcheck(L, p->getAbsLineInfo() != NULL, 1, "function has no debug info");
+  lua_createtable(L, 2 * p->getAbsLineInfoSize(), 0);
+  for (i=0; i < p->getAbsLineInfoSize(); i++) {
+    lua_pushinteger(L, p->getAbsLineInfo()[i].getPC());
     lua_rawseti(L, -2, 2 * i + 1);
-    lua_pushinteger(L, p->abslineinfo[i].getLine());
+    lua_pushinteger(L, p->getAbsLineInfo()[i].getLine());
     lua_rawseti(L, -2, 2 * i + 2);
   }
   return 1;

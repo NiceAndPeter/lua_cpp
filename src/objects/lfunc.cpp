@@ -247,40 +247,40 @@ StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy) {
 Proto *luaF_newproto (lua_State *L) {
   GCObject *o = luaC_newobj(L, LUA_VPROTO, sizeof(Proto));
   Proto *f = gco2p(o);
-  f->k = NULL;
-  f->sizek = 0;
-  f->p = NULL;
-  f->sizep = 0;
-  f->code = NULL;
-  f->sizecode = 0;
-  f->lineinfo = NULL;
-  f->sizelineinfo = 0;
-  f->abslineinfo = NULL;
-  f->sizeabslineinfo = 0;
-  f->upvalues = NULL;
-  f->sizeupvalues = 0;
-  f->numparams = 0;
-  f->flag = 0;
-  f->maxstacksize = 0;
-  f->locvars = NULL;
-  f->sizelocvars = 0;
-  f->linedefined = 0;
-  f->lastlinedefined = 0;
-  f->source = NULL;
+  f->setConstants(NULL);
+  f->setConstantsSize(0);
+  f->setProtos(NULL);
+  f->setProtosSize(0);
+  f->setCode(NULL);
+  f->setCodeSize(0);
+  f->setLineInfo(NULL);
+  f->setLineInfoSize(0);
+  f->setAbsLineInfo(NULL);
+  f->setAbsLineInfoSize(0);
+  f->setUpvalues(NULL);
+  f->setUpvaluesSize(0);
+  f->setNumParams(0);
+  f->setFlag(0);
+  f->setMaxStackSize(0);
+  f->setLocVars(NULL);
+  f->setLocVarsSize(0);
+  f->setLineDefined(0);
+  f->setLastLineDefined(0);
+  f->setSource(NULL);
   return f;
 }
 
 
 lu_mem Proto::memorySize() const {
   lu_mem sz = cast(lu_mem, sizeof(Proto))
-            + cast_uint(sizep) * sizeof(Proto*)
-            + cast_uint(sizek) * sizeof(TValue)
-            + cast_uint(sizelocvars) * sizeof(LocVar)
-            + cast_uint(sizeupvalues) * sizeof(Upvaldesc);
-  if (!(flag & PF_FIXED)) {
-    sz += cast_uint(sizecode) * sizeof(Instruction);
-    sz += cast_uint(sizelineinfo) * sizeof(lu_byte);
-    sz += cast_uint(sizeabslineinfo) * sizeof(AbsLineInfo);
+            + cast_uint(getProtosSize()) * sizeof(Proto*)
+            + cast_uint(getConstantsSize()) * sizeof(TValue)
+            + cast_uint(getLocVarsSize()) * sizeof(LocVar)
+            + cast_uint(getUpvaluesSize()) * sizeof(Upvaldesc);
+  if (!(getFlag() & PF_FIXED)) {
+    sz += cast_uint(getCodeSize()) * sizeof(Instruction);
+    sz += cast_uint(getLineInfoSize()) * sizeof(lu_byte);
+    sz += cast_uint(getAbsLineInfoSize()) * sizeof(AbsLineInfo);
   }
   return sz;
 }
@@ -291,15 +291,15 @@ lu_mem luaF_protosize (Proto *p) {
 
 
 void Proto::free(lua_State* L) {
-  if (!(flag & PF_FIXED)) {
-    luaM_freearray(L, code, cast_sizet(sizecode));
-    luaM_freearray(L, lineinfo, cast_sizet(sizelineinfo));
-    luaM_freearray(L, abslineinfo, cast_sizet(sizeabslineinfo));
+  if (!(getFlag() & PF_FIXED)) {
+    luaM_freearray(L, getCode(), cast_sizet(getCodeSize()));
+    luaM_freearray(L, getLineInfo(), cast_sizet(getLineInfoSize()));
+    luaM_freearray(L, getAbsLineInfo(), cast_sizet(getAbsLineInfoSize()));
   }
-  luaM_freearray(L, p, cast_sizet(sizep));
-  luaM_freearray(L, k, cast_sizet(sizek));
-  luaM_freearray(L, locvars, cast_sizet(sizelocvars));
-  luaM_freearray(L, upvalues, cast_sizet(sizeupvalues));
+  luaM_freearray(L, getProtos(), cast_sizet(getProtosSize()));
+  luaM_freearray(L, getConstants(), cast_sizet(getConstantsSize()));
+  luaM_freearray(L, getLocVars(), cast_sizet(getLocVarsSize()));
+  luaM_freearray(L, getUpvalues(), cast_sizet(getUpvaluesSize()));
   luaM_free(L, this);
 }
 
@@ -314,11 +314,11 @@ void luaF_freeproto (lua_State *L, Proto *f) {
 */
 const char* Proto::getLocalName(int local_number, int pc) const {
   int i;
-  for (i = 0; i<sizelocvars && locvars[i].getStartPC() <= pc; i++) {
-    if (pc < locvars[i].getEndPC()) {  /* is variable active? */
+  for (i = 0; i<getLocVarsSize() && getLocVars()[i].getStartPC() <= pc; i++) {
+    if (pc < getLocVars()[i].getEndPC()) {  /* is variable active? */
       local_number--;
       if (local_number == 0)
-        return getstr(locvars[i].getVarName());
+        return getstr(getLocVars()[i].getVarName());
     }
   }
   return NULL;  /* not found */

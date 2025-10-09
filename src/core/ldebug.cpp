@@ -61,19 +61,19 @@ static int currentpc (CallInfo *ci) {
 ** smaller value.)
 */
 static int getbaseline (const Proto *f, int pc, int *basepc) {
-  if (f->sizeabslineinfo == 0 || pc < f->abslineinfo[0].getPC()) {
+  if (f->getAbsLineInfoSize() == 0 || pc < f->getAbsLineInfo()[0].getPC()) {
     *basepc = -1;  /* start from the beginning */
-    return f->linedefined;
+    return f->getLineDefined();
   }
   else {
     int i = pc / MAXIWTHABS - 1;  /* get an estimate */
     /* estimate must be a lower bound of the correct base */
     lua_assert(i < 0 ||
-              (i < f->sizeabslineinfo && f->abslineinfo[i].getPC() <= pc));
-    while (i + 1 < f->sizeabslineinfo && pc >= f->abslineinfo[i + 1].getPC())
+              (i < f->getAbsLineInfoSize() && f->getAbsLineInfo()[i].getPC() <= pc));
+    while (i + 1 < f->getAbsLineInfoSize() && pc >= f->getAbsLineInfo()[i + 1].getPC())
       i++;  /* low estimate; adjust it */
-    *basepc = f->abslineinfo[i].getPC();
-    return f->abslineinfo[i].getLine();
+    *basepc = f->getAbsLineInfo()[i].getPC();
+    return f->getAbsLineInfo()[i].getLine();
   }
 }
 
@@ -84,14 +84,14 @@ static int getbaseline (const Proto *f, int pc, int *basepc) {
 ** the desired instruction.
 */
 int luaG_getfuncline (const Proto *f, int pc) {
-  if (f->lineinfo == NULL)  /* no debug information? */
+  if (f->getLineInfo() == NULL)  /* no debug information? */
     return -1;
   else {
     int basepc;
     int baseline = getbaseline(f, pc, &basepc);
     while (basepc++ < pc) {  /* walk until given instruction */
-      lua_assert(f->lineinfo[basepc] != ABSLINEINFO);
-      baseline += f->lineinfo[basepc];  /* correct line */
+      lua_assert(f->getLineInfo()[basepc] != ABSLINEINFO);
+      baseline += f->getLineInfo()[basepc];  /* correct line */
     }
     return baseline;
   }
@@ -178,14 +178,14 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
 
 
 static const char *upvalname (const Proto *p, int uv) {
-  TString *s = check_exp(uv < p->sizeupvalues, p->upvalues[uv].getName());
+  TString *s = check_exp(uv < p->getUpvaluesSize(), p->getUpvalues()[uv].getName());
   if (s == NULL) return "?";
   else return getstr(s);
 }
 
 
 static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
-  if (clLvalue(s2v(ci->func.p))->p->flag & PF_ISVARARG) {
+  if (clLvalue(s2v(ci->func.p))->p->getFlag() & PF_ISVARARG) {
     int nextra = ci->u.l.nextraargs;
     if (n >= -nextra) {  /* 'n' is negative */
       *pos = ci->func.p - nextra - (n + 1);
@@ -272,15 +272,15 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
   }
   else {
     const Proto *p = reinterpret_cast<LClosure*>(cl)->p;
-    if (p->source) {
-      ar->source = getlstr(p->source, ar->srclen);
+    if (p->getSource()) {
+      ar->source = getlstr(p->getSource(), ar->srclen);
     }
     else {
       ar->source = "=?";
       ar->srclen = LL("=?");
     }
-    ar->linedefined = p->linedefined;
-    ar->lastlinedefined = p->lastlinedefined;
+    ar->linedefined = p->getLineDefined();
+    ar->lastlinedefined = p->getLastLineDefined();
     ar->what = (ar->linedefined == 0) ? "main" : "Lua";
   }
   luaO_chunkid(ar->short_src, ar->source, ar->srclen);
@@ -288,8 +288,8 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
 
 
 static int nextline (const Proto *p, int currentline, int pc) {
-  if (p->lineinfo[pc] != ABSLINEINFO)
-    return currentline + p->lineinfo[pc];
+  if (p->getLineInfo()[pc] != ABSLINEINFO)
+    return currentline + p->getLineInfo()[pc];
   else
     return luaG_getfuncline(p, pc);
 }
@@ -302,22 +302,22 @@ static void collectvalidlines (lua_State *L, Closure *f) {
   }
   else {
     const Proto *p = reinterpret_cast<LClosure*>(f)->p;
-    int currentline = p->linedefined;
+    int currentline = p->getLineDefined();
     Table *t = luaH_new(L);  /* new table to store active lines */
     sethvalue2s(L, L->top.p, t);  /* push it on stack */
     api_incr_top(L);
-    if (p->lineinfo != NULL) {  /* proto with debug information? */
+    if (p->getLineInfo() != NULL) {  /* proto with debug information? */
       int i;
       TValue v;
       setbtvalue(&v);  /* boolean 'true' to be the value of all indices */
-      if (!(p->flag & PF_ISVARARG))  /* regular function? */
+      if (!(p->getFlag() & PF_ISVARARG))  /* regular function? */
         i = 0;  /* consider all instructions */
       else {  /* vararg function */
-        lua_assert(GET_OPCODE(p->code[0]) == OP_VARARGPREP);
+        lua_assert(GET_OPCODE(p->getCode()[0]) == OP_VARARGPREP);
         currentline = nextline(p, currentline, 0);
         i = 1;  /* skip first instruction (OP_VARARGPREP) */
       }
-      for (; i < p->sizelineinfo; i++) {  /* for each instruction */
+      for (; i < p->getLineInfoSize(); i++) {  /* for each instruction */
         currentline = nextline(p, currentline, i);  /* get its line */
         luaH_setint(L, t, currentline, &v);  /* table[line] = true */
       }
@@ -355,8 +355,8 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         }
         else {
           LClosure* lf = reinterpret_cast<LClosure*>(f);
-          ar->isvararg = (lf->p->flag & PF_ISVARARG) ? 1 : 0;
-          ar->nparams = lf->p->numparams;
+          ar->isvararg = (lf->p->getFlag() & PF_ISVARARG) ? 1 : 0;
+          ar->nparams = lf->p->getNumParams();
         }
         break;
       }
@@ -451,10 +451,10 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
   int pc;
   int setreg = -1;  /* keep last instruction that changed 'reg' */
   int jmptarget = 0;  /* any code before this address is conditional */
-  if (testMMMode(GET_OPCODE(p->code[lastpc])))
+  if (testMMMode(GET_OPCODE(p->getCode()[lastpc])))
     lastpc--;  /* previous instruction was not actually executed */
   for (pc = 0; pc < lastpc; pc++) {
-    Instruction i = p->code[pc];
+    Instruction i = p->getCode()[pc];
     OpCode op = GET_OPCODE(i);
     int a = GETARG_A(i);
     int change;  /* true if current instruction changed 'reg' */
@@ -497,7 +497,7 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
 ** Find a "name" for the constant 'c'.
 */
 static const char *kname (const Proto *p, int index, const char **name) {
-  TValue *kvalue = &p->k[index];
+  TValue *kvalue = &p->getConstants()[index];
   if (ttisstring(kvalue)) {
     *name = getstr(tsvalue(kvalue));
     return "constant";
@@ -518,7 +518,7 @@ static const char *basicgetobjname (const Proto *p, int *ppc, int reg,
   /* else try symbolic execution */
   *ppc = pc = findsetreg(p, pc, reg);
   if (pc != -1) {  /* could find instruction? */
-    Instruction i = p->code[pc];
+    Instruction i = p->getCode()[pc];
     OpCode op = GET_OPCODE(i);
     switch (op) {
       case OP_MOVE: {
@@ -532,7 +532,7 @@ static const char *basicgetobjname (const Proto *p, int *ppc, int reg,
         return strupval;
       }
       case OP_LOADK: return kname(p, GETARG_Bx(i), name);
-      case OP_LOADKX: return kname(p, GETARG_Ax(p->code[pc + 1]), name);
+      case OP_LOADKX: return kname(p, GETARG_Ax(p->getCode()[pc + 1]), name);
       default: break;
     }
   }
@@ -579,7 +579,7 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
   if (kind != NULL)
     return kind;
   else if (lastpc != -1) {  /* could find instruction? */
-    Instruction i = p->code[lastpc];
+    Instruction i = p->getCode()[lastpc];
     OpCode op = GET_OPCODE(i);
     switch (op) {
       case OP_GETTABUP: {
@@ -622,7 +622,7 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
 static const char *funcnamefromcode (lua_State *L, const Proto *p,
                                      int pc, const char **name) {
   TMS tm = (TMS)0;  /* (initial value avoids warnings) */
-  Instruction i = p->code[pc];  /* calling instruction */
+  Instruction i = p->getCode()[pc];  /* calling instruction */
   switch (GET_OPCODE(i)) {
     case OP_CALL:
     case OP_TAILCALL:
@@ -905,7 +905,7 @@ l_noret lua_State::runError(const char *fmt, ...) {
   pushvfstring(this, argp, fmt, msg);
   if (isLua(ci)) {  /* Lua function? */
     /* add source:line information */
-    this->addInfo(msg, ci_func(ci)->p->source, getcurrentline(ci));
+    this->addInfo(msg, ci_func(ci)->p->getSource(), getcurrentline(ci));
     setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
     top.p--;
   }
@@ -919,7 +919,7 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
   pushvfstring(L, argp, fmt, msg);
   if (isLua(L->ci)) {  /* Lua function? */
     /* add source:line information */
-    L->addInfo(msg, ci_func(L->ci)->p->source, getcurrentline(L->ci));
+    L->addInfo(msg, ci_func(L->ci)->p->getSource(), getcurrentline(L->ci));
     setobjs2s(L, L->top.p - 2, L->top.p - 1);  /* remove 'msg' */
     L->top.p--;
   }
@@ -936,13 +936,13 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
 ** so it goes directly to 'luaG_getfuncline'.
 */
 static int changedline (const Proto *p, int oldpc, int newpc) {
-  if (p->lineinfo == NULL)  /* no debug information? */
+  if (p->getLineInfo() == NULL)  /* no debug information? */
     return 0;
   if (newpc - oldpc < MAXIWTHABS / 2) {  /* not too far apart? */
     int delta = 0;  /* line difference */
     int pc = oldpc;
     for (;;) {
-      int lineinfo = p->lineinfo[++pc];
+      int lineinfo = p->getLineInfo()[++pc];
       if (lineinfo == ABSLINEINFO)
         break;  /* cannot compute delta; fall through */
       delta += lineinfo;
@@ -969,8 +969,8 @@ int lua_State::traceCall() {
   CallInfo *ci_local = ci;
   Proto *p = ci_func(ci_local)->p;
   ci_local->u.l.trap = 1;  /* ensure hooks will be checked */
-  if (ci_local->u.l.savedpc == p->code) {  /* first instruction (not resuming)? */
-    if (p->flag & PF_ISVARARG)
+  if (ci_local->u.l.savedpc == p->getCode()) {  /* first instruction (not resuming)? */
+    if (p->getFlag() & PF_ISVARARG)
       return 0;  /* hooks will start at VARARGPREP instruction */
     else if (!(ci_local->callstatus & CIST_HOOKYIELD))  /* not yielded? */
       this->hookCall(ci_local);  /* check 'call' hook */
@@ -1022,7 +1022,7 @@ int lua_State::traceExec(const Instruction *pc) {
     this->callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {
     /* 'oldpc' may be invalid; use zero in this case */
-    int oldpc_val = (oldpc < p->sizecode) ? oldpc : 0;
+    int oldpc_val = (oldpc < p->getCodeSize()) ? oldpc : 0;
     int npci = pcRel(pc, p);
     if (npci <= oldpc_val ||  /* call hook when jump back (loop), */
         changedline(p, oldpc_val, npci)) {  /* or when enter new line */

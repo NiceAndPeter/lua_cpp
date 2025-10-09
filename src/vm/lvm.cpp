@@ -820,8 +820,8 @@ lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y) {
 */
 static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
                          StkId ra) {
-  int nup = p->sizeupvalues;
-  Upvaldesc *uv = p->upvalues;
+  int nup = p->getUpvaluesSize();
+  Upvaldesc *uv = p->getUpvalues();
   int i;
   LClosure *ncl = luaF_newLclosure(L, nup);
   ncl->p = p;
@@ -1195,7 +1195,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   trap = L->hookmask;
  returning:  /* trap already set */
   cl = ci_func(ci);
-  k = cl->p->k;
+  k = cl->p->getConstants();
   pc = ci->u.l.savedpc;
   if (l_unlikely(trap))
     trap = luaG_tracecall(L);
@@ -1915,7 +1915,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_CLOSURE) {
         StkId ra = RA(i);
-        Proto *p = cl->p->p[GETARG_Bx(i)];
+        Proto *p = cl->p->getProtos()[GETARG_Bx(i)];
         halfProtect(pushclosure(L, p, cl->upvals, base, ra));
         checkGC(L, ra + 1);
         vmbreak;

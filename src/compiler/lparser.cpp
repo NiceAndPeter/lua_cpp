@@ -74,7 +74,7 @@ static l_noret error_expected (LexState *ls, int token) {
 static l_noret errorlimit (FuncState *fs, int limit, const char *what) {
   lua_State *L = fs->ls->L;
   const char *msg;
-  int line = fs->f->linedefined;
+  int line = fs->f->getLineDefined();
   const char *where = (line == 0)
                       ? "main function"
                       : luaO_pushfstring(L, "function at line %d", line);
@@ -175,13 +175,13 @@ static void codename (LexState *ls, expdesc *e) {
 static short registerlocalvar (LexState *ls, FuncState *fs,
                                TString *varname) {
   Proto *f = fs->f;
-  int oldsize = f->sizelocvars;
-  luaM_growvector(ls->L, f->locvars, fs->ndebugvars, f->sizelocvars,
+  int oldsize = f->getLocVarsSize();
+  luaM_growvector(ls->L, f->getLocVarsRef(), fs->ndebugvars, f->getLocVarsSizeRef(),
                   LocVar, SHRT_MAX, "local variables");
-  while (oldsize < f->sizelocvars)
-    f->locvars[oldsize++].setVarName(NULL);
-  f->locvars[fs->ndebugvars].setVarName(varname);
-  f->locvars[fs->ndebugvars].setStartPC(fs->pc);
+  while (oldsize < f->getLocVarsSize())
+    f->getLocVars()[oldsize++].setVarName(NULL);
+  f->getLocVars()[fs->ndebugvars].setVarName(varname);
+  f->getLocVars()[fs->ndebugvars].setStartPC(fs->pc);
   luaC_objbarrier(ls->L, f, varname);
   return fs->ndebugvars++;
 }
@@ -262,7 +262,7 @@ static LocVar *localdebuginfo (FuncState *fs, int vidx) {
   else {
     int idx = vd->vd.pidx;
     lua_assert(idx < fs->ndebugvars);
-    return &fs->f->locvars[idx];
+    return &fs->f->getLocVars()[idx];
   }
 }
 
@@ -296,14 +296,14 @@ static void check_readonly (LexState *ls, expdesc *e) {
       break;
     }
     case VUPVAL: {
-      Upvaldesc *up = &fs->f->upvalues[e->u.info];
+      Upvaldesc *up = &fs->f->getUpvalues()[e->u.info];
       if (up->getKind() != VDKREG)
         varname = up->getName();
       break;
     }
     case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
       if (e->u.ind.ro)  /* read-only? */
-        varname = tsvalue(&fs->f->k[e->u.ind.keystr]);
+        varname = tsvalue(&fs->f->getConstants()[e->u.ind.keystr]);
       break;
     }
     default:
@@ -353,7 +353,7 @@ static void removevars (FuncState *fs, int tolevel) {
 */
 static int searchupvalue (FuncState *fs, TString *name) {
   int i;
-  Upvaldesc *up = fs->f->upvalues;
+  Upvaldesc *up = fs->f->getUpvalues();
   for (i = 0; i < fs->nups; i++) {
     if (eqstr(up[i].getName(), name)) return i;
   }
@@ -363,13 +363,13 @@ static int searchupvalue (FuncState *fs, TString *name) {
 
 static Upvaldesc *allocupvalue (FuncState *fs) {
   Proto *f = fs->f;
-  int oldsize = f->sizeupvalues;
+  int oldsize = f->getUpvaluesSize();
   luaY_checklimit(fs, fs->nups + 1, MAXUPVAL, "upvalues");
-  luaM_growvector(fs->ls->L, f->upvalues, fs->nups, f->sizeupvalues,
+  luaM_growvector(fs->ls->L, f->getUpvaluesRef(), fs->nups, f->getUpvaluesSizeRef(),
                   Upvaldesc, MAXUPVAL, "upvalues");
-  while (oldsize < f->sizeupvalues)
-    f->upvalues[oldsize++].setName(NULL);
-  return &f->upvalues[fs->nups++];
+  while (oldsize < f->getUpvaluesSize())
+    f->getUpvalues()[oldsize++].setName(NULL);
+  return &f->getUpvalues()[fs->nups++];
 }
 
 
@@ -385,8 +385,8 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   else {
     up->setInStack(0);
     up->setIndex(cast_byte(v->u.info));
-    up->setKind(prev->f->upvalues[v->u.info].getKind());
-    lua_assert(eqstr(name, prev->f->upvalues[v->u.info].getName()));
+    up->setKind(prev->f->getUpvalues()[v->u.info].getKind());
+    lua_assert(eqstr(name, prev->f->getUpvalues()[v->u.info].getName()));
   }
   up->setName(name);
   luaC_objbarrier(fs->ls->L, fs->f, name);
@@ -591,9 +591,9 @@ static void closegoto (LexState *ls, int g, Labeldesc *label, int bup) {
       (label->nactvar < gt->nactvar && bup)) {  /* needs close? */
     lu_byte stklevel = reglevel(fs, label->nactvar);
     /* move jump to CLOSE position */
-    fs->f->code[gt->pc + 1] = fs->f->code[gt->pc];
+    fs->f->getCode()[gt->pc + 1] = fs->f->getCode()[gt->pc];
     /* put CLOSE instruction at original position */
-    fs->f->code[gt->pc] = CREATE_ABCk(OP_CLOSE, stklevel, 0, 0, 0);
+    fs->f->getCode()[gt->pc] = CREATE_ABCk(OP_CLOSE, stklevel, 0, 0, 0);
     gt->pc++;  /* must point to jump instruction */
   }
   ls->fs->patchlist(gt->pc, label->pc);  /* goto jumps to label */
@@ -755,13 +755,13 @@ static Proto *addprototype (LexState *ls) {
   lua_State *L = ls->L;
   FuncState *fs = ls->fs;
   Proto *f = fs->f;  /* prototype of current function */
-  if (fs->np >= f->sizep) {
-    int oldsize = f->sizep;
-    luaM_growvector(L, f->p, fs->np, f->sizep, Proto *, MAXARG_Bx, "functions");
-    while (oldsize < f->sizep)
-      f->p[oldsize++] = NULL;
+  if (fs->np >= f->getProtosSize()) {
+    int oldsize = f->getProtosSize();
+    luaM_growvector(L, f->getProtosRef(), fs->np, f->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
+    while (oldsize < f->getProtosSize())
+      f->getProtos()[oldsize++] = NULL;
   }
-  f->p[fs->np++] = clp = luaF_newproto(L);
+  f->getProtos()[fs->np++] = clp = luaF_newproto(L);
   luaC_objbarrier(L, f, clp);
   return clp;
 }
@@ -788,7 +788,7 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->ls = ls;
   ls->fs = fs;
   fs->pc = 0;
-  fs->previousline = f->linedefined;
+  fs->previousline = f->getLineDefined();
   fs->iwthabs = 0;
   fs->lasttarget = 0;
   fs->freereg = 0;
@@ -802,9 +802,9 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->firstlocal = ls->dyd->actvar.n;
   fs->firstlabel = ls->dyd->label.n;
   fs->bl = NULL;
-  f->source = ls->source;
-  luaC_objbarrier(L, f, f->source);
-  f->maxstacksize = 2;  /* registers 0/1 are always valid */
+  f->setSource(ls->source);
+  luaC_objbarrier(L, f, f->getSource());
+  f->setMaxStackSize(2);  /* registers 0/1 are always valid */
   fs->kcache = luaH_new(L);  /* create table for function */
   sethvalue2s(L, L->top.p, fs->kcache);  /* anchor it */
   L->inctop();  /* Phase 25e */
@@ -820,14 +820,14 @@ static void close_func (LexState *ls) {
   leaveblock(fs);
   lua_assert(fs->bl == NULL);
   fs->finish();
-  luaM_shrinkvector(L, f->code, f->sizecode, fs->pc, Instruction);
-  luaM_shrinkvector(L, f->lineinfo, f->sizelineinfo, fs->pc, ls_byte);
-  luaM_shrinkvector(L, f->abslineinfo, f->sizeabslineinfo,
+  luaM_shrinkvector(L, f->getCodeRef(), f->getCodeSizeRef(), fs->pc, Instruction);
+  luaM_shrinkvector(L, f->getLineInfoRef(), f->getLineInfoSizeRef(), fs->pc, ls_byte);
+  luaM_shrinkvector(L, f->getAbsLineInfoRef(), f->getAbsLineInfoSizeRef(),
                        fs->nabslineinfo, AbsLineInfo);
-  luaM_shrinkvector(L, f->k, f->sizek, fs->nk, TValue);
-  luaM_shrinkvector(L, f->p, f->sizep, fs->np, Proto *);
-  luaM_shrinkvector(L, f->locvars, f->sizelocvars, fs->ndebugvars, LocVar);
-  luaM_shrinkvector(L, f->upvalues, f->sizeupvalues, fs->nups, Upvaldesc);
+  luaM_shrinkvector(L, f->getConstantsRef(), f->getConstantsSizeRef(), fs->nk, TValue);
+  luaM_shrinkvector(L, f->getProtosRef(), f->getProtosSizeRef(), fs->np, Proto *);
+  luaM_shrinkvector(L, f->getLocVarsRef(), f->getLocVarsSizeRef(), fs->ndebugvars, LocVar);
+  luaM_shrinkvector(L, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), fs->nups, Upvaldesc);
   ls->fs = fs->prev;
   L->top.p--;  /* pop kcache table */
   luaC_checkGC(L);
@@ -1042,7 +1042,7 @@ static void constructor (LexState *ls, expdesc *t) {
 
 
 static void setvararg (FuncState *fs, int nparams) {
-  fs->f->flag |= PF_ISVARARG;
+  fs->f->setFlag(fs->f->getFlag() | PF_ISVARARG);
   fs->codeABC(OP_VARARGPREP, nparams, 0, 0);
 }
 
@@ -1071,9 +1071,9 @@ static void parlist (LexState *ls) {
     } while (!isvararg && testnext(ls, ','));
   }
   adjustlocalvars(ls, nparams);
-  f->numparams = cast_byte(fs->nactvar);
+  f->setNumParams(cast_byte(fs->nactvar));
   if (isvararg)
-    setvararg(fs, f->numparams);  /* declared vararg */
+    setvararg(fs, f->getNumParams());  /* declared vararg */
   fs->reserveregs(fs->nactvar);  /* reserve registers for parameters */
 }
 
@@ -1083,7 +1083,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   FuncState new_fs;
   BlockCnt bl;
   new_fs.f = addprototype(ls);
-  new_fs.f->linedefined = line;
+  new_fs.f->setLineDefined(line);
   open_func(ls, &new_fs, &bl);
   checknext(ls, '(');
   if (ismethod) {
@@ -1093,7 +1093,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   parlist(ls);
   checknext(ls, ')');
   statlist(ls);
-  new_fs.f->lastlinedefined = ls->linenumber;
+  new_fs.f->setLastLineDefined(ls->linenumber);
   check_match(ls, TK_END, TK_FUNCTION, line);
   codeclosure(ls, e);
   close_func(ls);
@@ -1261,7 +1261,7 @@ static void simpleexp (LexState *ls, expdesc *v) {
     }
     case TK_DOTS: {  /* vararg */
       FuncState *fs = ls->fs;
-      check_condition(ls, fs->f->flag & PF_ISVARARG,
+      check_condition(ls, fs->f->getFlag() & PF_ISVARARG,
                       "cannot use '...' outside a vararg function");
       init_exp(v, VVARARG, fs->codeABC(OP_VARARG, 0, 0, 1));
       break;
@@ -1621,7 +1621,7 @@ static void exp1 (LexState *ls) {
 ** a back jump.
 */
 static void fixforjump (FuncState *fs, int pc, int dest, int back) {
-  Instruction *jmp = &fs->f->code[pc];
+  Instruction *jmp = &fs->f->getCode()[pc];
   int offset = dest - (pc + 1);
   if (back)
     offset = -offset;
@@ -2080,7 +2080,7 @@ static void statement (LexState *ls) {
       break;
     }
   }
-  lua_assert(ls->fs->f->maxstacksize >= ls->fs->freereg &&
+  lua_assert(ls->fs->f->getMaxStackSize() >= ls->fs->freereg &&
              ls->fs->freereg >= luaY_nvarstack(ls->fs));
   ls->fs->freereg = luaY_nvarstack(ls->fs);  /* free registers */
   leavelevel(ls);
@@ -2125,12 +2125,12 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   L->inctop();  /* Phase 25e */
   funcstate.f = cl->p = luaF_newproto(L);
   luaC_objbarrier(L, cl, cl->p);
-  funcstate.f->source = luaS_new(L, name);  /* create and anchor TString */
-  luaC_objbarrier(L, funcstate.f, funcstate.f->source);
+  funcstate.f->setSource(luaS_new(L, name));  /* create and anchor TString */
+  luaC_objbarrier(L, funcstate.f, funcstate.f->getSource());
   lexstate.buff = buff;
   lexstate.dyd = dyd;
   dyd->actvar.n = dyd->gt.n = dyd->label.n = 0;
-  luaX_setinput(L, &lexstate, z, funcstate.f->source, firstchar);
+  luaX_setinput(L, &lexstate, z, funcstate.f->getSource(), firstchar);
   mainfunc(&lexstate, &funcstate);
   lua_assert(!funcstate.prev && funcstate.nups == 1 && !lexstate.fs);
   /* all scopes should be correctly finished */

@@ -736,7 +736,7 @@ public:
 */
 // Proto inherits from GCBase (CRTP)
 class Proto : public GCBase<Proto> {
-public:
+private:
   lu_byte numparams;  /* number of fixed (named) parameters */
   lu_byte flag;
   lu_byte maxstacksize;  /* number of registers needed by this function */
@@ -759,17 +759,74 @@ public:
   TString  *source;  /* used for debug information */
   GCObject *gclist;
 
+public:
   // Inline accessors
   lu_byte getNumParams() const noexcept { return numparams; }
+  lu_byte getFlag() const noexcept { return flag; }
   lu_byte getMaxStackSize() const noexcept { return maxstacksize; }
   int getCodeSize() const noexcept { return sizecode; }
   int getConstantsSize() const noexcept { return sizek; }
   int getUpvaluesSize() const noexcept { return sizeupvalues; }
   int getProtosSize() const noexcept { return sizep; }
+  int getLineInfoSize() const noexcept { return sizelineinfo; }
+  int getLocVarsSize() const noexcept { return sizelocvars; }
+  int getAbsLineInfoSize() const noexcept { return sizeabslineinfo; }
+  int getLineDefined() const noexcept { return linedefined; }
+  int getLastLineDefined() const noexcept { return lastlinedefined; }
   TString* getSource() const noexcept { return source; }
   bool isVarArg() const noexcept { return flag != 0; }
   Instruction* getCode() const noexcept { return code; }
   TValue* getConstants() const noexcept { return k; }
+  Proto** getProtos() const noexcept { return p; }
+  Upvaldesc* getUpvalues() const noexcept { return upvalues; }
+  ls_byte* getLineInfo() const noexcept { return lineinfo; }
+  AbsLineInfo* getAbsLineInfo() const noexcept { return abslineinfo; }
+  LocVar* getLocVars() const noexcept { return locvars; }
+  GCObject* getGclist() const noexcept { return gclist; }
+
+  // Inline setters
+  void setNumParams(lu_byte n) noexcept { numparams = n; }
+  void setFlag(lu_byte f) noexcept { flag = f; }
+  void setMaxStackSize(lu_byte s) noexcept { maxstacksize = s; }
+  void setCodeSize(int s) noexcept { sizecode = s; }
+  void setConstantsSize(int s) noexcept { sizek = s; }
+  void setUpvaluesSize(int s) noexcept { sizeupvalues = s; }
+  void setProtosSize(int s) noexcept { sizep = s; }
+  void setLineInfoSize(int s) noexcept { sizelineinfo = s; }
+  void setLocVarsSize(int s) noexcept { sizelocvars = s; }
+  void setAbsLineInfoSize(int s) noexcept { sizeabslineinfo = s; }
+  void setLineDefined(int l) noexcept { linedefined = l; }
+  void setLastLineDefined(int l) noexcept { lastlinedefined = l; }
+  void setSource(TString* s) noexcept { source = s; }
+  void setCode(Instruction* c) noexcept { code = c; }
+  void setConstants(TValue* constants) noexcept { k = constants; }
+  void setProtos(Proto** protos) noexcept { p = protos; }
+  void setUpvalues(Upvaldesc* uv) noexcept { upvalues = uv; }
+  void setLineInfo(ls_byte* li) noexcept { lineinfo = li; }
+  void setAbsLineInfo(AbsLineInfo* ali) noexcept { abslineinfo = ali; }
+  void setLocVars(LocVar* lv) noexcept { locvars = lv; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
+
+  // Pointer accessors for serialization and GC
+  TString** getSourcePtr() noexcept { return &source; }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
+
+  // Reference accessors for luaM_growvector macro (both size and pointer)
+  int& getCodeSizeRef() noexcept { return sizecode; }
+  int& getConstantsSizeRef() noexcept { return sizek; }
+  int& getUpvaluesSizeRef() noexcept { return sizeupvalues; }
+  int& getProtosSizeRef() noexcept { return sizep; }
+  int& getLineInfoSizeRef() noexcept { return sizelineinfo; }
+  int& getLocVarsSizeRef() noexcept { return sizelocvars; }
+  int& getAbsLineInfoSizeRef() noexcept { return sizeabslineinfo; }
+
+  Instruction*& getCodeRef() noexcept { return code; }
+  TValue*& getConstantsRef() noexcept { return k; }
+  Proto**& getProtosRef() noexcept { return p; }
+  Upvaldesc*& getUpvaluesRef() noexcept { return upvalues; }
+  ls_byte*& getLineInfoRef() noexcept { return lineinfo; }
+  AbsLineInfo*& getAbsLineInfoRef() noexcept { return abslineinfo; }
+  LocVar*& getLocVarsRef() noexcept { return locvars; }
 
   // Methods (implemented in lfunc.cpp)
   lu_mem memorySize() const;

@@ -186,15 +186,15 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
 
 static void loadCode (LoadState *S, Proto *f) {
   int n = loadInt(S);
-  loadAlign(S, sizeof(f->code[0]));
+  loadAlign(S, sizeof(f->getCode()[0]));
   if (S->fixed) {
-    f->code = getaddr(S, n, Instruction);
-    f->sizecode = n;
+    f->setCode(getaddr(S, n, Instruction));
+    f->setCodeSize(n);
   }
   else {
-    f->code = luaM_newvectorchecked(S->L, n, Instruction);
-    f->sizecode = n;
-    loadVector(S, f->code, n);
+    f->setCode(luaM_newvectorchecked(S->L, n, Instruction));
+    f->setCodeSize(n);
+    loadVector(S, f->getCode(), n);
   }
 }
 
@@ -205,12 +205,12 @@ static void loadFunction(LoadState *S, Proto *f);
 static void loadConstants (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->k = luaM_newvectorchecked(S->L, n, TValue);
-  f->sizek = n;
+  f->setConstants(luaM_newvectorchecked(S->L, n, TValue));
+  f->setConstantsSize(n);
   for (i = 0; i < n; i++)
-    setnilvalue(&f->k[i]);
+    setnilvalue(&f->getConstants()[i]);
   for (i = 0; i < n; i++) {
-    TValue *o = &f->k[i];
+    TValue *o = &f->getConstants()[i];
     int t = loadByte(S);
     switch (t) {
       case LUA_VNIL:
@@ -230,12 +230,12 @@ static void loadConstants (LoadState *S, Proto *f) {
         break;
       case LUA_VSHRSTR:
       case LUA_VLNGSTR: {
-        lua_assert(f->source == NULL);
-        loadString(S, f, &f->source);  /* use 'source' to anchor string */
-        if (f->source == NULL)
+        lua_assert(f->getSource() == NULL);
+        loadString(S, f, f->getSourcePtr());  /* use 'source' to anchor string */
+        if (f->getSource() == NULL)
           error(S, "bad format for constant string");
-        setsvalue2n(S->L, o, f->source);  /* save it in the right place */
-        f->source = NULL;
+        setsvalue2n(S->L, o, f->getSource());  /* save it in the right place */
+        f->setSource(NULL);
         break;
       }
       default: error(S, "invalid constant");
@@ -247,14 +247,14 @@ static void loadConstants (LoadState *S, Proto *f) {
 static void loadProtos (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->p = luaM_newvectorchecked(S->L, n, Proto *);
-  f->sizep = n;
+  f->setProtos(luaM_newvectorchecked(S->L, n, Proto *));
+  f->setProtosSize(n);
   for (i = 0; i < n; i++)
-    f->p[i] = NULL;
+    f->getProtos()[i] = NULL;
   for (i = 0; i < n; i++) {
-    f->p[i] = luaF_newproto(S->L);
-    luaC_objbarrier(S->L, f, f->p[i]);
-    loadFunction(S, f->p[i]);
+    f->getProtos()[i] = luaF_newproto(S->L);
+    luaC_objbarrier(S->L, f, f->getProtos()[i]);
+    loadFunction(S, f->getProtos()[i]);
   }
 }
 
@@ -268,14 +268,14 @@ static void loadProtos (LoadState *S, Proto *f) {
 static void loadUpvalues (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->upvalues = luaM_newvectorchecked(S->L, n, Upvaldesc);
-  f->sizeupvalues = n;
+  f->setUpvalues(luaM_newvectorchecked(S->L, n, Upvaldesc));
+  f->setUpvaluesSize(n);
   for (i = 0; i < n; i++)  /* make array valid for GC */
-    f->upvalues[i].setName(NULL);
+    f->getUpvalues()[i].setName(NULL);
   for (i = 0; i < n; i++) {  /* following calls can raise errors */
-    f->upvalues[i].setInStack(loadByte(S));
-    f->upvalues[i].setIndex(loadByte(S));
-    f->upvalues[i].setKind(loadByte(S));
+    f->getUpvalues()[i].setInStack(loadByte(S));
+    f->getUpvalues()[i].setIndex(loadByte(S));
+    f->getUpvalues()[i].setKind(loadByte(S));
   }
 }
 
@@ -284,58 +284,58 @@ static void loadDebug (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
   if (S->fixed) {
-    f->lineinfo = getaddr(S, n, ls_byte);
-    f->sizelineinfo = n;
+    f->setLineInfo(getaddr(S, n, ls_byte));
+    f->setLineInfoSize(n);
   }
   else {
-    f->lineinfo = luaM_newvectorchecked(S->L, n, ls_byte);
-    f->sizelineinfo = n;
-    loadVector(S, f->lineinfo, n);
+    f->setLineInfo(luaM_newvectorchecked(S->L, n, ls_byte));
+    f->setLineInfoSize(n);
+    loadVector(S, f->getLineInfo(), n);
   }
   n = loadInt(S);
   if (n > 0) {
     loadAlign(S, sizeof(int));
     if (S->fixed) {
-      f->abslineinfo = getaddr(S, n, AbsLineInfo);
-      f->sizeabslineinfo = n;
+      f->setAbsLineInfo(getaddr(S, n, AbsLineInfo));
+      f->setAbsLineInfoSize(n);
     }
     else {
-      f->abslineinfo = luaM_newvectorchecked(S->L, n, AbsLineInfo);
-      f->sizeabslineinfo = n;
-      loadVector(S, f->abslineinfo, n);
+      f->setAbsLineInfo(luaM_newvectorchecked(S->L, n, AbsLineInfo));
+      f->setAbsLineInfoSize(n);
+      loadVector(S, f->getAbsLineInfo(), n);
     }
   }
   n = loadInt(S);
-  f->locvars = luaM_newvectorchecked(S->L, n, LocVar);
-  f->sizelocvars = n;
+  f->setLocVars(luaM_newvectorchecked(S->L, n, LocVar));
+  f->setLocVarsSize(n);
   for (i = 0; i < n; i++)
-    f->locvars[i].setVarName(NULL);
+    f->getLocVars()[i].setVarName(NULL);
   for (i = 0; i < n; i++) {
-    loadString(S, f, f->locvars[i].getVarNamePtr());
-    f->locvars[i].setStartPC(loadInt(S));
-    f->locvars[i].setEndPC(loadInt(S));
+    loadString(S, f, f->getLocVars()[i].getVarNamePtr());
+    f->getLocVars()[i].setStartPC(loadInt(S));
+    f->getLocVars()[i].setEndPC(loadInt(S));
   }
   n = loadInt(S);
   if (n != 0)  /* does it have debug information? */
-    n = f->sizeupvalues;  /* must be this many */
+    n = f->getUpvaluesSize();  /* must be this many */
   for (i = 0; i < n; i++)
-    loadString(S, f, f->upvalues[i].getNamePtr());
+    loadString(S, f, f->getUpvalues()[i].getNamePtr());
 }
 
 
 static void loadFunction (LoadState *S, Proto *f) {
-  f->linedefined = loadInt(S);
-  f->lastlinedefined = loadInt(S);
-  f->numparams = loadByte(S);
-  f->flag = loadByte(S) & PF_ISVARARG;  /* get only the meaningful flags */
+  f->setLineDefined(loadInt(S));
+  f->setLastLineDefined(loadInt(S));
+  f->setNumParams(loadByte(S));
+  f->setFlag(loadByte(S) & PF_ISVARARG);  /* get only the meaningful flags */
   if (S->fixed)
-    f->flag |= PF_FIXED;  /* signal that code is fixed */
-  f->maxstacksize = loadByte(S);
+    f->setFlag(f->getFlag() | PF_FIXED);  /* signal that code is fixed */
+  f->setMaxStackSize(loadByte(S));
   loadCode(S, f);
   loadConstants(S, f);
   loadUpvalues(S, f);
   loadProtos(S, f);
-  loadString(S, f, &f->source);
+  loadString(S, f, f->getSourcePtr());
   loadDebug(S, f);
 }
 
@@ -414,7 +414,7 @@ LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
   cl->p = luaF_newproto(L);
   luaC_objbarrier(L, cl, cl->p);
   loadFunction(&S, cl->p);
-  if (cl->nupvalues != cl->p->sizeupvalues)
+  if (cl->nupvalues != cl->p->getUpvaluesSize())
     error(&S, "corrupted chunk");
   luai_verifycode(L, cl->p);
   L->top.p--;  /* pop table */

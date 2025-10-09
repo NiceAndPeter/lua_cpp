@@ -11,7 +11,7 @@
 #include "lstate.h"
 
 
-#define pcRel(pc, p)	(cast_int((pc) - (p)->code) - 1)
+#define pcRel(pc, p)	(cast_int((pc) - (p)->getCode()) - 1)
 
 
 /* Active Lua function (given call info) */
