@@ -937,31 +937,68 @@ public:
 // ClosureHeader fields: nupvalues, gclist (GC fields inherited from GCBase)
 
 class CClosure : public GCBase<CClosure> {
-public:
+private:
   lu_byte nupvalues;
   GCObject *gclist;
   lua_CFunction f;
   TValue upvalue[1];  /* list of upvalues */
 
+public:
+  // Member placement new operator for GC allocation (defined in lgc.h)
+  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+
+  // Constructor
+  CClosure(int nupvals);
+
+  // Factory method
+  static CClosure* create(lua_State* L, int nupvals);
+
   // Inline accessors
   lua_CFunction getFunction() const noexcept { return f; }
+  void setFunction(lua_CFunction func) noexcept { f = func; }
+
   lu_byte getNumUpvalues() const noexcept { return nupvalues; }
+  void setNumUpvalues(lu_byte n) noexcept { nupvalues = n; }
+
   TValue* getUpvalue(int idx) noexcept { return &upvalue[idx]; }
   const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
+
+  GCObject* getGclist() noexcept { return gclist; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
 };
 
 class LClosure : public GCBase<LClosure> {
-public:
+private:
   lu_byte nupvalues;
   GCObject *gclist;
   struct Proto *p;
   UpVal *upvals[1];  /* list of upvalues */
 
+public:
+  // Member placement new operator for GC allocation (defined in lgc.h)
+  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+
+  // Constructor
+  LClosure(int nupvals);
+
+  // Factory method
+  static LClosure* create(lua_State* L, int nupvals);
+
   // Inline accessors
   Proto* getProto() const noexcept { return p; }
+  void setProto(Proto* proto) noexcept { p = proto; }
+
   lu_byte getNumUpvalues() const noexcept { return nupvalues; }
+  void setNumUpvalues(lu_byte n) noexcept { nupvalues = n; }
+
   UpVal* getUpval(int idx) const noexcept { return upvals[idx]; }
   void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }
+  UpVal** getUpvalPtr(int idx) noexcept { return &upvals[idx]; }
+
+  GCObject* getGclist() noexcept { return gclist; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
 
   // Methods (implemented in lfunc.cpp)
   void initUpvals(lua_State* L);
@@ -974,7 +1011,7 @@ typedef union Closure {
 } Closure;
 
 
-#define getproto(o)	(clLvalue(o)->p)
+#define getproto(o)	(clLvalue(o)->getProto())
 
 /* }================================================================== */
 

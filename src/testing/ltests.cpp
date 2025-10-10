@@ -44,7 +44,7 @@
 void *l_Trick = 0;
 
 
-#define obj_at(L,k)	s2v(L->ci->func.p + (k))
+#define obj_at(L,k)	s2v(L->ci->funcRef().p + (k))
 
 
 static int runC (lua_State *L, lua_State *L1, const char *pc);
@@ -472,8 +472,8 @@ static void checkLclosure (global_State *g, LClosure *cl) {
 static int lua_checkpc (CallInfo *ci) {
   if (!isLua(ci)) return 1;
   else {
-    StkId f = ci->func.p;
-    Proto *p = clLvalue(s2v(f))->p;
+    StkId f = ci->funcRef().p;
+    Proto *p = clLvalue(s2v(f))->getProto();
     return p->getCode() <= ci->u.l.savedpc &&
            ci->u.l.savedpc <= p->getCode() + p->getCodeSize();
   }
@@ -493,7 +493,7 @@ static void check_stack (global_State *g, lua_State *L1) {
     assert(upisopen(uv));  /* must be open */
   assert(L1->top.p <= L1->stack_last.p);
   assert(L1->tbclist.p <= L1->top.p);
-  for (ci = L1->ci; ci != NULL; ci = ci->previous) {
+  for (ci = L1->ci; ci != NULL; ci = ci->getPrevious()) {
     assert(ci->top.p <= L1->stack_last.p);
     assert(lua_checkpc(ci));
   }
@@ -868,7 +868,7 @@ void lua_printstack (lua_State *L) {
   printf("stack: >>\n");
   for (i = 1; i <= n; i++) {
     printf("%3d: ", i);
-    lua_printvalue(s2v(L->ci->func.p + i));
+    lua_printvalue(s2v(L->ci->funcRef().p + i));
     printf("\n");
   }
   printf("<<\n");
@@ -881,12 +881,12 @@ int lua_printallstack (lua_State *L) {
   CallInfo *ci = &L->base_ci;
   printf("stack: >>\n");
   for (p = L->stack.p; p < L->top.p; p++) {
-    if (ci != NULL && p == ci->func.p) {
+    if (ci != NULL && p == ci->funcRef().p) {
       printf("  ---\n");
       if (ci == L->ci)
         ci = NULL;  /* printed last frame */
       else
-        ci = ci->next;
+        ci = ci->getNext();
     }
     printf("%3d: ", i++);
     lua_printvalue(s2v(p));
@@ -1764,7 +1764,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
     else if EQ("printstack") {
       int n = getnum;
       if (n != 0) {
-        lua_printvalue(s2v(L->ci->func.p + n));
+        lua_printvalue(s2v(L->ci->funcRef().p + n));
         printf("\n");
       }
       else lua_printstack(L1);

@@ -24,20 +24,42 @@
 
 
 
-CClosure *luaF_newCclosure (lua_State *L, int nupvals) {
-  GCObject *o = luaC_newobj(L, LUA_VCCL, sizeCclosure(nupvals));
-  CClosure *c = gco2ccl(o);
-  c->nupvalues = cast_byte(nupvals);
+// Constructor
+CClosure::CClosure(int nupvals) {
+  this->nupvalues = cast_byte(nupvals);
+  this->gclist = NULL;
+  this->f = NULL;
+  // upvalue array initialized by caller if needed
+}
+
+// Factory method
+CClosure* CClosure::create(lua_State* L, int nupvals) {
+  size_t extra = (nupvals > 0) ? (nupvals - 1) * sizeof(TValue) : 0;
+  CClosure* c = new (L, LUA_VCCL, extra) CClosure(nupvals);
   return c;
 }
 
 
-LClosure *luaF_newLclosure (lua_State *L, int nupvals) {
-  GCObject *o = luaC_newobj(L, LUA_VLCL, sizeLclosure(nupvals));
-  LClosure *c = gco2lcl(o);
-  c->p = NULL;
-  c->nupvalues = cast_byte(nupvals);
-  while (nupvals--) c->upvals[nupvals] = NULL;
+// Constructor
+LClosure::LClosure(int nupvals) {
+  this->nupvalues = cast_byte(nupvals);
+  this->gclist = NULL;
+  this->p = NULL;
+  // Initialize upvals array to NULL
+  for (int i = 0; i < nupvals; i++) {
+    this->upvals[i] = NULL;
+  }
+}
+
+// Factory method
+LClosure* LClosure::create(lua_State* L, int nupvals) {
+  // Calculate total size using the same formula as sizeLclosure macro
+  // size = offsetof(LClosure, upvals) + sizeof(UpVal*) * nupvals
+  // But operator new receives sizeof(LClosure) which includes one UpVal*
+  // So extra = sizeLclosure(nupvals) - sizeof(LClosure)
+  size_t total_size = sizeLclosure(nupvals);
+  size_t extra = total_size - sizeof(LClosure);
+  LClosure* c = new (L, LUA_VLCL, extra) LClosure(nupvals);
   return c;
 }
 

@@ -43,7 +43,7 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
 
 static int currentpc (CallInfo *ci) {
   lua_assert(isLua(ci));
-  return pcRel(ci->u.l.savedpc, ci_func(ci)->p);
+  return pcRel(ci->getSavedPC(), ci_func(ci)->p);
 }
 
 
@@ -115,9 +115,9 @@ static int getcurrentline (CallInfo *ci) {
 ** has no good reasons to do that.)
 */
 static void settraps (CallInfo *ci) {
-  for (; ci != NULL; ci = ci->previous)
+  for (; ci != NULL; ci = ci->getPrevious())
     if (isLua(ci))
-      ci->u.l.trap = 1;
+      ci->getTrap() = 1;
 }
 
 
@@ -165,7 +165,7 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
   CallInfo *ci;
   if (level < 0) return 0;  /* invalid (negative) level */
   lua_lock(L);
-  for (ci = L->ci; level > 0 && ci != &L->base_ci; ci = ci->previous)
+  for (ci = L->ci; level > 0 && ci != &L->base_ci; ci = ci->getPrevious())
     level--;
   if (level == 0 && ci != &L->base_ci) {  /* level found? */
     status = 1;
@@ -185,10 +185,10 @@ static const char *upvalname (const Proto *p, int uv) {
 
 
 static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
-  if (clLvalue(s2v(ci->func.p))->p->getFlag() & PF_ISVARARG) {
-    int nextra = ci->u.l.nextraargs;
+  if (clLvalue(s2v(ci->funcRef().p))->getProto()->getFlag() & PF_ISVARARG) {
+    int nextra = ci->getExtraArgs();
     if (n >= -nextra) {  /* 'n' is negative */
-      *pos = ci->func.p - nextra - (n + 1);
+      *pos = ci->funcRef().p - nextra - (n + 1);
       return "(vararg)";  /* generic name for any vararg */
     }
   }
@@ -232,7 +232,7 @@ LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
     if (!isLfunction(s2v(L->top.p - 1)))  /* not a Lua function? */
       name = NULL;
     else  /* consider live variables at function start (parameters) */
-      name = clLvalue(s2v(L->top.p - 1))->p->getLocalName(n, 0);  /* Phase 25b */
+      name = clLvalue(s2v(L->top.p - 1))->getProto()->getLocalName(n, 0);  /* Phase 25b */
   }
   else {  /* active function; get information through 'ar' */
     StkId pos = NULL;  /* to avoid warnings */
@@ -271,7 +271,7 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
     ar->what = "C";
   }
   else {
-    const Proto *p = reinterpret_cast<LClosure*>(cl)->p;
+    const Proto *p = reinterpret_cast<LClosure*>(cl)->getProto();
     if (p->getSource()) {
       ar->source = getlstr(p->getSource(), ar->srclen);
     }
@@ -301,7 +301,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
     api_incr_top(L);
   }
   else {
-    const Proto *p = reinterpret_cast<LClosure*>(f)->p;
+    const Proto *p = reinterpret_cast<LClosure*>(f)->getProto();
     int currentline = p->getLineDefined();
     Table *t = luaH_new(L);  /* new table to store active lines */
     sethvalue2s(L, L->top.p, t);  /* push it on stack */
@@ -329,7 +329,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
 static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
   /* calling function is a known function? */
   if (ci != NULL && !(ci->callstatus & CIST_TAIL))
-    return funcnamefromcall(L, ci->previous, name);
+    return funcnamefromcall(L, ci->getPrevious(), name);
   else return NULL;  /* no way to find a name */
 }
 
@@ -414,7 +414,7 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
   }
   else {
     ci = ar->i_ci;
-    func = s2v(ci->func.p);
+    func = s2v(ci->funcRef().p);
     lua_assert(ttisfunction(func));
   }
   cl = ttisclosure(func) ? clvalue(func) : NULL;
@@ -691,8 +691,8 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
 */
 static int instack (CallInfo *ci, const TValue *o) {
   int pos;
-  StkId base = ci->func.p + 1;
-  for (pos = 0; base + pos < ci->top.p; pos++) {
+  StkId base = ci->funcRef().p + 1;
+  for (pos = 0; base + pos < ci->topRef().p; pos++) {
     if (o == s2v(base + pos))
       return pos;
   }
@@ -709,9 +709,9 @@ static const char *getupvalname (CallInfo *ci, const TValue *o,
                                  const char **name) {
   LClosure *c = ci_func(ci);
   int i;
-  for (i = 0; i < c->nupvalues; i++) {
-    if (c->upvals[i]->getVP() == o) {
-      *name = upvalname(c->p, i);
+  for (i = 0; i < c->getNumUpvalues(); i++) {
+    if (c->getUpval(i)->getVP() == o) {
+      *name = upvalname(c->getProto(), i);
       return strupval;
     }
   }
@@ -972,7 +972,7 @@ int lua_State::traceCall() {
   if (ci_local->u.l.savedpc == p->getCode()) {  /* first instruction (not resuming)? */
     if (p->getFlag() & PF_ISVARARG)
       return 0;  /* hooks will start at VARARGPREP instruction */
-    else if (!(ci_local->callstatus & CIST_HOOKYIELD))  /* not yielded? */
+    else if (!(ci_local->callStatusRef() & CIST_HOOKYIELD))  /* not yielded? */
       this->hookCall(ci_local);  /* check 'call' hook */
   }
   return 1;  /* keep 'trap' on */
@@ -1012,8 +1012,8 @@ int lua_State::traceExec(const Instruction *pc) {
     resethookcount(this);  /* reset count */
   else if (!(mask & LUA_MASKLINE))
     return 1;  /* no line hook and count != 0; nothing to be done now */
-  if (ci_local->callstatus & CIST_HOOKYIELD) {  /* hook yielded last time? */
-    ci_local->callstatus &= ~CIST_HOOKYIELD;  /* erase mark */
+  if (ci_local->callStatusRef() & CIST_HOOKYIELD) {  /* hook yielded last time? */
+    ci_local->callStatusRef() &= ~CIST_HOOKYIELD;  /* erase mark */
     return 1;  /* do not call hook again (VM yielded, so it did not move) */
   }
   if (!luaP_isIT(*(ci_local->u.l.savedpc - 1)))  /* top not being used? */
@@ -1034,7 +1034,7 @@ int lua_State::traceExec(const Instruction *pc) {
   if (status == LUA_YIELD) {  /* did hook yield? */
     if (counthook)
       hookcount = 1;  /* undo decrement to zero */
-    ci_local->callstatus |= CIST_HOOKYIELD;  /* mark that it yielded */
+    ci_local->callStatusRef() |= CIST_HOOKYIELD;  /* mark that it yielded */
     this->doThrow(LUA_YIELD);
   }
   return 1;  /* keep 'trap' on */

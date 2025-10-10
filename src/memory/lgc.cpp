@@ -122,12 +122,12 @@ static l_mem objsize (GCObject *o) {
     }
     case LUA_VLCL: {
       LClosure *cl = gco2lcl(o);
-      res = sizeLclosure(cl->nupvalues);
+      res = sizeLclosure(cl->getNumUpvalues());
       break;
     }
     case LUA_VCCL: {
       CClosure *cl = gco2ccl(o);
-      res = sizeCclosure(cl->nupvalues);
+      res = sizeCclosure(cl->getNumUpvalues());
       break;
     }
     case LUA_VUSERDATA: {
@@ -166,8 +166,8 @@ static l_mem objsize (GCObject *o) {
 static GCObject **getgclist (GCObject *o) {
   switch (o->getType()) {
     case LUA_VTABLE: return gco2t(o)->getGclistPtr();
-    case LUA_VLCL: return &gco2lcl(o)->gclist;
-    case LUA_VCCL: return &gco2ccl(o)->gclist;
+    case LUA_VLCL: return gco2lcl(o)->getGclistPtr();
+    case LUA_VCCL: return gco2ccl(o)->getGclistPtr();
     case LUA_VTHREAD: return &gco2th(o)->gclist;
     case LUA_VPROTO: return gco2p(o)->getGclistPtr();
     case LUA_VUSERDATA: {
@@ -659,9 +659,9 @@ static l_mem traverseproto (global_State *g, Proto *f) {
 
 static l_mem traverseCclosure (global_State *g, CClosure *cl) {
   int i;
-  for (i = 0; i < cl->nupvalues; i++)  /* mark its upvalues */
-    markvalue(g, &cl->upvalue[i]);
-  return 1 + cl->nupvalues;
+  for (i = 0; i < cl->getNumUpvalues(); i++)  /* mark its upvalues */
+    markvalue(g, cl->getUpvalue(i));
+  return 1 + cl->getNumUpvalues();
 }
 
 /*
@@ -670,12 +670,12 @@ static l_mem traverseCclosure (global_State *g, CClosure *cl) {
 */
 static l_mem traverseLclosure (global_State *g, LClosure *cl) {
   int i;
-  markobjectN(g, cl->p);  /* mark its prototype */
-  for (i = 0; i < cl->nupvalues; i++) {  /* visit its upvalues */
-    UpVal *uv = cl->upvals[i];
+  markobjectN(g, cl->getProto());  /* mark its prototype */
+  for (i = 0; i < cl->getNumUpvalues(); i++) {  /* visit its upvalues */
+    UpVal *uv = cl->getUpval(i);
     markobjectN(g, uv);  /* mark upvalue */
   }
-  return 1 + cl->nupvalues;
+  return 1 + cl->getNumUpvalues();
 }
 
 
@@ -843,12 +843,12 @@ static void freeobj (lua_State *L, GCObject *o) {
       break;
     case LUA_VLCL: {
       LClosure *cl = gco2lcl(o);
-      luaM_freemem(L, cl, sizeLclosure(cl->nupvalues));
+      luaM_freemem(L, cl, sizeLclosure(cl->getNumUpvalues()));
       break;
     }
     case LUA_VCCL: {
       CClosure *cl = gco2ccl(o);
-      luaM_freemem(L, cl, sizeCclosure(cl->nupvalues));
+      luaM_freemem(L, cl, sizeCclosure(cl->getNumUpvalues()));
       break;
     }
     case LUA_VTABLE:

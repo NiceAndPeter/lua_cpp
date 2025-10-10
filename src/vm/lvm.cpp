@@ -823,15 +823,15 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
   int nup = p->getUpvaluesSize();
   Upvaldesc *uv = p->getUpvalues();
   int i;
-  LClosure *ncl = luaF_newLclosure(L, nup);
-  ncl->p = p;
+  LClosure *ncl = LClosure::create(L, nup);
+  ncl->setProto(p);
   setclLvalue2s(L, ra, ncl);  /* anchor new closure in stack */
   for (i = 0; i < nup; i++) {  /* fill in its upvalues */
     if (uv[i].isInStack())  /* upvalue refers to local variable? */
-      ncl->upvals[i] = luaF_findupval(L, base + uv[i].getIndex());
+      ncl->setUpval(i, luaF_findupval(L, base + uv[i].getIndex()));
     else  /* get upvalue from enclosing function */
-      ncl->upvals[i] = encup[uv[i].getIndex()];
-    luaC_objbarrier(L, ncl, ncl->upvals[i]);
+      ncl->setUpval(i, encup[uv[i].getIndex()]);
+    luaC_objbarrier(L, ncl, ncl->getUpval(i));
   }
 }
 
@@ -1195,7 +1195,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   trap = L->hookmask;
  returning:  /* trap already set */
   cl = ci_func(ci);
-  k = cl->p->getConstants();
+  k = cl->getProto()->getConstants();
   pc = ci->u.l.savedpc;
   if (l_unlikely(trap))
     trap = luaG_tracecall(L);
@@ -1274,19 +1274,19 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_GETUPVAL) {
         StkId ra = RA(i);
         int b = GETARG_B(i);
-        setobj2s(L, ra, cl->upvals[b]->getVP());
+        setobj2s(L, ra, cl->getUpval(b)->getVP());
         vmbreak;
       }
       vmcase(OP_SETUPVAL) {
         StkId ra = RA(i);
-        UpVal *uv = cl->upvals[GETARG_B(i)];
+        UpVal *uv = cl->getUpval(GETARG_B(i));
         setobj(L, uv->getVP(), s2v(ra));
         luaC_barrier(L, uv, s2v(ra));
         vmbreak;
       }
       vmcase(OP_GETTABUP) {
         StkId ra = RA(i);
-        TValue *upval = cl->upvals[GETARG_B(i)]->getVP();
+        TValue *upval = cl->getUpval(GETARG_B(i))->getVP();
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
         lu_byte tag;
@@ -1335,7 +1335,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_SETTABUP) {
         int hres;
-        TValue *upval = cl->upvals[GETARG_A(i)]->getVP();
+        TValue *upval = cl->getUpval(GETARG_A(i))->getVP();
         TValue *rb = KB(i);
         TValue *rc = RKC(i);
         TString *key = tsvalue(rb);  /* key must be a short string */
@@ -1779,7 +1779,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         }
         else {  /* do the 'poscall' here */
           int nres = get_nresults(ci->callstatus);
-          L->ci = ci->previous;  /* back to caller */
+          L->ci = ci->getPrevious();  /* back to caller */
           L->top.p = base - 1;
           for (; l_unlikely(nres > 0); nres--)
             setnilvalue(s2v(L->top.p++));  /* all results are nil */
@@ -1796,7 +1796,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         }
         else {  /* do the 'poscall' here */
           int nres = get_nresults(ci->callstatus);
-          L->ci = ci->previous;  /* back to caller */
+          L->ci = ci->getPrevious();  /* back to caller */
           if (nres == 0)
             L->top.p = base - 1;  /* asked for no results */
           else {
@@ -1811,7 +1811,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (ci->callstatus & CIST_FRESH)
           return;  /* end this frame */
         else {
-          ci = ci->previous;
+          ci = ci->getPrevious();
           goto returning;  /* continue running caller in this frame */
         }
       }
@@ -1915,8 +1915,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_CLOSURE) {
         StkId ra = RA(i);
-        Proto *p = cl->p->getProtos()[GETARG_Bx(i)];
-        halfProtect(pushclosure(L, p, cl->upvals, base, ra));
+        Proto *p = cl->getProto()->getProtos()[GETARG_Bx(i)];
+        halfProtect(pushclosure(L, p, cl->getUpvalPtr(0), base, ra));
         checkGC(L, ra + 1);
         vmbreak;
       }
@@ -1927,7 +1927,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_VARARGPREP) {
-        ProtectNT(luaT_adjustvarargs(L, GETARG_A(i), ci, cl->p));
+        ProtectNT(luaT_adjustvarargs(L, GETARG_A(i), ci, cl->getProto()));
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
           L->hookCall( ci);
           L->oldpc = 1;  /* next opcode will be seen as a "new" line */
