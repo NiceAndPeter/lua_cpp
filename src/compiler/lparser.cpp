@@ -150,16 +150,18 @@ static TString *str_checkname (LexState *ls) {
 
 
 static void init_exp (expdesc *e, expkind k, int i) {
-  e->f = e->t = NO_JUMP;
-  e->k = k;
-  e->u.info = i;
+  e->setFalseList(NO_JUMP);
+  e->setTrueList(NO_JUMP);
+  e->setKind(k);
+  e->setInfo(i);
 }
 
 
 static void codestring (expdesc *e, TString *s) {
-  e->f = e->t = NO_JUMP;
-  e->k = VKSTR;
-  e->u.strval = s;
+  e->setFalseList(NO_JUMP);
+  e->setTrueList(NO_JUMP);
+  e->setKind(VKSTR);
+  e->setStringValue(s);
 }
 
 
@@ -271,10 +273,11 @@ static LocVar *localdebuginfo (FuncState *fs, int vidx) {
 ** Create an expression representing variable 'vidx'
 */
 static void init_var (FuncState *fs, expdesc *e, int vidx) {
-  e->f = e->t = NO_JUMP;
-  e->k = VLOCAL;
-  e->u.var.vidx = cast_short(vidx);
-  e->u.var.ridx = getlocalvardesc(fs, vidx)->vd.ridx;
+  e->setFalseList(NO_JUMP);
+  e->setTrueList(NO_JUMP);
+  e->setKind(VLOCAL);
+  e->setLocalVarIndex(cast_short(vidx));
+  e->setLocalRegister(getlocalvardesc(fs, vidx)->vd.ridx);
 }
 
 
@@ -284,30 +287,30 @@ static void init_var (FuncState *fs, expdesc *e, int vidx) {
 static void check_readonly (LexState *ls, expdesc *e) {
   FuncState *fs = ls->fs;
   TString *varname = NULL;  /* to be set if variable is const */
-  switch (e->k) {
+  switch (e->getKind()) {
     case VCONST: {
-      varname = ls->dyd->actvar.arr[e->u.info].vd.name;
+      varname = ls->dyd->actvar.arr[e->getInfo()].vd.name;
       break;
     }
     case VLOCAL: {
-      Vardesc *vardesc = getlocalvardesc(fs, e->u.var.vidx);
+      Vardesc *vardesc = getlocalvardesc(fs, e->getLocalVarIndex());
       if (vardesc->vd.kind != VDKREG)  /* not a regular variable? */
         varname = vardesc->vd.name;
       break;
     }
     case VUPVAL: {
-      Upvaldesc *up = &fs->f->getUpvalues()[e->u.info];
+      Upvaldesc *up = &fs->f->getUpvalues()[e->getInfo()];
       if (up->getKind() != VDKREG)
         varname = up->getName();
       break;
     }
     case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
-      if (e->u.ind.ro)  /* read-only? */
-        varname = tsvalue(&fs->f->getConstants()[e->u.ind.keystr]);
+      if (e->isIndexedReadOnly())  /* read-only? */
+        varname = tsvalue(&fs->f->getConstants()[e->getIndexedStringKeyIndex()]);
       break;
     }
     default:
-      lua_assert(e->k == VINDEXI);  /* this one doesn't need any check */
+      lua_assert(e->getKind() == VINDEXI);  /* this one doesn't need any check */
       return;  /* integer index cannot be read-only */
   }
   if (varname)
@@ -376,17 +379,17 @@ static Upvaldesc *allocupvalue (FuncState *fs) {
 static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   Upvaldesc *up = allocupvalue(fs);
   FuncState *prev = fs->prev;
-  if (v->k == VLOCAL) {
+  if (v->getKind() == VLOCAL) {
     up->setInStack(1);
-    up->setIndex(v->u.var.ridx);
-    up->setKind(getlocalvardesc(prev, v->u.var.vidx)->vd.kind);
-    lua_assert(eqstr(name, getlocalvardesc(prev, v->u.var.vidx)->vd.name));
+    up->setIndex(v->getLocalRegister());
+    up->setKind(getlocalvardesc(prev, v->getLocalVarIndex())->vd.kind);
+    lua_assert(eqstr(name, getlocalvardesc(prev, v->getLocalVarIndex())->vd.name));
   }
   else {
     up->setInStack(0);
-    up->setIndex(cast_byte(v->u.info));
-    up->setKind(prev->f->getUpvalues()[v->u.info].getKind());
-    lua_assert(eqstr(name, prev->f->getUpvalues()[v->u.info].getName()));
+    up->setIndex(cast_byte(v->getInfo()));
+    up->setKind(prev->f->getUpvalues()[v->getInfo()].getKind());
+    lua_assert(eqstr(name, prev->f->getUpvalues()[v->getInfo()].getName()));
   }
   up->setName(name);
   luaC_objbarrier(fs->ls->L, fs->f, name);
@@ -411,16 +414,16 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
     Vardesc *vd = getlocalvardesc(fs, i);
     if (varglobal(vd)) {  /* global declaration? */
       if (vd->vd.name == NULL) {  /* collective declaration? */
-        if (var->u.info < 0)  /* no previous collective declaration? */
-          var->u.info = fs->firstlocal + i;  /* this is the first one */
+        if (var->getInfo() < 0)  /* no previous collective declaration? */
+          var->setInfo(fs->firstlocal + i);  /* this is the first one */
       }
       else {  /* global name */
         if (eqstr(n, vd->vd.name)) {  /* found? */
           init_exp(var, VGLOBAL, fs->firstlocal + i);
           return VGLOBAL;
         }
-        else if (var->u.info == -1)  /* active preambular declaration? */
-          var->u.info = -2;  /* invalidate preambular declaration */
+        else if (var->getInfo() == -1)  /* active preambular declaration? */
+          var->setInfo(-2);  /* invalidate preambular declaration */
       }
     }
     else if (eqstr(n, vd->vd.name)) {  /* found? */
@@ -428,7 +431,7 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
         init_exp(var, VCONST, fs->firstlocal + i);
       else  /* local variable */
         init_var(fs, var, i);
-      return cast_int(var->k);
+      return cast_int(var->getKind());
     }
   }
   return -1;  /* not found */
@@ -468,14 +471,14 @@ static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
   int v = searchvar(fs, n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)
-      markupval(fs, var->u.var.vidx);  /* local will be used as an upval */
+      markupval(fs, var->getLocalVarIndex());  /* local will be used as an upval */
   }
   else {  /* not found at current level; try upvalues */
     int idx = searchupvalue(fs, n);  /* try existing upvalues */
     if (idx < 0) {  /* not found? */
       if (fs->prev != NULL)  /* more levels? */
         singlevaraux(fs->prev, n, var, 0);  /* try upper levels */
-      if (var->k == VLOCAL || var->k == VUPVAL)  /* local or upvalue? */
+      if (var->getKind() == VLOCAL || var->getKind() == VUPVAL)  /* local or upvalue? */
         idx  = newupvalue(fs, n, var);  /* will be a new upvalue */
       else  /* it is a global or a constant */
         return;  /* don't need to do anything at this level */
@@ -490,7 +493,7 @@ static void buildglobal (LexState *ls, TString *varname, expdesc *var) {
   expdesc key;
   init_exp(var, VGLOBAL, -1);  /* global by default */
   singlevaraux(fs, ls->envn, var, 1);  /* get environment variable */
-  if (var->k == VGLOBAL)
+  if (var->getKind() == VGLOBAL)
     luaK_semerror(ls, "_ENV is global when accessing variable '%s'",
                       getstr(varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
@@ -507,14 +510,14 @@ static void buildvar (LexState *ls, TString *varname, expdesc *var) {
   FuncState *fs = ls->fs;
   init_exp(var, VGLOBAL, -1);  /* global by default */
   singlevaraux(fs, varname, var, 1);
-  if (var->k == VGLOBAL) {  /* global name? */
-    int info = var->u.info;
+  if (var->getKind() == VGLOBAL) {  /* global name? */
+    int info = var->getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
       luaK_semerror(ls, "variable '%s' not declared", getstr(varname));
     buildglobal(ls, varname, var);
     if (info != -1 && ls->dyd->actvar.arr[info].vd.kind == GDKCONST)
-      var->u.ind.ro = 1;  /* mark variable as read-only */
+      var->setIndexedReadOnly(1);  /* mark variable as read-only */
     else  /* anyway must be a global */
       lua_assert(info == -1 || ls->dyd->actvar.arr[info].vd.kind == GDKREG);
   }
@@ -533,14 +536,14 @@ static void singlevar (LexState *ls, expdesc *var) {
 static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
   FuncState *fs = ls->fs;
   int needed = nvars - nexps;  /* extra values needed */
-  if (hasmultret(e->k)) {  /* last expression has multiple returns? */
+  if (hasmultret(e->getKind())) {  /* last expression has multiple returns? */
     int extra = needed + 1;  /* discount last expression itself */
     if (extra < 0)
       extra = 0;
     fs->setreturns(e, extra);  /* last exp. provides the difference */
   }
   else {
-    if (e->k != VVOID)  /* at least one expression? */
+    if (e->getKind() != VVOID)  /* at least one expression? */
       fs->exp2nextreg(e);  /* close last expression */
     if (needed > 0)  /* missing values? */
       fs->nil(fs->freereg, needed);  /* complete with nils */
@@ -940,9 +943,9 @@ static void recfield (LexState *ls, ConsControl *cc) {
 static void closelistfield (FuncState *fs, ConsControl *cc) {
   lua_assert(cc->tostore > 0);
   fs->exp2nextreg(&cc->v);
-  cc->v.k = VVOID;
+  cc->v.setKind(VVOID);
   if (cc->tostore >= cc->maxtostore) {
-    fs->setlist(cc->t->u.info, cc->na, cc->tostore);  /* flush */
+    fs->setlist(cc->t->getInfo(), cc->na, cc->tostore);  /* flush */
     cc->na += cc->tostore;
     cc->tostore = 0;  /* no more items pending */
   }
@@ -951,15 +954,15 @@ static void closelistfield (FuncState *fs, ConsControl *cc) {
 
 static void lastlistfield (FuncState *fs, ConsControl *cc) {
   if (cc->tostore == 0) return;
-  if (hasmultret(cc->v.k)) {
+  if (hasmultret(cc->v.getKind())) {
     luaK_setmultret(fs, &cc->v);
-    fs->setlist(cc->t->u.info, cc->na, LUA_MULTRET);
+    fs->setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
-    if (cc->v.k != VVOID)
+    if (cc->v.getKind() != VVOID)
       fs->exp2nextreg(&cc->v);
-    fs->setlist(cc->t->u.info, cc->na, cc->tostore);
+    fs->setlist(cc->t->getInfo(), cc->na, cc->tostore);
   }
   cc->na += cc->tostore;
 }
@@ -1027,7 +1030,7 @@ static void constructor (LexState *ls, expdesc *t) {
   cc.maxtostore = maxtostore(fs);
   do {
     if (ls->t.token == /*{*/ '}') break;
-    if (cc.v.k != VVOID)  /* is there a previous list item? */
+    if (cc.v.getKind() != VVOID)  /* is there a previous list item? */
       closelistfield(fs, &cc);  /* close it */
     field(ls, &cc);
     luaY_checklimit(fs, cc.tostore + cc.na + cc.nh, MAX_CNST,
@@ -1035,7 +1038,7 @@ static void constructor (LexState *ls, expdesc *t) {
   } while (testnext(ls, ',') || testnext(ls, ';'));
   check_match(ls, /*{*/ '}', '{' /*}*/, line);
   lastlistfield(fs, &cc);
-  fs->settablesize(pc, t->u.info, cc.na, cc.nh);
+  fs->settablesize(pc, t->getInfo(), cc.na, cc.nh);
 }
 
 /* }====================================================================== */
@@ -1122,10 +1125,10 @@ static void funcargs (LexState *ls, expdesc *f) {
     case '(': {  /* funcargs -> '(' [ explist ] ')' */
       luaX_next(ls);
       if (ls->t.token == ')')  /* arg list is empty? */
-        args.k = VVOID;
+        args.setKind(VVOID);
       else {
         explist(ls, &args);
-        if (hasmultret(args.k))
+        if (hasmultret(args.getKind()))
           luaK_setmultret(fs, &args);
       }
       check_match(ls, ')', '(', line);
@@ -1144,12 +1147,12 @@ static void funcargs (LexState *ls, expdesc *f) {
       luaX_syntaxerror(ls, "function arguments expected");
     }
   }
-  lua_assert(f->k == VNONRELOC);
-  base = f->u.info;  /* base register for call */
-  if (hasmultret(args.k))
+  lua_assert(f->getKind() == VNONRELOC);
+  base = f->getInfo();  /* base register for call */
+  if (hasmultret(args.getKind()))
     nparams = LUA_MULTRET;  /* open call */
   else {
-    if (args.k != VVOID)
+    if (args.getKind() != VVOID)
       fs->exp2nextreg(&args);  /* close last argument */
     nparams = fs->freereg - (base+1);
   }
@@ -1235,12 +1238,12 @@ static void simpleexp (LexState *ls, expdesc *v) {
   switch (ls->t.token) {
     case TK_FLT: {
       init_exp(v, VKFLT, 0);
-      v->u.nval = ls->t.seminfo.r;
+      v->setFloatValue(ls->t.seminfo.r);
       break;
     }
     case TK_INT: {
       init_exp(v, VKINT, 0);
-      v->u.ival = ls->t.seminfo.i;
+      v->setIntValue(ls->t.seminfo.i);
       break;
     }
     case TK_STRING: {
@@ -1425,34 +1428,34 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   lu_byte extra = fs->freereg;  /* eventual position to save local variable */
   int conflict = 0;
   for (; lh; lh = lh->prev) {  /* check all previous assignments */
-    if (vkisindexed(lh->v.k)) {  /* assignment to table field? */
-      if (lh->v.k == VINDEXUP) {  /* is table an upvalue? */
-        if (v->k == VUPVAL && lh->v.u.ind.t == v->u.info) {
+    if (vkisindexed(lh->v.getKind())) {  /* assignment to table field? */
+      if (lh->v.getKind() == VINDEXUP) {  /* is table an upvalue? */
+        if (v->getKind() == VUPVAL && lh->v.getIndexedTableReg() == v->getInfo()) {
           conflict = 1;  /* table is the upvalue being assigned now */
-          lh->v.k = VINDEXSTR;
-          lh->v.u.ind.t = extra;  /* assignment will use safe copy */
+          lh->v.setKind(VINDEXSTR);
+          lh->v.setIndexedTableReg(extra);  /* assignment will use safe copy */
         }
       }
       else {  /* table is a register */
-        if (v->k == VLOCAL && lh->v.u.ind.t == v->u.var.ridx) {
+        if (v->getKind() == VLOCAL && lh->v.getIndexedTableReg() == v->getLocalRegister()) {
           conflict = 1;  /* table is the local being assigned now */
-          lh->v.u.ind.t = extra;  /* assignment will use safe copy */
+          lh->v.setIndexedTableReg(extra);  /* assignment will use safe copy */
         }
         /* is index the local being assigned? */
-        if (lh->v.k == VINDEXED && v->k == VLOCAL &&
-            lh->v.u.ind.idx == v->u.var.ridx) {
+        if (lh->v.getKind() == VINDEXED && v->getKind() == VLOCAL &&
+            lh->v.getIndexedKeyIndex() == v->getLocalRegister()) {
           conflict = 1;
-          lh->v.u.ind.idx = extra;  /* previous assignment will use safe copy */
+          lh->v.setIndexedKeyIndex(extra);  /* previous assignment will use safe copy */
         }
       }
     }
   }
   if (conflict) {
     /* copy upvalue/local value to a temporary (in position 'extra') */
-    if (v->k == VLOCAL)
-      fs->codeABC(OP_MOVE, extra, v->u.var.ridx, 0);
+    if (v->getKind() == VLOCAL)
+      fs->codeABC(OP_MOVE, extra, v->getLocalRegister(), 0);
     else
-      fs->codeABC(OP_GETUPVAL, extra, v->u.info, 0);
+      fs->codeABC(OP_GETUPVAL, extra, v->getInfo(), 0);
     fs->reserveregs(1);
   }
 }
@@ -1475,13 +1478,13 @@ static void storevartop (FuncState *fs, expdesc *var) {
 */
 static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
-  check_condition(ls, vkisvar(lh->v.k), "syntax error");
+  check_condition(ls, vkisvar(lh->v.getKind()), "syntax error");
   check_readonly(ls, &lh->v);
   if (testnext(ls, ',')) {  /* restassign -> ',' suffixedexp restassign */
     struct LHS_assign nv;
     nv.prev = lh;
     suffixedexp(ls, &nv.v);
-    if (!vkisindexed(nv.v.k))
+    if (!vkisindexed(nv.v.getKind()))
       check_conflict(ls, lh, &nv.v);
     enterlevel(ls);  /* control recursion depth */
     restassign(ls, &nv, nvars+1);
@@ -1507,9 +1510,9 @@ static int cond (LexState *ls) {
   /* cond -> exp */
   expdesc v;
   expr(ls, &v);  /* read condition */
-  if (v.k == VNIL) v.k = VFALSE;  /* 'falses' are all equal here */
+  if (v.getKind() == VNIL) v.setKind(VFALSE);  /* 'falses' are all equal here */
   ls->fs->goiftrue(&v);
-  return v.f;
+  return v.getFalseList();
 }
 
 
@@ -1611,7 +1614,7 @@ static void exp1 (LexState *ls) {
   expdesc e;
   expr(ls, &e);
   ls->fs->exp2nextreg(&e);
-  lua_assert(e.k == VNONRELOC);
+  lua_assert(e.getKind() == VNONRELOC);
 }
 
 
@@ -1818,7 +1821,7 @@ static void localstat (LexState *ls) {
   if (testnext(ls, '='))  /* initialization? */
     nexps = explist(ls, &e);
   else {
-    e.k = VVOID;
+    e.setKind(VVOID);
     nexps = 0;
   }
   var = getlocalvardesc(fs, vidx);  /* retrieve last variable */
@@ -1955,7 +1958,7 @@ static void exprstat (LexState *ls) {
   }
   else {  /* stat -> func */
     Instruction *inst;
-    check_condition(ls, v.v.k == VCALL, "syntax error");
+    check_condition(ls, v.v.getKind() == VCALL, "syntax error");
     inst = &getinstruction(fs, &v.v);
     SETARG_C(*inst, 1);  /* call statement uses no results */
   }
@@ -1972,9 +1975,9 @@ static void retstat (LexState *ls) {
     nret = 0;  /* return no values */
   else {
     nret = explist(ls, &e);  /* optional return values */
-    if (hasmultret(e.k)) {
+    if (hasmultret(e.getKind())) {
       luaK_setmultret(fs, &e);
-      if (e.k == VCALL && nret == 1 && !fs->bl->insidetbc) {  /* tail call? */
+      if (e.getKind() == VCALL && nret == 1 && !fs->bl->insidetbc) {  /* tail call? */
         SET_OPCODE(getinstruction(fs,&e), OP_TAILCALL);
         lua_assert(GETARG_A(getinstruction(fs,&e)) == luaY_nvarstack(fs));
       }
@@ -2117,14 +2120,15 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
                        Dyndata *dyd, const char *name, int firstchar) {
   LexState lexstate;
   FuncState funcstate;
-  LClosure *cl = luaF_newLclosure(L, 1);  /* create main closure */
+  LClosure *cl = LClosure::create(L, 1);  /* create main closure */
   setclLvalue2s(L, L->top.p, cl);  /* anchor it (to avoid being collected) */
   L->inctop();  /* Phase 25e */
   lexstate.h = luaH_new(L);  /* create table for scanner */
   sethvalue2s(L, L->top.p, lexstate.h);  /* anchor it */
   L->inctop();  /* Phase 25e */
-  funcstate.f = cl->p = luaF_newproto(L);
-  luaC_objbarrier(L, cl, cl->p);
+  funcstate.f = luaF_newproto(L);
+  cl->setProto(funcstate.f);
+  luaC_objbarrier(L, cl, cl->getProto());
   funcstate.f->setSource(luaS_new(L, name));  /* create and anchor TString */
   luaC_objbarrier(L, funcstate.f, funcstate.f->getSource());
   lexstate.buff = buff;

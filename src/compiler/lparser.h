@@ -72,7 +72,7 @@ typedef enum {
 
 
 class expdesc {
-public:
+private:
   expkind k;
   union {
     lua_Integer ival;    /* for VKINT */
@@ -93,10 +93,45 @@ public:
   int t;  /* patch list of 'exit when true' */
   int f;  /* patch list of 'exit when false' */
 
+public:
   // Inline accessors
   expkind getKind() const noexcept { return k; }
+  void setKind(expkind kind) noexcept { k = kind; }
   bool isConstant() const noexcept { return k == VNIL || k == VFALSE || k == VTRUE || k == VKINT || k == VKFLT || k == VKSTR; }
+
+  // Union field accessors (generic/constant values)
   int getInfo() const noexcept { return u.info; }
+  void setInfo(int i) noexcept { u.info = i; }
+  lua_Integer getIntValue() const noexcept { return u.ival; }
+  void setIntValue(lua_Integer i) noexcept { u.ival = i; }
+  lua_Number getFloatValue() const noexcept { return u.nval; }
+  void setFloatValue(lua_Number n) noexcept { u.nval = n; }
+  TString* getStringValue() const noexcept { return u.strval; }
+  void setStringValue(TString* s) noexcept { u.strval = s; }
+
+  // Indexed variable accessors (u.ind)
+  short getIndexedKeyIndex() const noexcept { return u.ind.idx; }
+  void setIndexedKeyIndex(short idx) noexcept { u.ind.idx = idx; }
+  lu_byte getIndexedTableReg() const noexcept { return u.ind.t; }
+  void setIndexedTableReg(lu_byte treg) noexcept { u.ind.t = treg; }
+  lu_byte isIndexedReadOnly() const noexcept { return u.ind.ro; }
+  void setIndexedReadOnly(lu_byte ro) noexcept { u.ind.ro = ro; }
+  int getIndexedStringKeyIndex() const noexcept { return u.ind.keystr; }
+  void setIndexedStringKeyIndex(int keystr) noexcept { u.ind.keystr = keystr; }
+
+  // Local variable accessors (u.var)
+  lu_byte getLocalRegister() const noexcept { return u.var.ridx; }
+  void setLocalRegister(lu_byte ridx) noexcept { u.var.ridx = ridx; }
+  short getLocalVarIndex() const noexcept { return u.var.vidx; }
+  void setLocalVarIndex(short vidx) noexcept { u.var.vidx = vidx; }
+
+  // Patch lists
+  int getTrueList() const noexcept { return t; }
+  void setTrueList(int list) noexcept { t = list; }
+  int* getTrueListRef() noexcept { return &t; }
+  int getFalseList() const noexcept { return f; }
+  void setFalseList(int list) noexcept { f = list; }
+  int* getFalseListRef() noexcept { return &f; }
 };
 
 
