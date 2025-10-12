@@ -366,6 +366,25 @@ LUAI_FUNC void luaC_changemode (lua_State *L, int newmode);
 
 /*
 ** {==================================================================
+** Placement new operator implementations for GC-allocated objects
+** ===================================================================
+*/
+
+// CClosure placement new operator
+inline void* CClosure::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+  return luaC_newobj(L, tt, size + extra);
+}
+
+// LClosure placement new operator
+inline void* LClosure::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+  return luaC_newobj(L, tt, size + extra);
+}
+
+/* }================================================================== */
+
+
+/*
+** {==================================================================
 ** TValue assignment inline functions
 ** Defined here (not in lobject.h) because they need:
 **   - G() from lstate.h

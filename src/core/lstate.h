@@ -192,53 +192,6 @@ public:
 
 
 /*
-** Information about a call.
-** About union 'u':
-** - field 'l' is used only for Lua functions;
-** - field 'c' is used only for C functions.
-** About union 'u2':
-** - field 'funcidx' is used only by C functions while doing a
-** protected call;
-** - field 'nyield' is used only while a function is "doing" an
-** yield (from the yield until the next resume);
-** - field 'nres' is used only while closing tbc variables when
-** returning from a function;
-*/
-class CallInfo {
-public:
-  StkIdRel func;  /* function index in the stack */
-  StkIdRel top;  /* top for this function */
-  struct CallInfo *previous, *next;  /* dynamic call link */
-  union {
-    struct {  /* only for Lua functions */
-      const Instruction *savedpc;
-      volatile l_signalT trap;  /* function is tracing lines/counts */
-      int nextraargs;  /* # of extra arguments in vararg functions */
-    } l;
-    struct {  /* only for C functions */
-      lua_KFunction k;  /* continuation in case of yields */
-      ptrdiff_t old_errfunc;
-      lua_KContext ctx;  /* context info. in case of yields */
-    } c;
-  } u;
-  union {
-    int funcidx;  /* called-function index */
-    int nyield;  /* number of values yielded */
-    int nres;  /* number of values returned */
-  } u2;
-  l_uint32 callstatus;
-
-  // Inline accessors
-  CallInfo* getPrevious() const noexcept { return previous; }
-  CallInfo* getNext() const noexcept { return next; }
-  l_uint32 getCallStatus() const noexcept { return callstatus; }
-  bool isLua() const noexcept { return (callstatus & (1 << 0)) == 0; }  // CIST_LUA = bit 0
-  const Instruction* getSavedPC() const noexcept { return u.l.savedpc; }
-  void setSavedPC(const Instruction* pc) noexcept { u.l.savedpc = pc; }
-};
-
-
-/*
 ** Maximum expected number of results from a function
 ** (must fit in CIST_NRESULTS).
 */
@@ -280,6 +233,116 @@ public:
 #define CIST_FIN	(CIST_HOOKYIELD << 1)
 
 
+/*
+** Information about a call.
+** About union 'u':
+** - field 'l' is used only for Lua functions;
+** - field 'c' is used only for C functions.
+** About union 'u2':
+** - field 'funcidx' is used only by C functions while doing a
+** protected call;
+** - field 'nyield' is used only while a function is "doing" an
+** yield (from the yield until the next resume);
+** - field 'nres' is used only while closing tbc variables when
+** returning from a function;
+*/
+class CallInfo {
+private:
+  StkIdRel func;  /* function index in the stack */
+  StkIdRel top;  /* top for this function */
+  struct CallInfo *previous, *next;  /* dynamic call link */
+  union {
+    struct {  /* only for Lua functions */
+      const Instruction *savedpc;
+      volatile l_signalT trap;  /* function is tracing lines/counts */
+      int nextraargs;  /* # of extra arguments in vararg functions */
+    } l;
+    struct {  /* only for C functions */
+      lua_KFunction k;  /* continuation in case of yields */
+      ptrdiff_t old_errfunc;
+      lua_KContext ctx;  /* context info. in case of yields */
+    } c;
+  } u;
+  union {
+    int funcidx;  /* called-function index */
+    int nyield;  /* number of values yielded */
+    int nres;  /* number of values returned */
+  } u2;
+  l_uint32 callstatus;
+
+public:
+  // Inline accessors for func and top (StkIdRel)
+  StkIdRel& funcRef() noexcept { return func; }
+  const StkIdRel& funcRef() const noexcept { return func; }
+  StkIdRel& topRef() noexcept { return top; }
+  const StkIdRel& topRef() const noexcept { return top; }
+
+  // Link accessors
+  CallInfo* getPrevious() const noexcept { return previous; }
+  void setPrevious(CallInfo* prev) noexcept { previous = prev; }
+  CallInfo** getPreviousPtr() noexcept { return &previous; }
+
+  CallInfo* getNext() const noexcept { return next; }
+  void setNext(CallInfo* n) noexcept { next = n; }
+  CallInfo** getNextPtr() noexcept { return &next; }
+
+  // CallStatus accessors
+  l_uint32 getCallStatus() const noexcept { return callstatus; }
+  void setCallStatus(l_uint32 status) noexcept { callstatus = status; }
+  l_uint32& callStatusRef() noexcept { return callstatus; }
+
+  // Type checks
+  bool isLua() const noexcept { return (callstatus & CIST_C) == 0; }
+  bool isC() const noexcept { return (callstatus & CIST_C) != 0; }
+  bool isLuaCode() const noexcept { return (callstatus & (CIST_C | CIST_HOOKED)) == 0; }
+
+  // OAH (original allow hook) accessors
+  int getOAH() const noexcept { return (callstatus & CIST_OAH) ? 1 : 0; }
+  void setOAH(bool v) noexcept {
+    callstatus = v ? (callstatus | CIST_OAH) : (callstatus & ~CIST_OAH);
+  }
+
+  // Recover status accessors
+  int getRecoverStatus() const noexcept { return (callstatus >> CIST_RECST) & 7; }
+  void setRecoverStatus(int st) noexcept {
+    lua_assert((st & 7) == st);  // status must fit in three bits
+    callstatus = (callstatus & ~(7u << CIST_RECST)) | (cast(l_uint32, st) << CIST_RECST);
+  }
+
+  // Lua function union accessors
+  const Instruction* getSavedPC() const noexcept { return u.l.savedpc; }
+  void setSavedPC(const Instruction* pc) noexcept { u.l.savedpc = pc; }
+  const Instruction** getSavedPCPtr() noexcept { return &u.l.savedpc; }
+
+  volatile l_signalT& getTrap() noexcept { return u.l.trap; }
+  const volatile l_signalT& getTrap() const noexcept { return u.l.trap; }
+
+  int getExtraArgs() const noexcept { return u.l.nextraargs; }
+  void setExtraArgs(int n) noexcept { u.l.nextraargs = n; }
+  int& extraArgsRef() noexcept { return u.l.nextraargs; }
+
+  // C function union accessors
+  lua_KFunction getK() const noexcept { return u.c.k; }
+  void setK(lua_KFunction kfunc) noexcept { u.c.k = kfunc; }
+
+  ptrdiff_t getOldErrFunc() const noexcept { return u.c.old_errfunc; }
+  void setOldErrFunc(ptrdiff_t ef) noexcept { u.c.old_errfunc = ef; }
+
+  lua_KContext getCtx() const noexcept { return u.c.ctx; }
+  void setCtx(lua_KContext context) noexcept { u.c.ctx = context; }
+
+  // u2 union accessors
+  int getFuncIdx() const noexcept { return u2.funcidx; }
+  void setFuncIdx(int idx) noexcept { u2.funcidx = idx; }
+
+  int getNYield() const noexcept { return u2.nyield; }
+  void setNYield(int n) noexcept { u2.nyield = n; }
+
+  int getNRes() const noexcept { return u2.nres; }
+  void setNRes(int n) noexcept { u2.nres = n; }
+};
+
+
 #define get_nresults(cs)  (cast_int((cs) & CIST_NRESULTS) - 1)
 
 /*
@@ -288,24 +351,19 @@ public:
 ** Lua can correctly resume after an yield from a __close method called
 ** because of an error.  (Three bits are enough for error status.)
 */
-#define getcistrecst(ci)     (((ci)->callstatus >> CIST_RECST) & 7)
-#define setcistrecst(ci,st)  \
-  check_exp(((st) & 7) == (st),   /* status must fit in three bits */  \
-            ((ci)->callstatus = ((ci)->callstatus & ~(7u << CIST_RECST))  \
-                                | (cast(l_uint32, st) << CIST_RECST)))
+#define getcistrecst(ci)     ((ci)->getRecoverStatus())
+#define setcistrecst(ci,st)  ((ci)->setRecoverStatus(st))
 
 
 /* active function is a Lua function */
-#define isLua(ci)	(!((ci)->callstatus & CIST_C))
+#define isLua(ci)	((ci)->isLua())
 
 /* call is running Lua code (not a hook) */
-#define isLuacode(ci)	(!((ci)->callstatus & (CIST_C | CIST_HOOKED)))
+#define isLuacode(ci)	((ci)->isLuaCode())
 
 
-#define setoah(ci,v)  \
-  ((ci)->callstatus = ((v) ? (ci)->callstatus | CIST_OAH  \
-                           : (ci)->callstatus & ~CIST_OAH))
-#define getoah(ci)  (((ci)->callstatus & CIST_OAH) ? 1 : 0)
+#define setoah(ci,v)  ((ci)->setOAH(v))
+#define getoah(ci)  ((ci)->getOAH())
 
 
 /*

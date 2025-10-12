@@ -13,11 +13,9 @@
 
 // Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
 // This triggers -Winvalid-offsetof but is safe because we control the memory layout
-#define sizeCclosure(n)  \
-	(offsetof(CClosure, upvalue) + sizeof(TValue) * cast_uint(n))
+#define sizeCclosure(n)  CClosure::sizeForUpvalues(n)
 
-#define sizeLclosure(n)  \
-	(offsetof(LClosure, upvals) + sizeof(UpVal *) * cast_uint(n))
+#define sizeLclosure(n)  LClosure::sizeForUpvalues(n)
 
 
 /* test whether thread is in 'twups' list */
@@ -50,8 +48,6 @@
 
 
 LUAI_FUNC Proto *luaF_newproto (lua_State *L);
-LUAI_FUNC CClosure *luaF_newCclosure (lua_State *L, int nupvals);
-LUAI_FUNC LClosure *luaF_newLclosure (lua_State *L, int nupvals);
 /* Phase 26: Removed luaF_initupvals - now LClosure::initUpvals() method */
 LUAI_FUNC UpVal *luaF_findupval (lua_State *L, StkId level);
 LUAI_FUNC void luaF_newtbcupval (lua_State *L, StkId level);

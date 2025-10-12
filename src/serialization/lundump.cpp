@@ -404,19 +404,19 @@ LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
   S.fixed = cast_byte(fixed);
   S.offset = 1;  /* fist byte was already read */
   checkHeader(&S);
-  cl = luaF_newLclosure(L, loadByte(&S));
+  cl = LClosure::create(L, loadByte(&S));
   setclLvalue2s(L, L->top.p, cl);
   L->inctop();  /* Phase 25e */
   S.h = luaH_new(L);  /* create list of saved strings */
   S.nstr = 0;
   sethvalue2s(L, L->top.p, S.h);  /* anchor it */
   L->inctop();  /* Phase 25e */
-  cl->p = luaF_newproto(L);
-  luaC_objbarrier(L, cl, cl->p);
-  loadFunction(&S, cl->p);
-  if (cl->nupvalues != cl->p->getUpvaluesSize())
+  cl->setProto(luaF_newproto(L));
+  luaC_objbarrier(L, cl, cl->getProto());
+  loadFunction(&S, cl->getProto());
+  if (cl->getNumUpvalues() != cl->getProto()->getUpvaluesSize())
     error(&S, "corrupted chunk");
-  luai_verifycode(L, cl->p);
+  luai_verifycode(L, cl->getProto());
   L->top.p--;  /* pop table */
   return cl;
 }

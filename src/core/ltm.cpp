@@ -75,7 +75,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
       mt = hvalue(o)->getMetatable();
       break;
     case LUA_TUSERDATA:
-      mt = uvalue(o)->metatable;
+      mt = uvalue(o)->getMetatable();
       break;
     default:
       mt = G(L)->mt[ttype(o)];
@@ -91,7 +91,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
 const char *luaT_objtypename (lua_State *L, const TValue *o) {
   Table *mt;
   if ((ttistable(o) && (mt = hvalue(o)->getMetatable()) != NULL) ||
-      (ttisfulluserdata(o) && (mt = uvalue(o)->metatable) != NULL)) {
+      (ttisfulluserdata(o) && (mt = uvalue(o)->getMetatable()) != NULL)) {
     const TValue *name = luaH_Hgetshortstr(mt, luaS_new(L, "__name"));
     if (ttisstring(name))  /* is '__name' a string? */
       return getstr(tsvalue(name));  /* use it as type name */
@@ -227,33 +227,33 @@ int luaT_callorderiTM (lua_State *L, const TValue *p1, int v2,
 void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
                          const Proto *p) {
   int i;
-  int actual = cast_int(L->top.p - ci->func.p) - 1;  /* number of arguments */
+  int actual = cast_int(L->top.p - ci->funcRef().p) - 1;  /* number of arguments */
   int nextra = actual - nfixparams;  /* number of extra arguments */
-  ci->u.l.nextraargs = nextra;
+  ci->setExtraArgs(nextra);
   luaD_checkstack(L, p->getMaxStackSize() + 1);
   /* copy function to the top of the stack */
-  setobjs2s(L, L->top.p++, ci->func.p);
+  setobjs2s(L, L->top.p++, ci->funcRef().p);
   /* move fixed parameters to the top of the stack */
   for (i = 1; i <= nfixparams; i++) {
-    setobjs2s(L, L->top.p++, ci->func.p + i);
-    setnilvalue(s2v(ci->func.p + i));  /* erase original parameter (for GC) */
+    setobjs2s(L, L->top.p++, ci->funcRef().p + i);
+    setnilvalue(s2v(ci->funcRef().p + i));  /* erase original parameter (for GC) */
   }
-  ci->func.p += actual + 1;
-  ci->top.p += actual + 1;
-  lua_assert(L->top.p <= ci->top.p && ci->top.p <= L->stack_last.p);
+  ci->funcRef().p += actual + 1;
+  ci->topRef().p += actual + 1;
+  lua_assert(L->top.p <= ci->topRef().p && ci->topRef().p <= L->stack_last.p);
 }
 
 
 void luaT_getvarargs (lua_State *L, CallInfo *ci, StkId where, int wanted) {
   int i;
-  int nextra = ci->u.l.nextraargs;
+  int nextra = ci->getExtraArgs();
   if (wanted < 0) {
     wanted = nextra;  /* get all extra arguments available */
     checkstackp(L, nextra, where);  /* ensure stack space */
     L->top.p = where + nextra;  /* next instruction will need top */
   }
   for (i = 0; i < wanted && i < nextra; i++)
-    setobjs2s(L, where + i, ci->func.p - nextra + i);
+    setobjs2s(L, where + i, ci->funcRef().p - nextra + i);
   for (; i < wanted; i++)   /* complete required results with nil */
     setnilvalue(s2v(where + i));
 }

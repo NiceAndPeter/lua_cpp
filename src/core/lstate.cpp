@@ -79,13 +79,13 @@ void luaE_setdebt (global_State *g, l_mem debt) {
 
 CallInfo *luaE_extendCI (lua_State *L) {
   CallInfo *ci;
-  lua_assert(L->ci->next == NULL);
+  lua_assert(L->ci->getNext() == NULL);
   ci = luaM_new(L, CallInfo);
-  lua_assert(L->ci->next == NULL);
-  L->ci->next = ci;
-  ci->previous = L->ci;
-  ci->next = NULL;
-  ci->u.l.trap = 0;
+  lua_assert(L->ci->getNext() == NULL);
+  L->ci->setNext(ci);
+  ci->setPrevious(L->ci);
+  ci->setNext(NULL);
+  ci->getTrap() = 0;
   L->nci++;
   return ci;
 }
@@ -96,10 +96,10 @@ CallInfo *luaE_extendCI (lua_State *L) {
 */
 static void freeCI (lua_State *L) {
   CallInfo *ci = L->ci;
-  CallInfo *next = ci->next;
-  ci->next = NULL;
+  CallInfo *next = ci->getNext();
+  ci->setNext(NULL);
   while ((ci = next) != NULL) {
-    next = ci->next;
+    next = ci->getNext();
     luaM_free(L, ci);
     L->nci--;
   }
@@ -111,19 +111,19 @@ static void freeCI (lua_State *L) {
 ** keeping the first one.
 */
 void luaE_shrinkCI (lua_State *L) {
-  CallInfo *ci = L->ci->next;  /* first free CallInfo */
+  CallInfo *ci = L->ci->getNext();  /* first free CallInfo */
   CallInfo *next;
   if (ci == NULL)
     return;  /* no extra elements */
-  while ((next = ci->next) != NULL) {  /* two extra elements? */
-    CallInfo *next2 = next->next;  /* next's next */
-    ci->next = next2;  /* remove next from the list */
+  while ((next = ci->getNext()) != NULL) {  /* two extra elements? */
+    CallInfo *next2 = next->getNext();  /* next's next */
+    ci->setNext(next2);  /* remove next from the list */
     L->nci--;
     luaM_free(L, next);  /* free next */
     if (next2 == NULL)
       break;  /* no more elements */
     else {
-      next2->previous = ci;
+      next2->setPrevious(ci);
       ci = next2;  /* continue */
     }
   }
@@ -154,11 +154,11 @@ LUAI_FUNC void luaE_incCstack (lua_State *L) {
 
 static void resetCI (lua_State *L) {
   CallInfo *ci = L->ci = &L->base_ci;
-  ci->func.p = L->stack.p;
-  setnilvalue(s2v(ci->func.p));  /* 'function' entry for basic 'ci' */
-  ci->top.p = ci->func.p + 1 + LUA_MINSTACK;  /* +1 for 'function' entry */
-  ci->u.c.k = NULL;
-  ci->callstatus = CIST_C;
+  ci->funcRef().p = L->stack.p;
+  setnilvalue(s2v(ci->funcRef().p));  /* 'function' entry for basic 'ci' */
+  ci->topRef().p = ci->funcRef().p + 1 + LUA_MINSTACK;  /* +1 for 'function' entry */
+  ci->setK(NULL);
+  ci->setCallStatus(CIST_C);
   L->status = LUA_OK;
   L->errfunc = 0;  /* stack unwind can "throw away" the error function */
 }
@@ -248,7 +248,8 @@ static void preinit_thread (lua_State *L, global_State *g) {
   L->status = LUA_OK;
   L->errfunc = 0;
   L->oldpc = 0;
-  L->base_ci.previous = L->base_ci.next = NULL;
+  L->base_ci.setPrevious(NULL);
+  L->base_ci.setNext(NULL);
 }
 
 
@@ -325,7 +326,7 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
     L->setErrorObj( status, L->stack.p + 1);
   else
     L->top.p = L->stack.p + 1;
-  L->reallocStack(cast_int(L->ci->top.p - L->stack.p), 0);
+  L->reallocStack(cast_int(L->ci->topRef().p - L->stack.p), 0);
   return status;
 }
 

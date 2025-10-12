@@ -439,7 +439,7 @@ LUA_API lua_Unsigned lua_rawlen (lua_State *L, int idx) {
   switch (ttypetag(o)) {
     case LUA_VSHRSTR: return cast(lua_Unsigned, tsvalue(o)->length());
     case LUA_VLNGSTR: return cast(lua_Unsigned, tsvalue(o)->length());
-    case LUA_VUSERDATA: return cast(lua_Unsigned, uvalue(o)->len);
+    case LUA_VUSERDATA: return cast(lua_Unsigned, uvalue(o)->getLen());
     case LUA_VTABLE: {
       lua_Unsigned res;
       lua_lock(L);
@@ -463,7 +463,7 @@ LUA_API lua_CFunction lua_tocfunction (lua_State *L, int idx) {
 
 static inline void *touserdata (const TValue *o) {
   switch (ttype(o)) {
-    case LUA_TUSERDATA: return getudatamem(uvalue(o));
+    case LUA_TUSERDATA: return uvalue(o)->getMemory();
     case LUA_TLIGHTUSERDATA: return pvalue(o);
     default: return NULL;
   }
@@ -813,7 +813,7 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
       mt = hvalue(obj)->getMetatable();
       break;
     case LUA_TUSERDATA:
-      mt = uvalue(obj)->metatable;
+      mt = uvalue(obj)->getMetatable();
       break;
     default:
       mt = G(L)->mt[ttype(obj)];
@@ -835,12 +835,12 @@ LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
   lua_lock(L);
   o = index2value(L, idx);
   api_check(L, ttisfulluserdata(o), "full userdata expected");
-  if (n <= 0 || n > uvalue(o)->nuvalue) {
+  if (n <= 0 || n > uvalue(o)->getNumUserValues()) {
     setnilvalue(s2v(L->top.p));
     t = LUA_TNONE;
   }
   else {
-    setobj2s(L, L->top.p, &uvalue(o)->uv[n - 1].uv);
+    setobj2s(L, L->top.p, &uvalue(o)->getUserValue(n - 1)->uv);
     t = ttype(s2v(L->top.p));
   }
   api_incr_top(L);
@@ -983,7 +983,7 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
       break;
     }
     case LUA_TUSERDATA: {
-      uvalue(obj)->metatable = mt;
+      uvalue(obj)->setMetatable(mt);
       if (mt) {
         luaC_objbarrier(L, uvalue(obj), mt);
         gcvalue(obj)->checkFinalizer(L, mt);  /* Phase 25c */
@@ -1008,10 +1008,10 @@ LUA_API int lua_setiuservalue (lua_State *L, int idx, int n) {
   api_checkpop(L, 1);
   o = index2value(L, idx);
   api_check(L, ttisfulluserdata(o), "full userdata expected");
-  if (!(cast_uint(n) - 1u < cast_uint(uvalue(o)->nuvalue)))
-    res = 0;  /* 'n' not in [1, uvalue(o)->nuvalue] */
+  if (!(cast_uint(n) - 1u < cast_uint(uvalue(o)->getNumUserValues())))
+    res = 0;  /* 'n' not in [1, uvalue(o)->getNumUserValues()] */
   else {
-    setobj(L, &uvalue(o)->uv[n - 1].uv, s2v(L->top.p - 1));
+    setobj(L, &uvalue(o)->getUserValue(n - 1)->uv, s2v(L->top.p - 1));
     luaC_barrierback(L, gcvalue(o), s2v(L->top.p - 1));
     res = 1;
   }
@@ -1359,7 +1359,7 @@ LUA_API void *lua_newuserdatauv (lua_State *L, size_t size, int nuvalue) {
   api_incr_top(L);
   luaC_checkGC(L);
   lua_unlock(L);
-  return getudatamem(u);
+  return u->getMemory();
 }
 
 

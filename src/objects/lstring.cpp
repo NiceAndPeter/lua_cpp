@@ -279,11 +279,11 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
     luaM_toobig(L);
   o = luaC_newobj(L, LUA_VUSERDATA, sizeudata(nuvalue, s));
   u = gco2u(o);
-  u->len = s;
-  u->nuvalue = nuvalue;
-  u->metatable = NULL;
+  u->setLen(s);
+  u->setNumUserValues(nuvalue);
+  u->setMetatable(NULL);
   for (i = 0; i < nuvalue; i++)
-    setnilvalue(&u->uv[i].uv);
+    setnilvalue(&u->getUserValue(i)->uv);
   return u;
 }
 

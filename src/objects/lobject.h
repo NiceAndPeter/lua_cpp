@@ -572,23 +572,33 @@ typedef union UValue {
 */
 // Udata inherits from GCBase (CRTP)
 class Udata : public GCBase<Udata> {
-public:
+private:
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
   struct Table *metatable;
   GCObject *gclist;
   UValue uv[1];  /* user values */
 
+public:
   // Inline accessors
   size_t getLen() const noexcept { return len; }
+  void setLen(size_t l) noexcept { len = l; }
   unsigned short getNumUserValues() const noexcept { return nuvalue; }
+  void setNumUserValues(unsigned short n) noexcept { nuvalue = n; }
   Table* getMetatable() const noexcept { return metatable; }
   void setMetatable(Table* mt) noexcept { metatable = mt; }
+  Table** getMetatablePtr() noexcept { return &metatable; }
+  GCObject* getGclist() noexcept { return gclist; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
   UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
   const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
   // Note: getMemory() uses macro udatamemoffset which requires Udata0 to be defined
   inline void* getMemory() noexcept;
   inline const void* getMemory() const noexcept;
+
+  // Static method to compute UV offset (needed for udatamemoffset macro)
+  static constexpr size_t uvOffset() noexcept { return offsetof(Udata, uv); }
 };
 
 
@@ -615,10 +625,10 @@ typedef struct Udata0 : public GCBase<Udata0> {
 // This triggers -Winvalid-offsetof but is safe because we control the memory layout
 #define udatamemoffset(nuv) \
        ((nuv) == 0 ? offsetof(Udata0, bindata)  \
-		   : offsetof(Udata, uv) + (sizeof(UValue) * (nuv)))
+		   : Udata::uvOffset() + (sizeof(UValue) * (nuv)))
 
 /* get the address of the memory block inside 'Udata' */
-#define getudatamem(u)	(cast_charp(u) + udatamemoffset((u)->nuvalue))
+#define getudatamem(u)	(cast_charp(u) + udatamemoffset((u)->getNumUserValues()))
 
 /* compute the size of a userdata */
 #define sizeudata(nuv,nb)	(udatamemoffset(nuv) + (nb))
@@ -966,6 +976,11 @@ public:
   GCObject* getGclist() noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   GCObject** getGclistPtr() noexcept { return &gclist; }
+
+  // Static helper for size calculation (can access private upvalue field)
+  static constexpr size_t sizeForUpvalues(int n) noexcept {
+    return offsetof(CClosure, upvalue) + sizeof(TValue) * cast_uint(n);
+  }
 };
 
 class LClosure : public GCBase<LClosure> {
@@ -999,6 +1014,11 @@ public:
   GCObject* getGclist() noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   GCObject** getGclistPtr() noexcept { return &gclist; }
+
+  // Static helper for size calculation (can access private upvals field)
+  static constexpr size_t sizeForUpvalues(int n) noexcept {
+    return offsetof(LClosure, upvals) + sizeof(UpVal *) * cast_uint(n);
+  }
 
   // Methods (implemented in lfunc.cpp)
   void initUpvals(lua_State* L);

@@ -132,7 +132,7 @@ static l_mem objsize (GCObject *o) {
     }
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
-      res = sizeudata(u->nuvalue, u->len);
+      res = sizeudata(u->getNumUserValues(), u->getLen());
       break;
     }
     case LUA_VPROTO: {
@@ -172,8 +172,8 @@ static GCObject **getgclist (GCObject *o) {
     case LUA_VPROTO: return gco2p(o)->getGclistPtr();
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
-      lua_assert(u->nuvalue > 0);
-      return &u->gclist;
+      lua_assert(u->getNumUserValues() > 0);
+      return u->getGclistPtr();
     }
     default: lua_assert(0); return 0;
   }
@@ -354,8 +354,8 @@ static void reallymarkobject (global_State *g, GCObject *o) {
     }
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
-      if (u->nuvalue == 0) {  /* no user values? */
-        markobjectN(g, u->metatable);  /* mark its metatable */
+      if (u->getNumUserValues() == 0) {  /* no user values? */
+        markobjectN(g, u->getMetatable());  /* mark its metatable */
         set2black(u);  /* nothing else to mark */
         break;
       }
@@ -629,11 +629,11 @@ static l_mem traversetable (global_State *g, Table *h) {
 
 static l_mem traverseudata (global_State *g, Udata *u) {
   int i;
-  markobjectN(g, u->metatable);  /* mark its metatable */
-  for (i = 0; i < u->nuvalue; i++)
-    markvalue(g, &u->uv[i].uv);
+  markobjectN(g, u->getMetatable());  /* mark its metatable */
+  for (i = 0; i < u->getNumUserValues(); i++)
+    markvalue(g, &u->getUserValue(i)->uv);
   genlink(g, obj2gco(u));
-  return 1 + u->nuvalue;
+  return 1 + u->getNumUserValues();
 }
 
 
@@ -859,7 +859,7 @@ static void freeobj (lua_State *L, GCObject *o) {
       break;
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
-      luaM_freemem(L, o, sizeudata(u->nuvalue, u->len));
+      luaM_freemem(L, o, sizeudata(u->getNumUserValues(), u->getLen()));
       break;
     }
     case LUA_VSHRSTR: {
@@ -979,9 +979,9 @@ static void GCTM (lua_State *L) {
     L->allowhook = 0;  /* stop debug hooks during GC metamethod */
     setobj2s(L, L->top.p++, tm);  /* push finalizer... */
     setobj2s(L, L->top.p++, &v);  /* ... and its argument */
-    L->ci->callstatus |= CIST_FIN;  /* will run a finalizer */
+    L->ci->setCallStatus(L->ci->getCallStatus() | CIST_FIN);  /* will run a finalizer */
     status = L->pCall( dothecall, NULL, savestack(L, L->top.p - 2), 0);
-    L->ci->callstatus &= ~CIST_FIN;  /* not running a finalizer anymore */
+    L->ci->setCallStatus(L->ci->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
     L->allowhook = oldah;  /* restore hooks */
     g->gcstp = oldgcstp;  /* restore state */
     if (l_unlikely(status != LUA_OK)) {  /* error while running __gc? */

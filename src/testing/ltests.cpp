@@ -423,9 +423,9 @@ static void checktable (global_State *g, Table *h) {
 static void checkudata (global_State *g, Udata *u) {
   int i;
   GCObject *hgc = obj2gco(u);
-  checkobjrefN(g, hgc, u->metatable);
-  for (i = 0; i < u->nuvalue; i++)
-    checkvalref(g, hgc, &u->uv[i].uv);
+  checkobjrefN(g, hgc, u->getMetatable());
+  for (i = 0; i < u->getNumUserValues(); i++)
+    checkvalref(g, hgc, &u->getUserValue(i)->uv);
 }
 
 
@@ -449,17 +449,17 @@ static void checkproto (global_State *g, Proto *f) {
 static void checkCclosure (global_State *g, CClosure *cl) {
   GCObject *clgc = obj2gco(cl);
   int i;
-  for (i = 0; i < cl->nupvalues; i++)
-    checkvalref(g, clgc, &cl->upvalue[i]);
+  for (i = 0; i < cl->getNumUpvalues(); i++)
+    checkvalref(g, clgc, cl->getUpvalue(i));
 }
 
 
 static void checkLclosure (global_State *g, LClosure *cl) {
   GCObject *clgc = obj2gco(cl);
   int i;
-  checkobjrefN(g, clgc, cl->p);
-  for (i=0; i<cl->nupvalues; i++) {
-    UpVal *uv = cl->upvals[i];
+  checkobjrefN(g, clgc, cl->getProto());
+  for (i=0; i<cl->getNumUpvalues(); i++) {
+    UpVal *uv = cl->getUpval(i);
     if (uv) {
       checkobjrefN(g, clgc, uv);
       if (!upisopen(uv))
@@ -474,8 +474,8 @@ static int lua_checkpc (CallInfo *ci) {
   else {
     StkId f = ci->funcRef().p;
     Proto *p = clLvalue(s2v(f))->getProto();
-    return p->getCode() <= ci->u.l.savedpc &&
-           ci->u.l.savedpc <= p->getCode() + p->getCodeSize();
+    return p->getCode() <= ci->getSavedPC() &&
+           ci->getSavedPC() <= p->getCode() + p->getCodeSize();
   }
 }
 
@@ -494,7 +494,7 @@ static void check_stack (global_State *g, lua_State *L1) {
   assert(L1->top.p <= L1->stack_last.p);
   assert(L1->tbclist.p <= L1->top.p);
   for (ci = L1->ci; ci != NULL; ci = ci->getPrevious()) {
-    assert(ci->top.p <= L1->stack_last.p);
+    assert(ci->topRef().p <= L1->stack_last.p);
     assert(lua_checkpc(ci));
   }
   for (o = L1->stack.p; o < L1->stack_last.p; o++)
@@ -588,13 +588,13 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
     total++;
     switch (o->getType()) {
       case LUA_VTABLE: o = gco2t(o)->getGclist(); break;
-      case LUA_VLCL: o = gco2lcl(o)->gclist; break;
-      case LUA_VCCL: o = gco2ccl(o)->gclist; break;
+      case LUA_VLCL: o = gco2lcl(o)->getGclist(); break;
+      case LUA_VCCL: o = gco2ccl(o)->getGclist(); break;
       case LUA_VTHREAD: o = gco2th(o)->gclist; break;
       case LUA_VPROTO: o = gco2p(o)->getGclist(); break;
       case LUA_VUSERDATA:
-        assert(gco2u(o)->nuvalue > 0);
-        o = gco2u(o)->gclist;
+        assert(gco2u(o)->getNumUserValues() > 0);
+        o = gco2u(o)->getGclist();
         break;
       default: assert(0);  /* other objects cannot be in a gray list */
     }

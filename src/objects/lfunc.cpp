@@ -149,7 +149,7 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
 static void checkclosemth (lua_State *L, StkId level) {
   const TValue *tm = luaT_gettmbyobj(L, s2v(level), TM_CLOSE);
   if (ttisnil(tm)) {  /* no metamethod? */
-    int idx = cast_int(level - L->ci->func.p);  /* variable index */
+    int idx = cast_int(level - L->ci->funcRef().p);  /* variable index */
     const char *vname = luaG_findlocal(L, L->ci, idx, NULL);
     if (vname == NULL) vname = "?";
     luaG_runerror(L, "variable '%s' got a non-closable value", vname);

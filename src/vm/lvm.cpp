@@ -617,9 +617,9 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
       case LUA_VUSERDATA: {
         if (uvalue(t1) == uvalue(t2)) return 1;
         else if (L == NULL) return 0;
-        tm = fasttm(L, uvalue(t1)->metatable, TM_EQ);
+        tm = fasttm(L, uvalue(t1)->getMetatable(), TM_EQ);
         if (tm == NULL)
-          tm = fasttm(L, uvalue(t2)->metatable, TM_EQ);
+          tm = fasttm(L, uvalue(t2)->getMetatable(), TM_EQ);
         break;  /* will try TM */
       }
       case LUA_VTABLE: {
@@ -841,12 +841,12 @@ static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
 */
 void luaV_finishOp (lua_State *L) {
   CallInfo *ci = L->ci;
-  StkId base = ci->func.p + 1;
-  Instruction inst = *(ci->u.l.savedpc - 1);  /* interrupted instruction */
+  StkId base = ci->funcRef().p + 1;
+  Instruction inst = *(ci->getSavedPC() - 1);  /* interrupted instruction */
   OpCode op = GET_OPCODE(inst);
   switch (op) {  /* finish its execution */
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
-      setobjs2s(L, base + GETARG_A(*(ci->u.l.savedpc - 2)), --L->top.p);
+      setobjs2s(L, base + GETARG_A(*(ci->getSavedPC() - 2)), --L->top.p);
       break;
     }
     case OP_UNM: case OP_BNOT: case OP_LEN:
@@ -861,9 +861,9 @@ void luaV_finishOp (lua_State *L) {
     case OP_EQ: {  /* note that 'OP_EQI'/'OP_EQK' cannot yield */
       int res = !l_isfalse(s2v(L->top.p - 1));
       L->top.p--;
-      lua_assert(GET_OPCODE(*ci->u.l.savedpc) == OP_JMP);
+      lua_assert(GET_OPCODE(*ci->getSavedPC()) == OP_JMP);
       if (res != GETARG_k(inst))  /* condition failed? */
-        ci->u.l.savedpc++;  /* skip jump instruction */
+        ci->setSavedPC(ci->getSavedPC() + 1);  /* skip jump instruction */
       break;
     }
     case OP_CONCAT: {
@@ -876,16 +876,16 @@ void luaV_finishOp (lua_State *L) {
       break;
     }
     case OP_CLOSE: {  /* yielded closing variables */
-      ci->u.l.savedpc--;  /* repeat instruction to close other vars. */
+      ci->setSavedPC(ci->getSavedPC() - 1);  /* repeat instruction to close other vars. */
       break;
     }
     case OP_RETURN: {  /* yielded closing variables */
       StkId ra = base + GETARG_A(inst);
       /* adjust top to signal correct number of returns, in case the
          return is "up to top" ('isIT') */
-      L->top.p = ra + ci->u2.nres;
+      L->top.p = ra + ci->getNRes();
       /* repeat instruction to close other vars. and complete the return */
-      ci->u.l.savedpc--;
+      ci->setSavedPC(ci->getSavedPC() - 1);
       break;
     }
     default: {
@@ -1098,9 +1098,9 @@ void luaV_finishOp (lua_State *L) {
 
 
 
-#define updatetrap(ci)  (trap = ci->u.l.trap)
+#define updatetrap(ci)  (trap = ci->getTrap())
 
-#define updatebase(ci)	(base = ci->func.p + 1)
+#define updatebase(ci)	(base = ci->funcRef().p + 1)
 
 
 #define updatestack(ci)  \
@@ -1128,14 +1128,14 @@ void luaV_finishOp (lua_State *L) {
 /*
 ** Correct global 'pc'.
 */
-#define savepc(ci)	(ci->u.l.savedpc = pc)
+#define savepc(ci)	ci->setSavedPC(pc)
 
 
 /*
 ** Whenever code can raise errors, the global 'pc' and the global
 ** 'top' must be correct to report occasional errors.
 */
-#define savestate(L,ci)		(savepc(ci), L->top.p = ci->top.p)
+#define savestate(L,ci)		(savepc(ci), L->top.p = ci->topRef().p)
 
 
 /*
@@ -1196,10 +1196,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
  returning:  /* trap already set */
   cl = ci_func(ci);
   k = cl->getProto()->getConstants();
-  pc = ci->u.l.savedpc;
+  pc = ci->getSavedPC();
   if (l_unlikely(trap))
     trap = luaG_tracecall(L);
-  base = ci->func.p + 1;
+  base = ci->funcRef().p + 1;
   /* main loop of interpreter */
   for (;;) {
     Instruction i;  /* instruction being executed */
@@ -1212,7 +1212,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
              opnames[GET_OPCODE(i)], pcrel);
     }
     #endif
-    lua_assert(base == ci->func.p + 1);
+    lua_assert(base == ci->funcRef().p + 1);
     lua_assert(base <= L->top.p && L->top.p <= L->stack_last.p);
     /* for tests, invalidate top for instructions not expecting it */
     lua_assert(luaP_isIT(i) || (cast_void(L->top.p = base), 1));
@@ -1727,7 +1727,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         int n;  /* number of results when calling a C function */
         int nparams1 = GETARG_C(i);
         /* delta is virtual 'func' - real 'func' (vararg functions) */
-        int delta = (nparams1) ? ci->u.l.nextraargs + nparams1 : 0;
+        int delta = (nparams1) ? ci->getExtraArgs() + nparams1 : 0;
         if (b != 0)
           L->top.p = ra + b;
         else  /* previous instruction set top */
@@ -1736,12 +1736,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (TESTARG_k(i)) {
           luaF_closeupval(L, base);  /* close upvalues from current call */
           lua_assert(L->tbclist.p < base);  /* no pending tbc variables */
-          lua_assert(base == ci->func.p + 1);
+          lua_assert(base == ci->funcRef().p + 1);
         }
         if ((n = L->preTailCall( ci, ra, b, delta)) < 0)  /* Lua function? */
           goto startfunc;  /* execute the callee */
         else {  /* C function? */
-          ci->func.p -= delta;  /* restore 'func' (if vararg) */
+          ci->funcRef().p -= delta;  /* restore 'func' (if vararg) */
           L->postCall( ci, n);  /* finish caller */
           updatetrap(ci);  /* 'luaD_poscall' can change hooks */
           goto ret;  /* caller returns after the tail call */
@@ -1755,15 +1755,15 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           n = cast_int(L->top.p - ra);  /* get what is available */
         savepc(ci);
         if (TESTARG_k(i)) {  /* may there be open upvalues? */
-          ci->u2.nres = n;  /* save number of returns */
-          if (L->top.p < ci->top.p)
-            L->top.p = ci->top.p;
+          ci->setNRes(n);  /* save number of returns */
+          if (L->top.p < ci->topRef().p)
+            L->top.p = ci->topRef().p;
           luaF_close(L, base, CLOSEKTOP, 1);
           updatetrap(ci);
           updatestack(ci);
         }
         if (nparams1)  /* vararg function? */
-          ci->func.p -= ci->u.l.nextraargs + nparams1;
+          ci->funcRef().p -= ci->getExtraArgs() + nparams1;
         L->top.p = ra + n;  /* set call for 'luaD_poscall' */
         L->postCall( ci, n);
         updatetrap(ci);  /* 'luaD_poscall' can change hooks */
@@ -1778,7 +1778,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           trap = 1;
         }
         else {  /* do the 'poscall' here */
-          int nres = get_nresults(ci->callstatus);
+          int nres = get_nresults(ci->getCallStatus());
           L->ci = ci->getPrevious();  /* back to caller */
           L->top.p = base - 1;
           for (; l_unlikely(nres > 0); nres--)
@@ -1795,7 +1795,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           trap = 1;
         }
         else {  /* do the 'poscall' here */
-          int nres = get_nresults(ci->callstatus);
+          int nres = get_nresults(ci->getCallStatus());
           L->ci = ci->getPrevious();  /* back to caller */
           if (nres == 0)
             L->top.p = base - 1;  /* asked for no results */
@@ -1808,7 +1808,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           }
         }
        ret:  /* return from a Lua function */
-        if (ci->callstatus & CIST_FRESH)
+        if (ci->getCallStatus() & CIST_FRESH)
           return;  /* end this frame */
         else {
           ci = ci->getPrevious();
@@ -1893,7 +1893,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (n == 0)
           n = cast_uint(L->top.p - ra) - 1;  /* get up to the top */
         else
-          L->top.p = ci->top.p;  /* correct top in case of emergency GC */
+          L->top.p = ci->topRef().p;  /* correct top in case of emergency GC */
         last += n;
         if (TESTARG_k(i)) {
           last += cast_uint(GETARG_Ax(*pc)) * (MAXARG_vC + 1);
