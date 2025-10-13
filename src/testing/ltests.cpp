@@ -44,7 +44,7 @@
 void *l_Trick = 0;
 
 
-#define obj_at(L,k)	s2v(L->ci->funcRef().p + (k))
+#define obj_at(L,k)	s2v(L->getCI()->funcRef().p + (k))
 
 
 static int runC (lua_State *L, lua_State *L1, const char *pc);
@@ -57,7 +57,7 @@ static void setnameval (lua_State *L, const char *name, int val) {
 
 
 static void pushobject (lua_State *L, const TValue *o) {
-  setobj2s(L, L->top.p, o);
+  setobj2s(L, L->getTop().p, o);
   api_incr_top(L);
 }
 
@@ -485,19 +485,19 @@ static void check_stack (global_State *g, lua_State *L1) {
   CallInfo *ci;
   UpVal *uv;
   assert(!isdead(g, L1));
-  if (L1->stack.p == NULL) {  /* incomplete thread? */
-    assert(L1->openupval == NULL && L1->ci == NULL);
+  if (L1->getStack().p == NULL) {  /* incomplete thread? */
+    assert(L1->openupval == NULL && L1->getCI() == NULL);
     return;
   }
   for (uv = L1->openupval; uv != NULL; uv = uv->getOpenNext())
     assert(upisopen(uv));  /* must be open */
-  assert(L1->top.p <= L1->stack_last.p);
-  assert(L1->tbclist.p <= L1->top.p);
-  for (ci = L1->ci; ci != NULL; ci = ci->getPrevious()) {
-    assert(ci->topRef().p <= L1->stack_last.p);
+  assert(L1->getTop().p <= L1->getStackLast().p);
+  assert(L1->getTbclist().p <= L1->getTop().p);
+  for (ci = L1->getCI(); ci != NULL; ci = ci->getPrevious()) {
+    assert(ci->topRef().p <= L1->getStackLast().p);
     assert(lua_checkpc(ci));
   }
-  for (o = L1->stack.p; o < L1->stack_last.p; o++)
+  for (o = L1->getStack().p; o < L1->getStackLast().p; o++)
     checkliveness(L1, s2v(o));  /* entire stack must have valid values */
 }
 
@@ -868,7 +868,7 @@ void lua_printstack (lua_State *L) {
   printf("stack: >>\n");
   for (i = 1; i <= n; i++) {
     printf("%3d: ", i);
-    lua_printvalue(s2v(L->ci->funcRef().p + i));
+    lua_printvalue(s2v(L->getCI()->funcRef().p + i));
     printf("\n");
   }
   printf("<<\n");
@@ -878,12 +878,12 @@ void lua_printstack (lua_State *L) {
 int lua_printallstack (lua_State *L) {
   StkId p;
   int i = 1;
-  CallInfo *ci = &L->base_ci;
+  CallInfo *ci = L->getBaseCI();
   printf("stack: >>\n");
-  for (p = L->stack.p; p < L->top.p; p++) {
+  for (p = L->getStack().p; p < L->getTop().p; p++) {
     if (ci != NULL && p == ci->funcRef().p) {
       printf("  ---\n");
-      if (ci == L->ci)
+      if (ci == L->getCI())
         ci = NULL;  /* printed last frame */
       else
         ci = ci->getNext();
@@ -1097,7 +1097,7 @@ static int hash_query (lua_State *L) {
 
 static int stacklevel (lua_State *L) {
   int a = 0;
-  lua_pushinteger(L, cast_Integer(L->top.p - L->stack.p));
+  lua_pushinteger(L, cast_Integer(L->getTop().p - L->getStack().p));
   lua_pushinteger(L, stacksize(L));
   lua_pushinteger(L, cast_Integer(L->nCcalls));
   lua_pushinteger(L, L->nci);
@@ -1122,9 +1122,9 @@ static int table_query (lua_State *L) {
   else if (cast_uint(i) < asize) {
     lua_pushinteger(L, i);
     if (!tagisempty(*getArrTag(t, i)))
-      arr2obj(t, cast_uint(i), s2v(L->top.p));
+      arr2obj(t, cast_uint(i), s2v(L->getTop().p));
     else
-      setnilvalue(s2v(L->top.p));
+      setnilvalue(s2v(L->getTop().p));
     api_incr_top(L);
     lua_pushnil(L);
   }
@@ -1189,7 +1189,7 @@ static int string_query (lua_State *L) {
     TString *ts;
     int n = 0;
     for (ts = tb->getHash()[s]; ts != NULL; ts = ts->getNext()) {
-      setsvalue2s(L, L->top.p, ts);
+      setsvalue2s(L, L->getTop().p, ts);
       api_incr_top(L);
       n++;
     }
@@ -1764,7 +1764,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
     else if EQ("printstack") {
       int n = getnum;
       if (n != 0) {
-        lua_printvalue(s2v(L->ci->funcRef().p + n));
+        lua_printvalue(s2v(L->getCI()->funcRef().p + n));
         printf("\n");
       }
       else lua_printstack(L1);

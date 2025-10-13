@@ -407,8 +407,8 @@ OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 ** bits 0-2: op mode
 ** bit 3: instruction set register A
 ** bit 4: operator is a test (next instruction must be a jump)
-** bit 5: instruction uses 'L->top' set by previous instruction (when B == 0)
-** bit 6: instruction sets 'L->top' for next instruction (when C == 0)
+** bit 5: instruction uses 'L->getTop()' set by previous instruction (when B == 0)
+** bit 6: instruction sets 'L->getTop()' for next instruction (when C == 0)
 ** bit 7: instruction is an MM instruction (call a metamethod)
 */
 

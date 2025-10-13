@@ -160,7 +160,7 @@ struct lua_longjmp;
 
 #define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
 
-#define stacksize(th)	cast_int((th)->stack_last.p - (th)->stack.p)
+#define stacksize(th)	cast_int((th)->getStackLast().p - (th)->getStack().p)
 
 
 /* kinds of Garbage Collection */
@@ -370,20 +370,26 @@ public:
 ** 'per thread' state
 */
 class lua_State : public GCBase<lua_State> {
-public:
-  lu_byte allowhook;
-  TStatus status;
+private:
+  // Step 1: Stack fields (encapsulated)
   StkIdRel top;  /* first free slot in the stack */
-  struct global_State *l_G;
-  CallInfo *ci;  /* call info for current function */
   StkIdRel stack_last;  /* end of stack (last element + 1) */
   StkIdRel stack;  /* stack base */
-  UpVal *openupval;  /* list of open upvalues in this stack */
   StkIdRel tbclist;  /* list of to-be-closed variables */
+
+  // Step 2: CallInfo fields (encapsulated)
+  CallInfo *ci;  /* call info for current function */
+  CallInfo base_ci;  /* CallInfo for first level (C host) */
+
+public:
+  // TODO: These fields still need encapsulation in later steps
+  lu_byte allowhook;
+  TStatus status;
+  struct global_State *l_G;
+  UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
   struct lua_State *twups;  /* list of threads with open upvalues */
   struct lua_longjmp *errorJmp;  /* current error recover point */
-  CallInfo base_ci;  /* CallInfo for first level (C host) */
   volatile lua_Hook hook;
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
   l_uint32 nCcalls;  /* number of nested non-yieldable or C calls */
@@ -397,9 +403,35 @@ public:
     int ntransfer;  /* number of values transferred */
   } transferinfo;
 
-  // Inline accessors (ULTRA CONSERVATIVE - only 3 essential)
+  // Step 1: Stack field accessors - return references to allow .p access
+  StkIdRel& getTop() noexcept { return top; }
+  const StkIdRel& getTop() const noexcept { return top; }
+  void setTop(StkIdRel t) noexcept { top = t; }
+
+  StkIdRel& getStack() noexcept { return stack; }
+  const StkIdRel& getStack() const noexcept { return stack; }
+  void setStack(StkIdRel s) noexcept { stack = s; }
+
+  StkIdRel& getStackLast() noexcept { return stack_last; }
+  const StkIdRel& getStackLast() const noexcept { return stack_last; }
+  void setStackLast(StkIdRel sl) noexcept { stack_last = sl; }
+
+  StkIdRel& getTbclist() noexcept { return tbclist; }
+  const StkIdRel& getTbclist() const noexcept { return tbclist; }
+  void setTbclist(StkIdRel tbc) noexcept { tbclist = tbc; }
+
+  // Step 2: CallInfo field accessors
+  CallInfo* getCI() noexcept { return ci; }
+  const CallInfo* getCI() const noexcept { return ci; }
+  CallInfo* setCI(CallInfo* c) noexcept { ci = c; return ci; }  // Returns value for chaining
+  CallInfo** getCIPtr() noexcept { return &ci; }
+
+  CallInfo* getBaseCI() noexcept { return &base_ci; }
+  const CallInfo* getBaseCI() const noexcept { return &base_ci; }
+
+  // Existing accessors (kept for compatibility)
   global_State* getGlobalState() const noexcept { return l_G; }
-  CallInfo* getCallInfo() const noexcept { return ci; }
+  CallInfo* getCallInfo() const noexcept { return ci; }  // Alias for getCI()
   TStatus getStatus() const noexcept { return status; }
 
   // Stack operation methods (implemented in ldo.cpp)

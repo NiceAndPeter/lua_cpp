@@ -141,7 +141,7 @@ LUA_API void lua_sethook (lua_State *L, lua_Hook func, int mask, int count) {
   resethookcount(L);
   L->hookmask = cast_byte(mask);
   if (mask)
-    settraps(L->ci);  /* to trace inside 'luaV_execute' */
+    settraps(L->getCI());  /* to trace inside 'luaV_execute' */
 }
 
 
@@ -165,9 +165,9 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
   CallInfo *ci;
   if (level < 0) return 0;  /* invalid (negative) level */
   lua_lock(L);
-  for (ci = L->ci; level > 0 && ci != &L->base_ci; ci = ci->getPrevious())
+  for (ci = L->getCI(); level > 0 && ci != L->getBaseCI(); ci = ci->getPrevious())
     level--;
-  if (level == 0 && ci != &L->base_ci) {  /* level found? */
+  if (level == 0 && ci != L->getBaseCI()) {  /* level found? */
     status = 1;
     ar->i_ci = ci;
   }
@@ -207,7 +207,7 @@ const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
       name = ci_func(ci_arg)->getProto()->getLocalName(n, currentpc(ci_arg));  /* Phase 25b */
   }
   if (name == NULL) {  /* no 'standard' name? */
-    StkId limit = (ci_arg == this->ci) ? top.p : ci_arg->getNext()->funcRef().p;
+    StkId limit = (ci_arg == this->getCI()) ? top.p : ci_arg->getNext()->funcRef().p;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
       name = isLua(ci_arg) ? "(temporary)" : "(C temporary)";
@@ -229,16 +229,16 @@ LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
   const char *name;
   lua_lock(L);
   if (ar == NULL) {  /* information about non-active function? */
-    if (!isLfunction(s2v(L->top.p - 1)))  /* not a Lua function? */
+    if (!isLfunction(s2v(L->getTop().p - 1)))  /* not a Lua function? */
       name = NULL;
     else  /* consider live variables at function start (parameters) */
-      name = clLvalue(s2v(L->top.p - 1))->getProto()->getLocalName(n, 0);  /* Phase 25b */
+      name = clLvalue(s2v(L->getTop().p - 1))->getProto()->getLocalName(n, 0);  /* Phase 25b */
   }
   else {  /* active function; get information through 'ar' */
     StkId pos = NULL;  /* to avoid warnings */
     name = luaG_findlocal(L, ar->i_ci, n, &pos);
     if (name) {
-      setobjs2s(L, L->top.p, pos);
+      setobjs2s(L, L->getTop().p, pos);
       api_incr_top(L);
     }
   }
@@ -254,8 +254,8 @@ LUA_API const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n) {
   name = luaG_findlocal(L, ar->i_ci, n, &pos);
   if (name) {
     api_checkpop(L, 1);
-    setobjs2s(L, pos, L->top.p - 1);
-    L->top.p--;  /* pop value */
+    setobjs2s(L, pos, L->getTop().p - 1);
+    L->getTop().p--;  /* pop value */
   }
   lua_unlock(L);
   return name;
@@ -297,14 +297,14 @@ static int nextline (const Proto *p, int currentline, int pc) {
 
 static void collectvalidlines (lua_State *L, Closure *f) {
   if (!LuaClosure(f)) {
-    setnilvalue(s2v(L->top.p));
+    setnilvalue(s2v(L->getTop().p));
     api_incr_top(L);
   }
   else {
     const Proto *p = reinterpret_cast<LClosure*>(f)->getProto();
     int currentline = p->getLineDefined();
     Table *t = luaH_new(L);  /* new table to store active lines */
-    sethvalue2s(L, L->top.p, t);  /* push it on stack */
+    sethvalue2s(L, L->getTop().p, t);  /* push it on stack */
     api_incr_top(L);
     if (p->getLineInfo() != NULL) {  /* proto with debug information? */
       int i;
@@ -407,10 +407,10 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
   lua_lock(L);
   if (*what == '>') {
     ci = NULL;
-    func = s2v(L->top.p - 1);
+    func = s2v(L->getTop().p - 1);
     api_check(L, ttisfunction(func), "function expected");
     what++;  /* skip the '>' */
-    L->top.p--;  /* pop function */
+    L->getTop().p--;  /* pop function */
   }
   else {
     ci = ar->i_ci;
@@ -420,7 +420,7 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
   cl = ttisclosure(func) ? clvalue(func) : NULL;
   status = auxgetinfo(L, what, ar, cl, ci);
   if (strchr(what, 'f')) {
-    setobj2s(L, L->top.p, func);
+    setobj2s(L, L->getTop().p, func);
     api_incr_top(L);
   }
   if (strchr(what, 'L'))
@@ -732,7 +732,7 @@ static const char *formatvarinfo (lua_State *L, const char *kind,
 ** "variable 'x'" or "upvalue 'y'".
 */
 static const char *varinfo (lua_State *L, const TValue *o) {
-  CallInfo *ci = L->ci;
+  CallInfo *ci = L->getCI();
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = NULL;
   if (isLua(ci)) {
@@ -917,11 +917,11 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
   va_list argp;
   luaC_checkGC(L);  /* error message uses memory */
   pushvfstring(L, argp, fmt, msg);
-  if (isLua(L->ci)) {  /* Lua function? */
+  if (isLua(L->getCI())) {  /* Lua function? */
     /* add source:line information */
-    L->addInfo(msg, ci_func(L->ci)->getProto()->getSource(), getcurrentline(L->ci));
-    setobjs2s(L, L->top.p - 2, L->top.p - 1);  /* remove 'msg' */
-    L->top.p--;
+    L->addInfo(msg, ci_func(L->getCI())->getProto()->getSource(), getcurrentline(L->getCI()));
+    setobjs2s(L, L->getTop().p - 2, L->getTop().p - 1);  /* remove 'msg' */
+    L->getTop().p--;
   }
   L->errorMsg();
 }
@@ -993,7 +993,7 @@ int luaG_tracecall (lua_State *L) {
 ** invalid; if so, use zero as a valid value. (A wrong but valid 'oldpc'
 ** at most causes an extra call to a line hook.)
 ** This function is not "Protected" when called, so it should correct
-** 'L->top.p' before calling anything that can run the GC.
+** 'L->getTop().p' before calling anything that can run the GC.
 */
 // lua_State method
 int lua_State::traceExec(const Instruction *pc) {

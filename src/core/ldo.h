@@ -33,7 +33,7 @@
 #endif
 
 #define luaD_checkstackaux(L,n,pre,pos)  \
-	if (l_unlikely(L->stack_last.p - L->top.p <= (n))) \
+	if (l_unlikely(L->getStackLast().p - L->getTop().p <= (n))) \
 	  { pre; (L)->growStack(n, 1); pos; } \
 	else { condmovestack(L,pre,pos); }
 
@@ -42,8 +42,8 @@
 
 
 
-#define savestack(L,pt)		(cast_charp(pt) - cast_charp(L->stack.p))
-#define restorestack(L,n)	cast(StkId, cast_charp(L->stack.p) + (n))
+#define savestack(L,pt)		(cast_charp(pt) - cast_charp(L->getStack().p))
+#define restorestack(L,n)	cast(StkId, cast_charp(L->getStack().p) + (n))
 
 
 /* macro to check stack size, preserving 'p' */

@@ -809,7 +809,7 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   luaC_objbarrier(L, f, f->getSource());
   f->setMaxStackSize(2);  /* registers 0/1 are always valid */
   fs->kcache = luaH_new(L);  /* create table for function */
-  sethvalue2s(L, L->top.p, fs->kcache);  /* anchor it */
+  sethvalue2s(L, L->getTop().p, fs->kcache);  /* anchor it */
   L->inctop();  /* Phase 25e */
   enterblock(fs, bl, 0);
 }
@@ -832,7 +832,7 @@ static void close_func (LexState *ls) {
   luaM_shrinkvector(L, f->getLocVarsRef(), f->getLocVarsSizeRef(), fs->ndebugvars, LocVar);
   luaM_shrinkvector(L, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), fs->nups, Upvaldesc);
   ls->fs = fs->prev;
-  L->top.p--;  /* pop kcache table */
+  L->getTop().p--;  /* pop kcache table */
   luaC_checkGC(L);
 }
 
@@ -2121,10 +2121,10 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   LexState lexstate;
   FuncState funcstate;
   LClosure *cl = LClosure::create(L, 1);  /* create main closure */
-  setclLvalue2s(L, L->top.p, cl);  /* anchor it (to avoid being collected) */
+  setclLvalue2s(L, L->getTop().p, cl);  /* anchor it (to avoid being collected) */
   L->inctop();  /* Phase 25e */
   lexstate.h = luaH_new(L);  /* create table for scanner */
-  sethvalue2s(L, L->top.p, lexstate.h);  /* anchor it */
+  sethvalue2s(L, L->getTop().p, lexstate.h);  /* anchor it */
   L->inctop();  /* Phase 25e */
   funcstate.f = luaF_newproto(L);
   cl->setProto(funcstate.f);
@@ -2139,7 +2139,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   lua_assert(!funcstate.prev && funcstate.nups == 1 && !lexstate.fs);
   /* all scopes should be correctly finished */
   lua_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
-  L->top.p--;  /* remove scanner's table */
+  L->getTop().p--;  /* remove scanner's table */
   return cl;  /* closure is on the stack, too */
 }
 

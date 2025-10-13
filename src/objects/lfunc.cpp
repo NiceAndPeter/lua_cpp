@@ -127,14 +127,14 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
 ** (This function assumes EXTRA_STACK.)
 */
 static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
-  StkId top = L->top.p;
+  StkId top = L->getTop().p;
   StkId func = top;
   const TValue *tm = luaT_gettmbyobj(L, obj, TM_CLOSE);
   setobj2s(L, top++, tm);  /* will call metamethod... */
   setobj2s(L, top++, obj);  /* with 'self' as the 1st argument */
   if (err != NULL)  /* if there was an error... */
     setobj2s(L, top++, err);  /* then error object will be 2nd argument */
-  L->top.p = top;  /* add function and arguments */
+  L->getTop().p = top;  /* add function and arguments */
   if (yy)
     L->call( func, 0);
   else
@@ -149,8 +149,8 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
 static void checkclosemth (lua_State *L, StkId level) {
   const TValue *tm = luaT_gettmbyobj(L, s2v(level), TM_CLOSE);
   if (ttisnil(tm)) {  /* no metamethod? */
-    int idx = cast_int(level - L->ci->funcRef().p);  /* variable index */
-    const char *vname = luaG_findlocal(L, L->ci, idx, NULL);
+    int idx = cast_int(level - L->getCI()->funcRef().p);  /* variable index */
+    const char *vname = luaG_findlocal(L, L->getCI(), idx, NULL);
     if (vname == NULL) vname = "?";
     luaG_runerror(L, "variable '%s' got a non-closable value", vname);
   }
@@ -170,7 +170,7 @@ static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
   TValue *errobj;
   switch (status) {
     case LUA_OK:
-      L->top.p = level + 1;  /* call will be at this level */
+      L->getTop().p = level + 1;  /* call will be at this level */
       /* FALLTHROUGH */
     case CLOSEKTOP:  /* don't need to change top */
       errobj = NULL;  /* no error object */
@@ -192,16 +192,16 @@ static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
 ** Insert a variable in the list of to-be-closed variables.
 */
 void luaF_newtbcupval (lua_State *L, StkId level) {
-  lua_assert(level > L->tbclist.p);
+  lua_assert(level > L->getTbclist().p);
   if (l_isfalse(s2v(level)))
     return;  /* false doesn't need to be closed */
   checkclosemth(L, level);  /* value must have a close method */
-  while (cast_uint(level - L->tbclist.p) > MAXDELTA) {
-    L->tbclist.p += MAXDELTA;  /* create a dummy node at maximum delta */
-    L->tbclist.p->tbclist.delta = 0;
+  while (cast_uint(level - L->getTbclist().p) > MAXDELTA) {
+    L->getTbclist().p += MAXDELTA;  /* create a dummy node at maximum delta */
+    L->getTbclist().p->tbclist.delta = 0;
   }
-  level->tbclist.delta = cast(unsigned short, level - L->tbclist.p);
-  L->tbclist.p = level;
+  level->tbclist.delta = cast(unsigned short, level - L->getTbclist().p);
+  L->getTbclist().p = level;
 }
 
 
@@ -224,7 +224,7 @@ void luaF_closeupval (lua_State *L, StkId level) {
   UpVal *uv;
   while ((uv = L->openupval) != NULL && uplevel(uv) >= level) {
     TValue *slot = uv->getValueSlot();  /* new position for value */
-    lua_assert(uplevel(uv) < L->top.p);
+    lua_assert(uplevel(uv) < L->getTop().p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
     setobj(L, slot, uv->getVP());  /* move value to upvalue slot */
     uv->setVP(slot);  /* now current value lives here */
@@ -240,12 +240,12 @@ void luaF_closeupval (lua_State *L, StkId level) {
 ** Remove first element from the tbclist plus its dummy nodes.
 */
 static void poptbclist (lua_State *L) {
-  StkId tbc = L->tbclist.p;
+  StkId tbc = L->getTbclist().p;
   lua_assert(tbc->tbclist.delta > 0);  /* first element cannot be dummy */
   tbc -= tbc->tbclist.delta;
-  while (tbc > L->stack.p && tbc->tbclist.delta == 0)
+  while (tbc > L->getStack().p && tbc->tbclist.delta == 0)
     tbc -= MAXDELTA;  /* remove dummy nodes */
-  L->tbclist.p = tbc;
+  L->getTbclist().p = tbc;
 }
 
 
@@ -256,8 +256,8 @@ static void poptbclist (lua_State *L) {
 StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy) {
   ptrdiff_t levelrel = savestack(L, level);
   luaF_closeupval(L, level);  /* first, close the upvalues */
-  while (L->tbclist.p >= level) {  /* traverse tbc's down to that level */
-    StkId tbc = L->tbclist.p;  /* get variable index */
+  while (L->getTbclist().p >= level) {  /* traverse tbc's down to that level */
+    StkId tbc = L->getTbclist().p;  /* get variable index */
     poptbclist(L);  /* remove it from list */
     prepcallclosemth(L, tbc, status, yy);  /* close variable */
     level = restorestack(L, levelrel);

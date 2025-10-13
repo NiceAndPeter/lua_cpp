@@ -52,10 +52,9 @@ endif()
 
 # Optimization and platform flags
 set(OPTIMIZE_FLAGS
-    -O2
+    -O3
     -fno-stack-protector
     -fno-common
-    -march=native
 )
 
 # Test mode definitions

@@ -21,9 +21,9 @@
 
 
 
-/* Increments 'L->top.p', checking for stack overflows */
+/* Increments 'L->getTop().p', checking for stack overflows */
 #define api_incr_top(L)  \
-    (L->top.p++, api_check(L, L->top.p <= L->ci->topRef().p, "stack overflow"))
+    (L->getTop().p++, api_check(L, L->getTop().p <= L->getCI()->topRef().p, "stack overflow"))
 
 
 /*
@@ -40,16 +40,16 @@
 /*
 ** If a call returns too many multiple returns, the callee may not have
 ** stack space to accommodate all results. In this case, this macro
-** increases its stack space ('L->ci->top.p').
+** increases its stack space ('L->getCI()->getTop().p').
 */
 #define adjustresults(L,nres) \
-    { if ((nres) <= LUA_MULTRET && L->ci->topRef().p < L->top.p) \
-	L->ci->topRef().p = L->top.p; }
+    { if ((nres) <= LUA_MULTRET && L->getCI()->topRef().p < L->getTop().p) \
+	L->getCI()->topRef().p = L->getTop().p; }
 
 
 /* Ensure the stack has at least 'n' elements */
 #define api_checknelems(L,n) \
-       api_check(L, (n) < (L->top.p - L->ci->funcRef().p), \
+       api_check(L, (n) < (L->getTop().p - L->getCI()->funcRef().p), \
                          "not enough elements in the stack")
 
 
@@ -58,8 +58,8 @@
 ** is only an optimization for a pop followed by a push.)
 */
 #define api_checkpop(L,n) \
-	api_check(L, (n) < L->top.p - L->ci->funcRef().p &&  \
-                     L->tbclist.p < L->top.p - (n), \
+	api_check(L, (n) < L->getTop().p - L->getCI()->funcRef().p &&  \
+                     L->getTbclist().p < L->getTop().p - (n), \
 			  "not enough free elements in the stack")
 
 #endif

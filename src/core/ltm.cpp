@@ -102,14 +102,14 @@ const char *luaT_objtypename (lua_State *L, const TValue *o) {
 
 void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
                   const TValue *p2, const TValue *p3) {
-  StkId func = L->top.p;
+  StkId func = L->getTop().p;
   setobj2s(L, func, f);  /* push function (assume EXTRA_STACK) */
   setobj2s(L, func + 1, p1);  /* 1st argument */
   setobj2s(L, func + 2, p2);  /* 2nd argument */
   setobj2s(L, func + 3, p3);  /* 3rd argument */
-  L->top.p = func + 4;
+  L->getTop().p = func + 4;
   /* metamethod may yield only when called from Lua code */
-  if (isLuacode(L->ci))
+  if (isLuacode(L->getCI()))
     L->call( func, 0);
   else
     L->callNoYield( func, 0);
@@ -119,18 +119,18 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
 lu_byte luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
                         const TValue *p2, StkId res) {
   ptrdiff_t result = savestack(L, res);
-  StkId func = L->top.p;
+  StkId func = L->getTop().p;
   setobj2s(L, func, f);  /* push function (assume EXTRA_STACK) */
   setobj2s(L, func + 1, p1);  /* 1st argument */
   setobj2s(L, func + 2, p2);  /* 2nd argument */
-  L->top.p += 3;
+  L->getTop().p += 3;
   /* metamethod may yield only when called from Lua code */
-  if (isLuacode(L->ci))
+  if (isLuacode(L->getCI()))
     L->call( func, 1);
   else
     L->callNoYield( func, 1);
   res = restorestack(L, result);
-  setobjs2s(L, res, --L->top.p);  /* move result to its place */
+  setobjs2s(L, res, --L->getTop().p);  /* move result to its place */
   return ttypetag(s2v(res));  /* return tag of the result */
 }
 
@@ -171,7 +171,7 @@ void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
 ** method is not found, 'callbinTM' cannot change the stack.
 */
 void luaT_tryconcatTM (lua_State *L) {
-  StkId p1 = L->top.p - 2;  /* first argument */
+  StkId p1 = L->getTop().p - 2;  /* first argument */
   if (l_unlikely(callbinTM(L, s2v(p1), s2v(p1 + 1), p1, TM_CONCAT) < 0))
     luaG_concaterror(L, s2v(p1), s2v(p1 + 1));
 }
@@ -199,7 +199,7 @@ void luaT_trybiniTM (lua_State *L, const TValue *p1, lua_Integer i2,
 */
 int luaT_callorderTM (lua_State *L, const TValue *p1, const TValue *p2,
                       TMS event) {
-  int tag = callbinTM(L, p1, p2, L->top.p, event);  /* try original event */
+  int tag = callbinTM(L, p1, p2, L->getTop().p, event);  /* try original event */
   if (tag >= 0)  /* found tag method? */
     return !tagisfalse(tag);
   luaG_ordererror(L, p1, p2);  /* no metamethod found */
@@ -227,20 +227,20 @@ int luaT_callorderiTM (lua_State *L, const TValue *p1, int v2,
 void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
                          const Proto *p) {
   int i;
-  int actual = cast_int(L->top.p - ci->funcRef().p) - 1;  /* number of arguments */
+  int actual = cast_int(L->getTop().p - ci->funcRef().p) - 1;  /* number of arguments */
   int nextra = actual - nfixparams;  /* number of extra arguments */
   ci->setExtraArgs(nextra);
   luaD_checkstack(L, p->getMaxStackSize() + 1);
   /* copy function to the top of the stack */
-  setobjs2s(L, L->top.p++, ci->funcRef().p);
+  setobjs2s(L, L->getTop().p++, ci->funcRef().p);
   /* move fixed parameters to the top of the stack */
   for (i = 1; i <= nfixparams; i++) {
-    setobjs2s(L, L->top.p++, ci->funcRef().p + i);
+    setobjs2s(L, L->getTop().p++, ci->funcRef().p + i);
     setnilvalue(s2v(ci->funcRef().p + i));  /* erase original parameter (for GC) */
   }
   ci->funcRef().p += actual + 1;
   ci->topRef().p += actual + 1;
-  lua_assert(L->top.p <= ci->topRef().p && ci->topRef().p <= L->stack_last.p);
+  lua_assert(L->getTop().p <= ci->topRef().p && ci->topRef().p <= L->getStackLast().p);
 }
 
 
@@ -250,7 +250,7 @@ void luaT_getvarargs (lua_State *L, CallInfo *ci, StkId where, int wanted) {
   if (wanted < 0) {
     wanted = nextra;  /* get all extra arguments available */
     checkstackp(L, nextra, where);  /* ensure stack space */
-    L->top.p = where + nextra;  /* next instruction will need top */
+    L->getTop().p = where + nextra;  /* next instruction will need top */
   }
   for (i = 0; i < wanted && i < nextra; i++)
     setobjs2s(L, where + i, ci->funcRef().p - nextra + i);
