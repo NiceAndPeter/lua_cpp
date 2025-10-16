@@ -486,10 +486,10 @@ static void check_stack (global_State *g, lua_State *L1) {
   UpVal *uv;
   assert(!isdead(g, L1));
   if (L1->getStack().p == NULL) {  /* incomplete thread? */
-    assert(L1->openupval == NULL && L1->getCI() == NULL);
+    assert(L1->getOpenUpval() == NULL && L1->getCI() == NULL);
     return;
   }
-  for (uv = L1->openupval; uv != NULL; uv = uv->getOpenNext())
+  for (uv = L1->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
     assert(upisopen(uv));  /* must be open */
   assert(L1->getTop().p <= L1->getStackLast().p);
   assert(L1->getTbclist().p <= L1->getTop().p);
@@ -590,7 +590,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
       case LUA_VTABLE: o = gco2t(o)->getGclist(); break;
       case LUA_VLCL: o = gco2lcl(o)->getGclist(); break;
       case LUA_VCCL: o = gco2ccl(o)->getGclist(); break;
-      case LUA_VTHREAD: o = gco2th(o)->gclist; break;
+      case LUA_VTHREAD: o = gco2th(o)->getGclist(); break;
       case LUA_VPROTO: o = gco2p(o)->getGclist(); break;
       case LUA_VUSERDATA:
         assert(gco2u(o)->getNumUserValues() > 0);
@@ -1099,8 +1099,8 @@ static int stacklevel (lua_State *L) {
   int a = 0;
   lua_pushinteger(L, cast_Integer(L->getTop().p - L->getStack().p));
   lua_pushinteger(L, stacksize(L));
-  lua_pushinteger(L, cast_Integer(L->nCcalls));
-  lua_pushinteger(L, L->nci);
+  lua_pushinteger(L, cast_Integer(L->getNCcalls()));
+  lua_pushinteger(L, L->getNCI());
   lua_pushinteger(L, (lua_Integer)(size_t)&a);
   return 5;
 }

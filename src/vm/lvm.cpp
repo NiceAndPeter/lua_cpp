@@ -1192,7 +1192,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 #include "ljumptab.h"
 #endif
  startfunc:
-  trap = L->hookmask;
+  trap = L->getHookMask();
  returning:  /* trap already set */
   cl = ci_func(ci);
   k = cl->getProto()->getConstants();
@@ -1770,7 +1770,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         goto ret;
       }
       vmcase(OP_RETURN0) {
-        if (l_unlikely(L->hookmask)) {
+        if (l_unlikely(L->getHookMask())) {
           StkId ra = RA(i);
           L->getTop().p = ra;
           savepc(ci);
@@ -1787,7 +1787,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         goto ret;
       }
       vmcase(OP_RETURN1) {
-        if (l_unlikely(L->hookmask)) {
+        if (l_unlikely(L->getHookMask())) {
           StkId ra = RA(i);
           L->getTop().p = ra + 1;
           savepc(ci);
@@ -1930,7 +1930,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         ProtectNT(luaT_adjustvarargs(L, GETARG_A(i), ci, cl->getProto()));
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
           L->hookCall( ci);
-          L->oldpc = 1;  /* next opcode will be seen as a "new" line */
+          L->setOldPC(1);  /* next opcode will be seen as a "new" line */
         }
         updatebase(ci);  /* function has new base after adjustment */
         vmbreak;

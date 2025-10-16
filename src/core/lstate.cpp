@@ -86,7 +86,7 @@ CallInfo *luaE_extendCI (lua_State *L) {
   ci->setPrevious(L->getCI());
   ci->setNext(NULL);
   ci->getTrap() = 0;
-  L->nci++;
+  L->getNCIRef()++;
   return ci;
 }
 
@@ -101,7 +101,7 @@ static void freeCI (lua_State *L) {
   while ((ci = next) != NULL) {
     next = ci->getNext();
     luaM_free(L, ci);
-    L->nci--;
+    L->getNCIRef()--;
   }
 }
 
@@ -118,7 +118,7 @@ void luaE_shrinkCI (lua_State *L) {
   while ((next = ci->getNext()) != NULL) {  /* two extra elements? */
     CallInfo *next2 = next->getNext();  /* next's next */
     ci->setNext(next2);  /* remove next from the list */
-    L->nci--;
+    L->getNCIRef()--;
     luaM_free(L, next);  /* free next */
     if (next2 == NULL)
       break;  /* no more elements */
@@ -146,7 +146,7 @@ void luaE_checkcstack (lua_State *L) {
 
 
 LUAI_FUNC void luaE_incCstack (lua_State *L) {
-  L->nCcalls++;
+  L->getNCcallsRef()++;
   if (l_unlikely(getCcalls(L) >= LUAI_MAXCCALLS))
     luaE_checkcstack(L);
 }
@@ -159,8 +159,8 @@ static void resetCI (lua_State *L) {
   ci->topRef().p = ci->funcRef().p + 1 + LUA_MINSTACK;  /* +1 for 'function' entry */
   ci->setK(NULL);
   ci->setCallStatus(CIST_C);
-  L->status = LUA_OK;
-  L->errfunc = 0;  /* stack unwind can "throw away" the error function */
+  L->setStatus(LUA_OK);
+  L->setErrFunc(0);  /* stack unwind can "throw away" the error function */
 }
 
 
@@ -183,7 +183,7 @@ static void freestack (lua_State *L) {
     return;  /* stack not completely built yet */
   L->setCI(L->getBaseCI());  /* free the entire 'ci' list */
   freeCI(L);
-  lua_assert(L->nci == 0);
+  lua_assert(L->getNCI() == 0);
   /* free stack */
   luaM_freearray(L, L->getStack().p, cast_sizet(stacksize(L) + EXTRA_STACK));
 }
@@ -235,19 +235,19 @@ static void preinit_thread (lua_State *L, global_State *g) {
   G(L) = g;
   L->getStack().p = NULL;
   L->setCI(NULL);
-  L->nci = 0;
-  L->twups = L;  /* thread has no upvalues */
-  L->nCcalls = 0;
-  L->errorJmp = NULL;
-  L->hook = NULL;
-  L->hookmask = 0;
-  L->basehookcount = 0;
-  L->allowhook = 1;
+  L->setNCI(0);
+  L->setTwups(L);  /* thread has no upvalues */
+  L->setNCcalls(0);
+  L->setErrorJmp(NULL);
+  L->setHook(NULL);
+  L->setHookMask(0);
+  L->setBaseHookCount(0);
+  L->setAllowHook(1);
   resethookcount(L);
-  L->openupval = NULL;
-  L->status = LUA_OK;
-  L->errfunc = 0;
-  L->oldpc = 0;
+  L->setOpenUpval(NULL);
+  L->setStatus(LUA_OK);
+  L->setErrFunc(0);
+  L->setOldPC(0);
   L->getBaseCI()->setPrevious(NULL);
   L->getBaseCI()->setNext(NULL);
 }
@@ -255,7 +255,7 @@ static void preinit_thread (lua_State *L, global_State *g) {
 
 lu_mem luaE_threadsize (lua_State *L) {
   lu_mem sz = cast(lu_mem, sizeof(LX))
-            + cast_uint(L->nci) * sizeof(CallInfo);
+            + cast_uint(L->getNCI()) * sizeof(CallInfo);
   if (L->getStack().p != NULL)
     sz += cast_uint(stacksize(L) + EXTRA_STACK) * sizeof(StackValue);
   return sz;
@@ -293,9 +293,9 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   setthvalue2s(L, L->getTop().p, L1);
   api_incr_top(L);
   preinit_thread(L1, g);
-  L1->hookmask = L->hookmask;
-  L1->basehookcount = L->basehookcount;
-  L1->hook = L->hook;
+  L1->setHookMask(L->getHookMask());
+  L1->setBaseHookCount(L->getBaseHookCount());
+  L1->setHook(L->getHook());
   resethookcount(L1);
   /* initialize L1 extra space */
   memcpy(lua_getextraspace(L1), lua_getextraspace(mainthread(g)),
@@ -310,7 +310,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
 void luaE_freethread (lua_State *L, lua_State *L1) {
   LX *l = fromstate(L1);
   luaF_closeupval(L1, L1->getStack().p);  /* close all upvalues */
-  lua_assert(L1->openupval == NULL);
+  lua_assert(L1->getOpenUpval() == NULL);
   luai_userstatefree(L, L1);
   freestack(L1);
   luaM_free(L, l);
@@ -334,8 +334,8 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
 LUA_API int lua_closethread (lua_State *L, lua_State *from) {
   TStatus status;
   lua_lock(L);
-  L->nCcalls = (from) ? getCcalls(from) : 0;
-  status = luaE_resetthread(L, L->status);
+  L->setNCcalls((from) ? getCcalls(from) : 0);
+  status = luaE_resetthread(L, L->getStatus());
   if (L == from)  /* closing itself? */
     L->throwBaseLevel( status);
   lua_unlock(L);

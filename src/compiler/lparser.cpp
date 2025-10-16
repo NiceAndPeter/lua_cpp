@@ -558,7 +558,7 @@ static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
 #define enterlevel(ls)	luaE_incCstack(ls->L)
 
 
-#define leavelevel(ls) ((ls)->L->nCcalls--)
+#define leavelevel(ls) ((ls)->L->getNCcallsRef()--)
 
 
 /*

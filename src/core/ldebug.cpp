@@ -136,27 +136,27 @@ LUA_API void lua_sethook (lua_State *L, lua_Hook func, int mask, int count) {
     mask = 0;
     func = NULL;
   }
-  L->hook = func;
-  L->basehookcount = count;
+  L->setHook(func);
+  L->setBaseHookCount(count);
   resethookcount(L);
-  L->hookmask = cast_byte(mask);
+  L->setHookMask(cast_byte(mask));
   if (mask)
     settraps(L->getCI());  /* to trace inside 'luaV_execute' */
 }
 
 
 LUA_API lua_Hook lua_gethook (lua_State *L) {
-  return L->hook;
+  return L->getHook();
 }
 
 
 LUA_API int lua_gethookmask (lua_State *L) {
-  return L->hookmask;
+  return L->getHookMask();
 }
 
 
 LUA_API int lua_gethookcount (lua_State *L) {
-  return L->basehookcount;
+  return L->getBaseHookCount();
 }
 
 
@@ -384,8 +384,8 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         if (ci == NULL || !(ci->getCallStatus() & CIST_HOOKED))
           ar->ftransfer = ar->ntransfer = 0;
         else {
-          ar->ftransfer = L->transferinfo.ftransfer;
-          ar->ntransfer = L->transferinfo.ntransfer;
+          ar->ftransfer = L->getTransferInfo().ftransfer;
+          ar->ntransfer = L->getTransferInfo().ntransfer;
         }
         break;
       }
@@ -877,8 +877,8 @@ const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
 
 // lua_State method
 l_noret lua_State::errorMsg() {
-  if (errfunc != 0) {  /* is there an error handling function? */
-    StkId errfunc_ptr = restorestack(this, errfunc);
+  if (getErrFunc() != 0) {  /* is there an error handling function? */
+    StkId errfunc_ptr = restorestack(this, getErrFunc());
     lua_assert(ttisfunction(s2v(errfunc_ptr)));
     setobjs2s(this, top.p, top.p - 1);  /* move argument */
     setobjs2s(this, top.p - 1, errfunc_ptr);  /* push function */
@@ -998,7 +998,7 @@ int luaG_tracecall (lua_State *L) {
 // lua_State method
 int lua_State::traceExec(const Instruction *pc) {
   CallInfo *ci_local = ci;
-  lu_byte mask = cast_byte(hookmask);
+  lu_byte mask = cast_byte(getHookMask());
   const Proto *p = ci_func(ci_local)->getProto();
   int counthook;
   if (!(mask & (LUA_MASKLINE | LUA_MASKCOUNT))) {  /* no hooks? */
@@ -1007,7 +1007,7 @@ int lua_State::traceExec(const Instruction *pc) {
   }
   pc++;  /* reference is always next instruction */
   ci_local->setSavedPC(pc);  /* save 'pc' */
-  counthook = (mask & LUA_MASKCOUNT) && (--hookcount == 0);
+  counthook = (mask & LUA_MASKCOUNT) && (--getHookCountRef() == 0);
   if (counthook)
     resethookcount(this);  /* reset count */
   else if (!(mask & LUA_MASKLINE))
@@ -1022,18 +1022,18 @@ int lua_State::traceExec(const Instruction *pc) {
     this->callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {
     /* 'oldpc' may be invalid; use zero in this case */
-    int oldpc_val = (oldpc < p->getCodeSize()) ? oldpc : 0;
+    int oldpc_val = (getOldPC() < p->getCodeSize()) ? getOldPC() : 0;
     int npci = pcRel(pc, p);
     if (npci <= oldpc_val ||  /* call hook when jump back (loop), */
         changedline(p, oldpc_val, npci)) {  /* or when enter new line */
       int newline = luaG_getfuncline(p, npci);
       this->callHook(LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
     }
-    oldpc = npci;  /* 'pc' of last call to line hook */
+    setOldPC(npci);  /* 'pc' of last call to line hook */
   }
-  if (status == LUA_YIELD) {  /* did hook yield? */
+  if (getStatus() == LUA_YIELD) {  /* did hook yield? */
     if (counthook)
-      hookcount = 1;  /* undo decrement to zero */
+      setHookCount(1);  /* undo decrement to zero */
     ci_local->callStatusRef() |= CIST_HOOKYIELD;  /* mark that it yielded */
     this->doThrow(LUA_YIELD);
   }

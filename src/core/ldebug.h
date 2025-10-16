@@ -18,7 +18,7 @@
 #define ci_func(ci)		(clLvalue(s2v((ci)->funcRef().p)))
 
 
-#define resethookcount(L)	(L->hookcount = L->basehookcount)
+#define resethookcount(L)	(L->setHookCount(L->getBaseHookCount()))
 
 /*
 ** mark for entries in 'lineinfo' array that has absolute information in

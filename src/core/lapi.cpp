@@ -1041,7 +1041,7 @@ LUA_API void lua_callk (lua_State *L, int nargs, int nresults,
   api_check(L, k == NULL || !isLua(L->getCI()),
     "cannot use continuations inside hooks");
   api_checkpop(L, nargs + 1);
-  api_check(L, L->status == LUA_OK, "cannot do calls on non-normal thread");
+  api_check(L, L->getStatus() == LUA_OK, "cannot do calls on non-normal thread");
   checkresults(L, nargs, nresults);
   func = L->getTop().p - (nargs+1);
   if (k != NULL && yieldable(L)) {  /* need to prepare continuation? */
@@ -1082,7 +1082,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   api_check(L, k == NULL || !isLua(L->getCI()),
     "cannot use continuations inside hooks");
   api_checkpop(L, nargs + 1);
-  api_check(L, L->status == LUA_OK, "cannot do calls on non-normal thread");
+  api_check(L, L->getStatus() == LUA_OK, "cannot do calls on non-normal thread");
   checkresults(L, nargs, nresults);
   if (errfunc == 0)
     func = 0;
@@ -1102,13 +1102,13 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
     ci->setCtx(ctx);  /* save context */
     /* save information for error recovery */
     ci->setFuncIdx(cast_int(savestack(L, c.func)));
-    ci->setOldErrFunc(L->errfunc);
-    L->errfunc = func;
-    setoah(ci, L->allowhook);  /* save value of 'allowhook' */
+    ci->setOldErrFunc(L->getErrFunc());
+    L->setErrFunc(func);
+    setoah(ci, L->getAllowHook());  /* save value of 'allowhook' */
     ci->callStatusRef() |= CIST_YPCALL;  /* function can do error recovery */
     L->call( c.func, nresults);  /* do the call */
     ci->callStatusRef() &= ~CIST_YPCALL;
-    L->errfunc = ci->getOldErrFunc();
+    L->setErrFunc(ci->getOldErrFunc());
     status = LUA_OK;  /* if it is here, there were no errors */
   }
   adjustresults(L, nresults);
@@ -1160,7 +1160,7 @@ LUA_API int lua_dump (lua_State *L, lua_Writer writer, void *data, int strip) {
 
 
 LUA_API int lua_status (lua_State *L) {
-  return APIstatus(L->status);
+  return APIstatus(L->getStatus());
 }
 
 

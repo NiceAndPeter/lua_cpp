@@ -12,6 +12,7 @@
 
 /* Some header files included here need this definition */
 typedef struct CallInfo CallInfo;
+class global_State;  /* forward declaration */
 
 /* Type of protected functions, to be run by 'runprotected' */
 typedef void (*Pfunc) (lua_State *L, void *ud);
@@ -101,20 +102,6 @@ typedef void (*Pfunc) (lua_State *L, void *ud);
 ** (They are together so that we can change and save both with one
 ** instruction.)
 */
-
-
-/* true if this thread does not have non-yieldable calls in the stack */
-#define yieldable(L)		(((L)->nCcalls & 0xffff0000) == 0)
-
-/* real number of C calls */
-#define getCcalls(L)	((L)->nCcalls & 0xffff)
-
-
-/* Increment the number of non-yieldable calls */
-#define incnny(L)	((L)->nCcalls += 0x10000)
-
-/* Decrement the number of non-yieldable calls */
-#define decnny(L)	((L)->nCcalls -= 0x10000)
 
 /* Non-yieldable call increment */
 #define nyci	(0x10000 | 1)
@@ -381,27 +368,34 @@ private:
   CallInfo *ci;  /* call info for current function */
   CallInfo base_ci;  /* CallInfo for first level (C host) */
 
-public:
-  // TODO: These fields still need encapsulation in later steps
-  lu_byte allowhook;
-  TStatus status;
-  struct global_State *l_G;
+  // Step 3: GC and state management fields (encapsulated)
+  global_State *l_G;
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
-  struct lua_State *twups;  /* list of threads with open upvalues */
+  lua_State *twups;  /* list of threads with open upvalues */
+
+  // Step 4: Status and error handling fields (encapsulated)
+  TStatus status;
   struct lua_longjmp *errorJmp;  /* current error recover point */
-  volatile lua_Hook hook;
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
-  l_uint32 nCcalls;  /* number of nested non-yieldable or C calls */
+
+  // Step 5: Hook and debug fields (encapsulated)
+  volatile lua_Hook hook;
+  volatile l_signalT hookmask;
+  lu_byte allowhook;
   int oldpc;  /* last pc traced */
-  int nci;  /* number of items in 'ci' list */
   int basehookcount;
   int hookcount;
-  volatile l_signalT hookmask;
   struct {  /* info about transferred values (for call/return hooks) */
     int ftransfer;  /* offset of first value transferred */
     int ntransfer;  /* number of values transferred */
   } transferinfo;
+
+  // Step 6: Call counter fields (encapsulated)
+  l_uint32 nCcalls;  /* number of nested non-yieldable or C calls */
+  int nci;  /* number of items in 'ci' list */
+
+public:
 
   // Step 1: Stack field accessors - return references to allow .p access
   StkIdRel& getTop() noexcept { return top; }
@@ -429,10 +423,78 @@ public:
   CallInfo* getBaseCI() noexcept { return &base_ci; }
   const CallInfo* getBaseCI() const noexcept { return &base_ci; }
 
-  // Existing accessors (kept for compatibility)
-  global_State* getGlobalState() const noexcept { return l_G; }
-  CallInfo* getCallInfo() const noexcept { return ci; }  // Alias for getCI()
+  // Step 3: GC and state management field accessors
+  global_State* getGlobalState() noexcept { return l_G; }
+  const global_State* getGlobalState() const noexcept { return l_G; }
+  void setGlobalState(global_State* g) noexcept { l_G = g; }
+  global_State*& getGlobalStateRef() noexcept { return l_G; }  // For G() macro
+
+  UpVal* getOpenUpval() noexcept { return openupval; }
+  const UpVal* getOpenUpval() const noexcept { return openupval; }
+  void setOpenUpval(UpVal* uv) noexcept { openupval = uv; }
+  UpVal** getOpenUpvalPtr() noexcept { return &openupval; }
+
+  GCObject* getGclist() noexcept { return gclist; }
+  const GCObject* getGclist() const noexcept { return gclist; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
+
+  lua_State* getTwups() noexcept { return twups; }
+  const lua_State* getTwups() const noexcept { return twups; }
+  void setTwups(lua_State* tw) noexcept { twups = tw; }
+  lua_State** getTwupsPtr() noexcept { return &twups; }
+
+  // Step 4: Status and error handling field accessors
   TStatus getStatus() const noexcept { return status; }
+  void setStatus(TStatus s) noexcept { status = s; }
+
+  lua_longjmp* getErrorJmp() noexcept { return errorJmp; }
+  const lua_longjmp* getErrorJmp() const noexcept { return errorJmp; }
+  void setErrorJmp(lua_longjmp* ej) noexcept { errorJmp = ej; }
+  lua_longjmp** getErrorJmpPtr() noexcept { return &errorJmp; }
+
+  ptrdiff_t getErrFunc() const noexcept { return errfunc; }
+  void setErrFunc(ptrdiff_t ef) noexcept { errfunc = ef; }
+
+  // Step 5: Hook and debug field accessors
+  lua_Hook getHook() const noexcept { return hook; }
+  void setHook(lua_Hook h) noexcept { hook = h; }
+
+  l_signalT getHookMask() const noexcept { return hookmask; }
+  void setHookMask(l_signalT hm) noexcept { hookmask = hm; }
+
+  lu_byte getAllowHook() const noexcept { return allowhook; }
+  void setAllowHook(lu_byte ah) noexcept { allowhook = ah; }
+
+  int getOldPC() const noexcept { return oldpc; }
+  void setOldPC(int pc) noexcept { oldpc = pc; }
+
+  int getBaseHookCount() const noexcept { return basehookcount; }
+  void setBaseHookCount(int bhc) noexcept { basehookcount = bhc; }
+
+  int getHookCount() const noexcept { return hookcount; }
+  void setHookCount(int hc) noexcept { hookcount = hc; }
+  int& getHookCountRef() noexcept { return hookcount; }  // For decrement
+
+  // TransferInfo accessors - return reference to allow field access
+  auto& getTransferInfo() noexcept { return transferinfo; }
+  const auto& getTransferInfo() const noexcept { return transferinfo; }
+
+  // Step 6: Call counter field accessors
+  l_uint32 getNCcalls() const noexcept { return nCcalls; }
+  void setNCcalls(l_uint32 nc) noexcept { nCcalls = nc; }
+  l_uint32& getNCcallsRef() noexcept { return nCcalls; }  // For increment/decrement
+
+  int getNCI() const noexcept { return nci; }
+  void setNCI(int n) noexcept { nci = n; }
+  int& getNCIRef() noexcept { return nci; }  // For increment/decrement
+
+  // Non-yieldable call management
+  void incrementNonYieldable() noexcept { nCcalls += 0x10000; }
+  void decrementNonYieldable() noexcept { nCcalls -= 0x10000; }
+
+  // Existing accessors (kept for compatibility)
+  CallInfo* getCallInfo() const noexcept { return ci; }  // Alias for getCI()
 
   // Stack operation methods (implemented in ldo.cpp)
   void inctop();
@@ -504,6 +566,31 @@ private:
 
 
 /*
+** Inline helper functions for lua_State (defined after class for complete type)
+*/
+
+/* true if this thread does not have non-yieldable calls in the stack */
+inline constexpr bool yieldable(const lua_State* L) noexcept {
+	return ((L->getNCcalls() & 0xffff0000) == 0);
+}
+
+/* real number of C calls */
+inline constexpr l_uint32 getCcalls(const lua_State* L) noexcept {
+	return (L->getNCcalls() & 0xffff);
+}
+
+/* Increment the number of non-yieldable calls */
+inline void incnny(lua_State* L) noexcept {
+	L->incrementNonYieldable();
+}
+
+/* Decrement the number of non-yieldable calls */
+inline void decnny(lua_State* L) noexcept {
+	L->decrementNonYieldable();
+}
+
+
+/*
 ** thread state + extra space
 */
 typedef struct LX {
@@ -571,8 +658,8 @@ public:
 
 
 /* Get global state from lua_State (returns reference to allow assignment) */
-constexpr global_State*& G(lua_State* L) noexcept { return L->l_G; }
-constexpr global_State* const& G(const lua_State* L) noexcept { return L->l_G; }
+inline global_State*& G(lua_State* L) noexcept { return L->getGlobalStateRef(); }
+inline global_State* G(const lua_State* L) noexcept { return const_cast<global_State*>(L->getGlobalState()); }
 
 /* Get main thread from global_State */
 constexpr lua_State* mainthread(global_State* g) noexcept { return &g->mainth.l; }

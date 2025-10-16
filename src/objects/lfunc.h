@@ -19,7 +19,7 @@
 
 
 /* test whether thread is in 'twups' list */
-#define isintwups(L)	(L->twups != L)
+#define isintwups(L)	(L->getTwups() != L)
 
 
 /*

@@ -95,7 +95,7 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
     next->setOpenPrevious(uv->getOpenNextPtr());  /* link next's previous to our next field */
   *prev = uv;
   if (!isintwups(L)) {  /* thread not in list of threads with upvalues? */
-    L->twups = G(L)->twups;  /* link it to the list */
+    L->setTwups(G(L)->twups);  /* link it to the list */
     G(L)->twups = L;
   }
   return uv;
@@ -107,9 +107,9 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
 ** at the given level.
 */
 UpVal *luaF_findupval (lua_State *L, StkId level) {
-  UpVal **pp = &L->openupval;
+  UpVal **pp = L->getOpenUpvalPtr();
   UpVal *p;
-  lua_assert(isintwups(L) || L->openupval == NULL);
+  lua_assert(isintwups(L) || L->getOpenUpval() == NULL);
   while ((p = *pp) != NULL && uplevel(p) >= level) {  /* search for it */
     lua_assert(!isdead(G(L), p));
     if (uplevel(p) == level)  /* corresponding upvalue? */
@@ -222,7 +222,7 @@ void luaF_unlinkupval (UpVal *uv) {
 */
 void luaF_closeupval (lua_State *L, StkId level) {
   UpVal *uv;
-  while ((uv = L->openupval) != NULL && uplevel(uv) >= level) {
+  while ((uv = L->getOpenUpval()) != NULL && uplevel(uv) >= level) {
     TValue *slot = uv->getValueSlot();  /* new position for value */
     lua_assert(uplevel(uv) < L->getTop().p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */

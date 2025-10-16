@@ -168,7 +168,7 @@ static GCObject **getgclist (GCObject *o) {
     case LUA_VTABLE: return gco2t(o)->getGclistPtr();
     case LUA_VLCL: return gco2lcl(o)->getGclistPtr();
     case LUA_VCCL: return gco2ccl(o)->getGclistPtr();
-    case LUA_VTHREAD: return &gco2th(o)->gclist;
+    case LUA_VTHREAD: return gco2th(o)->getGclistPtr();
     case LUA_VPROTO: return gco2p(o)->getGclistPtr();
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
@@ -196,6 +196,11 @@ static void linkgclist_ (GCObject *o, GCObject **pnext, GCObject **list) {
 /* Specialized version for Table (with encapsulated gclist) */
 inline void linkgclistTable(Table *h, GCObject *&p) {
   linkgclist_(obj2gco(h), h->getGclistPtr(), &p);
+}
+
+/* Specialized version for lua_State (with encapsulated gclist) */
+inline void linkgclistThread(lua_State *th, GCObject *&p) {
+  linkgclist_(obj2gco(th), th->getGclistPtr(), &p);
 }
 
 
@@ -406,14 +411,14 @@ static void remarkupvals (global_State *g) {
   lua_State *thread;
   lua_State **p = &g->twups;
   while ((thread = *p) != NULL) {
-    if (!iswhite(thread) && thread->openupval != NULL)
-      p = &thread->twups;  /* keep marked thread with upvalues in the list */
+    if (!iswhite(thread) && thread->getOpenUpval() != NULL)
+      p = thread->getTwupsPtr();  /* keep marked thread with upvalues in the list */
     else {  /* thread is not marked or without upvalues */
       UpVal *uv;
-      lua_assert(!isold(thread) || thread->openupval == NULL);
-      *p = thread->twups;  /* remove thread from the list */
-      thread->twups = thread;  /* mark that it is out of list */
-      for (uv = thread->openupval; uv != NULL; uv = uv->getOpenNext()) {
+      lua_assert(!isold(thread) || thread->getOpenUpval() == NULL);
+      *p = thread->getTwups();  /* remove thread from the list */
+      thread->setTwups(thread);  /* mark that it is out of list */
+      for (uv = thread->getOpenUpval(); uv != NULL; uv = uv->getOpenNext()) {
         lua_assert(getage(uv) <= getage(thread));
         if (!iswhite(uv)) {  /* upvalue already visited? */
           lua_assert(upisopen(uv) && isgray(uv));
@@ -695,14 +700,14 @@ static l_mem traversethread (global_State *g, lua_State *th) {
   UpVal *uv;
   StkId o = th->getStack().p;
   if (isold(th) || g->gcstate == GCSpropagate)
-    linkgclist(th, g->grayagain);  /* insert into 'grayagain' list */
+    linkgclistThread(th, g->grayagain);  /* insert into 'grayagain' list */
   if (o == NULL)
     return 0;  /* stack not completely built yet */
   lua_assert(g->gcstate == GCSatomic ||
-             th->openupval == NULL || isintwups(th));
+             th->getOpenUpval() == NULL || isintwups(th));
   for (; o < th->getTop().p; o++)  /* mark live elements in the stack */
     markvalue(g, s2v(o));
-  for (uv = th->openupval; uv != NULL; uv = uv->getOpenNext())
+  for (uv = th->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
     markobject(g, uv);  /* open upvalues cannot be collected */
   if (g->gcstate == GCSatomic) {  /* final traversal? */
     if (!g->gcemergency)
@@ -710,8 +715,8 @@ static l_mem traversethread (global_State *g, lua_State *th) {
     for (o = th->getTop().p; o < th->getStackLast().p + EXTRA_STACK; o++)
       setnilvalue(s2v(o));  /* clear dead stack slice */
     /* 'remarkupvals' may have removed thread from 'twups' list */
-    if (!isintwups(th) && th->openupval != NULL) {
-      th->twups = g->twups;  /* link it back to the list */
+    if (!isintwups(th) && th->getOpenUpval() != NULL) {
+      th->setTwups(g->twups);  /* link it back to the list */
       g->twups = th;
     }
   }
@@ -973,16 +978,16 @@ static void GCTM (lua_State *L) {
   tm = luaT_gettmbyobj(L, &v, TM_GC);
   if (!notm(tm)) {  /* is there a finalizer? */
     TStatus status;
-    lu_byte oldah = L->allowhook;
+    lu_byte oldah = L->getAllowHook();
     lu_byte oldgcstp  = g->gcstp;
     g->gcstp |= GCSTPGC;  /* avoid GC steps */
-    L->allowhook = 0;  /* stop debug hooks during GC metamethod */
+    L->setAllowHook(0);  /* stop debug hooks during GC metamethod */
     setobj2s(L, L->getTop().p++, tm);  /* push finalizer... */
     setobj2s(L, L->getTop().p++, &v);  /* ... and its argument */
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
     status = L->pCall( dothecall, NULL, savestack(L, L->getTop().p - 2), 0);
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
-    L->allowhook = oldah;  /* restore hooks */
+    L->setAllowHook(oldah);  /* restore hooks */
     g->gcstp = oldgcstp;  /* restore state */
     if (l_unlikely(status != LUA_OK)) {  /* error while running __gc? */
       luaE_warnerror(L, "__gc");
@@ -1122,7 +1127,7 @@ static void sweep2old (lua_State *L, GCObject **p) {
       setage(curr, G_OLD);
       if (curr->getType() == LUA_VTHREAD) {  /* threads must be watched */
         lua_State *th = gco2th(curr);
-        linkgclist(th, g->grayagain);  /* insert into 'grayagain' list */
+        linkgclistThread(th, g->grayagain);  /* insert into 'grayagain' list */
       }
       else if (curr->getType() == LUA_VUPVAL && upisopen(gco2upv(curr)))
         set2gray(curr);  /* open upvalues are always gray */
