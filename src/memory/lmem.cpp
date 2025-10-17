@@ -44,7 +44,7 @@
 /*
 ** Macro to call the allocation function.
 */
-#define callfrealloc(g,block,os,ns)    ((*g->frealloc)(g->ud, block, os, ns))
+#define callfrealloc(g,block,os,ns)    ((*g->getFrealloc())(g->getUd(), block, os, ns))
 
 
 /*
@@ -55,7 +55,7 @@
 ** 'gcstopem' is true, because then the interpreter is in the middle of
 ** a collection step.
 */
-#define cantryagain(g)	(completestate(g) && !g->gcstopem)
+#define cantryagain(g)	(completestate(g) && !g->getGCStopEm())
 
 
 
@@ -151,7 +151,7 @@ void luaM_free_ (lua_State *L, void *block, size_t osize) {
   global_State *g = G(L);
   lua_assert((osize == 0) == (block == NULL));
   callfrealloc(g, block, osize, 0);
-  g->GCdebt += cast(l_mem, osize);
+  g->getGCDebtRef() += cast(l_mem, osize);
 }
 
 
@@ -184,7 +184,7 @@ void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
       return NULL;  /* do not update 'GCdebt' */
   }
   lua_assert((nsize == 0) == (newblock == NULL));
-  g->GCdebt -= cast(l_mem, nsize) - cast(l_mem, osize);
+  g->getGCDebtRef() -= cast(l_mem, nsize) - cast(l_mem, osize);
   return newblock;
 }
 
@@ -209,7 +209,7 @@ void *luaM_malloc_ (lua_State *L, size_t size, int tag) {
       if (newblock == NULL)
         luaM_error(L);
     }
-    g->GCdebt -= cast(l_mem, size);
+    g->getGCDebtRef() -= cast(l_mem, size);
     return newblock;
   }
 }

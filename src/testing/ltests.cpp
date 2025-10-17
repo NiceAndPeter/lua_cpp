@@ -298,7 +298,7 @@ static int testobjref1 (global_State *g, GCObject *f, GCObject *t) {
   if (isdead(g,t)) return 0;
   if (issweepphase(g))
     return 1;  /* no invariants */
-  else if (g->gckind != KGC_GENMINOR)
+  else if (g->getGCKind() != KGC_GENMINOR)
     return !(isblack(f) && iswhite(t));  /* basic incremental invariant */
   else {  /* generational mode */
     if ((getage(f) == G_OLD && isblack(f)) && !isold(t))
@@ -368,7 +368,7 @@ void lua_printvalue (TValue *v) {
 static int testobjref (global_State *g, GCObject *f, GCObject *t) {
   int r1 = testobjref1(g, f, t);
   if (!r1) {
-    printf("%d(%02X) - ", g->gcstate, g->currentwhite);
+    printf("%d(%02X) - ", g->getGCState(), g->getCurrentWhite());
     printobj(g, f);
     printf("  ->  ");
     printobj(g, t);
@@ -559,8 +559,8 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
   if (isdead(g, o))
     assert(maybedead);
   else {
-    assert(g->gcstate != GCSpause || iswhite(o));
-    if (g->gckind == KGC_GENMINOR) {  /* generational mode? */
+    assert(g->getGCState() != GCSpause || iswhite(o));
+    if (g->getGCKind() == KGC_GENMINOR) {  /* generational mode? */
       assert(getage(o) >= listage);
       if (isold(o)) {
         assert(!iswhite(o));
@@ -609,11 +609,11 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
 static l_mem checkgrays (global_State *g) {
   l_mem total = 0;  /* count number of elements in all lists */
   if (!keepinvariant(g)) return total;
-  total += checkgraylist(g, g->gray);
-  total += checkgraylist(g, g->grayagain);
-  total += checkgraylist(g, g->weak);
-  total += checkgraylist(g, g->allweak);
-  total += checkgraylist(g, g->ephemeron);
+  total += checkgraylist(g, g->getGray());
+  total += checkgraylist(g, g->getGrayAgain());
+  total += checkgraylist(g, g->getWeak());
+  total += checkgraylist(g, g->getAllWeak());
+  total += checkgraylist(g, g->getEphemeron());
   return total;
 }
 
@@ -676,28 +676,28 @@ int lua_checkmemory (lua_State *L) {
   l_mem totalshould;  /* total of objects that should be in gray lists */
   if (keepinvariant(g)) {
     assert(!iswhite(mainthread(g)));
-    assert(!iswhite(gcvalue(&g->l_registry)));
+    assert(!iswhite(gcvalue(g->getRegistry())));
   }
-  assert(!isdead(g, gcvalue(&g->l_registry)));
-  assert(g->sweepgc == NULL || issweepphase(g));
+  assert(!isdead(g, gcvalue(g->getRegistry())));
+  assert(g->getSweepGC() == NULL || issweepphase(g));
   totalin = checkgrays(g);
 
   /* check 'fixedgc' list */
-  for (o = g->fixedgc; o != NULL; o = o->getNext()) {
+  for (o = g->getFixedGC(); o != NULL; o = o->getNext()) {
     assert(o->getType() == LUA_VSHRSTR && isgray(o) && getage(o) == G_OLD);
   }
 
   /* check 'allgc' list */
-  maybedead = (GCSatomic < g->gcstate && g->gcstate <= GCSswpallgc);
-  totalshould = checklist(g, maybedead, 0, g->allgc,
-                             g->survival, g->old1, g->reallyold);
+  maybedead = (GCSatomic < g->getGCState() && g->getGCState() <= GCSswpallgc);
+  totalshould = checklist(g, maybedead, 0, g->getAllGC(),
+                             g->getSurvival(), g->getOld1(), g->getReallyOld());
 
   /* check 'finobj' list */
-  totalshould += checklist(g, 0, 1, g->finobj,
-                              g->finobjsur, g->finobjold1, g->finobjrold);
+  totalshould += checklist(g, 0, 1, g->getFinObj(),
+                              g->getFinObjSur(), g->getFinObjOld1(), g->getFinObjROld());
 
   /* check 'tobefnz' list */
-  for (o = g->tobefnz; o != NULL; o = o->getNext()) {
+  for (o = g->getToBeFnz(); o != NULL; o = o->getNext()) {
     checkobject(g, o, 0, G_NEW);
     incifingray(g, o, &totalshould);
     assert(tofinalize(o));
@@ -1029,18 +1029,18 @@ static int gc_state (lua_State *L) {
   int option = states[luaL_checkoption(L, 1, "", statenames)];
   global_State *g = G(L);
   if (option == -1) {
-    lua_pushstring(L, statenames[g->gcstate]);
+    lua_pushstring(L, statenames[g->getGCState()]);
     return 1;
   }
   else {
-    if (g->gckind != KGC_INC)
+    if (g->getGCKind() != KGC_INC)
       luaL_error(L, "cannot change states in generational mode");
     lua_lock(L);
-    if (option < g->gcstate) {  /* must cross 'pause'? */
+    if (option < g->getGCState()) {  /* must cross 'pause'? */
       luaC_runtilstate(L, GCSpause, 1);  /* run until pause */
     }
     luaC_runtilstate(L, option, 0);  /* do not skip propagation state */
-    lua_assert(g->gcstate == option);
+    lua_assert(g->getGCState() == option);
     lua_unlock(L);
     return 0;
   }
@@ -1053,12 +1053,12 @@ void luai_tracegctest (lua_State *L, int first) {
   else {
     global_State *g = G(L);
     lua_unlock(L);
-    g->gcstp = GCSTPGC;
+    g->setGCStp(GCSTPGC);
     lua_checkstack(L, 10);
     lua_getfield(L, LUA_REGISTRYINDEX, "tracegc");
     lua_pushboolean(L, first);
     lua_call(L, 1, 0);
-    g->gcstp = 0;
+    g->setGCStp(0);
     lua_lock(L);
   }
 }
@@ -1150,14 +1150,14 @@ static int table_query (lua_State *L) {
 
 static int gc_query (lua_State *L) {
   global_State *g = G(L);
-  lua_pushstring(L, g->gckind == KGC_INC ? "inc"
-                  : g->gckind == KGC_GENMAJOR ? "genmajor"
+  lua_pushstring(L, g->getGCKind() == KGC_INC ? "inc"
+                  : g->getGCKind() == KGC_GENMAJOR ? "genmajor"
                   : "genminor");
-  lua_pushstring(L, statenames[g->gcstate]);
+  lua_pushstring(L, statenames[g->getGCState()]);
   lua_pushinteger(L, cast_st2S(gettotalbytes(g)));
-  lua_pushinteger(L, cast_st2S(g->GCdebt));
-  lua_pushinteger(L, cast_st2S(g->GCmarked));
-  lua_pushinteger(L, cast_st2S(g->GCmajorminor));
+  lua_pushinteger(L, cast_st2S(g->getGCDebt()));
+  lua_pushinteger(L, cast_st2S(g->getGCMarked()));
+  lua_pushinteger(L, cast_st2S(g->getGCMajorMinor()));
   return 6;
 }
 
@@ -1178,7 +1178,7 @@ static int test_applyparam (lua_State *L) {
 
 
 static int string_query (lua_State *L) {
-  stringtable *tb = &G(L)->strt;
+  stringtable *tb = G(L)->getStringTable();
   int s = cast_int(luaL_optinteger(L, 1, 0)) - 1;
   if (s == -1) {
     lua_pushinteger(L ,tb->getSize());
