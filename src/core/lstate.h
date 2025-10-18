@@ -336,19 +336,6 @@ public:
 ** Lua can correctly resume after an yield from a __close method called
 ** because of an error.  (Three bits are enough for error status.)
 */
-#define getcistrecst(ci)     ((ci)->getRecoverStatus())
-#define setcistrecst(ci,st)  ((ci)->setRecoverStatus(st))
-
-
-/* active function is a Lua function */
-#define isLua(ci)	((ci)->isLua())
-
-/* call is running Lua code (not a hook) */
-#define isLuacode(ci)	((ci)->isLuaCode())
-
-
-#define setoah(ci,v)  ((ci)->setOAH(v))
-#define getoah(ci)  ((ci)->getOAH())
 
 
 /*

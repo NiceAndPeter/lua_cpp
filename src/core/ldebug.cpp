@@ -42,7 +42,7 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
 
 
 static int currentpc (CallInfo *ci) {
-  lua_assert(isLua(ci));
+  lua_assert(ci->isLua());
   return pcRel(ci->getSavedPC(), ci_func(ci)->getProto());
 }
 
@@ -116,7 +116,7 @@ static int getcurrentline (CallInfo *ci) {
 */
 static void settraps (CallInfo *ci) {
   for (; ci != NULL; ci = ci->getPrevious())
-    if (isLua(ci))
+    if (ci->isLua())
       ci->getTrap() = 1;
 }
 
@@ -200,7 +200,7 @@ static const char *findvararg (CallInfo *ci, int n, StkId *pos) {
 const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
   StkId base = ci_arg->funcRef().p + 1;
   const char *name = NULL;
-  if (isLua(ci_arg)) {
+  if (ci_arg->isLua()) {
     if (n < 0)  /* access to vararg values? */
       return findvararg(ci_arg, n, pos);
     else
@@ -210,7 +210,7 @@ const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
     StkId limit = (ci_arg == getCI()) ? top.p : ci_arg->getNext()->funcRef().p;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
-      name = isLua(ci_arg) ? "(temporary)" : "(C temporary)";
+      name = ci_arg->isLua() ? "(temporary)" : "(C temporary)";
     }
     else
       return NULL;  /* no name */
@@ -344,7 +344,7 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         break;
       }
       case 'l': {
-        ar->currentline = (ci && isLua(ci)) ? getcurrentline(ci) : -1;
+        ar->currentline = (ci && ci->isLua()) ? getcurrentline(ci) : -1;
         break;
       }
       case 'u': {
@@ -673,7 +673,7 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
     *name = "__gc";
     return "metamethod";  /* report it as such */
   }
-  else if (isLua(ci))
+  else if (ci->isLua())
     return funcnamefromcode(L, ci_func(ci)->getProto(), currentpc(ci), name);
   else
     return NULL;
@@ -735,7 +735,7 @@ static const char *varinfo (lua_State *L, const TValue *o) {
   CallInfo *ci = L->getCI();
   const char *name = NULL;  /* to avoid warnings */
   const char *kind = NULL;
-  if (isLua(ci)) {
+  if (ci->isLua()) {
     kind = getupvalname(ci, o, &name);  /* check whether 'o' is an upvalue */
     if (!kind) {  /* not an upvalue? */
       int reg = instack(ci, o);  /* try a register */
@@ -903,7 +903,7 @@ l_noret lua_State::runError(const char *fmt, ...) {
   va_list argp;
   luaC_checkGC(this);  /* error message uses memory */
   pushvfstring(this, argp, fmt, msg);
-  if (isLua(ci)) {  /* Lua function? */
+  if (ci->isLua()) {  /* Lua function? */
     /* add source:line information */
     addInfo(msg, ci_func(ci)->getProto()->getSource(), getcurrentline(ci));
     setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
@@ -917,7 +917,7 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
   va_list argp;
   luaC_checkGC(L);  /* error message uses memory */
   pushvfstring(L, argp, fmt, msg);
-  if (isLua(L->getCI())) {  /* Lua function? */
+  if (L->getCI()->isLua()) {  /* Lua function? */
     /* add source:line information */
     L->addInfo(msg, ci_func(L->getCI())->getProto()->getSource(), getcurrentline(L->getCI()));
     setobjs2s(L, L->getTop().p - 2, L->getTop().p - 1);  /* remove 'msg' */

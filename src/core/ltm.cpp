@@ -109,7 +109,7 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func + 3, p3);  /* 3rd argument */
   L->getTop().p = func + 4;
   /* metamethod may yield only when called from Lua code */
-  if (isLuacode(L->getCI()))
+  if (L->getCI()->isLuaCode())
     L->call( func, 0);
   else
     L->callNoYield( func, 0);
@@ -125,7 +125,7 @@ lu_byte luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func + 2, p2);  /* 2nd argument */
   L->getTop().p += 3;
   /* metamethod may yield only when called from Lua code */
-  if (isLuacode(L->getCI()))
+  if (L->getCI()->isLuaCode())
     L->call( func, 1);
   else
     L->callNoYield( func, 1);

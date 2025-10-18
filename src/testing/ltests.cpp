@@ -482,7 +482,7 @@ static void checkLclosure (global_State *g, LClosure *cl) {
 
 
 static int lua_checkpc (CallInfo *ci) {
-  if (!isLua(ci)) return 1;
+  if (!ci->isLua()) return 1;
   else {
     StkId f = ci->funcRef().p;
     Proto *p = clLvalue(s2v(f))->getProto();

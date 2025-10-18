@@ -1038,7 +1038,7 @@ LUA_API void lua_callk (lua_State *L, int nargs, int nresults,
                         lua_KContext ctx, lua_KFunction k) {
   StkId func;
   lua_lock(L);
-  api_check(L, k == NULL || !isLua(L->getCI()),
+  api_check(L, k == NULL || !L->getCI()->isLua(),
     "cannot use continuations inside hooks");
   api_checkpop(L, nargs + 1);
   api_check(L, L->getStatus() == LUA_OK, "cannot do calls on non-normal thread");
@@ -1079,7 +1079,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   TStatus status;
   ptrdiff_t func;
   lua_lock(L);
-  api_check(L, k == NULL || !isLua(L->getCI()),
+  api_check(L, k == NULL || !L->getCI()->isLua(),
     "cannot use continuations inside hooks");
   api_checkpop(L, nargs + 1);
   api_check(L, L->getStatus() == LUA_OK, "cannot do calls on non-normal thread");
@@ -1104,7 +1104,7 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
     ci->setFuncIdx(cast_int(savestack(L, c.func)));
     ci->setOldErrFunc(L->getErrFunc());
     L->setErrFunc(func);
-    setoah(ci, L->getAllowHook());  /* save value of 'allowhook' */
+    ci->setOAH(L->getAllowHook());  /* save value of 'allowhook' */
     ci->callStatusRef() |= CIST_YPCALL;  /* function can do error recovery */
     L->call( c.func, nresults);  /* do the call */
     ci->callStatusRef() &= ~CIST_YPCALL;
