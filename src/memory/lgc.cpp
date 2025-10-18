@@ -1792,8 +1792,8 @@ void GCObject::fix(lua_State* L) {
   lua_assert(g->getAllGC() == this);  /* object must be 1st in 'allgc' list! */
   set2gray(this);  /* they will be gray forever */
   setage(this, G_OLD);  /* and old forever */
-  g->setAllGC(this->getNext());  /* remove object from 'allgc' list */
-  this->setNext(g->getFixedGC());  /* link it to 'fixedgc' list */
+  g->setAllGC(getNext());  /* remove object from 'allgc' list */
+  setNext(g->getFixedGC());  /* link it to 'fixedgc' list */
   g->setFixedGC(this);
 }
 
@@ -1807,17 +1807,17 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     GCObject **p;
     if (issweepphase(g)) {
       makewhite(g, this);  /* "sweep" object 'this' */
-      if (g->getSweepGC() == &this->next)  /* should not remove 'sweepgc' object */
+      if (g->getSweepGC() == &next)  /* should not remove 'sweepgc' object */
         g->setSweepGC(sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
     }
     else
       correctpointers(g, this);
     /* search for pointer pointing to 'this' */
     for (p = g->getAllGCPtr(); *p != this; p = (*p)->getNextPtr()) { /* empty */ }
-    *p = this->getNext();  /* remove 'this' from 'allgc' list */
-    this->setNext(g->getFinObj());  /* link it in 'finobj' list */
+    *p = getNext();  /* remove 'this' from 'allgc' list */
+    setNext(g->getFinObj());  /* link it in 'finobj' list */
     g->setFinObj(this);
-    l_setbit(this->getMarkedRef(), FINALIZEDBIT);  /* mark it as such */
+    l_setbit(getMarkedRef(), FINALIZEDBIT);  /* mark it as such */
   }
 }
 

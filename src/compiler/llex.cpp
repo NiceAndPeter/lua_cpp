@@ -66,8 +66,8 @@ static void save (LexState *ls, int c) {
 
 
 void LexState::saveAndNext() {
-  save(this, this->getCurrentChar());
-  this->next();
+  save(this, getCurrentChar());
+  next();
 }
 
 

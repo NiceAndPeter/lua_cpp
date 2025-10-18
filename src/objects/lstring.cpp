@@ -332,13 +332,13 @@ TString *luaS_newextlstr (lua_State *L,
 */
 
 unsigned TString::hashLongStr() {
-  lua_assert(this->getType() == LUA_VLNGSTR);
-  if (this->getExtra() == 0) {  /* no hash? */
-    size_t len = this->getLnglen();
-    this->setHash(luaS_hash(getlngstr(this), len, this->getHash()));
-    this->setExtra(1);  /* now it has its hash */
+  lua_assert(getType() == LUA_VLNGSTR);
+  if (getExtra() == 0) {  /* no hash? */
+    size_t len = getLnglen();
+    setHash(luaS_hash(getlngstr(this), len, getHash()));
+    setExtra(1);  /* now it has its hash */
   }
-  return this->getHash();
+  return getHash();
 }
 
 bool TString::equals(TString* other) {
@@ -352,7 +352,7 @@ bool TString::equals(TString* other) {
 // Phase 25a: Convert luaS_remove to TString method
 void TString::remove(lua_State* L) {
   stringtable *tb = G(L)->getStringTable();
-  TString **p = &tb->getHash()[lmod(this->getHash(), tb->getSize())];
+  TString **p = &tb->getHash()[lmod(getHash(), tb->getSize())];
   while (*p != this)  /* find previous element */
     p = &(*p)->u.hnext;
   *p = (*p)->u.hnext;  /* remove element from its list */
@@ -361,7 +361,7 @@ void TString::remove(lua_State* L) {
 
 // Phase 25a: Convert luaS_normstr to TString method
 TString* TString::normalize(lua_State* L) {
-  size_t len = this->u.lnglen;
+  size_t len = u.lnglen;
   if (len > LUAI_MAXSHORTLEN)
     return this;  /* long string; keep the original */
   else {

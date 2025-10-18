@@ -1943,7 +1943,7 @@ int FuncState::codesJ(int o, int sj, int k) {
   int j = sj + OFFSET_sJ;
   lua_assert(getOpMode(static_cast<OpCode>(o)) == isJ);
   lua_assert(j <= MAXARG_sJ && (k & ~1) == 0);
-  return this->code(CREATE_sJ(static_cast<OpCode>(o), j, k));
+  return code(CREATE_sJ(static_cast<OpCode>(o), j, k));
 }
 
 int FuncState::exp2const(const expdesc *e, TValue *v) {

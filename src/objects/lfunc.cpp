@@ -26,9 +26,9 @@
 
 // Constructor
 CClosure::CClosure(int nupvals) {
-  this->nupvalues = cast_byte(nupvals);
-  this->gclist = NULL;
-  this->f = NULL;
+  nupvalues = cast_byte(nupvals);
+  gclist = NULL;
+  f = NULL;
   // upvalue array initialized by caller if needed
 }
 
@@ -42,12 +42,12 @@ CClosure* CClosure::create(lua_State* L, int nupvals) {
 
 // Constructor
 LClosure::LClosure(int nupvals) {
-  this->nupvalues = cast_byte(nupvals);
-  this->gclist = NULL;
-  this->p = NULL;
+  nupvalues = cast_byte(nupvals);
+  gclist = NULL;
+  p = NULL;
   // Initialize upvals array to NULL
   for (int i = 0; i < nupvals; i++) {
-    this->upvals[i] = NULL;
+    upvals[i] = NULL;
   }
 }
 

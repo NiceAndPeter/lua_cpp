@@ -1196,17 +1196,17 @@ lu_byte Table::get(const TValue* key, TValue* res) {
   const TValue *slot;
   switch (ttypetag(key)) {
     case LUA_VSHRSTR:
-      slot = this->HgetShortStr(tsvalue(key));
+      slot = HgetShortStr(tsvalue(key));
       break;
     case LUA_VNUMINT:
-      return this->getInt(ivalue(key), res);
+      return getInt(ivalue(key), res);
     case LUA_VNIL:
       slot = &absentkey;
       break;
     case LUA_VNUMFLT: {
       lua_Integer k;
       if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
-        return this->getInt(k, res);  /* use specialized version */
+        return getInt(k, res);  /* use specialized version */
       /* else... */
     }  /* FALLTHROUGH */
     default:
@@ -1229,7 +1229,7 @@ lu_byte Table::getInt(lua_Integer key, TValue* res) {
 }
 
 lu_byte Table::getShortStr(TString* key, TValue* res) {
-  return finishnodeget(this->HgetShortStr(key), res);
+  return finishnodeget(HgetShortStr(key), res);
 }
 
 lu_byte Table::getStr(TString* key, TValue* res) {
@@ -1253,7 +1253,7 @@ const TValue* Table::HgetShortStr(TString* key) {
 
 int Table::pset(const TValue* key, TValue* val) {
   switch (ttypetag(key)) {
-    case LUA_VSHRSTR: return this->psetShortStr(tsvalue(key), val);
+    case LUA_VSHRSTR: return psetShortStr(tsvalue(key), val);
     case LUA_VNUMINT: {
       int hres;
       luaH_fastseti(this, ivalue(key), val, hres);
@@ -1280,12 +1280,12 @@ int Table::psetInt(lua_Integer key, TValue* val) {
 }
 
 int Table::psetShortStr(TString* key, TValue* val) {
-  const TValue *slot = this->HgetShortStr(key);
+  const TValue *slot = HgetShortStr(key);
   if (!ttisnil(slot)) {  /* key already has a value? (all too common) */
     setobj(((lua_State*)NULL), cast(TValue*, slot), val);  /* update it */
     return HOK;  /* done */
   }
-  else if (checknoTM(this->getMetatable(), TM_NEWINDEX)) {  /* no metamethod? */
+  else if (checknoTM(getMetatable(), TM_NEWINDEX)) {  /* no metamethod? */
     if (ttisnil(val))  /* new value is nil? */
       return HOK;  /* done (value is already nil/absent) */
     if (isabstkey(slot) &&  /* key is absent? */
@@ -1306,15 +1306,15 @@ int Table::psetShortStr(TString* key, TValue* val) {
 
 int Table::psetStr(TString* key, TValue* val) {
   if (strisshr(key))
-    return this->psetShortStr(key, val);
+    return psetShortStr(key, val);
   else
     return finishnodeset(this, Hgetlongstr(this, key), val);
 }
 
 void Table::set(lua_State* L, const TValue* key, TValue* value) {
-  int hres = this->pset(key, value);
+  int hres = pset(key, value);
   if (hres != HOK)
-    this->finishSet(L, key, value, hres);
+    finishSet(L, key, value, hres);
 }
 
 void Table::setInt(lua_State* L, lua_Integer key, TValue* value) {
@@ -1389,11 +1389,11 @@ lua_Unsigned Table::getn(lua_State* L) {
 // Phase 33: Constructor/destructor/factory pattern
 Table::Table() {
   // Constructor: initialize table fields
-  this->metatable = NULL;
-  this->flags = maskflags;  /* table has no metamethod fields */
-  this->array = NULL;
-  this->asize = 0;
-  this->gclist = NULL;
+  metatable = NULL;
+  flags = maskflags;  /* table has no metamethod fields */
+  array = NULL;
+  asize = 0;
+  gclist = NULL;
   // Note: node initialization requires lua_State, done in create()
 }
 
@@ -1409,7 +1409,7 @@ Table* Table::create(lua_State* L) {
 void Table::destroy(lua_State* L) {
   // Explicit destructor: free resources
   freehash(L, this);
-  resizearray(L, this, this->arraySize(), 0);
+  resizearray(L, this, arraySize(), 0);
   luaM_free(L, this);
 }
 

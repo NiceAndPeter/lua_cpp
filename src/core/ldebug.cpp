@@ -207,7 +207,7 @@ const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
       name = ci_func(ci_arg)->getProto()->getLocalName(n, currentpc(ci_arg));  /* Phase 25b */
   }
   if (name == NULL) {  /* no 'standard' name? */
-    StkId limit = (ci_arg == this->getCI()) ? top.p : ci_arg->getNext()->funcRef().p;
+    StkId limit = (ci_arg == getCI()) ? top.p : ci_arg->getNext()->funcRef().p;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
       name = isLua(ci_arg) ? "(temporary)" : "(C temporary)";
@@ -791,8 +791,8 @@ l_noret luaG_callerror (lua_State *L, const TValue *o) {
 
 // lua_State method
 l_noret lua_State::forError(const TValue *o, const char *what) {
-  this->runError("bad 'for' %s (number expected, got %s)",
-                 what, luaT_objtypename(this, o));
+  runError("bad 'for' %s (number expected, got %s)",
+           what, luaT_objtypename(this, o));
 }
 
 l_noret luaG_forerror (lua_State *L, const TValue *o, const char *what) {
@@ -803,7 +803,7 @@ l_noret luaG_forerror (lua_State *L, const TValue *o, const char *what) {
 // lua_State method
 l_noret lua_State::concatError(const TValue *p1, const TValue *p2) {
   if (ttisstring(p1) || cvt2str(p1)) p1 = p2;
-  this->typeError(p1, "concatenate");
+  typeError(p1, "concatenate");
 }
 
 l_noret luaG_concaterror (lua_State *L, const TValue *p1, const TValue *p2) {
@@ -815,7 +815,7 @@ l_noret luaG_concaterror (lua_State *L, const TValue *p1, const TValue *p2) {
 l_noret lua_State::opinterError(const TValue *p1, const TValue *p2, const char *msg) {
   if (!ttisnumber(p1))  /* first operand is wrong? */
     p2 = p1;  /* now second is wrong */
-  this->typeError(p2, msg);
+  typeError(p2, msg);
 }
 
 l_noret luaG_opinterror (lua_State *L, const TValue *p1,
@@ -832,7 +832,7 @@ l_noret lua_State::toIntError(const TValue *p1, const TValue *p2) {
   lua_Integer temp;
   if (!luaV_tointegerns(p1, &temp, LUA_FLOORN2I))
     p2 = p1;
-  this->runError("number%s has no integer representation", varinfo(this, p2));
+  runError("number%s has no integer representation", varinfo(this, p2));
 }
 
 l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
@@ -845,9 +845,9 @@ l_noret lua_State::orderError(const TValue *p1, const TValue *p2) {
   const char *t1 = luaT_objtypename(this, p1);
   const char *t2 = luaT_objtypename(this, p2);
   if (strcmp(t1, t2) == 0)
-    this->runError("attempt to compare two %s values", t1);
+    runError("attempt to compare two %s values", t1);
   else
-    this->runError("attempt to compare %s with %s", t1, t2);
+    runError("attempt to compare %s with %s", t1, t2);
 }
 
 l_noret luaG_ordererror (lua_State *L, const TValue *p1, const TValue *p2) {
@@ -883,13 +883,13 @@ l_noret lua_State::errorMsg() {
     setobjs2s(this, top.p, top.p - 1);  /* move argument */
     setobjs2s(this, top.p - 1, errfunc_ptr);  /* push function */
     top.p++;  /* assume EXTRA_STACK */
-    this->callNoYield(top.p - 2, 1);  /* call it */
+    callNoYield(top.p - 2, 1);  /* call it */
   }
   if (ttisnil(s2v(top.p - 1))) {  /* error object is nil? */
     /* change it to a proper message */
     setsvalue2s(this, top.p - 1, luaS_newliteral(this, "<no error object>"));
   }
-  this->doThrow(LUA_ERRRUN);
+  doThrow(LUA_ERRRUN);
 }
 
 l_noret luaG_errormsg (lua_State *L) {
@@ -905,11 +905,11 @@ l_noret lua_State::runError(const char *fmt, ...) {
   pushvfstring(this, argp, fmt, msg);
   if (isLua(ci)) {  /* Lua function? */
     /* add source:line information */
-    this->addInfo(msg, ci_func(ci)->getProto()->getSource(), getcurrentline(ci));
+    addInfo(msg, ci_func(ci)->getProto()->getSource(), getcurrentline(ci));
     setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
     top.p--;
   }
-  this->errorMsg();
+  errorMsg();
 }
 
 l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
@@ -973,7 +973,7 @@ int lua_State::traceCall() {
     if (p->getFlag() & PF_ISVARARG)
       return 0;  /* hooks will start at VARARGPREP instruction */
     else if (!(ci_local->callStatusRef() & CIST_HOOKYIELD))  /* not yielded? */
-      this->hookCall(ci_local);  /* check 'call' hook */
+      hookCall(ci_local);  /* check 'call' hook */
   }
   return 1;  /* keep 'trap' on */
 }
@@ -1019,7 +1019,7 @@ int lua_State::traceExec(const Instruction *pc) {
   if (!luaP_isIT(*(ci_local->getSavedPC() - 1)))  /* top not being used? */
     top.p = ci_local->topRef().p;  /* correct top */
   if (counthook)
-    this->callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
+    callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {
     /* 'oldpc' may be invalid; use zero in this case */
     int oldpc_val = (getOldPC() < p->getCodeSize()) ? getOldPC() : 0;
@@ -1027,7 +1027,7 @@ int lua_State::traceExec(const Instruction *pc) {
     if (npci <= oldpc_val ||  /* call hook when jump back (loop), */
         changedline(p, oldpc_val, npci)) {  /* or when enter new line */
       int newline = luaG_getfuncline(p, npci);
-      this->callHook(LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
+      callHook(LUA_HOOKLINE, newline, 0, 0);  /* call line hook */
     }
     setOldPC(npci);  /* 'pc' of last call to line hook */
   }
@@ -1035,7 +1035,7 @@ int lua_State::traceExec(const Instruction *pc) {
     if (counthook)
       setHookCount(1);  /* undo decrement to zero */
     ci_local->callStatusRef() |= CIST_HOOKYIELD;  /* mark that it yielded */
-    this->doThrow(LUA_YIELD);
+    doThrow(LUA_YIELD);
   }
   return 1;  /* keep 'trap' on */
 }
