@@ -72,8 +72,8 @@ void luaE_setdebt (global_State *g, l_mem debt) {
   lua_assert(tb > 0);
   if (debt > MAX_LMEM - tb)
     debt = MAX_LMEM - tb;  /* will make GCtotalbytes == MAX_LMEM */
-  g->GCtotalbytes = tb + debt;
-  g->GCdebt = debt;
+  g->setGCTotalBytes(tb + debt);
+  g->setGCDebt(debt);
 }
 
 
@@ -196,7 +196,7 @@ static void init_registry (lua_State *L, global_State *g) {
   /* create registry */
   TValue aux;
   Table *registry = luaH_new(L);
-  sethvalue(L, &g->l_registry, registry);
+  sethvalue(L, g->getRegistry(), registry);
   luaH_resize(L, registry, LUA_RIDX_LAST, 0);
   /* registry[1] = false */
   setbfvalue(&aux);
@@ -221,8 +221,8 @@ static void f_luaopen (lua_State *L, void *ud) {
   luaS_init(L);
   luaT_init(L);
   luaX_init(L);
-  g->gcstp = 0;  /* allow gc */
-  setnilvalue(&g->nilvalue);  /* now state is complete */
+  g->setGCStp(0);  /* allow gc */
+  setnilvalue(g->getNilValue());  /* now state is complete */
   luai_userstateopen(L);
 }
 
@@ -273,10 +273,10 @@ static void close_state (lua_State *L) {
     luaC_freeallobjects(L);  /* collect all objects */
     luai_userstateclose(L);
   }
-  luaM_freearray(L, G(L)->strt.getHash(), cast_sizet(G(L)->strt.getSize()));
+  luaM_freearray(L, G(L)->getStringTable()->getHash(), cast_sizet(G(L)->getStringTable()->getSize()));
   freestack(L);
   lua_assert(gettotalbytes(g) == sizeof(global_State));
-  (*g->frealloc)(g->ud, g, sizeof(global_State), 0);  /* free main block */
+  (*g->getFrealloc())(g->getUd(), g, sizeof(global_State), 0);  /* free main block */
 }
 
 
@@ -349,47 +349,47 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   global_State *g = cast(global_State*,
                        (*f)(ud, NULL, LUA_TTHREAD, sizeof(global_State)));
   if (g == NULL) return NULL;
-  L = &g->mainth.l;
+  L = &g->getMainThread()->l;
   L->setType(LUA_VTHREAD);
-  g->currentwhite = bitmask(WHITE0BIT);
+  g->setCurrentWhite(bitmask(WHITE0BIT));
   L->setMarked(luaC_white(g));
   preinit_thread(L, g);
-  g->allgc = obj2gco(L);  /* by now, only object is the main thread */
+  g->setAllGC(obj2gco(L));  /* by now, only object is the main thread */
   L->setNext(NULL);
   incnny(L);  /* main thread is always non yieldable */
-  g->frealloc = f;
-  g->ud = ud;
-  g->warnf = NULL;
-  g->ud_warn = NULL;
-  g->seed = seed;
-  g->gcstp = GCSTPGC;  /* no GC while building state */
-  g->strt.setSize(0);
-  g->strt.setNumElements(0);
-  g->strt.setHash(NULL);
-  setnilvalue(&g->l_registry);
-  g->panic = NULL;
-  g->gcstate = GCSpause;
-  g->gckind = KGC_INC;
-  g->gcstopem = 0;
-  g->gcemergency = 0;
-  g->finobj = g->tobefnz = g->fixedgc = NULL;
-  g->firstold1 = g->survival = g->old1 = g->reallyold = NULL;
-  g->finobjsur = g->finobjold1 = g->finobjrold = NULL;
-  g->sweepgc = NULL;
-  g->gray = g->grayagain = NULL;
-  g->weak = g->ephemeron = g->allweak = NULL;
-  g->twups = NULL;
-  g->GCtotalbytes = sizeof(global_State);
-  g->GCmarked = 0;
-  g->GCdebt = 0;
-  setivalue(&g->nilvalue, 0);  /* to signal that state is not yet built */
+  g->setFrealloc(f);
+  g->setUd(ud);
+  g->setWarnF(NULL);
+  g->setUdWarn(NULL);
+  g->setSeed(seed);
+  g->setGCStp(GCSTPGC);  /* no GC while building state */
+  g->getStringTable()->setSize(0);
+  g->getStringTable()->setNumElements(0);
+  g->getStringTable()->setHash(NULL);
+  setnilvalue(g->getRegistry());
+  g->setPanic(NULL);
+  g->setGCState(GCSpause);
+  g->setGCKind(KGC_INC);
+  g->setGCStopEm(0);
+  g->setGCEmergency(0);
+  g->setFinObj(NULL); g->setToBeFnz(NULL); g->setFixedGC(NULL);
+  g->setFirstOld1(NULL); g->setSurvival(NULL); g->setOld1(NULL); g->setReallyOld(NULL);
+  g->setFinObjSur(NULL); g->setFinObjOld1(NULL); g->setFinObjROld(NULL);
+  g->setSweepGC(NULL);
+  g->setGray(NULL); g->setGrayAgain(NULL);
+  g->setWeak(NULL); g->setEphemeron(NULL); g->setAllWeak(NULL);
+  g->setTwups(NULL);
+  g->setGCTotalBytes(sizeof(global_State));
+  g->setGCMarked(0);
+  g->setGCDebt(0);
+  setivalue(g->getNilValue(), 0);  /* to signal that state is not yet built */
   setgcparam(g, PAUSE, LUAI_GCPAUSE);
   setgcparam(g, STEPMUL, LUAI_GCMUL);
   setgcparam(g, STEPSIZE, LUAI_GCSTEPSIZE);
   setgcparam(g, MINORMUL, LUAI_GENMINORMUL);
   setgcparam(g, MINORMAJOR, LUAI_MINORMAJOR);
   setgcparam(g, MAJORMINOR, LUAI_MAJORMINOR);
-  for (i=0; i < LUA_NUMTYPES; i++) g->mt[i] = NULL;
+  for (i=0; i < LUA_NUMTYPES; i++) g->setMetatable(i, NULL);
   if (L->rawRunProtected( f_luaopen, NULL) != LUA_OK) {
     /* memory allocation error: free partial state */
     close_state(L);
@@ -407,9 +407,9 @@ LUA_API void lua_close (lua_State *L) {
 
 
 void luaE_warning (lua_State *L, const char *msg, int tocont) {
-  lua_WarnFunction wf = G(L)->warnf;
+  lua_WarnFunction wf = G(L)->getWarnF();
   if (wf != NULL)
-    wf(G(L)->ud_warn, msg, tocont);
+    wf(G(L)->getUdWarn(), msg, tocont);
 }
 
 

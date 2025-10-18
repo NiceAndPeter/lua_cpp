@@ -95,8 +95,8 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
     next->setOpenPrevious(uv->getOpenNextPtr());  /* link next's previous to our next field */
   *prev = uv;
   if (!isintwups(L)) {  /* thread not in list of threads with upvalues? */
-    L->setTwups(G(L)->twups);  /* link it to the list */
-    G(L)->twups = L;
+    L->setTwups(G(L)->getTwups());  /* link it to the list */
+    G(L)->setTwups(L);
   }
   return uv;
 }

@@ -88,7 +88,7 @@ static void tablerehash (TString **vect, int osize, int nsize) {
 ** correctly.)
 */
 void luaS_resize (lua_State *L, int nsize) {
-  stringtable *tb = &G(L)->strt;
+  stringtable *tb = G(L)->getStringTable();
   int osize = tb->getSize();
   TString **newvect;
   if (nsize < osize)  /* shrinking table? */
@@ -116,8 +116,8 @@ void luaS_clearcache (global_State *g) {
   int i, j;
   for (i = 0; i < STRCACHE_N; i++)
     for (j = 0; j < STRCACHE_M; j++) {
-      if (iswhite(g->strcache[i][j]))  /* will entry be collected? */
-        g->strcache[i][j] = g->memerrmsg;  /* replace it with something fixed */
+      if (iswhite(g->getStrCache(i, j)))  /* will entry be collected? */
+        g->setStrCache(i, j, g->getMemErrMsg());  /* replace it with something fixed */
     }
 }
 
@@ -128,16 +128,16 @@ void luaS_clearcache (global_State *g) {
 void luaS_init (lua_State *L) {
   global_State *g = G(L);
   int i, j;
-  stringtable *tb = &G(L)->strt;
+  stringtable *tb = G(L)->getStringTable();
   tb->setHash(luaM_newvector(L, MINSTRTABSIZE, TString*));
   tablerehash(tb->getHash(), 0, MINSTRTABSIZE);  /* clear array */
   tb->setSize(MINSTRTABSIZE);
   /* pre-create memory-error message */
-  g->memerrmsg = luaS_newliteral(L, MEMERRMSG);
-  obj2gco(g->memerrmsg)->fix(L);  /* Phase 25c: it should never be collected */
+  g->setMemErrMsg(luaS_newliteral(L, MEMERRMSG));
+  obj2gco(g->getMemErrMsg())->fix(L);  /* Phase 25c: it should never be collected */
   for (i = 0; i < STRCACHE_N; i++)  /* fill cache with valid strings */
     for (j = 0; j < STRCACHE_M; j++)
-      g->strcache[i][j] = g->memerrmsg;
+      g->setStrCache(i, j, g->getMemErrMsg());
 }
 
 
@@ -173,7 +173,7 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
 
 TString *luaS_createlngstrobj (lua_State *L, size_t l) {
   size_t totalsize = luaS_sizelngstr(l, LSTRREG);
-  TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->seed);
+  TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->getSeed());
   ts->setLnglen(l);
   ts->setShrlen(LSTRREG);  /* signals that it is a regular long string */
   ts->setContents(cast_charp(ts) + tstringFallocOffset());
@@ -202,8 +202,8 @@ static void growstrtab (lua_State *L, stringtable *tb) {
 static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   TString *ts;
   global_State *g = G(L);
-  stringtable *tb = &g->strt;
-  unsigned int h = luaS_hash(str, l, g->seed);
+  stringtable *tb = g->getStringTable();
+  unsigned int h = luaS_hash(str, l, g->getSeed());
   TString **list = &tb->getHash()[lmod(h, tb->getSize())];
   lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
   for (ts = *list; ts != NULL; ts = ts->getNext()) {
@@ -257,17 +257,18 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
 TString *luaS_new (lua_State *L, const char *str) {
   unsigned int i = point2uint(str) % STRCACHE_N;  /* hash */
   int j;
-  TString **p = G(L)->strcache[i];
+  global_State *g = G(L);
   for (j = 0; j < STRCACHE_M; j++) {
-    if (strcmp(str, getstr(p[j])) == 0)  /* hit? */
-      return p[j];  /* that is it */
+    if (strcmp(str, getstr(g->getStrCache(i, j))) == 0)  /* hit? */
+      return g->getStrCache(i, j);  /* that is it */
   }
   /* normal route */
   for (j = STRCACHE_M - 1; j > 0; j--)
-    p[j] = p[j - 1];  /* move out last element */
+    g->setStrCache(i, j, g->getStrCache(i, j - 1));  /* move out last element */
   /* new element is first in the list */
-  p[0] = luaS_newlstr(L, str, strlen(str));
-  return p[0];
+  TString *newstr = luaS_newlstr(L, str, strlen(str));
+  g->setStrCache(i, 0, newstr);
+  return newstr;
 }
 
 
@@ -299,7 +300,7 @@ struct NewExt {
 static void f_newext (lua_State *L, void *ud) {
   struct NewExt *ne = cast(struct NewExt *, ud);
   size_t size = luaS_sizelngstr(0, ne->kind);
-  ne->ts = createstrobj(L, size, LUA_VLNGSTR, G(L)->seed);
+  ne->ts = createstrobj(L, size, LUA_VLNGSTR, G(L)->getSeed());
 }
 
 
@@ -350,7 +351,7 @@ bool TString::equals(TString* other) {
 
 // Phase 25a: Convert luaS_remove to TString method
 void TString::remove(lua_State* L) {
-  stringtable *tb = &G(L)->strt;
+  stringtable *tb = G(L)->getStringTable();
   TString **p = &tb->getHash()[lmod(this->getHash(), tb->getSize())];
   while (*p != this)  /* find previous element */
     p = &(*p)->u.hnext;

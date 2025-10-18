@@ -201,7 +201,7 @@ struct BlockCnt;  /* defined in lparser.c */
 
 /* state needed to generate code for a given function */
 class FuncState {
-public:
+private:
   Proto *f;  /* current function header */
   struct FuncState *prev;  /* enclosing function */
   struct LexState *ls;  /* lexical state */
@@ -222,13 +222,62 @@ public:
   lu_byte iwthabs;  /* instructions issued since last absolute line info */
   lu_byte needclose;  /* function needs to close upvalues when returning */
 
-  // Inline accessors
+public:
+  // Inline accessors for reading
   Proto* getProto() const noexcept { return f; }
   FuncState* getPrev() const noexcept { return prev; }
+  struct LexState* getLexState() const noexcept { return ls; }
+  struct BlockCnt* getBlock() const noexcept { return bl; }
+  Table* getKCache() const noexcept { return kcache; }
   int getPC() const noexcept { return pc; }
-  lu_byte getFreeReg() const noexcept { return freereg; }
-  lu_byte getNumUpvalues() const noexcept { return nups; }
+  int getLastTarget() const noexcept { return lasttarget; }
+  int getPreviousLine() const noexcept { return previousline; }
+  int getNK() const noexcept { return nk; }
+  int getNP() const noexcept { return np; }
+  int getNAbsLineInfo() const noexcept { return nabslineinfo; }
+  int getFirstLocal() const noexcept { return firstlocal; }
+  int getFirstLabel() const noexcept { return firstlabel; }
+  short getNumDebugVars() const noexcept { return ndebugvars; }
   short getNumActiveVars() const noexcept { return nactvar; }
+  lu_byte getNumUpvalues() const noexcept { return nups; }
+  lu_byte getFreeReg() const noexcept { return freereg; }
+  lu_byte getInstructionsWithAbs() const noexcept { return iwthabs; }
+  lu_byte getNeedClose() const noexcept { return needclose; }
+
+  // Setters for mutable fields
+  void setProto(Proto* proto) noexcept { f = proto; }
+  void setPrev(FuncState* prev_) noexcept { prev = prev_; }
+  void setLexState(struct LexState* ls_) noexcept { ls = ls_; }
+  void setBlock(struct BlockCnt* bl_) noexcept { bl = bl_; }
+  void setKCache(Table* kcache_) noexcept { kcache = kcache_; }
+  void setPC(int pc_) noexcept { pc = pc_; }
+  void setLastTarget(int lasttarget_) noexcept { lasttarget = lasttarget_; }
+  void setPreviousLine(int previousline_) noexcept { previousline = previousline_; }
+  void setNK(int nk_) noexcept { nk = nk_; }
+  void setNP(int np_) noexcept { np = np_; }
+  void setNAbsLineInfo(int nabslineinfo_) noexcept { nabslineinfo = nabslineinfo_; }
+  void setFirstLocal(int firstlocal_) noexcept { firstlocal = firstlocal_; }
+  void setFirstLabel(int firstlabel_) noexcept { firstlabel = firstlabel_; }
+  void setNumDebugVars(short ndebugvars_) noexcept { ndebugvars = ndebugvars_; }
+  void setNumActiveVars(short nactvar_) noexcept { nactvar = nactvar_; }
+  void setNumUpvalues(lu_byte nups_) noexcept { nups = nups_; }
+  void setFreeReg(lu_byte freereg_) noexcept { freereg = freereg_; }
+  void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
+  void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
+
+  // Reference accessors for compound assignments
+  int& getPCRef() noexcept { return pc; }
+  int& getLastTargetRef() noexcept { return lasttarget; }
+  int& getPreviousLineRef() noexcept { return previousline; }
+  int& getNKRef() noexcept { return nk; }
+  int& getNPRef() noexcept { return np; }
+  int& getNAbsLineInfoRef() noexcept { return nabslineinfo; }
+  short& getNumDebugVarsRef() noexcept { return ndebugvars; }
+  short& getNumActiveVarsRef() noexcept { return nactvar; }
+  lu_byte& getNumUpvaluesRef() noexcept { return nups; }
+  lu_byte& getFreeRegRef() noexcept { return freereg; }
+  lu_byte& getInstructionsWithAbsRef() noexcept { return iwthabs; }
+  lu_byte& getNeedCloseRef() noexcept { return needclose; }
 
   // Code generation methods (from lcode.h) - Phase 27c
   // Note: OpCode is typedef'd in lopcodes.h, we use int to avoid circular deps

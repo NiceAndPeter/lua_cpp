@@ -62,7 +62,7 @@ typedef struct Token {
 /* state of the scanner plus state of the parser when shared by all
    functions */
 class LexState {
-public:
+private:
   int current;  /* current character (charint) */
   int linenumber;  /* input line counter */
   int lastline;  /* line of last token 'consumed' */
@@ -79,11 +79,43 @@ public:
   TString *brkn;  /* "break" name (used as a label) */
   TString *glbn;  /* "global" name (when not a reserved word) */
 
-  // Inline accessors
+public:
+  // Inline read accessors
   int getCurrentChar() const noexcept { return current; }
   int getLineNumber() const noexcept { return linenumber; }
-  TString* getSource() const noexcept { return source; }
+  int getLastLine() const noexcept { return lastline; }
   const Token& getCurrentToken() const noexcept { return t; }
+  Token& getCurrentTokenRef() noexcept { return t; }
+  const Token& getLookahead() const noexcept { return lookahead; }
+  Token& getLookaheadRef() noexcept { return lookahead; }
+  struct FuncState* getFuncState() const noexcept { return fs; }
+  struct lua_State* getLuaState() const noexcept { return L; }
+  ZIO* getZIO() const noexcept { return z; }
+  Mbuffer* getBuffer() const noexcept { return buff; }
+  Table* getTable() const noexcept { return h; }
+  struct Dyndata* getDyndata() const noexcept { return dyd; }
+  TString* getSource() const noexcept { return source; }
+  TString* getEnvName() const noexcept { return envn; }
+  TString* getBreakName() const noexcept { return brkn; }
+  TString* getGlobalName() const noexcept { return glbn; }
+
+  // Inline write accessors
+  void setCurrent(int c) noexcept { current = c; }
+  void setLineNumber(int line) noexcept { linenumber = line; }
+  void setLastLine(int line) noexcept { lastline = line; }
+  void setFuncState(struct FuncState* f) noexcept { fs = f; }
+  void setLuaState(struct lua_State* state) noexcept { L = state; }
+  void setZIO(ZIO* zio) noexcept { z = zio; }
+  void setBuffer(Mbuffer* b) noexcept { buff = b; }
+  void setTable(Table* table) noexcept { h = table; }
+  void setDyndata(struct Dyndata* d) noexcept { dyd = d; }
+  void setSource(TString* src) noexcept { source = src; }
+  void setEnvName(TString* env) noexcept { envn = env; }
+  void setBreakName(TString* brk) noexcept { brkn = brk; }
+  void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
+
+  // Reference accessors for compound operations
+  int& getLineNumberRef() noexcept { return linenumber; }
 
   // Inline helper methods (converted from macros)
   void next() noexcept { current = zgetc(z); }

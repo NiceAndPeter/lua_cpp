@@ -43,8 +43,8 @@ static int codesJ (FuncState *fs, OpCode o, int sj, int k);
 l_noret luaK_semerror (LexState *ls, const char *fmt, ...) {
   const char *msg;
   va_list argp;
-  pushvfstring(ls->L, argp, fmt, msg);
-  ls->t.token = 0;  /* remove "near <token>" from final message */
+  pushvfstring(ls->getLuaState(), argp, fmt, msg);
+  ls->getCurrentTokenRef().token = 0;  /* remove "near <token>" from final message */
   luaX_syntaxerror(ls, msg);
 }
 
@@ -73,7 +73,7 @@ static int tonumeral (const expdesc *e, TValue *v) {
 */
 static TValue *const2val (FuncState *fs, const expdesc *e) {
   lua_assert(e->getKind() == VCONST);
-  return &fs->getLexState()->dyd->actvar.arr[e->getInfo()].k;
+  return &fs->getLexState()->getDyndata()->actvar.arr[e->getInfo()].k;
 }
 
 
@@ -95,11 +95,11 @@ int luaK_exp2const (FuncState *fs, const expdesc *e, TValue *v) {
       setnilvalue(v);
       return 1;
     case VKSTR: {
-      setsvalue(fs->getLexState()->L, v, e->getStringValue());
+      setsvalue(fs->getLexState()->getLuaState(), v, e->getStringValue());
       return 1;
     }
     case VCONST: {
-      setobj(fs->getLexState()->L, v, const2val(fs, e));
+      setobj(fs->getLexState()->getLuaState(), v, const2val(fs, e));
       return 1;
     }
     default: return tonumeral(e, v);
@@ -331,14 +331,14 @@ static void savelineinfo (FuncState *fs, Proto *f, int line) {
   int linedif = line - fs->getPreviousLine();
   int pc = fs->getPC() - 1;  /* last instruction coded */
   if (abs(linedif) >= LIMLINEDIFF || fs->getInstructionsWithAbsRef()++ >= MAXIWTHABS) {
-    luaM_growvector(fs->getLexState()->L, f->getAbsLineInfoRef(), fs->getNAbsLineInfo(),
+    luaM_growvector(fs->getLexState()->getLuaState(), f->getAbsLineInfoRef(), fs->getNAbsLineInfo(),
                     f->getAbsLineInfoSizeRef(), AbsLineInfo, INT_MAX, "lines");
     f->getAbsLineInfo()[fs->getNAbsLineInfo()].setPC(pc);
     f->getAbsLineInfo()[fs->getNAbsLineInfoRef()++].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     fs->setInstructionsWithAbs(1);  /* restart counter */
   }
-  luaM_growvector(fs->getLexState()->L, f->getLineInfoRef(), pc, f->getLineInfoSizeRef(), ls_byte,
+  luaM_growvector(fs->getLexState()->getLuaState(), f->getLineInfoRef(), pc, f->getLineInfoSizeRef(), ls_byte,
                   INT_MAX, "opcodes");
   f->getLineInfo()[pc] = cast(ls_byte, linedif);
   fs->setPreviousLine(line);  /* last line saved */
@@ -383,10 +383,10 @@ static void removelastinstruction (FuncState *fs) {
 int luaK_code (FuncState *fs, Instruction i) {
   Proto *f = fs->getProto();
   /* put new instruction in code array */
-  luaM_growvector(fs->getLexState()->L, f->getCodeRef(), fs->getPC(), f->getCodeSizeRef(), Instruction,
+  luaM_growvector(fs->getLexState()->getLuaState(), f->getCodeRef(), fs->getPC(), f->getCodeSizeRef(), Instruction,
                   INT_MAX, "opcodes");
   f->getCode()[fs->getPCRef()++] = i;
-  savelineinfo(fs, f, fs->getLexState()->lastline);
+  savelineinfo(fs, f, fs->getLexState()->getLastLine());
   return fs->getPC() - 1;  /* index of new instruction */
 }
 
@@ -542,7 +542,7 @@ static void freeexps (FuncState *fs, expdesc *e1, expdesc *e2) {
 ** Add constant 'v' to prototype's list of constants (field 'k').
 */
 static int addk (FuncState *fs, Proto *f, TValue *v) {
-  lua_State *L = fs->getLexState()->L;
+  lua_State *L = fs->getLexState()->getLuaState();
   int oldsize = f->getConstantsSize();
   int k = fs->getNK();
   luaM_growvector(L, f->getConstantsRef(), k, f->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
@@ -576,7 +576,7 @@ static int k2proto (FuncState *fs, TValue *key, TValue *v) {
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
     setivalue(&val, k);
-    luaH_set(fs->getLexState()->L, fs->getKCache(), key, &val);
+    luaH_set(fs->getLexState()->getLuaState(), fs->getKCache(), key, &val);
     return k;
   }
 }
@@ -587,7 +587,7 @@ static int k2proto (FuncState *fs, TValue *key, TValue *v) {
 */
 static int stringK (FuncState *fs, TString *s) {
   TValue o;
-  setsvalue(fs->getLexState()->L, &o, s);
+  setsvalue(fs->getLexState()->getLuaState(), &o, s);
   return k2proto(fs, &o, &o);  /* use string itself as key */
 }
 
@@ -665,7 +665,7 @@ static int nilK (FuncState *fs) {
   TValue k, v;
   setnilvalue(&v);
   /* cannot use nil as key; instead use table itself */
-  sethvalue(fs->getLexState()->L, &k, fs->getKCache());
+  sethvalue(fs->getLexState()->getLuaState(), &k, fs->getKCache());
   return k2proto(fs, &k, &v);
 }
 
@@ -1374,7 +1374,7 @@ static int constfolding (FuncState *fs, int op, expdesc *e1,
   TValue v1, v2, res;
   if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
     return 0;  /* non-numeric operands or not safe to fold */
-  luaO_rawarith(fs->getLexState()->L, op, &v1, &v2, &res);  /* does operation */
+  luaO_rawarith(fs->getLexState()->getLuaState(), op, &v1, &v2, &res);  /* does operation */
   if (ttisinteger(&res)) {
     e1->setKind(VKINT);
     e1->setIntValue(ivalue(&res));

@@ -44,7 +44,7 @@
 
 
 #define issweepphase(g)  \
-	(GCSswpallgc <= (g)->gcstate && (g)->gcstate <= GCSswpend)
+	(GCSswpallgc <= (g)->getGCState() && (g)->getGCState() <= GCSswpend)
 
 
 /*
@@ -55,7 +55,7 @@
 ** are white again.
 */
 
-#define keepinvariant(g)	((g)->gcstate <= GCSatomic)
+#define keepinvariant(g)	((g)->getGCState() <= GCSatomic)
 
 
 /*
@@ -187,8 +187,8 @@ inline bool tofinalize(const GCObject* x) noexcept {
 }
 
 /* Get the "other" white color (for dead object detection) */
-constexpr lu_byte otherwhite(const global_State* g) noexcept {
-	return g->currentwhite ^ WHITEBITS;
+inline lu_byte otherwhite(const global_State* g) noexcept {
+	return g->getCurrentWhite() ^ WHITEBITS;
 }
 
 /* Check if marked value is dead given other-white bits */
@@ -215,7 +215,7 @@ inline void nw2black(GCObject* x) noexcept {
 	l_setbit(x->getMarkedRef(), BLACKBIT);
 }
 
-#define luaC_white(g)	cast_byte((g)->currentwhite & WHITEBITS)
+#define luaC_white(g)	cast_byte((g)->getCurrentWhite() & WHITEBITS)
 
 /* Note: G_NEW, G_SURVIVAL, G_OLD*, G_TOUCHED*, AGEBITS moved above for inline functions */
 /* Note: getage, setage, isold are now inline functions defined above */
@@ -300,8 +300,8 @@ inline void nw2black(GCObject* x) noexcept {
 #define LUAI_GCSTEPSIZE	(200 * sizeof(Table))
 
 
-#define setgcparam(g,p,v)  (g->gcparams[LUA_GCP##p] = luaO_codeparam(v))
-#define applygcparam(g,p,x)  luaO_applyparam(g->gcparams[LUA_GCP##p], x)
+#define setgcparam(g,p,v)  ((g)->setGCParam(LUA_GCP##p, luaO_codeparam(v)))
+#define applygcparam(g,p,x)  luaO_applyparam((g)->getGCParam(LUA_GCP##p), x)
 
 /* }====================================================== */
 
@@ -312,7 +312,7 @@ inline void nw2black(GCObject* x) noexcept {
 #define GCSTPUSR	1  /* bit true when GC stopped by user */
 #define GCSTPGC		2  /* bit true when GC stopped by itself */
 #define GCSTPCLS	4  /* bit true when closing Lua state */
-#define gcrunning(g)	((g)->gcstp == 0)
+#define gcrunning(g)	((g)->getGCStp() == 0)
 
 
 /*
@@ -330,7 +330,7 @@ inline void nw2black(GCObject* x) noexcept {
 #endif
 
 #define luaC_condGC(L,pre,pos) \
-	{ if (G(L)->GCdebt <= 0) { pre; luaC_step(L); pos;}; \
+	{ if (G(L)->getGCDebt() <= 0) { pre; luaC_step(L); pos;}; \
 	  condchangemem(L,pre,pos,0); }
 
 /* more often than not, 'pre'/'pos' are empty */

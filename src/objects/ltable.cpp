@@ -1070,7 +1070,7 @@ void luaH_finishset (lua_State *L, Table *t, const TValue *key,
 */
 static lua_Unsigned hash_search (lua_State *L, Table *t, unsigned asize) {
   lua_Unsigned i = asize + 1;  /* caller ensures t[i] is present */
-  unsigned rnd = G(L)->seed;
+  unsigned rnd = G(L)->getSeed();
   int n = (asize > 0) ? luaO_ceillog2(asize) : 0;  /* width of 'asize' */
   unsigned mask = (1u << n) - 1;  /* 11...111 with the width of 'asize' */
   unsigned incr = (rnd & mask) + 1;  /* first increment (at least 1) */

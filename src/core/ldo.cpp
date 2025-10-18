@@ -94,7 +94,7 @@ struct lua_longjmp {
 // Convert to lua_State method
 void lua_State::setErrorObj(TStatus errcode, StkId oldtop) {
   if (errcode == LUA_ERRMEM) {  /* memory error? */
-    setsvalue2s(this, oldtop, G(this)->memerrmsg); /* reuse preregistered msg. */
+    setsvalue2s(this, oldtop, G(this)->getMemErrMsg()); /* reuse preregistered msg. */
   }
   else {
     lua_assert(errorstatus(errcode));  /* must be a real error */
@@ -121,9 +121,9 @@ l_noret lua_State::doThrow(TStatus errcode) {
       mainth->doThrow(errcode);  /* re-throw in main thread */
     }
     else {  /* no handler at all; abort */
-      if (g->panic) {  /* panic function? */
+      if (g->getPanic()) {  /* panic function? */
         lua_unlock(this);
-        g->panic(this);  /* call panic function (last chance to jump out) */
+        g->getPanic()(this);  /* call panic function (last chance to jump out) */
       }
       abort();
     }
@@ -1152,13 +1152,13 @@ int lua_State::reallocStack(int newsize, int raiseerror) {
   int i;
   StkId newstack;
   StkId oldstack = stack.p;
-  lu_byte oldgcstop = G(this)->gcstopem;
+  lu_byte oldgcstop = G(this)->getGCStopEm();
   lua_assert(newsize <= MAXSTACK || newsize == ERRORSTACKSIZE);
   relstack(this);  /* change pointers to offsets */
-  G(this)->gcstopem = 1;  /* stop emergency collection */
+  G(this)->setGCStopEm(1);  /* stop emergency collection */
   newstack = luaM_reallocvector(this, oldstack, oldsize + EXTRA_STACK,
                                    newsize + EXTRA_STACK, StackValue);
-  G(this)->gcstopem = oldgcstop;  /* restore emergency collection */
+  G(this)->setGCStopEm(oldgcstop);  /* restore emergency collection */
   if (l_unlikely(newstack == NULL)) {  /* reallocation failed? */
     correctstack(this, oldstack);  /* change offsets back to pointers */
     if (raiseerror)

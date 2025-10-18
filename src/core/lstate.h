@@ -603,17 +603,24 @@ typedef struct LX {
 ** 'global state', shared by all threads of this state
 */
 class global_State {
-public:
+private:
+  // Group 1: Memory allocator fields
   lua_Alloc frealloc;  /* function to reallocate memory */
   void *ud;         /* auxiliary data to 'frealloc' */
+
+  // Group 2: GC memory accounting fields
   l_mem GCtotalbytes;  /* number of bytes currently allocated + debt */
   l_mem GCdebt;  /* bytes counted but not yet allocated */
   l_mem GCmarked;  /* number of objects marked in a GC cycle */
   l_mem GCmajorminor;  /* auxiliary counter to control major-minor shifts */
+
+  // Group 3: String and value storage
   stringtable strt;  /* hash table for strings */
   TValue l_registry;
   TValue nilvalue;  /* a nil value */
   unsigned int seed;  /* randomized seed for hashes */
+
+  // Group 4: GC parameters and state
   lu_byte gcparams[LUA_GCPN];
   lu_byte currentwhite;
   lu_byte gcstate;  /* state of garbage collector */
@@ -621,6 +628,8 @@ public:
   lu_byte gcstopem;  /* stops emergency collections */
   lu_byte gcstp;  /* control whether GC is running */
   lu_byte gcemergency;  /* true if this is an emergency collection */
+
+  // Group 5: GC object lists (incremental collector)
   GCObject *allgc;  /* list of all collectable objects */
   GCObject **sweepgc;  /* current position of sweep in list */
   GCObject *finobj;  /* list of collectable objects with finalizers */
@@ -631,7 +640,8 @@ public:
   GCObject *allweak;  /* list of all-weak tables */
   GCObject *tobefnz;  /* list of userdata to be GC */
   GCObject *fixedgc;  /* list of objects not to be collected */
-  /* fields for generational collector */
+
+  // Group 6: GC object lists (generational collector)
   GCObject *survival;  /* start of objects that survived one GC cycle */
   GCObject *old1;  /* start of old1 objects */
   GCObject *reallyold;  /* objects more than one cycle old ("really old") */
@@ -639,6 +649,8 @@ public:
   GCObject *finobjsur;  /* list of survival objects with finalizers */
   GCObject *finobjold1;  /* list of old1 objects with finalizers */
   GCObject *finobjrold;  /* list of really old objects with finalizers */
+
+  // Group 7: Runtime state
   struct lua_State *twups;  /* list of threads with open upvalues */
   lua_CFunction panic;  /* to be called in unprotected errors */
   TString *memerrmsg;  /* message for memory-allocation errors */
@@ -649,11 +661,167 @@ public:
   void *ud_warn;         /* auxiliary data to 'warnf' */
   LX mainth;  /* main thread of this state */
 
-  // Inline accessors (very conservative - only most commonly used)
+public:
+  // Group 1: Memory allocator accessors
+  lua_Alloc getFrealloc() const noexcept { return frealloc; }
+  void setFrealloc(lua_Alloc f) noexcept { frealloc = f; }
+  void* getUd() const noexcept { return ud; }
+  void setUd(void* u) noexcept { ud = u; }
+
+  // Group 2: GC memory accounting accessors
+  l_mem getGCTotalBytes() const noexcept { return GCtotalbytes; }
+  void setGCTotalBytes(l_mem bytes) noexcept { GCtotalbytes = bytes; }
+  l_mem& getGCTotalBytesRef() noexcept { return GCtotalbytes; }
+
+  l_mem getGCDebt() const noexcept { return GCdebt; }
+  void setGCDebt(l_mem debt) noexcept { GCdebt = debt; }
+  l_mem& getGCDebtRef() noexcept { return GCdebt; }
+
+  l_mem getGCMarked() const noexcept { return GCmarked; }
+  void setGCMarked(l_mem marked) noexcept { GCmarked = marked; }
+  l_mem& getGCMarkedRef() noexcept { return GCmarked; }
+
+  l_mem getGCMajorMinor() const noexcept { return GCmajorminor; }
+  void setGCMajorMinor(l_mem mm) noexcept { GCmajorminor = mm; }
+  l_mem& getGCMajorMinorRef() noexcept { return GCmajorminor; }
+
+  // Group 3: String and value storage accessors
   stringtable* getStringTable() noexcept { return &strt; }
+  const stringtable* getStringTable() const noexcept { return &strt; }
+
   TValue* getRegistry() noexcept { return &l_registry; }
+  const TValue* getRegistry() const noexcept { return &l_registry; }
+
+  TValue* getNilValue() noexcept { return &nilvalue; }
+  const TValue* getNilValue() const noexcept { return &nilvalue; }
+
+  unsigned int getSeed() const noexcept { return seed; }
+  void setSeed(unsigned int s) noexcept { seed = s; }
+
+  // Group 4: GC parameters and state accessors
+  lu_byte* getGCParams() noexcept { return gcparams; }
+  const lu_byte* getGCParams() const noexcept { return gcparams; }
+  lu_byte getGCParam(int idx) const noexcept { return gcparams[idx]; }
+  void setGCParam(int idx, lu_byte value) noexcept { gcparams[idx] = value; }
+
+  lu_byte getCurrentWhite() const noexcept { return currentwhite; }
+  void setCurrentWhite(lu_byte cw) noexcept { currentwhite = cw; }
+
   lu_byte getGCState() const noexcept { return gcstate; }
+  void setGCState(lu_byte state) noexcept { gcstate = state; }
+
+  lu_byte getGCKind() const noexcept { return gckind; }
+  void setGCKind(lu_byte kind) noexcept { gckind = kind; }
+
+  lu_byte getGCStopEm() const noexcept { return gcstopem; }
+  void setGCStopEm(lu_byte stop) noexcept { gcstopem = stop; }
+
+  lu_byte getGCStp() const noexcept { return gcstp; }
+  void setGCStp(lu_byte stp) noexcept { gcstp = stp; }
+
+  lu_byte getGCEmergency() const noexcept { return gcemergency; }
+  void setGCEmergency(lu_byte em) noexcept { gcemergency = em; }
+
+  // Group 5: GC object lists (incremental) accessors
+  GCObject* getAllGC() const noexcept { return allgc; }
+  void setAllGC(GCObject* gc) noexcept { allgc = gc; }
+  GCObject** getAllGCPtr() noexcept { return &allgc; }
+
+  GCObject** getSweepGC() const noexcept { return sweepgc; }
+  void setSweepGC(GCObject** sweep) noexcept { sweepgc = sweep; }
+  GCObject*** getSweepGCPtr() noexcept { return &sweepgc; }
+
+  GCObject* getFinObj() const noexcept { return finobj; }
+  void setFinObj(GCObject* fobj) noexcept { finobj = fobj; }
+  GCObject** getFinObjPtr() noexcept { return &finobj; }
+
+  GCObject* getGray() const noexcept { return gray; }
+  void setGray(GCObject* g) noexcept { gray = g; }
+  GCObject** getGrayPtr() noexcept { return &gray; }
+
+  GCObject* getGrayAgain() const noexcept { return grayagain; }
+  void setGrayAgain(GCObject* ga) noexcept { grayagain = ga; }
+  GCObject** getGrayAgainPtr() noexcept { return &grayagain; }
+
+  GCObject* getWeak() const noexcept { return weak; }
+  void setWeak(GCObject* w) noexcept { weak = w; }
+  GCObject** getWeakPtr() noexcept { return &weak; }
+
+  GCObject* getEphemeron() const noexcept { return ephemeron; }
+  void setEphemeron(GCObject* e) noexcept { ephemeron = e; }
+  GCObject** getEphemeronPtr() noexcept { return &ephemeron; }
+
+  GCObject* getAllWeak() const noexcept { return allweak; }
+  void setAllWeak(GCObject* aw) noexcept { allweak = aw; }
+  GCObject** getAllWeakPtr() noexcept { return &allweak; }
+
+  GCObject* getToBeFnz() const noexcept { return tobefnz; }
+  void setToBeFnz(GCObject* tbf) noexcept { tobefnz = tbf; }
+  GCObject** getToBeFnzPtr() noexcept { return &tobefnz; }
+
+  GCObject* getFixedGC() const noexcept { return fixedgc; }
+  void setFixedGC(GCObject* fgc) noexcept { fixedgc = fgc; }
+  GCObject** getFixedGCPtr() noexcept { return &fixedgc; }
+
+  // Group 6: GC object lists (generational) accessors
+  GCObject* getSurvival() const noexcept { return survival; }
+  void setSurvival(GCObject* s) noexcept { survival = s; }
+  GCObject** getSurvivalPtr() noexcept { return &survival; }
+
+  GCObject* getOld1() const noexcept { return old1; }
+  void setOld1(GCObject* o1) noexcept { old1 = o1; }
+  GCObject** getOld1Ptr() noexcept { return &old1; }
+
+  GCObject* getReallyOld() const noexcept { return reallyold; }
+  void setReallyOld(GCObject* ro) noexcept { reallyold = ro; }
+  GCObject** getReallyOldPtr() noexcept { return &reallyold; }
+
+  GCObject* getFirstOld1() const noexcept { return firstold1; }
+  void setFirstOld1(GCObject* fo1) noexcept { firstold1 = fo1; }
+  GCObject** getFirstOld1Ptr() noexcept { return &firstold1; }
+
+  GCObject* getFinObjSur() const noexcept { return finobjsur; }
+  void setFinObjSur(GCObject* fos) noexcept { finobjsur = fos; }
+  GCObject** getFinObjSurPtr() noexcept { return &finobjsur; }
+
+  GCObject* getFinObjOld1() const noexcept { return finobjold1; }
+  void setFinObjOld1(GCObject* fo1) noexcept { finobjold1 = fo1; }
+  GCObject** getFinObjOld1Ptr() noexcept { return &finobjold1; }
+
+  GCObject* getFinObjROld() const noexcept { return finobjrold; }
+  void setFinObjROld(GCObject* for_) noexcept { finobjrold = for_; }
+  GCObject** getFinObjROldPtr() noexcept { return &finobjrold; }
+
+  // Group 7: Runtime state accessors
+  lua_State* getTwups() const noexcept { return twups; }
+  void setTwups(lua_State* tw) noexcept { twups = tw; }
+  lua_State** getTwupsPtr() noexcept { return &twups; }
+
+  lua_CFunction getPanic() const noexcept { return panic; }
+  void setPanic(lua_CFunction p) noexcept { panic = p; }
+
+  TString* getMemErrMsg() const noexcept { return memerrmsg; }
+  void setMemErrMsg(TString* msg) noexcept { memerrmsg = msg; }
+
+  TString* getTMName(int idx) const noexcept { return tmname[idx]; }
+  void setTMName(int idx, TString* name) noexcept { tmname[idx] = name; }
+  TString** getTMNamePtr(int idx) noexcept { return &tmname[idx]; }
+
   Table* getMetatable(int type) const noexcept { return mt[type]; }
+  void setMetatable(int type, Table* metatable) noexcept { mt[type] = metatable; }
+  Table** getMetatablePtr(int type) noexcept { return &mt[type]; }
+
+  TString* getStrCache(int n, int m) const noexcept { return strcache[n][m]; }
+  void setStrCache(int n, int m, TString* str) noexcept { strcache[n][m] = str; }
+
+  lua_WarnFunction getWarnF() const noexcept { return warnf; }
+  void setWarnF(lua_WarnFunction wf) noexcept { warnf = wf; }
+
+  void* getUdWarn() const noexcept { return ud_warn; }
+  void setUdWarn(void* uw) noexcept { ud_warn = uw; }
+
+  LX* getMainThread() noexcept { return &mainth; }
+  const LX* getMainThread() const noexcept { return &mainth; }
 };
 
 
@@ -662,14 +830,14 @@ inline global_State*& G(lua_State* L) noexcept { return L->getGlobalStateRef(); 
 inline global_State* G(const lua_State* L) noexcept { return const_cast<global_State*>(L->getGlobalState()); }
 
 /* Get main thread from global_State */
-constexpr lua_State* mainthread(global_State* g) noexcept { return &g->mainth.l; }
-constexpr const lua_State* mainthread(const global_State* g) noexcept { return &g->mainth.l; }
+inline lua_State* mainthread(global_State* g) noexcept { return &g->getMainThread()->l; }
+inline const lua_State* mainthread(const global_State* g) noexcept { return &g->getMainThread()->l; }
 
 /*
-** 'g->nilvalue' being a nil value flags that the state was completely
+** 'g->getNilValue()' being a nil value flags that the state was completely
 ** build.
 */
-#define completestate(g)	ttisnil(&g->nilvalue)
+#define completestate(g)	ttisnil((g)->getNilValue())
 
 
 /*
@@ -740,7 +908,7 @@ inline GCObject* obj2gco(const void* v) noexcept {
 
 
 /* actual number of total memory allocated */
-#define gettotalbytes(g)	((g)->GCtotalbytes - (g)->GCdebt)
+#define gettotalbytes(g)	((g)->getGCTotalBytes() - (g)->getGCDebt())
 
 
 LUAI_FUNC void luaE_setdebt (global_State *g, l_mem debt);

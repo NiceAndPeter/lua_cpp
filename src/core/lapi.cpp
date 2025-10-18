@@ -41,7 +41,7 @@ const char lua_ident[] =
 /*
 ** Test for a valid index (one that is not the 'nilvalue').
 */
-#define isvalid(L, o)	((o) != &G(L)->nilvalue)
+#define isvalid(L, o)	((o) != G(L)->getNilValue())
 
 
 /* test for pseudo index */
@@ -53,14 +53,14 @@ const char lua_ident[] =
 
 /*
 ** Convert an acceptable index to a pointer to its respective value.
-** Non-valid indices return the special nil value 'G(L)->nilvalue'.
+** Non-valid indices return the special nil value 'G(L)->getNilValue()'.
 */
 static TValue *index2value (lua_State *L, int idx) {
   CallInfo *ci = L->getCI();
   if (idx > 0) {
     StkId o = ci->funcRef().p + idx;
     api_check(L, idx <= ci->topRef().p - (ci->funcRef().p + 1), "unacceptable index");
-    if (o >= L->getTop().p) return &G(L)->nilvalue;
+    if (o >= L->getTop().p) return G(L)->getNilValue();
     else return s2v(o);
   }
   else if (!ispseudo(idx)) {  /* negative index */
@@ -69,18 +69,18 @@ static TValue *index2value (lua_State *L, int idx) {
     return s2v(L->getTop().p + idx);
   }
   else if (idx == LUA_REGISTRYINDEX)
-    return &G(L)->l_registry;
+    return G(L)->getRegistry();
   else {  /* upvalues */
     idx = LUA_REGISTRYINDEX - idx;
     api_check(L, idx <= MAXUPVAL + 1, "upvalue index too large");
     if (ttisCclosure(s2v(ci->funcRef().p))) {  /* C closure? */
       CClosure *func = clCvalue(s2v(ci->funcRef().p));
       return (idx <= func->getNumUpvalues()) ? func->getUpvalue(idx-1)
-                                      : &G(L)->nilvalue;
+                                      : G(L)->getNilValue();
     }
     else {  /* light C function or Lua function (through a hook)?) */
       api_check(L, ttislcf(s2v(ci->funcRef().p)), "caller not a C function");
-      return &G(L)->nilvalue;  /* no upvalues */
+      return G(L)->getNilValue();  /* no upvalues */
     }
   }
 }
@@ -142,8 +142,8 @@ LUA_API void lua_xmove (lua_State *from, lua_State *to, int n) {
 LUA_API lua_CFunction lua_atpanic (lua_State *L, lua_CFunction panicf) {
   lua_CFunction old;
   lua_lock(L);
-  old = G(L)->panic;
-  G(L)->panic = panicf;
+  old = G(L)->getPanic();
+  G(L)->setPanic(panicf);
   lua_unlock(L);
   return old;
 }
@@ -689,7 +689,7 @@ static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
 ** cannot collect it.
 */
 static void getGlobalTable (lua_State *L, TValue *gt) {
-  Table *registry = hvalue(&G(L)->l_registry);
+  Table *registry = hvalue(G(L)->getRegistry());
   lu_byte tag = luaH_getint(registry, LUA_RIDX_GLOBALS, gt);
   (void)tag;  /* avoid not-used warnings when checks are off */
   api_check(L, novariant(tag) == LUA_TTABLE, "global table must exist");
@@ -816,7 +816,7 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
       mt = uvalue(obj)->getMetatable();
       break;
     default:
-      mt = G(L)->mt[ttype(obj)];
+      mt = G(L)->getMetatable(ttype(obj));
       break;
   }
   if (mt != NULL) {
@@ -991,7 +991,7 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
       break;
     }
     default: {
-      G(L)->mt[ttype(obj)] = mt;
+      G(L)->setMetatable(ttype(obj), mt);
       break;
     }
   }
@@ -1171,18 +1171,18 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
   va_list argp;
   int res = 0;
   global_State *g = G(L);
-  if (g->gcstp & (GCSTPGC | GCSTPCLS))  /* internal stop? */
+  if (g->getGCStp() & (GCSTPGC | GCSTPCLS))  /* internal stop? */
     return -1;  /* all options are invalid when stopped */
   lua_lock(L);
   va_start(argp, what);
   switch (what) {
     case LUA_GCSTOP: {
-      g->gcstp = GCSTPUSR;  /* stopped by the user */
+      g->setGCStp(GCSTPUSR);  /* stopped by the user */
       break;
     }
     case LUA_GCRESTART: {
       luaE_setdebt(g, 0);
-      g->gcstp = 0;  /* (other bits must be zero here) */
+      g->setGCStp(0);  /* (other bits must be zero here) */
       break;
     }
     case LUA_GCCOLLECT: {
@@ -1199,17 +1199,17 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       break;
     }
     case LUA_GCSTEP: {
-      lu_byte oldstp = g->gcstp;
+      lu_byte oldstp = g->getGCStp();
       l_mem n = cast(l_mem, va_arg(argp, size_t));
       int work = 0;  /* true if GC did some work */
-      g->gcstp = 0;  /* allow GC to run (other bits must be zero here) */
+      g->setGCStp(0);  /* allow GC to run (other bits must be zero here) */
       if (n <= 0)
-        n = g->GCdebt;  /* force to run one basic step */
-      luaE_setdebt(g, g->GCdebt - n);
+        n = g->getGCDebt();  /* force to run one basic step */
+      luaE_setdebt(g, g->getGCDebt() - n);
       luaC_condGC(L, (void)0, work = 1);
-      if (work && g->gcstate == GCSpause)  /* end of cycle? */
+      if (work && g->getGCState() == GCSpause)  /* end of cycle? */
         res = 1;  /* signal it */
-      g->gcstp = oldstp;  /* restore previous state */
+      g->setGCStp(oldstp);  /* restore previous state */
       break;
     }
     case LUA_GCISRUNNING: {
@@ -1217,12 +1217,12 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       break;
     }
     case LUA_GCGEN: {
-      res = (g->gckind == KGC_INC) ? LUA_GCINC : LUA_GCGEN;
+      res = (g->getGCKind() == KGC_INC) ? LUA_GCINC : LUA_GCGEN;
       luaC_changemode(L, KGC_GENMINOR);
       break;
     }
     case LUA_GCINC: {
-      res = (g->gckind == KGC_INC) ? LUA_GCINC : LUA_GCGEN;
+      res = (g->getGCKind() == KGC_INC) ? LUA_GCINC : LUA_GCGEN;
       luaC_changemode(L, KGC_INC);
       break;
     }
@@ -1230,9 +1230,9 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       int param = va_arg(argp, int);
       int value = va_arg(argp, int);
       api_check(L, 0 <= param && param < LUA_GCPN, "invalid parameter");
-      res = cast_int(luaO_applyparam(g->gcparams[param], 100));
+      res = cast_int(luaO_applyparam(g->getGCParam(param), 100));
       if (value >= 0)
-        g->gcparams[param] = luaO_codeparam(cast_uint(value));
+        g->setGCParam(param, luaO_codeparam(cast_uint(value)));
       break;
     }
     default: res = -1;  /* invalid option */
@@ -1255,7 +1255,7 @@ LUA_API int lua_error (lua_State *L) {
   errobj = s2v(L->getTop().p - 1);
   api_checkpop(L, 1);
   /* error object is the memory error message? */
-  if (ttisshrstring(errobj) && eqshrstr(tsvalue(errobj), G(L)->memerrmsg))
+  if (ttisshrstring(errobj) && eqshrstr(tsvalue(errobj), G(L)->getMemErrMsg()))
     luaM_error(L);  /* raise a memory error */
   else
     luaG_errormsg(L);  /* raise a regular error */
@@ -1319,8 +1319,8 @@ LUA_API void lua_len (lua_State *L, int idx) {
 LUA_API lua_Alloc lua_getallocf (lua_State *L, void **ud) {
   lua_Alloc f;
   lua_lock(L);
-  if (ud) *ud = G(L)->ud;
-  f = G(L)->frealloc;
+  if (ud) *ud = G(L)->getUd();
+  f = G(L)->getFrealloc();
   lua_unlock(L);
   return f;
 }
@@ -1328,16 +1328,16 @@ LUA_API lua_Alloc lua_getallocf (lua_State *L, void **ud) {
 
 LUA_API void lua_setallocf (lua_State *L, lua_Alloc f, void *ud) {
   lua_lock(L);
-  G(L)->ud = ud;
-  G(L)->frealloc = f;
+  G(L)->setUd(ud);
+  G(L)->setFrealloc(f);
   lua_unlock(L);
 }
 
 
 void lua_setwarnf (lua_State *L, lua_WarnFunction f, void *ud) {
   lua_lock(L);
-  G(L)->ud_warn = ud;
-  G(L)->warnf = f;
+  G(L)->setUdWarn(ud);
+  G(L)->setWarnF(f);
   lua_unlock(L);
 }
 

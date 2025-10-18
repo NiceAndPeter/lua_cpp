@@ -67,7 +67,7 @@ inline void invalidateTMcache(Table* t) noexcept {
 #define checknoTM(mt,e)	((mt) == NULL || (mt)->getFlags() & (1u<<(e)))
 
 #define gfasttm(g,mt,e)  \
-  (checknoTM(mt, e) ? NULL : luaT_gettm(mt, e, (g)->tmname[e]))
+  (checknoTM(mt, e) ? NULL : luaT_gettm(mt, e, (g)->getTMName(e)))
 
 #define fasttm(l,mt,e)	gfasttm(G(l), mt, e)
 
