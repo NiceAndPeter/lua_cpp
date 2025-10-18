@@ -1807,7 +1807,7 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     GCObject **p;
     if (issweepphase(g)) {
       makewhite(g, this);  /* "sweep" object 'this' */
-      if (g->getSweepGC() == getNextPtr())  /* should not remove 'sweepgc' object */
+      if (g->getSweepGC() == &this->next)  /* should not remove 'sweepgc' object */
         g->setSweepGC(sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
     }
     else

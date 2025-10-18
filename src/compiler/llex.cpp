@@ -190,7 +190,7 @@ void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source,
 #if defined(LUA_COMPAT_GLOBAL)
   /* compatibility mode: "global" is not a reserved word */
   ls->setGlobalName(luaS_newliteral(L, "global"));  /* get "global" string */
-  ls->getGlobalName()->getExtra() = 0;  /* mark it as not reserved */
+  ls->getGlobalName()->setExtra(0);  /* mark it as not reserved */
 #endif
   luaZ_resizebuffer(ls->getLuaState(), ls->getBuffer(), LUA_MINBUFFER);  /* initialize buffer */
 }
