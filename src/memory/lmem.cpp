@@ -55,7 +55,7 @@
 ** 'gcstopem' is true, because then the interpreter is in the middle of
 ** a collection step.
 */
-#define cantryagain(g)	(completestate(g) && !g->getGCStopEm())
+#define cantryagain(g)	(g->isComplete() && !g->getGCStopEm())
 
 
 

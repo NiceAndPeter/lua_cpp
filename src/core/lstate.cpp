@@ -68,7 +68,7 @@ inline LX* fromstate(lua_State* L) noexcept {
 ** 'GCtotalobjs'.
 */
 void luaE_setdebt (global_State *g, l_mem debt) {
-  l_mem tb = gettotalbytes(g);
+  l_mem tb = g->getTotalBytes();
   lua_assert(tb > 0);
   if (debt > MAX_LMEM - tb)
     debt = MAX_LMEM - tb;  /* will make GCtotalbytes == MAX_LMEM */
@@ -264,7 +264,7 @@ lu_mem luaE_threadsize (lua_State *L) {
 
 static void close_state (lua_State *L) {
   global_State *g = G(L);
-  if (!completestate(g))  /* closing a partially built state? */
+  if (!g->isComplete())  /* closing a partially built state? */
     luaC_freeallobjects(L);  /* just collect its objects */
   else {  /* closing a fully built state */
     resetCI(L);
@@ -275,7 +275,7 @@ static void close_state (lua_State *L) {
   }
   luaM_freearray(L, G(L)->getStringTable()->getHash(), cast_sizet(G(L)->getStringTable()->getSize()));
   freestack(L);
-  lua_assert(gettotalbytes(g) == sizeof(global_State));
+  lua_assert(g->getTotalBytes() == sizeof(global_State));
   (*g->getFrealloc())(g->getUd(), g, sizeof(global_State), 0);  /* free main block */
 }
 

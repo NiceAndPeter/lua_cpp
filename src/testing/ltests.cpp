@@ -1166,7 +1166,7 @@ static int gc_query (lua_State *L) {
                   : g->getGCKind() == KGC_GENMAJOR ? "genmajor"
                   : "genminor");
   lua_pushstring(L, statenames[g->getGCState()]);
-  lua_pushinteger(L, cast_st2S(gettotalbytes(g)));
+  lua_pushinteger(L, cast_st2S(g->getTotalBytes()));
   lua_pushinteger(L, cast_st2S(g->getGCDebt()));
   lua_pushinteger(L, cast_st2S(g->getGCMarked()));
   lua_pushinteger(L, cast_st2S(g->getGCMajorMinor()));

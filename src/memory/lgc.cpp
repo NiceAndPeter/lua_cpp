@@ -876,7 +876,7 @@ static void freeupval (lua_State *L, UpVal *uv) {
 
 
 static void freeobj (lua_State *L, GCObject *o) {
-  assert_code(l_mem newmem = gettotalbytes(G(L)) - objsize(o));
+  assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
   switch (o->getType()) {
     case LUA_VPROTO:
       gco2p(o)->free(L);  /* Phase 25b */
@@ -920,7 +920,7 @@ static void freeobj (lua_State *L, GCObject *o) {
     }
     default: lua_assert(0);
   }
-  lua_assert(gettotalbytes(G(L)) == newmem);
+  lua_assert(G(L)->getTotalBytes() == newmem);
 }
 
 
@@ -1195,7 +1195,7 @@ static void correctpointers (global_State *g, GCObject *o) {
 */
 static void setpause (global_State *g) {
   l_mem threshold = applygcparam(g, PAUSE, g->getGCMarked());
-  l_mem debt = threshold - gettotalbytes(g);
+  l_mem debt = threshold - g->getTotalBytes();
   if (debt < 0) debt = 0;
   luaE_setdebt(g, debt);
 }
@@ -1546,7 +1546,7 @@ static void fullgen (lua_State *L, global_State *g) {
 */
 static int checkmajorminor (lua_State *L, global_State *g) {
   if (g->getGCKind() == KGC_GENMAJOR) {  /* generational mode? */
-    l_mem numbytes = gettotalbytes(g);
+    l_mem numbytes = g->getTotalBytes();
     l_mem addedbytes = numbytes - g->getGCMajorMinor();
     l_mem limit = applygcparam(g, MAJORMINOR, addedbytes);
     l_mem tobecollected = numbytes - g->getGCMarked();

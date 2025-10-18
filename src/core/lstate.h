@@ -665,6 +665,8 @@ public:
   void setGCDebt(l_mem debt) noexcept { GCdebt = debt; }
   l_mem& getGCDebtRef() noexcept { return GCdebt; }
 
+  l_mem getTotalBytes() const noexcept { return GCtotalbytes - GCdebt; }
+
   l_mem getGCMarked() const noexcept { return GCmarked; }
   void setGCMarked(l_mem marked) noexcept { GCmarked = marked; }
   l_mem& getGCMarkedRef() noexcept { return GCmarked; }
@@ -682,6 +684,8 @@ public:
 
   TValue* getNilValue() noexcept { return &nilvalue; }
   const TValue* getNilValue() const noexcept { return &nilvalue; }
+
+  bool isComplete() const noexcept { return ttisnil(&nilvalue); }
 
   unsigned int getSeed() const noexcept { return seed; }
   void setSeed(unsigned int s) noexcept { seed = s; }
@@ -822,13 +826,6 @@ inline lua_State* mainthread(global_State* g) noexcept { return &g->getMainThrea
 inline const lua_State* mainthread(const global_State* g) noexcept { return &g->getMainThread()->l; }
 
 /*
-** 'g->getNilValue()' being a nil value flags that the state was completely
-** build.
-*/
-#define completestate(g)	ttisnil((g)->getNilValue())
-
-
-/*
 ** GCUnion and cast_u removed (no longer needed)
 ** All GC object conversions now use type-safe reinterpret_cast via gco2* functions.
 ** The old GCUnion was only used for pointer casting, not actual memory allocation.
@@ -893,10 +890,6 @@ inline GCObject* obj2gco(void* v) noexcept {
 inline GCObject* obj2gco(const void* v) noexcept {
 	return reinterpret_cast<GCObject*>(const_cast<void*>(v));
 }
-
-
-/* actual number of total memory allocated */
-#define gettotalbytes(g)	((g)->getGCTotalBytes() - (g)->getGCDebt())
 
 
 LUAI_FUNC void luaE_setdebt (global_State *g, l_mem debt);
