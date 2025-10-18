@@ -29,7 +29,7 @@
 #else
 /* realloc stack keeping its size */
 #define condmovestack(L,pre,pos)  \
-  { int sz_ = stacksize(L); pre; (L)->reallocStack(sz_, 0); pos; }
+  { int sz_ = (L)->getStackSize(); pre; (L)->reallocStack(sz_, 0); pos; }
 #endif
 
 #define luaD_checkstackaux(L,n,pre,pos)  \

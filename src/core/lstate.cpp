@@ -185,7 +185,7 @@ static void freestack (lua_State *L) {
   freeCI(L);
   lua_assert(L->getNCI() == 0);
   /* free stack */
-  luaM_freearray(L, L->getStack().p, cast_sizet(stacksize(L) + EXTRA_STACK));
+  luaM_freearray(L, L->getStack().p, cast_sizet(L->getStackSize() + EXTRA_STACK));
 }
 
 
@@ -257,7 +257,7 @@ lu_mem luaE_threadsize (lua_State *L) {
   lu_mem sz = cast(lu_mem, sizeof(LX))
             + cast_uint(L->getNCI()) * sizeof(CallInfo);
   if (L->getStack().p != NULL)
-    sz += cast_uint(stacksize(L) + EXTRA_STACK) * sizeof(StackValue);
+    sz += cast_uint(L->getStackSize() + EXTRA_STACK) * sizeof(StackValue);
   return sz;
 }
 

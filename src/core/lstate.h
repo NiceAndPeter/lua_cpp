@@ -147,8 +147,6 @@ struct lua_longjmp;
 
 #define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
 
-#define stacksize(th)	cast_int((th)->getStackLast().p - (th)->getStack().p)
-
 
 /* kinds of Garbage Collection */
 #define KGC_INC		0	/* incremental gc */
@@ -413,6 +411,9 @@ public:
   StkIdRel& getTbclist() noexcept { return tbclist; }
   const StkIdRel& getTbclist() const noexcept { return tbclist; }
   void setTbclist(StkIdRel tbc) noexcept { tbclist = tbc; }
+
+  // Stack size computation
+  int getStackSize() const noexcept { return cast_int(stack_last.p - stack.p); }
 
   // Step 2: CallInfo field accessors
   CallInfo* getCI() noexcept { return ci; }

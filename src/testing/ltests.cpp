@@ -1110,7 +1110,7 @@ static int hash_query (lua_State *L) {
 static int stacklevel (lua_State *L) {
   int a = 0;
   lua_pushinteger(L, cast_Integer(L->getTop().p - L->getStack().p));
-  lua_pushinteger(L, stacksize(L));
+  lua_pushinteger(L, L->getStackSize());
   lua_pushinteger(L, cast_Integer(L->getNCcalls()));
   lua_pushinteger(L, L->getNCI());
   lua_pushinteger(L, (lua_Integer)(size_t)&a);

@@ -1191,7 +1191,7 @@ void lua_State::shrinkStack() {
   int max = (inuse > MAXSTACK / 3) ? MAXSTACK : inuse * 3;
   /* if thread is currently not handling a stack overflow and its
      size is larger than maximum "reasonable" size, shrink it */
-  if (inuse <= MAXSTACK && stacksize(this) > max) {
+  if (inuse <= MAXSTACK && getStackSize() > max) {
     int nsize = (inuse > MAXSTACK / 2) ? MAXSTACK : inuse * 2;
     reallocStack(nsize, 0);  /* ok if that fails */
   }
@@ -1201,12 +1201,12 @@ void lua_State::shrinkStack() {
 }
 
 int lua_State::growStack(int n, int raiseerror) {
-  int size = stacksize(this);
+  int size = getStackSize();
   if (l_unlikely(size > MAXSTACK)) {
     /* if stack is larger than maximum, thread is already using the
        extra space reserved for errors, that is, thread is handling
        a stack error; cannot grow further than that. */
-    lua_assert(stacksize(this) == ERRORSTACKSIZE);
+    lua_assert(getStackSize() == ERRORSTACKSIZE);
     if (raiseerror)
       errorError();  /* stack error inside message handler */
     return 0;  /* if not 'raiseerror', just signal it */
@@ -1230,7 +1230,7 @@ int lua_State::growStack(int n, int raiseerror) {
 }
 
 int lua_State::reallocStack(int newsize, int raiseerror) {
-  int oldsize = stacksize(this);
+  int oldsize = getStackSize();
   int i;
   StkId newstack;
   StkId oldstack = stack.p;
