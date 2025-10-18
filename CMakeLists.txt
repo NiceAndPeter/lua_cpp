@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.20)
 project(Lua
     VERSION 5.5.0
     DESCRIPTION "Lua programming language - C++ implementation"
-    LANGUAGES CXX
+    LANGUAGES C CXX
 )
 
 # C++23 standard
@@ -337,6 +337,83 @@ install(FILES
 # Testing with CTest
 if(LUA_BUILD_TESTS)
     enable_testing()
+
+    # Build test library modules
+    set(TEST_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/testes/libs)
+    set(TEST_LIB_OUTPUT_DIR ${TEST_LIB_DIR})
+
+    # Common compile options for test libraries
+    set(TEST_LIB_COMPILE_OPTIONS -Wall -O2 -fPIC -ULUA_USER_H)
+
+    # lib1.so
+    add_library(lib1 MODULE ${TEST_LIB_DIR}/lib1.c)
+    set_target_properties(lib1 PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${TEST_LIB_OUTPUT_DIR}
+    )
+    target_include_directories(lib1 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary
+    )
+    target_compile_options(lib1 PRIVATE ${TEST_LIB_COMPILE_OPTIONS})
+    set_property(TARGET lib1 PROPERTY COMPILE_DEFINITIONS "")
+
+    # lib11.so
+    add_library(lib11 MODULE ${TEST_LIB_DIR}/lib11.c)
+    set_target_properties(lib11 PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${TEST_LIB_OUTPUT_DIR}
+    )
+    target_include_directories(lib11 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary
+    )
+    target_compile_options(lib11 PRIVATE ${TEST_LIB_COMPILE_OPTIONS})
+    set_property(TARGET lib11 PROPERTY COMPILE_DEFINITIONS "")
+
+    # lib2.so
+    add_library(lib2 MODULE ${TEST_LIB_DIR}/lib2.c)
+    set_target_properties(lib2 PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${TEST_LIB_OUTPUT_DIR}
+    )
+    target_include_directories(lib2 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary
+    )
+    target_compile_options(lib2 PRIVATE ${TEST_LIB_COMPILE_OPTIONS})
+    set_property(TARGET lib2 PROPERTY COMPILE_DEFINITIONS "")
+
+    # lib21.so
+    add_library(lib21 MODULE ${TEST_LIB_DIR}/lib21.c)
+    set_target_properties(lib21 PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${TEST_LIB_OUTPUT_DIR}
+    )
+    target_include_directories(lib21 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary
+    )
+    target_compile_options(lib21 PRIVATE ${TEST_LIB_COMPILE_OPTIONS})
+    set_property(TARGET lib21 PROPERTY COMPILE_DEFINITIONS "")
+
+    # lib2-v2.so (built from lib22.c)
+    add_library(lib2-v2 MODULE ${TEST_LIB_DIR}/lib22.c)
+    set_target_properties(lib2-v2 PROPERTIES
+        PREFIX ""
+        LIBRARY_OUTPUT_DIRECTORY ${TEST_LIB_OUTPUT_DIR}
+    )
+    target_include_directories(lib2-v2 PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/auxiliary
+    )
+    target_compile_options(lib2-v2 PRIVATE ${TEST_LIB_COMPILE_OPTIONS})
+    set_property(TARGET lib2-v2 PROPERTY COMPILE_DEFINITIONS "")
+
+    # Create a custom target to build all test libraries
+    add_custom_target(test_libs ALL
+        DEPENDS lib1 lib11 lib2 lib21 lib2-v2
+    )
 
     add_test(
         NAME LuaTestSuite
