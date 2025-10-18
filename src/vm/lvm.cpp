@@ -35,6 +35,11 @@
 /*
 ** By default, use jump tables in the main interpreter loop on gcc
 ** and compatible compilers.
+**
+** PERFORMANCE NOTE: Jump tables (computed goto) provide faster dispatch
+** in the VM's main interpreter loop compared to a switch statement. GCC
+** and Clang can generate a single indirect jump instead of cascading
+** comparisons, improving instruction cache utilization and branch prediction.
 */
 #if !defined(LUA_USE_JUMPTABLE)
 #if defined(__GNUC__)
@@ -46,7 +51,11 @@
 
 
 
-/* limit for table tag-method chains (to avoid infinite loops) */
+/*
+** Limit for table tag-method (metamethod) chains to prevent infinite loops.
+** When __index or __newindex metamethods redirect to other tables/objects,
+** this limit ensures we don't loop forever if there's a cycle in the chain.
+*/
 #define MAXTAGLOOP	2000
 
 
@@ -287,6 +296,19 @@ static int floatforloop (StkId ra) {
 
 /*
 ** Finish the table access 'val = t[key]' and return the tag of the result.
+**
+** This function is called when the fast path for table access (luaV_fastget)
+** fails to find a value. It handles:
+** 1. Non-table types: looks for __index metamethod
+** 2. Tables without the key: looks for __index metamethod
+** 3. Metamethod chains: follows __index chain until finding a value
+**
+** The loop allows __index to point to another table (or object with __index),
+** creating a chain of metamethod lookups similar to prototype-based inheritance.
+** Example: obj.__index = parent; parent.__index = grandparent
+**
+** PERFORMANCE: This is the slow path. The hot path (direct table access) is
+** handled inline in the VM main loop via luaV_fastget macro.
 */
 lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
                                       StkId val, lu_byte tag) {
@@ -325,11 +347,23 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
 
 /*
 ** Finish a table assignment 't[key] = val'.
+**
+** Called when the fast path for table assignment (luaV_fastset) fails.
+** Handles __newindex metamethods similar to how luaV_finishget handles __index.
+**
 ** About anchoring the table before the call to 'luaH_finishset':
 ** This call may trigger an emergency collection. When loop>0,
 ** the table being accessed is a field in some metatable. If this
 ** metatable is weak and the table is not anchored, this collection
 ** could collect that table while it is being updated.
+**
+** ANCHORING MECHANISM: We temporarily push the table onto the stack to ensure
+** the GC sees it as a live object during the allocation that may happen in
+** luaH_finishset. This is critical for weak tables accessed through metamethod
+** chains, as they might otherwise be collected mid-operation.
+**
+** GC BARRIER: After successful assignment, we call luaC_barrierback to maintain
+** the garbage collector's tri-color invariant (see lgc.cpp for details).
 */
 void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
                       TValue *val, int hres) {
@@ -414,6 +448,15 @@ static int l_strcmp (const TString *ts1, const TString *ts2) {
 ** case is correct for all values, but it is slow due to the conversion
 ** from float to int.)
 ** When 'f' is NaN, comparisons must result in false.
+**
+** DESIGN RATIONALE: Lua supports both integer and float types, requiring
+** careful mixed-type comparisons. Direct float conversion can lose precision
+** for large integers (> 2^53 on typical platforms). Using ceiling/floor
+** functions and integer comparison preserves exact semantics.
+**
+** Example: For a 64-bit integer 2^60, comparing as floats would round it,
+** potentially giving incorrect results. Instead, we compute ceil(f) as an
+** integer and compare in the integer domain where no precision is lost.
 */
 static inline int LTintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
@@ -1079,6 +1122,36 @@ void luaV_finishOp (lua_State *L) {
 ** {==================================================================
 ** Function 'luaV_execute': main interpreter loop
 ** ===================================================================
+**
+** ARCHITECTURE OVERVIEW:
+** This is the heart of the Lua VM - a register-based bytecode interpreter.
+** Unlike stack-based VMs (like the JVM or Python's CPython), Lua uses
+** registers for local variables and intermediate values, reducing stack
+** manipulation overhead.
+**
+** KEY DESIGN DECISIONS:
+** 1. Register-based: Instructions reference register indices (A, B, C fields)
+**    rather than implicitly using a stack. This reduces instruction count
+**    and improves cache locality.
+**
+** 2. Inline dispatch: The main loop uses either computed goto (jump tables)
+**    or a large switch statement to dispatch instructions. Computed goto is
+**    ~10-30% faster on modern CPUs due to better branch prediction.
+**
+** 3. Hot-path optimization: Common operations (table access, arithmetic on
+**    integers) have fast paths inlined directly in the VM loop to avoid
+**    function call overhead.
+**
+** 4. Protect macros: Operations that can raise errors or trigger GC use
+**    Protect() macros to save VM state (pc, top) before the operation.
+**    This enables proper stack unwinding via C++ exceptions.
+**
+** 5. Trap mechanism: The 'trap' variable tracks whether hooks are enabled
+**    or stack reallocation is needed. Checked before each instruction fetch
+**    to handle debugger breakpoints and step-through.
+**
+** PERFORMANCE CRITICAL: This function processes billions of instructions
+** per second. Every cycle counts. Changes here should be benchmarked.
 */
 
 /*
@@ -1086,6 +1159,18 @@ void luaV_finishOp (lua_State *L) {
 */
 
 
+/*
+** Register and constant access macros
+**
+** RA, RB, RC: Convert instruction field to stack index (StkId pointer)
+** vRA, vRB, vRC: Get TValue* from stack index (s2v = stack-to-value)
+** KB, KC: Get constant from constant table using instruction field
+** RKC: Get either register or constant depending on 'k' bit in instruction
+**
+** Example instruction format (iABC):
+**   OP_ADD A B C  means: R(A) := R(B) + R(C)
+**   OP_ADDK A B C means: R(A) := R(B) + K(C)  [if k bit set]
+*/
 #define RA(i)	(base+GETARG_A(i))
 #define vRA(i)	s2v(RA(i))
 #define RB(i)	(base+GETARG_B(i))
@@ -1126,7 +1211,10 @@ void luaV_finishOp (lua_State *L) {
 
 
 /*
-** Correct global 'pc'.
+** Correct global 'pc' (program counter).
+** The local 'pc' variable is kept in a register for performance. Before any
+** operation that might throw an exception, we must save it to the CallInfo
+** so stack unwinding can report the correct error location.
 */
 #define savepc(ci)	ci->setSavedPC(pc)
 
@@ -1134,6 +1222,13 @@ void luaV_finishOp (lua_State *L) {
 /*
 ** Whenever code can raise errors, the global 'pc' and the global
 ** 'top' must be correct to report occasional errors.
+**
+** EXCEPTION HANDLING: This implementation uses C++ exceptions instead of
+** setjmp/longjmp. When an error is thrown, the exception handler needs
+** accurate pc and top values to:
+** 1. Report the correct line number in error messages
+** 2. Properly unwind the stack to the correct depth
+** 3. Close any to-be-closed variables at the right stack level
 */
 #define savestate(L,ci)		(savepc(ci), L->getTop().p = ci->topRef().p)
 
@@ -1141,6 +1236,18 @@ void luaV_finishOp (lua_State *L) {
 /*
 ** Protect code that, in general, can raise errors, reallocate the
 ** stack, and change the hooks.
+**
+** Usage pattern: Protect(operation_that_might_error());
+**
+** This macro:
+** 1. Saves VM state (pc and top) before the operation
+** 2. Executes the operation (which may throw or trigger GC)
+** 3. Updates trap after operation (in case GC changed hook state or resized stack)
+**
+** CRITICAL for operations like:
+** - Metamethod calls (can throw Lua errors)
+** - Table operations that allocate (can trigger GC, which can call __gc, which can throw)
+** - String operations (can allocate and trigger GC)
 */
 #define Protect(exp)  (savestate(L,ci), (exp), updatetrap(ci))
 
@@ -1150,6 +1257,9 @@ void luaV_finishOp (lua_State *L) {
 /*
 ** Protect code that can only raise errors. (That is, it cannot change
 ** the stack or hooks.)
+**
+** Lighter-weight than Protect() - doesn't need to update trap since
+** the operation cannot trigger GC or change hooks.
 */
 #define halfProtect(exp)  (savestate(L,ci), (exp))
 
@@ -1161,14 +1271,47 @@ void luaV_finishOp (lua_State *L) {
 #define luai_threadyield(L)	{lua_unlock(L); lua_lock(L);}
 #endif
 
-/* 'c' is the limit of live values in the stack */
+/*
+** Check if garbage collection is needed and yield thread if necessary.
+**
+** 'c' is the limit of live values in the stack (typically L->top or ci->top)
+**
+** PERFORMANCE vs CORRECTNESS: GC is expensive, so we only check conditionally
+** (luaC_condGC) rather than forcing collection. The GC uses a debt-based system
+** to determine when collection is needed.
+**
+** The macro saves state before GC (because GC can trigger __gc metamethods that
+** might throw errors), then updates trap after (because GC might have changed hooks).
+**
+** luai_threadyield allows the OS to schedule other threads. Without it, tight
+** loops could starve other threads on single-core systems.
+*/
 #define checkGC(L,c)  \
 	{ luaC_condGC(L, (savepc(ci), L->getTop().p = (c)), \
                          updatetrap(ci)); \
            luai_threadyield(L); }
 
 
-/* fetch an instruction and prepare its execution */
+/*
+** Fetch an instruction and prepare its execution.
+**
+** This is called at the top of each iteration of the main VM loop.
+**
+** TRAP MECHANISM: If trap is set (non-zero), we need to handle:
+** - Debug hooks (line hooks, call hooks, return hooks)
+** - Stack reallocation (if another coroutine resized the stack)
+**
+** The 'l_unlikely' hint tells the compiler this branch is rarely taken,
+** allowing better code layout (hot path stays in instruction cache).
+**
+** PERFORMANCE: In the common case (no trap), this compiles to just:
+**   test trap, trap
+**   jnz slow_path
+**   mov i, [pc]
+**   inc pc
+**
+** This is executed billions of times, so every instruction matters.
+*/
 #define vmfetch()	{ \
   if (l_unlikely(trap)) {  /* stack reallocation or hooks? */ \
     trap = luaG_traceexec(L, pc);  /* handle hooks */ \
@@ -1182,6 +1325,30 @@ void luaV_finishOp (lua_State *L) {
 #define vmbreak		break
 
 
+/*
+** Execute a Lua function (LClosure) starting at the given CallInfo.
+**
+** PARAMETERS:
+** - L: Lua state (contains stack, current CI, and global state)
+** - ci: CallInfo for the function being executed
+**
+** LOCAL VARIABLES (kept in registers for performance):
+** - cl: Current LClosure (Lua function) being executed
+** - k: Constant table for current function (cl->proto->k)
+** - base: Base of current stack frame (points to function's first register)
+** - pc: Program counter (points to next instruction to execute)
+** - trap: Cached copy of hook mask (0 if no hooks, non-zero if hooks enabled)
+**
+** EXECUTION FLOW:
+** startfunc: Initialize for a new function call
+** returning: Return from a nested call, continue in current function
+** ret: Common return point for all return opcodes
+**
+** The function continues executing until:
+** 1. A return instruction is executed and ci has CIST_FRESH flag (new C frame)
+** 2. An error is thrown (C++ exception)
+** 3. The function yields (coroutine suspend)
+*/
 void luaV_execute (lua_State *L, CallInfo *ci) {
   LClosure *cl;
   TValue *k;

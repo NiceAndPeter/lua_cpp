@@ -15,17 +15,43 @@
 #include "lstate.h"
 
 /*
+** TRI-COLOR MARKING INVARIANT
+**
 ** Collectable objects may have one of three colors: white, which means
 ** the object is not marked; gray, which means the object is marked, but
 ** its references may be not marked; and black, which means that the
-** object and all its references are marked.  The main invariant of the
-** garbage collector, while marking objects, is that a black object can
-** never point to a white one. Moreover, any gray object must be in a
-** "gray list" (gray, grayagain, weak, allweak, ephemeron) so that it
-** can be visited again before finishing the collection cycle. (Open
-** upvalues are an exception to this rule, as they are attached to
-** a corresponding thread.)  These lists have no meaning when the
-** invariant is not being enforced (e.g., sweep phase).
+** object and all its references are marked.
+**
+** The main invariant of the garbage collector, while marking objects, is that
+** a black object can never point to a white one. Moreover, any gray object must
+** be in a "gray list" (gray, grayagain, weak, allweak, ephemeron) so that it
+** can be visited again before finishing the collection cycle. (Open upvalues are
+** an exception to this rule, as they are attached to a corresponding thread.)
+** These lists have no meaning when the invariant is not being enforced (e.g., sweep phase).
+**
+** INVARIANT ENFORCEMENT:
+** When the program modifies a black object to point to a white object during marking,
+** we must restore the invariant using a write barrier. Two strategies:
+**
+** 1. Forward barrier (barrier-forward): Mark the white object gray
+**    - Used when the white object is likely to survive (e.g., table keys)
+**    - Prevents marking the same object multiple times
+**
+** 2. Backward barrier (barrier-back): Mark the black object gray again
+**    - Used when the black object is likely to be modified again (e.g., table values)
+**    - Avoids marking many objects when writing to frequently-modified tables
+**
+** INCREMENTAL COLLECTION:
+** The tri-color scheme allows the GC to run incrementally. Each GC "step" processes
+** some gray objects (marking their children). The program can run between steps.
+** Write barriers ensure correctness even though the program modifies objects during GC.
+**
+** PHASES:
+** - Propagate: Process gray list, marking reachable objects
+** - Atomic: Final marking pass (runs without interruption)
+** - Sweep: Free white objects (those that stayed white are unreachable)
+**
+** See lgc.cpp for detailed implementation of the marking algorithm.
 */
 
 

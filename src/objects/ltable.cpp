@@ -12,15 +12,40 @@
 
 /*
 ** Implementation of tables (aka arrays, objects, or hash tables).
-** Tables keep its elements in two parts: an array part and a hash part.
+**
+** DUAL-REPRESENTATION OPTIMIZATION:
+** Tables keep elements in two parts: an array part and a hash part.
+** - Array part: Dense storage for integer keys [1..n]
+** - Hash part: Hash table for all other keys (strings, floats, negative ints, etc.)
+**
 ** Non-negative integer keys are all candidates to be kept in the array
 ** part. The actual size of the array is the largest 'n' such that
 ** more than half the slots between 1 and n are in use.
+**
+** RATIONALE: Lua tables are used both as arrays and dictionaries. The dual
+** representation provides O(1) access for both use cases:
+** - Array-like tables: t[1], t[2], t[3]... use direct array indexing
+** - Dictionary-like tables: t["key"], t[obj]... use hash table lookup
+** - Mixed tables: Both parts are used simultaneously
+**
+** HASH COLLISION RESOLUTION:
 ** Hash uses a mix of chained scatter table with Brent's variation.
 ** A main invariant of these tables is that, if an element is not
 ** in its main position (i.e. the 'original' position that its hash gives
 ** to it), then the colliding element is in its own main position.
 ** Hence even when the load factor reaches 100%, performance remains good.
+**
+** COLLISION ALGORITHM (Brent's variation):
+** When inserting key K that collides with existing key C:
+** 1. If C is in its main position: move K to next free slot, chain via 'next'
+** 2. If C is NOT in its main position: move C to free slot, put K in C's place
+** This minimizes chain lengths by preferring to displace colliding keys
+** rather than the new key.
+**
+** PERFORMANCE:
+** - Array access: O(1) with no hashing overhead
+** - Hash access: O(1) average, good cache locality due to Brent's variation
+** - Resize: Amortized O(1) per insertion over many operations
 */
 
 #include <math.h>
@@ -713,6 +738,34 @@ static void clearNewSlice (Table *t, unsigned oldasize, unsigned newasize) {
 ** the old one ('oldasize'), this function will do nothing with that
 ** part.
 */
+/*
+** Resize a table to the given array and hash sizes.
+**
+** PARAMETERS:
+** - newasize: New size for the array part
+** - nhsize: New size for the hash part (number of hash nodes)
+**
+** ALGORITHM:
+** 1. Allocate new hash part (into temporary 'newt')
+** 2. If array is shrinking, move displaced elements to new hash
+** 3. Allocate new array part
+** 4. Swap hash parts (t gets new hash, newt gets old hash)
+** 5. Re-insert all elements from old hash into new structure
+** 6. Free old hash part
+**
+** COMPLEXITY:
+** O(n) where n is the total number of elements. Every element may need
+** to be re-hashed or moved between array and hash parts.
+**
+** EXCEPTION SAFETY:
+** If allocation fails, the table remains in its original state (no partial update).
+** The temporary 'newt' structure allows us to prepare the new parts before
+** committing to the change.
+**
+** PHASE 30 ENCAPSULATION:
+** This function now uses Table accessor methods (setArray, setArraySize, etc.)
+** instead of direct field access, following the encapsulation modernization.
+*/
 void luaH_resize (lua_State *L, Table *t, unsigned newasize,
                                           unsigned nhsize) {
   Table newt;  /* to keep the new hash part */
@@ -758,6 +811,32 @@ void luaH_resizearray (lua_State *L, Table *t, unsigned int nasize) {
 ** Rehash a table. First, count its keys. If there are array indices
 ** outside the array part, compute the new best size for that part.
 ** Then, resize the table.
+**
+** PARAMETERS:
+** - ek: Extra key being inserted (triggers the rehash)
+**
+** ALGORITHM:
+** 1. Count all existing keys by logarithmic buckets (powers of 2)
+** 2. Determine optimal array size using ">50% full" heuristic
+** 3. Compute hash size as (total keys - array keys)
+** 4. Add 25% padding if table has had deletions (to avoid thrashing)
+** 5. Call luaH_resize with computed sizes
+**
+** ARRAY SIZE OPTIMIZATION:
+** The array part size is chosen to be the largest power of 2 such that
+** more than 50% of slots in range [1..n] are occupied. This balances:
+** - Memory usage: Don't waste space on mostly-empty arrays
+** - Access speed: Keep frequently used integer indices in O(1) array part
+**
+** Example: keys {1,2,3,10,11,12}
+** - Size 16: only 6/16 = 37.5% full → too sparse
+** - Size 8: only 6/8 = 75% full → chosen (>50%)
+** - Size 4: only 3/4 = 75% full, but doesn't fit all keys
+**
+** DELETION PADDING:
+** If the table has undergone deletions, we add 25% extra hash capacity.
+** This prevents resize thrashing in insert-delete-insert patterns.
+** Trade-off: Uses more memory to avoid repeated O(n) rehashing.
 */
 static void rehash (lua_State *L, Table *t, const TValue *ek) {
   unsigned asize;  /* optimal size for array part */

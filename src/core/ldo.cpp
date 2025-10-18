@@ -59,7 +59,7 @@
 /*
 ** Phase 31: Pure C++ exception handling
 **
-** Replaced C-style setjmp/longjmp with proper C++ exceptions:
+** MODERNIZATION: Replaced C-style setjmp/longjmp with proper C++ exceptions:
 ** - Removed jmp_buf from lua_longjmp struct
 ** - Removed LUAI_THROW/LUAI_TRY macros
 ** - Removed conditional compilation for POSIX/ISO C variants
@@ -70,6 +70,16 @@
 **
 ** Benefits: Cleaner code, no C legacy, idiomatic C++
 ** Performance: ~2.23s (same as before)
+**
+** DESIGN RATIONALE:
+** C++ exceptions provide several advantages over setjmp/longjmp:
+** 1. Automatic destructors: Stack unwinding calls destructors for C++ objects
+** 2. Type safety: Can catch different exception types differently
+** 3. Better compiler optimizations: Compilers can optimize normal (non-exception) paths
+** 4. No need to save/restore register state manually
+**
+** The LuaException class encapsulates the error status and handler chain pointer.
+** This maintains compatibility with Lua's error handling model while using modern C++.
 */
 class LuaException {
 private:
@@ -105,7 +115,30 @@ void lua_State::setErrorObj(TStatus errcode, StkId oldtop) {
 }
 
 
-// Use C++ exceptions instead of longjmp
+/*
+** Throw a Lua error with the given error code.
+**
+** EXCEPTION PROPAGATION STRATEGY:
+** 1. If current thread has an error handler (errorJmp), throw LuaException
+** 2. If no handler in current thread, try to propagate to main thread
+** 3. If main thread has no handler, call panic function and abort
+**
+** ERROR CODES:
+** - LUA_ERRRUN: Runtime error (e.g., type error, nil indexing)
+** - LUA_ERRMEM: Memory allocation failure
+** - LUA_ERRERR: Error in error handler (recursive error)
+** - LUA_ERRSYNTAX: Syntax error during compilation
+**
+** COROUTINE HANDLING:
+** When a coroutine errors without a protected call in its own stack,
+** we propagate the error to the main thread. This prevents coroutine
+** errors from silently terminating the coroutine without notification.
+**
+** PANIC FUNCTION:
+** The panic function is the last chance for the application to handle
+** the error before abort(). It can longjmp out or exit gracefully.
+** This is set via lua_atpanic() in the C API.
+*/
 l_noret lua_State::doThrow(TStatus errcode) {
   if (getErrorJmp()) {  /* thread has an error handler? */
     getErrorJmp()->status = errcode;  /* set status */
@@ -142,7 +175,38 @@ l_noret lua_State::throwBaseLevel(TStatus errcode) {
 }
 
 
-// Use C++ try-catch instead of longjmp
+/*
+** Execute a function in protected mode using C++ exception handling.
+**
+** PARAMETERS:
+** - f: Function pointer to execute (Pfunc = void (*)(lua_State*, void*))
+** - ud: User data to pass to the function
+**
+** RETURN VALUE:
+** - LUA_OK (0) if function executed successfully
+** - Error code (LUA_ERRRUN, LUA_ERRMEM, etc.) if an error was thrown
+**
+** MECHANISM:
+** 1. Set up a new error handler (lua_longjmp) in a chain
+** 2. Execute function f() inside a try block
+** 3. Catch LuaException and extract error code
+** 4. Restore previous error handler from chain
+** 5. Return status code to caller
+**
+** ERROR HANDLER CHAIN:
+** The chain allows nested protected calls. Each pcall/xpcall creates
+** a new handler. When an error is thrown, it propagates up the chain
+** until caught by the appropriate handler.
+**
+** Example call stack:
+**   lua_pcall() -> rawRunProtected() -> f() -> error() -> doThrow()
+**   doThrow() throws LuaException -> caught here -> returns error status
+**
+** ENCAPSULATION NOTE:
+** This is now a lua_State method rather than a free function, following
+** the C++ modernization (Phase 31). All state manipulation uses accessor
+** methods (getNCcalls, setErrorJmp, etc.) rather than direct field access.
+*/
 TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
   l_uint32 oldnCcalls = getNCcalls();
   lua_longjmp lj;
@@ -174,6 +238,24 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
 ** {==================================================================
 ** Stack reallocation
 ** ===================================================================
+**
+** DYNAMIC STACK:
+** Lua's stack grows dynamically as needed. Unlike fixed-size stacks,
+** this allows deep recursion when necessary while conserving memory
+** for simple scripts.
+**
+** POINTER INVALIDATION:
+** When the stack is reallocated, ALL pointers into the stack become
+** invalid. We must either:
+** 1. Convert all pointers to offsets before reallocation (LUAI_STRICT_ADDRESS=1)
+** 2. Adjust all pointers by the difference between old and new stack (LUAI_STRICT_ADDRESS=0)
+**
+** The strict mode (option 1) is slower but more correct according to ISO C.
+** The non-strict mode (option 2) works on all real platforms but is technically UB.
+**
+** TRAP SIGNAL:
+** After stack reallocation, we set the 'trap' flag in all Lua call frames.
+** This signals the VM to update its cached 'base' pointer on the next instruction.
 */
 
 /* some stack space for error handling */

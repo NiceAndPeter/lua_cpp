@@ -40,6 +40,33 @@
 #define CWUFIN	10
 
 
+/*
+** TRI-COLOR MARKING ALGORITHM:
+**
+** Lua uses a tri-color incremental mark-and-sweep garbage collector.
+** Each object has one of three colors stored in its 'marked' field:
+**
+** WHITE: Not yet visited in this GC cycle (candidates for collection)
+**   - Two white shades alternate between GC cycles to handle new allocations
+**   - Objects allocated during marking use the "other" white shade
+**   - At sweep time, only the "old" white shade is collected
+**
+** GRAY: Visited but not yet processed (in the work queue)
+**   - Object is reachable but its children haven't been marked yet
+**   - Stored in various gray lists (gray, grayagain, etc.)
+**   - Ensures incremental progress: each work unit processes some gray objects
+**
+** BLACK: Visited and fully processed (definitely reachable)
+**   - Object and all its children have been marked
+**   - Collector invariant: no black object points to white object
+**   - Barrier operations (write barriers) maintain this invariant
+**
+** INCREMENTAL COLLECTION:
+** Instead of stopping the world, Lua interleaves GC work with program execution.
+** The tri-color scheme ensures we never collect reachable objects even though
+** the program modifies the object graph during collection.
+*/
+
 /* mask with all color bits */
 #define maskcolors	(bitmask(BLACKBIT) | WHITEBITS)
 
@@ -47,17 +74,28 @@
 #define maskgcbits      (maskcolors | AGEBITS)
 
 
-/* macro to erase all color bits then set only the current white bit */
+/*
+** Make an object white (candidate for collection).
+** Erases color bits and sets the current white bit (which alternates each cycle).
+*/
 inline void makewhite(global_State* g, GCObject* x) noexcept {
   x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | luaC_white(g)));
 }
 
-/* make an object gray (neither white nor black) */
+/*
+** Make an object gray (in work queue).
+** Clears all color bits, resulting in gray (neither white nor black).
+** Gray objects are linked into gray lists for incremental processing.
+*/
 inline void set2gray(GCObject* x) noexcept {
   resetbits(x->getMarkedRef(), maskcolors);
 }
 
-/* make an object black (coming from any color) */
+/*
+** Make an object black (fully processed).
+** Sets black bit and clears white bits. Black objects have no more work to do
+** in this GC cycle unless the program creates new references to white objects.
+*/
 inline void set2black(GCObject* x) noexcept {
   x->setMarked(cast_byte((x->getMarked() & ~WHITEBITS) | bitmask(BLACKBIT)));
 }
@@ -893,6 +931,32 @@ static void freeobj (lua_State *L, GCObject *o) {
 ** for next collection cycle. Return where to continue the traversal or
 ** NULL if list is finished.
 */
+/*
+** Sweep a linked list of GC objects, freeing dead objects.
+**
+** PARAMETERS:
+** - p: Pointer to the head of the linked list (indirection allows list modification)
+** - countin: Maximum number of objects to process (for incremental sweeping)
+**
+** RETURN:
+** - NULL if list is fully swept
+** - Pointer to next position to continue sweeping (for incremental work)
+**
+** TWO-WHITE SCHEME:
+** Lua uses two white colors that alternate each GC cycle. During marking,
+** new objects are allocated with the "other" white (currentwhite XOR 1).
+** During sweeping, we only collect objects with the "old" white (otherwhite).
+** This prevents collecting newly allocated objects before they can be marked.
+**
+** SWEEP PROCESS:
+** 1. Check if object is dead (has the old white color)
+** 2. If dead: remove from list and free memory
+** 3. If alive: reset to current white and mark age as G_NEW
+**
+** INCREMENTAL SWEEPING:
+** The countin parameter limits work per step. This allows sweeping to be
+** interleaved with program execution, preventing long pauses.
+*/
 static GCObject **sweeplist (lua_State *L, GCObject **p, l_mem countin) {
   global_State *g = G(L);
   lu_byte ow = otherwhite(g);
@@ -969,6 +1033,35 @@ static void dothecall (lua_State *L, void *ud) {
 }
 
 
+/*
+** Execute a single finalizer (__gc metamethod).
+**
+** FINALIZATION PROCESS:
+** 1. Get next object from tobefnz list (objects pending finalization)
+** 2. Look up its __gc metamethod
+** 3. Call the metamethod in protected mode
+** 4. Handle any errors by issuing a warning
+**
+** CRITICAL INVARIANTS DURING FINALIZATION:
+** - Disable GC during __gc execution (GCSTPGC flag)
+**   Rationale: __gc can allocate, but we can't collect during finalization
+**   because it could trigger nested finalizers, leading to reentrancy issues
+**
+** - Disable debug hooks (setAllowHook(0))
+**   Rationale: Debug hooks during __gc could interfere with finalization
+**
+** - Mark call frame with CIST_FIN flag
+**   Rationale: Allows error handling to know we're in a finalizer
+**
+** ERROR HANDLING:
+** Errors in __gc are non-fatal. We issue a warning but continue execution.
+** This prevents a badly written __gc from crashing the entire program.
+**
+** RESURRECTION:
+** If __gc stores the object in a global variable or other reachable location,
+** the object is "resurrected" and won't be collected. It will be finalized
+** again in the next GC cycle if it becomes unreachable again.
+*/
 static void GCTM (lua_State *L) {
   global_State *g = G(L);
   const TValue *tm;

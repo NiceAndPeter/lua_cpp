@@ -252,11 +252,41 @@ public:
 };
 
 /*
-** CRTP Base class for all GC-managed objects
-** Provides common GC fields and operations without vtable overhead
+** CRTP (Curiously Recurring Template Pattern) Base class for all GC-managed objects
 **
+** DESIGN PATTERN:
+** CRTP is a C++ idiom where a class X derives from a template base class using X itself
+** as a template parameter: class X : public Base<X>
+**
+** Benefits compared to traditional polymorphism (virtual functions):
+** 1. Zero runtime overhead - no vtable pointer, no virtual function indirection
+** 2. Compile-time polymorphism - compiler can inline all method calls
+** 3. Type safety - each derived class gets its own type-specific methods
+** 4. Same memory layout as plain C struct - maintains C API compatibility
+**
+** Usage in Lua's GC system:
+** - Table : public GCBase<Table>
+** - TString : public GCBase<TString>
+** - Proto : public GCBase<Proto>
+** - LClosure : public GCBase<LClosure>
+** - CClosure : public GCBase<CClosure>
+** - UpVal : public GCBase<UpVal>
+** - Udata : public GCBase<Udata>
+** - lua_State : public GCBase<lua_State>  (thread object)
+**
+** CRITICAL INVARIANT:
 ** Memory layout MUST match GCObject exactly:
 **   GCObject *next; lu_byte tt; lu_byte marked
+**
+** This allows safe casting between GCObject* and Derived* without pointer adjustment.
+** The static_assert in each derived class verifies this invariant at compile time.
+**
+** PERFORMANCE:
+** This design eliminated the vtable overhead from the original Lua C implementation
+** while gaining C++ type safety and encapsulation. All color-checking methods
+** (isWhite, isBlack, isGray) compile to simple bit tests with no function call overhead.
+**
+** See claude.md for detailed discussion of this architectural decision.
 */
 template<typename Derived>
 class GCBase: public GCObject {
