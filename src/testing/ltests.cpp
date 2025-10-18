@@ -18,6 +18,14 @@
 
 #include "lua.h"
 
+/* When assertions are disabled, many check functions have unused parameters/variables */
+#ifndef LUAI_ASSERT
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 #include "lapi.h"
 #include "lauxlib.h"
 #include "lcode.h"
@@ -379,7 +387,11 @@ static int testobjref (global_State *g, GCObject *f, GCObject *t) {
 
 
 static void checkobjref (global_State *g, GCObject *f, GCObject *t) {
+#ifdef LUAI_ASSERT
     assert(testobjref(g, f, t));
+#else
+    UNUSED(g); UNUSED(f); UNUSED(t);
+#endif
 }
 
 

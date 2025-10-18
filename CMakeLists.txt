@@ -15,6 +15,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Build options
 option(LUA_BUILD_TESTS "Build with test mode enabled" ON)
+option(LUA_ENABLE_ASSERTIONS "Enable runtime assertions (for debugging)" ON)
 option(LUA_ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(LUA_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
 option(LUA_ENABLE_LTO "Enable Link Time Optimization" OFF)
@@ -61,8 +62,16 @@ set(OPTIMIZE_FLAGS
 if(LUA_BUILD_TESTS)
     add_compile_definitions(
         LUA_USER_H="ltests.h"
-        LUAI_ASSERT
     )
+    # If assertions are disabled, tell ltests.h not to enable them
+    if(NOT LUA_ENABLE_ASSERTIONS)
+        add_compile_definitions(LUA_TESTS_NO_ASSERT)
+    endif()
+endif()
+
+# Assertion control (independent of test mode, for non-test builds)
+if(LUA_ENABLE_ASSERTIONS AND NOT LUA_BUILD_TESTS)
+    add_compile_definitions(LUAI_ASSERT)
 endif()
 
 # Platform definitions
@@ -347,6 +356,7 @@ message(STATUS "Lua ${PROJECT_VERSION} Configuration Summary:")
 message(STATUS "  C++ Standard: C++${CMAKE_CXX_STANDARD}")
 message(STATUS "  Build Type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "  Test Mode: ${LUA_BUILD_TESTS}")
+message(STATUS "  Assertions: ${LUA_ENABLE_ASSERTIONS}")
 message(STATUS "  Build Shared Library: ${LUA_BUILD_SHARED}")
 message(STATUS "  AddressSanitizer: ${LUA_ENABLE_ASAN}")
 message(STATUS "  UBSanitizer: ${LUA_ENABLE_UBSAN}")

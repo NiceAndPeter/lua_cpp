@@ -19,9 +19,11 @@
 #define LUA_DEBUG
 
 
-/* turn on assertions */
+/* turn on assertions (unless explicitly disabled via LUA_TESTS_NO_ASSERT) */
+#ifndef LUA_TESTS_NO_ASSERT
 #ifndef LUAI_ASSERT
 #define LUAI_ASSERT
+#endif
 #endif
 
 
