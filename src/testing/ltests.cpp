@@ -306,7 +306,7 @@ static int testobjref1 (global_State *g, GCObject *f, GCObject *t) {
   if (isdead(g,t)) return 0;
   if (issweepphase(g))
     return 1;  /* no invariants */
-  else if (g->getGCKind() != KGC_GENMINOR)
+  else if (g->getGCKind() != GCKind::GenerationalMinor)
     return !(isblack(f) && iswhite(t));  /* basic incremental invariant */
   else {  /* generational mode */
     if ((getage(f) == G_OLD && isblack(f)) && !isold(t))
@@ -376,7 +376,7 @@ void lua_printvalue (TValue *v) {
 static int testobjref (global_State *g, GCObject *f, GCObject *t) {
   int r1 = testobjref1(g, f, t);
   if (!r1) {
-    printf("%d(%02X) - ", g->getGCState(), g->getCurrentWhite());
+    printf("%d(%02X) - ", static_cast<int>(g->getGCState()), g->getCurrentWhite());
     printobj(g, f);
     printf("  ->  ");
     printobj(g, t);
@@ -571,8 +571,8 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
   if (isdead(g, o))
     assert(maybedead);
   else {
-    assert(g->getGCState() != GCSpause || iswhite(o));
-    if (g->getGCKind() == KGC_GENMINOR) {  /* generational mode? */
+    assert(g->getGCState() != GCState::Pause || iswhite(o));
+    if (g->getGCKind() == GCKind::GenerationalMinor) {  /* generational mode? */
       assert(getage(o) >= listage);
       if (isold(o)) {
         assert(!iswhite(o));
@@ -700,7 +700,7 @@ int lua_checkmemory (lua_State *L) {
   }
 
   /* check 'allgc' list */
-  maybedead = (GCSatomic < g->getGCState() && g->getGCState() <= GCSswpallgc);
+  maybedead = (GCState::Atomic < g->getGCState() && g->getGCState() <= GCState::SweepAllGC);
   totalshould = checklist(g, maybedead, 0, g->getAllGC(),
                              g->getSurvival(), g->getOld1(), g->getReallyOld());
 
@@ -1036,23 +1036,23 @@ static const char *const statenames[] = {
 
 static int gc_state (lua_State *L) {
   static const int states[] = {
-    GCSpropagate, GCSenteratomic, GCSatomic, GCSswpallgc, GCSswpfinobj,
-    GCSswptobefnz, GCSswpend, GCScallfin, GCSpause, -1};
+    static_cast<int>(GCState::Propagate), static_cast<int>(GCState::EnterAtomic), static_cast<int>(GCState::Atomic), static_cast<int>(GCState::SweepAllGC), static_cast<int>(GCState::SweepFinObj),
+    static_cast<int>(GCState::SweepToBeFnz), static_cast<int>(GCState::SweepEnd), static_cast<int>(GCState::CallFin), static_cast<int>(GCState::Pause), -1};
   int option = states[luaL_checkoption(L, 1, "", statenames)];
   global_State *g = G(L);
   if (option == -1) {
-    lua_pushstring(L, statenames[g->getGCState()]);
+    lua_pushstring(L, statenames[static_cast<int>(g->getGCState())]);
     return 1;
   }
   else {
-    if (g->getGCKind() != KGC_INC)
+    if (g->getGCKind() != GCKind::Incremental)
       luaL_error(L, "cannot change states in generational mode");
     lua_lock(L);
-    if (option < g->getGCState()) {  /* must cross 'pause'? */
-      luaC_runtilstate(L, GCSpause, 1);  /* run until pause */
+    if (option < static_cast<int>(g->getGCState())) {  /* must cross 'pause'? */
+      luaC_runtilstate(L, GCState::Pause, 1);  /* run until pause */
     }
-    luaC_runtilstate(L, option, 0);  /* do not skip propagation state */
-    lua_assert(g->getGCState() == option);
+    luaC_runtilstate(L, static_cast<GCState>(option), 0);  /* do not skip propagation state */
+    lua_assert(static_cast<int>(g->getGCState()) == option);
     lua_unlock(L);
     return 0;
   }
@@ -1162,10 +1162,10 @@ static int table_query (lua_State *L) {
 
 static int gc_query (lua_State *L) {
   global_State *g = G(L);
-  lua_pushstring(L, g->getGCKind() == KGC_INC ? "inc"
-                  : g->getGCKind() == KGC_GENMAJOR ? "genmajor"
+  lua_pushstring(L, g->getGCKind() == GCKind::Incremental ? "inc"
+                  : g->getGCKind() == GCKind::GenerationalMajor ? "genmajor"
                   : "genminor");
-  lua_pushstring(L, statenames[g->getGCState()]);
+  lua_pushstring(L, statenames[static_cast<int>(g->getGCState())]);
   lua_pushinteger(L, cast_st2S(g->getTotalBytes()));
   lua_pushinteger(L, cast_st2S(g->getGCDebt()));
   lua_pushinteger(L, cast_st2S(g->getGCMarked()));

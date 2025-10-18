@@ -1207,7 +1207,7 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
         n = g->getGCDebt();  /* force to run one basic step */
       luaE_setdebt(g, g->getGCDebt() - n);
       luaC_condGC(L, (void)0, work = 1);
-      if (work && g->getGCState() == GCSpause)  /* end of cycle? */
+      if (work && g->getGCState() == GCState::Pause)  /* end of cycle? */
         res = 1;  /* signal it */
       g->setGCStp(oldstp);  /* restore previous state */
       break;
@@ -1217,13 +1217,13 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       break;
     }
     case LUA_GCGEN: {
-      res = (g->getGCKind() == KGC_INC) ? LUA_GCINC : LUA_GCGEN;
-      luaC_changemode(L, KGC_GENMINOR);
+      res = (g->getGCKind() == GCKind::Incremental) ? LUA_GCINC : LUA_GCGEN;
+      luaC_changemode(L, GCKind::GenerationalMinor);
       break;
     }
     case LUA_GCINC: {
-      res = (g->getGCKind() == KGC_INC) ? LUA_GCINC : LUA_GCGEN;
-      luaC_changemode(L, KGC_INC);
+      res = (g->getGCKind() == GCKind::Incremental) ? LUA_GCINC : LUA_GCGEN;
+      luaC_changemode(L, GCKind::Incremental);
       break;
     }
     case LUA_GCPARAM: {

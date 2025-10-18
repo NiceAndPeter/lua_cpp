@@ -368,8 +368,8 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   g->getStringTable()->setHash(NULL);
   setnilvalue(g->getRegistry());
   g->setPanic(NULL);
-  g->setGCState(GCSpause);
-  g->setGCKind(KGC_INC);
+  g->setGCState(GCState::Pause);
+  g->setGCKind(GCKind::Incremental);
   g->setGCStopEm(0);
   g->setGCEmergency(0);
   g->setFinObj(NULL); g->setToBeFnz(NULL); g->setFixedGC(NULL);

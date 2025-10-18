@@ -148,10 +148,29 @@ struct lua_longjmp;
 #define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
 
 
-/* kinds of Garbage Collection */
-#define KGC_INC		0	/* incremental gc */
-#define KGC_GENMINOR	1	/* generational gc in minor (regular) mode */
-#define KGC_GENMAJOR	2	/* generational in major mode */
+/*
+** Possible states of the Garbage Collector
+*/
+enum class GCState : lu_byte {
+	Propagate    = 0,
+	EnterAtomic  = 1,
+	Atomic       = 2,
+	SweepAllGC   = 3,
+	SweepFinObj  = 4,
+	SweepToBeFnz = 5,
+	SweepEnd     = 6,
+	CallFin      = 7,
+	Pause        = 8
+};
+
+/*
+** Kinds of Garbage Collection
+*/
+enum class GCKind : lu_byte {
+	Incremental       = 0,  /* incremental gc */
+	GenerationalMinor = 1,  /* generational gc in minor (regular) mode */
+	GenerationalMajor = 2   /* generational in major mode */
+};
 
 
 class stringtable {
@@ -700,12 +719,12 @@ public:
   void setCurrentWhite(lu_byte cw) noexcept { currentwhite = cw; }
   lu_byte getWhite() const noexcept;  // Defined in lgc.h (needs WHITEBITS)
 
-  lu_byte getGCState() const noexcept { return gcstate; }
-  void setGCState(lu_byte state) noexcept { gcstate = state; }
-  bool keepInvariant() const noexcept;  // Defined in lgc.h (needs GCSatomic)
+  GCState getGCState() const noexcept { return static_cast<GCState>(gcstate); }
+  void setGCState(GCState state) noexcept { gcstate = static_cast<lu_byte>(state); }
+  bool keepInvariant() const noexcept;  // Defined in lgc.h (needs GCState::Atomic)
 
-  lu_byte getGCKind() const noexcept { return gckind; }
-  void setGCKind(lu_byte kind) noexcept { gckind = kind; }
+  GCKind getGCKind() const noexcept { return static_cast<GCKind>(gckind); }
+  void setGCKind(GCKind kind) noexcept { gckind = static_cast<lu_byte>(kind); }
 
   lu_byte getGCStopEm() const noexcept { return gcstopem; }
   void setGCStopEm(lu_byte stop) noexcept { gcstopem = stop; }

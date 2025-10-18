@@ -55,22 +55,8 @@
 */
 
 
-/*
-** Possible states of the Garbage Collector
-*/
-#define GCSpropagate	0
-#define GCSenteratomic	1
-#define GCSatomic	2
-#define GCSswpallgc	3
-#define GCSswpfinobj	4
-#define GCSswptobefnz	5
-#define GCSswpend	6
-#define GCScallfin	7
-#define GCSpause	8
-
-
 #define issweepphase(g)  \
-	(GCSswpallgc <= (g)->getGCState() && (g)->getGCState() <= GCSswpend)
+	(GCState::SweepAllGC <= (g)->getGCState() && (g)->getGCState() <= GCState::SweepEnd)
 
 
 /*
@@ -82,7 +68,7 @@
 */
 
 inline bool global_State::keepInvariant() const noexcept {
-	return gcstate <= GCSatomic;
+	return gcstate <= static_cast<lu_byte>(GCState::Atomic);
 }
 
 
@@ -382,7 +368,7 @@ inline lu_byte global_State::getWhite() const noexcept {
 /* Use GCObject::fix() method instead of luaC_fix */
 LUAI_FUNC void luaC_freeallobjects (lua_State *L);
 LUAI_FUNC void luaC_step (lua_State *L);
-LUAI_FUNC void luaC_runtilstate (lua_State *L, int state, int fast);
+LUAI_FUNC void luaC_runtilstate (lua_State *L, GCState state, int fast);
 LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
 LUAI_FUNC GCObject *luaC_newobj (lua_State *L, lu_byte tt, size_t sz);
 LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz,
@@ -390,7 +376,7 @@ LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz,
 LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
 LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
 /* Use GCObject::checkFinalizer() method instead of luaC_checkfinalizer */
-LUAI_FUNC void luaC_changemode (lua_State *L, int newmode);
+LUAI_FUNC void luaC_changemode (lua_State *L, GCKind newmode);
 
 
 /*

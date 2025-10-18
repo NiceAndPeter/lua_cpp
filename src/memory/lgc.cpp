@@ -306,7 +306,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
   }
   else {  /* sweep phase */
     lua_assert(issweepphase(g));
-    if (g->getGCKind() != KGC_GENMINOR)  /* incremental mode? */
+    if (g->getGCKind() != GCKind::GenerationalMinor)  /* incremental mode? */
       makewhite(g, o);  /* mark 'o' as white to avoid other barriers */
   }
 }
@@ -319,7 +319,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
 void luaC_barrierback_ (lua_State *L, GCObject *o) {
   global_State *g = G(L);
   lua_assert(isblack(o) && !isdead(g, o));
-  lua_assert((g->getGCKind() != KGC_GENMINOR)
+  lua_assert((g->getGCKind() != GCKind::GenerationalMinor)
           || (isold(o) && getage(o) != G_TOUCHED1));
   if (getage(o) == G_TOUCHED2)  /* already in gray list? */
     set2gray(o);  /* make it gray to become touched1 */
@@ -541,7 +541,7 @@ static void traverseweakvalue (global_State *g, Table *h) {
         hasclears = 1;  /* table will have to be cleared */
     }
   }
-  if (g->getGCState() == GCSpropagate)
+  if (g->getGCState() == GCState::Propagate)
     linkgclistTable(h, *g->getGrayAgainPtr());  /* must retraverse it in atomic phase */
   else if (hasclears)
       linkgclistTable(h, *g->getWeakPtr());  /* has to be cleared later */
@@ -603,7 +603,7 @@ static int traverseephemeron (global_State *g, Table *h, int inv) {
     }
   }
   /* link table into proper list */
-  if (g->getGCState() == GCSpropagate)
+  if (g->getGCState() == GCState::Propagate)
     linkgclistTable(h, *g->getGrayAgainPtr());  /* must retraverse it in atomic phase */
   else if (hasww)  /* table has white->white entries? */
     linkgclistTable(h, *g->getEphemeronPtr());  /* have to propagate again */
@@ -660,7 +660,7 @@ static l_mem traversetable (global_State *g, Table *h) {
       traverseephemeron(g, h, 0);
       break;
     case 3:  /* all weak; nothing to traverse */
-      if (g->getGCState() == GCSpropagate)
+      if (g->getGCState() == GCState::Propagate)
         linkgclistTable(h, *g->getGrayAgainPtr());  /* must visit again its metatable */
       else
         linkgclistTable(h, *g->getAllWeakPtr());  /* must clear collected entries */
@@ -737,17 +737,17 @@ static l_mem traverseLclosure (global_State *g, LClosure *cl) {
 static l_mem traversethread (global_State *g, lua_State *th) {
   UpVal *uv;
   StkId o = th->getStack().p;
-  if (isold(th) || g->getGCState() == GCSpropagate)
+  if (isold(th) || g->getGCState() == GCState::Propagate)
     linkgclistThread(th, *g->getGrayAgainPtr());  /* insert into 'grayagain' list */
   if (o == NULL)
     return 0;  /* stack not completely built yet */
-  lua_assert(g->getGCState() == GCSatomic ||
+  lua_assert(g->getGCState() == GCState::Atomic ||
              th->getOpenUpval() == NULL || isintwups(th));
   for (; o < th->getTop().p; o++)  /* mark live elements in the stack */
     markvalue(g, s2v(o));
   for (uv = th->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
     markobject(g, uv);  /* open upvalues cannot be collected */
-  if (g->getGCState() == GCSatomic) {  /* final traversal? */
+  if (g->getGCState() == GCState::Atomic) {  /* final traversal? */
     if (!g->getGCEmergency())
       th->shrinkStack();  /* do not change stack in emergency cycle */
     for (o = th->getTop().p; o < th->getStackLast().p + EXTRA_STACK; o++)
@@ -1176,13 +1176,13 @@ static void correctpointers (global_State *g, GCObject *o) {
 ** Fields 'GCmarked' and 'GCmajorminor' are used to control the pace and
 ** the mode of the collector. They play several roles, depending on the
 ** mode of the collector:
-** * KGC_INC:
+** * GCKind::Incremental:
 **     GCmarked: number of marked bytes during a cycle.
 **     GCmajorminor: not used.
-** * KGC_GENMINOR
+** * GCKind::GenerationalMinor
 **     GCmarked: number of bytes that became old since last major collection.
 **     GCmajorminor: number of bytes marked in last major collection.
-** * KGC_GENMAJOR
+** * GCKind::GenerationalMajor
 **     GCmarked: number of bytes that became old since last major collection.
 **     GCmajorminor: number of bytes marked in last major collection.
 */
@@ -1366,7 +1366,7 @@ static void markold (global_State *g, GCObject *from, GCObject *to) {
 static void finishgencycle (lua_State *L, global_State *g) {
   correctgraylists(g);
   checkSizes(L, g);
-  g->setGCState(GCSpropagate);  /* skip restart */
+  g->setGCState(GCState::Propagate);  /* skip restart */
   if (!g->getGCEmergency())
     callallpendingfinalizers(L);
 }
@@ -1377,7 +1377,7 @@ static void finishgencycle (lua_State *L, global_State *g) {
 ** the "sweep all" state to clear all objects, which are mostly black
 ** in generational mode.
 */
-static void minor2inc (lua_State *L, global_State *g, lu_byte kind) {
+static void minor2inc (lua_State *L, global_State *g, GCKind kind) {
   g->setGCMajorMinor(g->getGCMarked());  /* number of live bytes */
   g->setGCKind(kind);
   g->setReallyOld(NULL); g->setOld1(NULL); g->setSurvival(NULL);
@@ -1411,7 +1411,7 @@ static void youngcollection (lua_State *L, global_State *g) {
   l_mem marked = g->getGCMarked();  /* preserve 'g->getGCMarked()' */
   GCObject **psurvival;  /* to point to first non-dead survival object */
   GCObject *dummy;  /* dummy out parameter to 'sweepgen' */
-  lua_assert(g->getGCState() == GCSpropagate);
+  lua_assert(g->getGCState() == GCState::Propagate);
   if (g->getFirstOld1()) {  /* are there regular OLD1 objects? */
     markold(g, g->getFirstOld1(), g->getReallyOld());  /* mark them */
     g->setFirstOld1(NULL);  /* no more OLD1 objects (for now) */
@@ -1422,7 +1422,7 @@ static void youngcollection (lua_State *L, global_State *g) {
   atomic(L);  /* will lose 'g->marked' */
 
   /* sweep nursery and get a pointer to its last live element */
-  g->setGCState(GCSswpallgc);
+  g->setGCState(GCState::SweepAllGC);
   psurvival = sweepgen(L, g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
   /* sweep 'survival' */
   sweepgen(L, g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
@@ -1446,7 +1446,7 @@ static void youngcollection (lua_State *L, global_State *g) {
 
   /* decide whether to shift to major mode */
   if (checkminormajor(g)) {
-    minor2inc(L, g, KGC_GENMAJOR);  /* go to major mode */
+    minor2inc(L, g, GCKind::GenerationalMajor);  /* go to major mode */
     g->setGCMarked(0);  /* avoid pause in first major cycle (see 'setpause') */
   }
   else
@@ -1463,7 +1463,7 @@ static void youngcollection (lua_State *L, global_State *g) {
 static void atomic2gen (lua_State *L, global_State *g) {
   cleargraylists(g);
   /* sweep all elements making them old */
-  g->setGCState(GCSswpallgc);
+  g->setGCState(GCState::SweepAllGC);
   sweep2old(L, g->getAllGCPtr());
   /* everything alive now is old */
   GCObject *allgc = g->getAllGC();
@@ -1477,7 +1477,7 @@ static void atomic2gen (lua_State *L, global_State *g) {
 
   sweep2old(L, g->getToBeFnzPtr());
 
-  g->setGCKind(KGC_GENMINOR);
+  g->setGCKind(GCKind::GenerationalMinor);
   g->setGCMajorMinor(g->getGCMarked());  /* "base" for number of bytes */
   g->setGCMarked(0);  /* to count the number of added old1 bytes */
   finishgencycle(L, g);
@@ -1502,8 +1502,8 @@ static void setminordebt (global_State *g) {
 ** collection.
 */
 static void entergen (lua_State *L, global_State *g) {
-  luaC_runtilstate(L, GCSpause, 1);  /* prepare to start a new cycle */
-  luaC_runtilstate(L, GCSpropagate, 1);  /* start new cycle */
+  luaC_runtilstate(L, GCState::Pause, 1);  /* prepare to start a new cycle */
+  luaC_runtilstate(L, GCState::Propagate, 1);  /* start new cycle */
   atomic(L);  /* propagates all and then do the atomic stuff */
   atomic2gen(L, g);
   setminordebt(g);  /* set debt assuming next cycle will be minor */
@@ -1513,15 +1513,15 @@ static void entergen (lua_State *L, global_State *g) {
 /*
 ** Change collector mode to 'newmode'.
 */
-void luaC_changemode (lua_State *L, int newmode) {
+void luaC_changemode (lua_State *L, GCKind newmode) {
   global_State *g = G(L);
-  if (g->getGCKind() == KGC_GENMAJOR)  /* doing major collections? */
-    g->setGCKind(KGC_INC);  /* already incremental but in name */
+  if (g->getGCKind() == GCKind::GenerationalMajor)  /* doing major collections? */
+    g->setGCKind(GCKind::Incremental);  /* already incremental but in name */
   if (newmode != g->getGCKind()) {  /* does it need to change? */
-    if (newmode == KGC_INC)  /* entering incremental mode? */
-      minor2inc(L, g, KGC_INC);  /* entering incremental mode */
+    if (newmode == GCKind::Incremental)  /* entering incremental mode? */
+      minor2inc(L, g, GCKind::Incremental);  /* entering incremental mode */
     else {
-      lua_assert(newmode == KGC_GENMINOR);
+      lua_assert(newmode == GCKind::GenerationalMinor);
       entergen(L, g);
     }
   }
@@ -1532,7 +1532,7 @@ void luaC_changemode (lua_State *L, int newmode) {
 ** Does a full collection in generational mode.
 */
 static void fullgen (lua_State *L, global_State *g) {
-  minor2inc(L, g, KGC_INC);
+  minor2inc(L, g, GCKind::Incremental);
   entergen(L, g);
 }
 
@@ -1545,7 +1545,7 @@ static void fullgen (lua_State *L, global_State *g) {
 ** since the last collection ('addedbytes').
 */
 static int checkmajorminor (lua_State *L, global_State *g) {
-  if (g->getGCKind() == KGC_GENMAJOR) {  /* generational mode? */
+  if (g->getGCKind() == GCKind::GenerationalMajor) {  /* generational mode? */
     l_mem numbytes = g->getTotalBytes();
     l_mem addedbytes = numbytes - g->getGCMajorMinor();
     l_mem limit = applygcparam(g, MAJORMINOR, addedbytes);
@@ -1579,7 +1579,7 @@ static int checkmajorminor (lua_State *L, global_State *g) {
 */
 static void entersweep (lua_State *L) {
   global_State *g = G(L);
-  g->setGCState(GCSswpallgc);
+  g->setGCState(GCState::SweepAllGC);
   lua_assert(g->getSweepGC() == NULL);
   g->setSweepGC(sweeptolive(L, g->getAllGCPtr()));
 }
@@ -1605,7 +1605,7 @@ static void deletelist (lua_State *L, GCObject *p, GCObject *limit) {
 void luaC_freeallobjects (lua_State *L) {
   global_State *g = G(L);
   g->setGCStp(GCSTPCLS);  /* no extra finalizers after here */
-  luaC_changemode(L, KGC_INC);
+  luaC_changemode(L, GCKind::Incremental);
   separatetobefnz(g, 1);  /* separate all objects with finalizers */
   lua_assert(g->getFinObj() == NULL);
   callallpendingfinalizers(L);
@@ -1623,7 +1623,7 @@ static void atomic (lua_State *L) {
   g->setGrayAgain(NULL);
   lua_assert(g->getEphemeron() == NULL && g->getWeak() == NULL);
   lua_assert(!iswhite(mainthread(g)));
-  g->setGCState(GCSatomic);
+  g->setGCState(GCState::Atomic);
   markobject(g, L);  /* mark running thread */
   /* registry and global metatables may be changed by API */
   markvalue(g, g->getRegistry());
@@ -1662,7 +1662,7 @@ static void atomic (lua_State *L) {
 ** elements. The fast case sweeps the whole list.
 */
 static void sweepstep (lua_State *L, global_State *g,
-                       lu_byte nextstate, GCObject **nextlist, int fast) {
+                       GCState nextstate, GCObject **nextlist, int fast) {
   if (g->getSweepGC())
     g->setSweepGC(sweeplist(L, g->getSweepGC(), fast ? MAX_LMEM : GCSWEEPMAX));
   else {  /* enter next state */
@@ -1696,22 +1696,22 @@ static l_mem singlestep (lua_State *L, int fast) {
   lua_assert(!g->getGCStopEm());  /* collector is not reentrant */
   g->setGCStopEm(1);  /* no emergency collections while collecting */
   switch (g->getGCState()) {
-    case GCSpause: {
+    case GCState::Pause: {
       restartcollection(g);
-      g->setGCState(GCSpropagate);
+      g->setGCState(GCState::Propagate);
       stepresult = 1;
       break;
     }
-    case GCSpropagate: {
+    case GCState::Propagate: {
       if (fast || g->getGray() == NULL) {
-        g->setGCState(GCSenteratomic);  /* finish propagate phase */
+        g->setGCState(GCState::EnterAtomic);  /* finish propagate phase */
         stepresult = 1;
       }
       else
         stepresult = propagatemark(g);  /* traverse one gray object */
       break;
     }
-    case GCSenteratomic: {
+    case GCState::EnterAtomic: {
       atomic(L);
       if (checkmajorminor(L, g))
         stepresult = step2minor;
@@ -1721,35 +1721,35 @@ static l_mem singlestep (lua_State *L, int fast) {
       }
       break;
     }
-    case GCSswpallgc: {  /* sweep "regular" objects */
-      sweepstep(L, g, GCSswpfinobj, g->getFinObjPtr(), fast);
+    case GCState::SweepAllGC: {  /* sweep "regular" objects */
+      sweepstep(L, g, GCState::SweepFinObj, g->getFinObjPtr(), fast);
       stepresult = GCSWEEPMAX;
       break;
     }
-    case GCSswpfinobj: {  /* sweep objects with finalizers */
-      sweepstep(L, g, GCSswptobefnz, g->getToBeFnzPtr(), fast);
+    case GCState::SweepFinObj: {  /* sweep objects with finalizers */
+      sweepstep(L, g, GCState::SweepToBeFnz, g->getToBeFnzPtr(), fast);
       stepresult = GCSWEEPMAX;
       break;
     }
-    case GCSswptobefnz: {  /* sweep objects to be finalized */
-      sweepstep(L, g, GCSswpend, NULL, fast);
+    case GCState::SweepToBeFnz: {  /* sweep objects to be finalized */
+      sweepstep(L, g, GCState::SweepEnd, NULL, fast);
       stepresult = GCSWEEPMAX;
       break;
     }
-    case GCSswpend: {  /* finish sweeps */
+    case GCState::SweepEnd: {  /* finish sweeps */
       checkSizes(L, g);
-      g->setGCState(GCScallfin);
+      g->setGCState(GCState::CallFin);
       stepresult = GCSWEEPMAX;
       break;
     }
-    case GCScallfin: {  /* call finalizers */
+    case GCState::CallFin: {  /* call finalizers */
       if (g->getToBeFnz() && !g->getGCEmergency()) {
         g->setGCStopEm(0);  /* ok collections during finalizers */
         GCTM(L);  /* call one finalizer */
         stepresult = CWUFIN;
       }
       else {  /* emergency mode or no more finalizers */
-        g->setGCState(GCSpause);  /* finish collection */
+        g->setGCState(GCState::Pause);  /* finish collection */
         stepresult = step2pause;
       }
       break;
@@ -1766,9 +1766,9 @@ static l_mem singlestep (lua_State *L, int fast) {
 ** (The option 'fast' is only for testing; in normal code, 'fast'
 ** here is always true.)
 */
-void luaC_runtilstate (lua_State *L, int state, int fast) {
+void luaC_runtilstate (lua_State *L, GCState state, int fast) {
   global_State *g = G(L);
-  lua_assert(g->getGCKind() == KGC_INC);
+  lua_assert(g->getGCKind() == GCKind::Incremental);
   while (state != g->getGCState())
     singlestep(L, fast);
 }
@@ -1796,7 +1796,7 @@ static void incstep (lua_State *L, global_State *g) {
     else
       work2do -= stres;
   } while (fast || work2do > 0);
-  if (g->getGCState() == GCSpause)
+  if (g->getGCState() == GCState::Pause)
     setpause(g);  /* pause until next cycle */
   else
     luaE_setdebt(g, stepsize);
@@ -1822,10 +1822,10 @@ void luaC_step (lua_State *L) {
   else {
     luai_tracegc(L, 1);  /* for internal debugging */
     switch (g->getGCKind()) {
-      case KGC_INC: case KGC_GENMAJOR:
+      case GCKind::Incremental: case GCKind::GenerationalMajor:
         incstep(L, g);
         break;
-      case KGC_GENMINOR:
+      case GCKind::GenerationalMinor:
         youngcollection(L, g);
         setminordebt(g);
         break;
@@ -1846,9 +1846,9 @@ static void fullinc (lua_State *L, global_State *g) {
   if (g->keepInvariant())  /* black objects? */
     entersweep(L); /* sweep everything to turn them back to white */
   /* finish any pending sweep phase to start a new cycle */
-  luaC_runtilstate(L, GCSpause, 1);
-  luaC_runtilstate(L, GCScallfin, 1);  /* run up to finalizers */
-  luaC_runtilstate(L, GCSpause, 1);  /* finish collection */
+  luaC_runtilstate(L, GCState::Pause, 1);
+  luaC_runtilstate(L, GCState::CallFin, 1);  /* run up to finalizers */
+  luaC_runtilstate(L, GCState::Pause, 1);  /* finish collection */
   setpause(g);
 }
 
@@ -1863,12 +1863,12 @@ void luaC_fullgc (lua_State *L, int isemergency) {
   lua_assert(!g->getGCEmergency());
   g->setGCEmergency(cast_byte(isemergency));  /* set flag */
   switch (g->getGCKind()) {
-    case KGC_GENMINOR: fullgen(L, g); break;
-    case KGC_INC: fullinc(L, g); break;
-    case KGC_GENMAJOR:
-      g->setGCKind(KGC_INC);
+    case GCKind::GenerationalMinor: fullgen(L, g); break;
+    case GCKind::Incremental: fullinc(L, g); break;
+    case GCKind::GenerationalMajor:
+      g->setGCKind(GCKind::Incremental);
       fullinc(L, g);
-      g->setGCKind(KGC_GENMAJOR);
+      g->setGCKind(GCKind::GenerationalMajor);
       break;
   }
   g->setGCEmergency(0);
