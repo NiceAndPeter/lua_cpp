@@ -330,11 +330,11 @@ void luaK_patchtohere (FuncState *fs, int list) {
 static void savelineinfo (FuncState *fs, Proto *f, int line) {
   int linedif = line - fs->getPreviousLine();
   int pc = fs->getPC() - 1;  /* last instruction coded */
-  if (abs(linedif) >= LIMLINEDIFF || fs->getInstructionsWithAbsRef()++ >= MAXIWTHABS) {
+  if (abs(linedif) >= LIMLINEDIFF || fs->postIncrementInstructionsWithAbs() >= MAXIWTHABS) {
     luaM_growvector(fs->getLexState()->getLuaState(), f->getAbsLineInfoRef(), fs->getNAbsLineInfo(),
                     f->getAbsLineInfoSizeRef(), AbsLineInfo, INT_MAX, "lines");
     f->getAbsLineInfo()[fs->getNAbsLineInfo()].setPC(pc);
-    f->getAbsLineInfo()[fs->getNAbsLineInfoRef()++].setLine(line);
+    f->getAbsLineInfo()[fs->postIncrementNAbsLineInfo()].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     fs->setInstructionsWithAbs(1);  /* restart counter */
   }
@@ -356,11 +356,11 @@ static void removelastlineinfo (FuncState *fs) {
   int pc = fs->getPC() - 1;  /* last instruction coded */
   if (f->getLineInfo()[pc] != ABSLINEINFO) {  /* relative line info? */
     fs->setPreviousLine(fs->getPreviousLine() - f->getLineInfo()[pc]);  /* correct last line saved */
-    fs->getInstructionsWithAbsRef()--;  /* undo previous increment */
+    fs->decrementInstructionsWithAbs();  /* undo previous increment */
   }
   else {  /* absolute line information */
     lua_assert(f->getAbsLineInfo()[fs->getNAbsLineInfo() - 1].getPC() == pc);
-    fs->getNAbsLineInfoRef()--;  /* remove it */
+    fs->decrementNAbsLineInfo();  /* remove it */
     fs->setInstructionsWithAbs(MAXIWTHABS + 1);  /* force next line info to be absolute */
   }
 }
@@ -372,7 +372,7 @@ static void removelastlineinfo (FuncState *fs) {
 */
 static void removelastinstruction (FuncState *fs) {
   removelastlineinfo(fs);
-  fs->getPCRef()--;
+  fs->decrementPC();
 }
 
 
@@ -385,7 +385,7 @@ int luaK_code (FuncState *fs, Instruction i) {
   /* put new instruction in code array */
   luaM_growvector(fs->getLexState()->getLuaState(), f->getCodeRef(), fs->getPC(), f->getCodeSizeRef(), Instruction,
                   INT_MAX, "opcodes");
-  f->getCode()[fs->getPCRef()++] = i;
+  f->getCode()[fs->postIncrementPC()] = i;
   savelineinfo(fs, f, fs->getLexState()->getLastLine());
   return fs->getPC() - 1;  /* index of new instruction */
 }
@@ -497,7 +497,7 @@ void luaK_reserveregs (FuncState *fs, int n) {
 */
 static void freereg (FuncState *fs, int reg) {
   if (reg >= luaY_nvarstack(fs)) {
-    fs->getFreeRegRef()--;
+    fs->decrementFreeReg();
     lua_assert(reg == fs->getFreeReg());
   }
 }
@@ -549,7 +549,7 @@ static int addk (FuncState *fs, Proto *f, TValue *v) {
   while (oldsize < f->getConstantsSize())
     setnilvalue(&f->getConstants()[oldsize++]);
   setobj(L, &f->getConstants()[k], v);
-  fs->getNKRef()++;
+  fs->incrementNK();
   luaC_barrier(L, f, v);
   return k;
 }

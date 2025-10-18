@@ -596,7 +596,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
     assert(!!isgray(o) ^ (getage(o) == G_TOUCHED2));
     assert(!testbit(o->getMarked(), TESTBIT));
     if (keepinvariant(g))
-      l_setbit(o->getMarkedRef(), TESTBIT);  /* mark that object is in a gray list */
+      o->setMarkedBit(TESTBIT);  /* mark that object is in a gray list */
     total++;
     switch (o->getType()) {
       case LUA_VTABLE: o = gco2t(o)->getGclist(); break;
@@ -647,7 +647,7 @@ static void incifingray (global_State *g, GCObject *o, l_mem *count) {
   if (isgray(o) || getage(o) == G_TOUCHED2) {
     (*count)++;
     assert(testbit(o->getMarked(), TESTBIT));
-    resetbit(o->getMarkedRef(), TESTBIT);  /* prepare for next cycle */
+    o->clearMarkedBit(TESTBIT);  /* prepare for next cycle */
   }
 }
 

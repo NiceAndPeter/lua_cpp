@@ -265,6 +265,20 @@ public:
   void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
   void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
 
+  // Increment/decrement methods (replacing Ref() usage)
+  void incrementPC() noexcept { pc++; }
+  void decrementPC() noexcept { pc--; }
+  int postIncrementPC() noexcept { return pc++; }
+  void incrementNK() noexcept { nk++; }
+  void incrementNP() noexcept { np++; }
+  void incrementNAbsLineInfo() noexcept { nabslineinfo++; }
+  void decrementNAbsLineInfo() noexcept { nabslineinfo--; }
+  int postIncrementNAbsLineInfo() noexcept { return nabslineinfo++; }
+  short postIncrementNumDebugVars() noexcept { return ndebugvars++; }
+  lu_byte postIncrementInstructionsWithAbs() noexcept { return iwthabs++; }
+  void decrementInstructionsWithAbs() noexcept { iwthabs--; }
+  void decrementFreeReg() noexcept { freereg--; }
+
   // Reference accessors for compound assignments
   int& getPCRef() noexcept { return pc; }
   int& getLastTargetRef() noexcept { return lasttarget; }

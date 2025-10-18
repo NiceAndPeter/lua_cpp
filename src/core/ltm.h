@@ -55,7 +55,7 @@ typedef enum {
 
 // Phase 19: Convert invalidateTMcache macro to inline function
 inline void invalidateTMcache(Table* t) noexcept {
-  t->getFlagsRef() &= cast_byte(~maskflags);
+  t->clearFlagBits(maskflags);
 }
 
 /*

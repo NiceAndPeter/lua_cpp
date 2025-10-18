@@ -40,8 +40,8 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 #define NOTBITDUMMY		cast_byte(~BITDUMMY)
 #define isdummy(t)		((t)->getFlags() & BITDUMMY)
 
-#define setnodummy(t)		((t)->getFlagsRef() &= NOTBITDUMMY)
-#define setdummy(t)		((t)->getFlagsRef() |= BITDUMMY)
+#define setnodummy(t)		((t)->clearFlagBits(BITDUMMY))
+#define setdummy(t)		((t)->setFlagBits(BITDUMMY))
 
 
 

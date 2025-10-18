@@ -185,7 +185,7 @@ static short registerlocalvar (LexState *ls, FuncState *fs,
   f->getLocVars()[fs->getNumDebugVars()].setVarName(varname);
   f->getLocVars()[fs->getNumDebugVars()].setStartPC(fs->getPC());
   luaC_objbarrier(ls->getLuaState(), f, varname);
-  return fs->getNumDebugVarsRef()++;
+  return fs->postIncrementNumDebugVars();
 }
 
 

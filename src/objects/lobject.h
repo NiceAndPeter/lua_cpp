@@ -228,6 +228,7 @@ public:
   // Inline accessors
   GCObject* getNext() const noexcept { return next; }
   void setNext(GCObject* n) noexcept { next = n; }
+  // Pointer-to-pointer for efficient GC list manipulation (allows in-place removal)
   GCObject** getNextPtr() noexcept { return &next; }
   lu_byte getType() const noexcept { return tt; }
   void setType(lu_byte t) noexcept { tt = t; }
@@ -235,7 +236,12 @@ public:
   void setMarked(lu_byte m) noexcept { marked = m; }
   bool isMarked() const noexcept { return marked != 0; }
 
-  // Marked field bit manipulation helpers
+  // Marked field bit manipulation methods
+  void setMarkedBit(int bit) noexcept { marked |= cast_byte(1 << bit); }
+  void clearMarkedBit(int bit) noexcept { marked &= cast_byte(~(1 << bit)); }
+  void clearMarkedBits(int mask) noexcept { marked &= cast_byte(~mask); }
+
+  // Marked field bit manipulation helpers (for backward compatibility)
   lu_byte& getMarkedRef() noexcept { return marked; }
 
   // GC color and age methods (defined in lgc.h after constants are available)
@@ -620,6 +626,7 @@ public:
   Table** getMetatablePtr() noexcept { return &metatable; }
   GCObject* getGclist() noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
   UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
   const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
@@ -1005,6 +1012,7 @@ public:
 
   GCObject* getGclist() noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
 
   // Static helper for size calculation (can access private upvalue field)
@@ -1043,6 +1051,7 @@ public:
 
   GCObject* getGclist() noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
 
   // Static helper for size calculation (can access private upvals field)
@@ -1233,6 +1242,12 @@ public:
   // Inline accessors
   lu_byte getFlags() const noexcept { return flags; }
   void setFlags(lu_byte f) noexcept { flags = f; }
+
+  // Flags field bit manipulation methods
+  void setFlagBits(int mask) noexcept { flags |= cast_byte(mask); }
+  void clearFlagBits(int mask) noexcept { flags &= cast_byte(~mask); }
+
+  // Flags field reference accessor (for backward compatibility)
   lu_byte& getFlagsRef() noexcept { return flags; }
 
   lu_byte getLsizenode() const noexcept { return lsizenode; }
@@ -1255,6 +1270,7 @@ public:
 
   GCObject* getGclist() noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
 
   // Flag operations (inline for performance)

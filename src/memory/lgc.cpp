@@ -88,7 +88,7 @@ inline void makewhite(global_State* g, GCObject* x) noexcept {
 ** Gray objects are linked into gray lists for incremental processing.
 */
 inline void set2gray(GCObject* x) noexcept {
-  resetbits(x->getMarkedRef(), maskcolors);
+  x->clearMarkedBits(maskcolors);
 }
 
 /*
@@ -1018,7 +1018,7 @@ static GCObject *udata2finalize (global_State *g) {
   g->setToBeFnz(o->getNext());  /* remove it from 'tobefnz' list */
   o->setNext(g->getAllGC());  /* return it to 'allgc' list */
   g->setAllGC(o);
-  resetbit(o->getMarkedRef(), FINALIZEDBIT);  /* object is "normal" again */
+  o->clearMarkedBit(FINALIZEDBIT);  /* object is "normal" again */
   if (issweepphase(g))
     makewhite(g, o);  /* "sweep" object */
   else if (getage(o) == G_OLD1)
@@ -1910,7 +1910,7 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     *p = getNext();  /* remove 'this' from 'allgc' list */
     setNext(g->getFinObj());  /* link it in 'finobj' list */
     g->setFinObj(this);
-    l_setbit(getMarkedRef(), FINALIZEDBIT);  /* mark it as such */
+    setMarkedBit(FINALIZEDBIT);  /* mark it as such */
   }
 }
 

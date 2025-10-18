@@ -61,7 +61,7 @@ const TValue *luaT_gettm (Table *events, TMS event, TString *ename) {
   const TValue *tm = luaH_Hgetshortstr(events, ename);
   lua_assert(event <= TM_EQ);
   if (notm(tm)) {  /* no tag method? */
-    events->getFlagsRef() |= cast_byte(1u<<event);  /* cache this fact */
+    events->setFlagBits(1u<<event);  /* cache this fact */
     return NULL;
   }
   else return tm;

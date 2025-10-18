@@ -238,7 +238,7 @@ inline void changewhite(GCObject* x) noexcept {
 }
 
 inline void nw2black(GCObject* x) noexcept {
-	l_setbit(x->getMarkedRef(), BLACKBIT);
+	x->setMarkedBit(BLACKBIT);
 }
 
 #define luaC_white(g)	cast_byte((g)->getCurrentWhite() & WHITEBITS)
