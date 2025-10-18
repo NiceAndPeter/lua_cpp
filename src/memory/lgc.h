@@ -81,7 +81,9 @@
 ** are white again.
 */
 
-#define keepinvariant(g)	((g)->getGCState() <= GCSatomic)
+inline bool global_State::keepInvariant() const noexcept {
+	return gcstate <= GCSatomic;
+}
 
 
 /*
@@ -241,7 +243,9 @@ inline void nw2black(GCObject* x) noexcept {
 	x->setMarkedBit(BLACKBIT);
 }
 
-#define luaC_white(g)	cast_byte((g)->getCurrentWhite() & WHITEBITS)
+inline lu_byte global_State::getWhite() const noexcept {
+	return cast_byte(currentwhite & WHITEBITS);
+}
 
 /* Note: G_NEW, G_SURVIVAL, G_OLD*, G_TOUCHED*, AGEBITS moved above for inline functions */
 /* Note: getage, setage, isold are now inline functions defined above */
@@ -338,7 +342,6 @@ inline void nw2black(GCObject* x) noexcept {
 #define GCSTPUSR	1  /* bit true when GC stopped by user */
 #define GCSTPGC		2  /* bit true when GC stopped by itself */
 #define GCSTPCLS	4  /* bit true when closing Lua state */
-#define gcrunning(g)	((g)->getGCStp() == 0)
 
 
 /*
@@ -352,7 +355,7 @@ inline void nw2black(GCObject* x) noexcept {
 #define condchangemem(L,pre,pos,emg)	((void)0)
 #else
 #define condchangemem(L,pre,pos,emg)  \
-	{ if (gcrunning(G(L))) { pre; luaC_fullgc(L, emg); pos; } }
+	{ if (G(L)->isGCRunning()) { pre; luaC_fullgc(L, emg); pos; } }
 #endif
 
 #define luaC_condGC(L,pre,pos) \

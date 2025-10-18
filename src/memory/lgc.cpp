@@ -79,7 +79,7 @@
 ** Erases color bits and sets the current white bit (which alternates each cycle).
 */
 inline void makewhite(global_State* g, GCObject* x) noexcept {
-  x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | luaC_white(g)));
+  x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | g->getWhite()));
 }
 
 /*
@@ -297,7 +297,7 @@ static int iscleared (global_State *g, const GCObject *o) {
 void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
   global_State *g = G(L);
   lua_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
-  if (keepinvariant(g)) {  /* must keep invariant? */
+  if (g->keepInvariant()) {  /* must keep invariant? */
     reallymarkobject(g, v);  /* restore invariant */
     if (isold(o)) {
       lua_assert(!isold(v));  /* white object could not be old */
@@ -340,7 +340,7 @@ GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz, size_t offset) {
   global_State *g = G(L);
   char *p = cast_charp(luaM_newobject(L, novariant(tt), sz));
   GCObject *o = cast(GCObject *, p + offset);
-  o->setMarked(luaC_white(g));
+  o->setMarked(g->getWhite());
   o->setType(tt);
   o->setNext(g->getAllGC());
   g->setAllGC(o);
@@ -960,7 +960,7 @@ static void freeobj (lua_State *L, GCObject *o) {
 static GCObject **sweeplist (lua_State *L, GCObject **p, l_mem countin) {
   global_State *g = G(L);
   lu_byte ow = otherwhite(g);
-  lu_byte white = luaC_white(g);  /* current white */
+  lu_byte white = g->getWhite();  /* current white */
   while (*p != NULL && countin-- > 0) {
     GCObject *curr = *p;
     lu_byte marked = curr->getMarked();
@@ -1256,7 +1256,7 @@ static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
     G_TOUCHED2   /* from G_TOUCHED2 (do not change) */
   };
   l_mem addedold = 0;
-  int white = luaC_white(g);
+  int white = g->getWhite();
   GCObject *curr;
   while ((curr = *p) != limit) {
     if (iswhite(curr)) {  /* is 'curr' dead? */
@@ -1815,7 +1815,7 @@ static void incstep (lua_State *L, global_State *g) {
 void luaC_step (lua_State *L) {
   global_State *g = G(L);
   lua_assert(!g->getGCEmergency());
-  if (!gcrunning(g)) {  /* not running? */
+  if (!g->isGCRunning()) {  /* not running? */
     if (g->getGCStp() & GCSTPUSR)  /* stopped by the user? */
       luaE_setdebt(g, 20000);
   }
@@ -1843,7 +1843,7 @@ void luaC_step (lua_State *L) {
 ** changed, nothing will be collected).
 */
 static void fullinc (lua_State *L, global_State *g) {
-  if (keepinvariant(g))  /* black objects? */
+  if (g->keepInvariant())  /* black objects? */
     entersweep(L); /* sweep everything to turn them back to white */
   /* finish any pending sweep phase to start a new cycle */
   luaC_runtilstate(L, GCSpause, 1);

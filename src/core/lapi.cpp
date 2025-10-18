@@ -1213,7 +1213,7 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       break;
     }
     case LUA_GCISRUNNING: {
-      res = gcrunning(g);
+      res = g->isGCRunning();
       break;
     }
     case LUA_GCGEN: {

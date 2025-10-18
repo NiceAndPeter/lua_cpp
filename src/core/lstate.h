@@ -698,9 +698,11 @@ public:
 
   lu_byte getCurrentWhite() const noexcept { return currentwhite; }
   void setCurrentWhite(lu_byte cw) noexcept { currentwhite = cw; }
+  lu_byte getWhite() const noexcept;  // Defined in lgc.h (needs WHITEBITS)
 
   lu_byte getGCState() const noexcept { return gcstate; }
   void setGCState(lu_byte state) noexcept { gcstate = state; }
+  bool keepInvariant() const noexcept;  // Defined in lgc.h (needs GCSatomic)
 
   lu_byte getGCKind() const noexcept { return gckind; }
   void setGCKind(lu_byte kind) noexcept { gckind = kind; }
@@ -710,6 +712,7 @@ public:
 
   lu_byte getGCStp() const noexcept { return gcstp; }
   void setGCStp(lu_byte stp) noexcept { gcstp = stp; }
+  bool isGCRunning() const noexcept { return gcstp == 0; }
 
   lu_byte getGCEmergency() const noexcept { return gcemergency; }
   void setGCEmergency(lu_byte em) noexcept { gcemergency = em; }

@@ -595,7 +595,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
   while (o) {
     assert(!!isgray(o) ^ (getage(o) == G_TOUCHED2));
     assert(!testbit(o->getMarked(), TESTBIT));
-    if (keepinvariant(g))
+    if (g->keepInvariant())
       o->setMarkedBit(TESTBIT);  /* mark that object is in a gray list */
     total++;
     switch (o->getType()) {
@@ -620,7 +620,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
 */
 static l_mem checkgrays (global_State *g) {
   l_mem total = 0;  /* count number of elements in all lists */
-  if (!keepinvariant(g)) return total;
+  if (!g->keepInvariant()) return total;
   total += checkgraylist(g, g->getGray());
   total += checkgraylist(g, g->getGrayAgain());
   total += checkgraylist(g, g->getWeak());
@@ -636,7 +636,7 @@ static l_mem checkgrays (global_State *g) {
 ** 'checkgraylist'.)
 */
 static void incifingray (global_State *g, GCObject *o, l_mem *count) {
-  if (!keepinvariant(g))
+  if (!g->keepInvariant())
     return;  /* gray lists not being kept in these phases */
   if (o->getType() == LUA_VUPVAL) {
     /* only open upvalues can be gray */
@@ -686,7 +686,7 @@ int lua_checkmemory (lua_State *L) {
   int maybedead;
   l_mem totalin;  /* total of objects that are in gray lists */
   l_mem totalshould;  /* total of objects that should be in gray lists */
-  if (keepinvariant(g)) {
+  if (g->keepInvariant()) {
     assert(!iswhite(mainthread(g)));
     assert(!iswhite(gcvalue(g->getRegistry())));
   }
@@ -715,7 +715,7 @@ int lua_checkmemory (lua_State *L) {
     assert(tofinalize(o));
     assert(o->getType() == LUA_VUSERDATA || o->getType() == LUA_VTABLE);
   }
-  if (keepinvariant(g))
+  if (g->keepInvariant())
     assert(totalin == totalshould);
   return 0;
 }

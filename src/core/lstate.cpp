@@ -352,7 +352,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   L = &g->getMainThread()->l;
   L->setType(LUA_VTHREAD);
   g->setCurrentWhite(bitmask(WHITE0BIT));
-  L->setMarked(luaC_white(g));
+  L->setMarked(g->getWhite());
   preinit_thread(L, g);
   g->setAllGC(obj2gco(L));  /* by now, only object is the main thread */
   L->setNext(NULL);
