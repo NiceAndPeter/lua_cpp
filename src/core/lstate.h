@@ -344,10 +344,21 @@ public:
 
   int getNRes() const noexcept { return u2.nres; }
   void setNRes(int n) noexcept { u2.nres = n; }
+
+  // Phase 44.5: Additional CallInfo helper methods
+
+  // Get Lua closure from CallInfo
+  LClosure* getFunc() const noexcept {
+    return clLvalue(s2v(func.p));
+  }
+
+  // Extract nresults from status (static helper)
+  static int getNResults(l_uint32 cs) noexcept {
+    return cast_int(cs & CIST_NRESULTS) - 1;
+  }
 };
 
-
-#define get_nresults(cs)  (cast_int((cs) & CIST_NRESULTS) - 1)
+/* Phase 44.5: get_nresults macro replaced with CallInfo::getNResults() method */
 
 /*
 ** Field CIST_RECST stores the "recover status", used to keep the error

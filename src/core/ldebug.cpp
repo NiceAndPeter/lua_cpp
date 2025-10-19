@@ -43,7 +43,7 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
 
 static int currentpc (CallInfo *ci) {
   lua_assert(ci->isLua());
-  return pcRel(ci->getSavedPC(), ci_func(ci)->getProto());
+  return ci->getFunc()->getProto()->getPCRelative(ci->getSavedPC());
 }
 
 
@@ -99,7 +99,7 @@ int luaG_getfuncline (const Proto *f, int pc) {
 
 
 static int getcurrentline (CallInfo *ci) {
-  return luaG_getfuncline(ci_func(ci)->getProto(), currentpc(ci));
+  return luaG_getfuncline(ci->getFunc()->getProto(), currentpc(ci));
 }
 
 
@@ -204,7 +204,7 @@ const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
     if (n < 0)  /* access to vararg values? */
       return findvararg(ci_arg, n, pos);
     else
-      name = ci_func(ci_arg)->getProto()->getLocalName(n, currentpc(ci_arg));  /* Phase 25b */
+      name = ci_arg->getFunc()->getProto()->getLocalName(n, currentpc(ci_arg));  /* Phase 25b */
   }
   if (name == NULL) {  /* no 'standard' name? */
     StkId limit = (ci_arg == getCI()) ? top.p : ci_arg->getNext()->funcRef().p;
@@ -674,7 +674,7 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
     return "metamethod";  /* report it as such */
   }
   else if (ci->isLua())
-    return funcnamefromcode(L, ci_func(ci)->getProto(), currentpc(ci), name);
+    return funcnamefromcode(L, ci->getFunc()->getProto(), currentpc(ci), name);
   else
     return NULL;
 }
@@ -707,7 +707,7 @@ static int instack (CallInfo *ci, const TValue *o) {
 */
 static const char *getupvalname (CallInfo *ci, const TValue *o,
                                  const char **name) {
-  LClosure *c = ci_func(ci);
+  LClosure *c = ci->getFunc();
   int i;
   for (i = 0; i < c->getNumUpvalues(); i++) {
     if (c->getUpval(i)->getVP() == o) {
@@ -740,7 +740,7 @@ static const char *varinfo (lua_State *L, const TValue *o) {
     if (!kind) {  /* not an upvalue? */
       int reg = instack(ci, o);  /* try a register */
       if (reg >= 0)  /* is 'o' a register? */
-        kind = getobjname(ci_func(ci)->getProto(), currentpc(ci), reg, &name);
+        kind = getobjname(ci->getFunc()->getProto(), currentpc(ci), reg, &name);
     }
   }
   return formatvarinfo(L, kind, name);
@@ -905,7 +905,7 @@ l_noret lua_State::runError(const char *fmt, ...) {
   pushvfstring(this, argp, fmt, msg);
   if (ci->isLua()) {  /* Lua function? */
     /* add source:line information */
-    addInfo(msg, ci_func(ci)->getProto()->getSource(), getcurrentline(ci));
+    addInfo(msg, ci->getFunc()->getProto()->getSource(), getcurrentline(ci));
     setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
     top.p--;
   }
@@ -919,7 +919,7 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
   pushvfstring(L, argp, fmt, msg);
   if (L->getCI()->isLua()) {  /* Lua function? */
     /* add source:line information */
-    L->addInfo(msg, ci_func(L->getCI())->getProto()->getSource(), getcurrentline(L->getCI()));
+    L->addInfo(msg, L->getCI()->getFunc()->getProto()->getSource(), getcurrentline(L->getCI()));
     setobjs2s(L, L->getTop().p - 2, L->getTop().p - 1);  /* remove 'msg' */
     L->getTop().p--;
   }
@@ -967,7 +967,7 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
 // lua_State method
 int lua_State::traceCall() {
   CallInfo *ci_local = ci;
-  Proto *p = ci_func(ci_local)->getProto();
+  Proto *p = ci_local->getFunc()->getProto();
   ci_local->getTrap() = 1;  /* ensure hooks will be checked */
   if (ci_local->getSavedPC() == p->getCode()) {  /* first instruction (not resuming)? */
     if (p->getFlag() & PF_ISVARARG)
@@ -999,7 +999,7 @@ int luaG_tracecall (lua_State *L) {
 int lua_State::traceExec(const Instruction *pc) {
   CallInfo *ci_local = ci;
   lu_byte mask = cast_byte(getHookMask());
-  const Proto *p = ci_func(ci_local)->getProto();
+  const Proto *p = ci_local->getFunc()->getProto();
   int counthook;
   if (!(mask & (LUA_MASKLINE | LUA_MASKCOUNT))) {  /* no hooks? */
     ci_local->getTrap() = 0;  /* don't need to stop again */
@@ -1023,7 +1023,7 @@ int lua_State::traceExec(const Instruction *pc) {
   if (mask & LUA_MASKLINE) {
     /* 'oldpc' may be invalid; use zero in this case */
     int oldpc_val = (getOldPC() < p->getCodeSize()) ? getOldPC() : 0;
-    int npci = pcRel(pc, p);
+    int npci = p->getPCRelative(pc);
     if (npci <= oldpc_val ||  /* call hook when jump back (loop), */
         changedline(p, oldpc_val, npci)) {  /* or when enter new line */
       int newline = luaG_getfuncline(p, npci);

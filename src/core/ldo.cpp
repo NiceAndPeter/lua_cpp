@@ -467,7 +467,7 @@ void lua_State::hookCall(CallInfo *ci_arg) {
   if (getHookMask() & LUA_MASKCALL) {  /* is call hook on? */
     int event = (ci_arg->callStatusRef() & CIST_TAIL) ? LUA_HOOKTAILCALL
                                              : LUA_HOOKCALL;
-    Proto *p = ci_func(ci_arg)->getProto();
+    Proto *p = ci_arg->getFunc()->getProto();
     (*ci_arg->getSavedPCPtr())++;  /* hooks assume 'pc' is already incremented */
     callHook(event, -1, 1, p->getNumParams());
     (*ci_arg->getSavedPCPtr())--;  /* correct 'pc' */
@@ -487,7 +487,7 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
     int delta = 0;  /* correction for vararg functions */
     int ftransfer;
     if (ci_arg->isLua()) {
-      Proto *p = ci_func(ci_arg)->getProto();
+      Proto *p = ci_arg->getFunc()->getProto();
       if (p->getFlag() & PF_ISVARARG)
         delta = ci_arg->getExtraArgs() + p->getNumParams() + 1;
     }
@@ -497,7 +497,7 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
     ci_arg->funcRef().p -= delta;
   }
   if ((ci_arg = ci_arg->getPrevious())->isLua())
-    setOldPC(pcRel(ci_arg->getSavedPC(), ci_func(ci_arg)->getProto()));  /* set 'oldpc' */
+    setOldPC(ci_arg->getFunc()->getProto()->getPCRelative(ci_arg->getSavedPC()));  /* set 'oldpc' */
 }
 
 
@@ -568,7 +568,7 @@ void lua_State::moveResults(StkId res, int nres,
       genMoveResults( res, nres, nres);  /* we want all results */
       break;
     default: {  /* two/more results and/or to-be-closed variables */
-      int wanted = get_nresults(fwanted);
+      int wanted = CallInfo::getNResults(fwanted);
       if (fwanted & CIST_TBC) {  /* to-be-closed variables? */
         ci->setNRes(nres);
         ci->callStatusRef() |= CIST_CLSRET;  /* in case of yields */

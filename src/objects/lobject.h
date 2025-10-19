@@ -877,6 +877,13 @@ public:
   AbsLineInfo*& getAbsLineInfoRef() noexcept { return abslineinfo; }
   LocVar*& getLocVarsRef() noexcept { return locvars; }
 
+  // Phase 44.5: Additional Proto helper methods
+
+  // Get relative PC for debug info
+  int getPCRelative(const Instruction* pc) const noexcept {
+    return cast_int(pc - code) - 1;
+  }
+
   // Methods (implemented in lfunc.cpp)
   lu_mem memorySize() const;
   void free(lua_State* L);

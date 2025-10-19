@@ -1361,7 +1361,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
  startfunc:
   trap = L->getHookMask();
  returning:  /* trap already set */
-  cl = ci_func(ci);
+  cl = ci->getFunc();
   k = cl->getProto()->getConstants();
   pc = ci->getSavedPC();
   if (l_unlikely(trap))
@@ -1374,7 +1374,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     #if 0
     { /* low-level line tracing for debugging Lua */
       #include "lopnames.h"
-      int pcrel = pcRel(pc, cl->p);
+      int pcrel = cl->p->getPCRelative(pc);
       printf("line: %d; %s (%d)\n", luaG_getfuncline(cl->p, pcrel),
              opnames[GET_OPCODE(i)], pcrel);
     }
@@ -1945,7 +1945,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           trap = 1;
         }
         else {  /* do the 'poscall' here */
-          int nres = get_nresults(ci->getCallStatus());
+          int nres = CallInfo::getNResults(ci->getCallStatus());
           L->setCI(ci->getPrevious());  /* back to caller */
           L->getTop().p = base - 1;
           for (; l_unlikely(nres > 0); nres--)
@@ -1962,7 +1962,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           trap = 1;
         }
         else {  /* do the 'poscall' here */
-          int nres = get_nresults(ci->getCallStatus());
+          int nres = CallInfo::getNResults(ci->getCallStatus());
           L->setCI(ci->getPrevious());  /* back to caller */
           if (nres == 0)
             L->getTop().p = base - 1;  /* asked for no results */
