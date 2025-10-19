@@ -238,7 +238,7 @@ static Vardesc *getlocalvardesc (FuncState *fs, int vidx) {
 static lu_byte reglevel (FuncState *fs, int nvar) {
   while (nvar-- > 0) {
     Vardesc *vd = getlocalvardesc(fs, nvar);  /* get previous variable */
-    if (varinreg(vd))  /* is in a register? */
+    if (vd->isInReg())  /* is in a register? */
       return cast_byte(vd->vd.ridx + 1);
   }
   return 0;  /* no variables in registers */
@@ -259,7 +259,7 @@ lu_byte luaY_nvarstack (FuncState *fs) {
 */
 static LocVar *localdebuginfo (FuncState *fs, int vidx) {
   Vardesc *vd = getlocalvardesc(fs,  vidx);
-  if (!varinreg(vd))
+  if (!vd->isInReg())
     return NULL;  /* no debug info. for constants */
   else {
     int idx = vd->vd.pidx;
@@ -412,7 +412,7 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
   int i;
   for (i = cast_int(fs->getNumActiveVars()) - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(fs, i);
-    if (varglobal(vd)) {  /* global declaration? */
+    if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == NULL) {  /* collective declaration? */
         if (var->getInfo() < 0)  /* no previous collective declaration? */
           var->setInfo(fs->getFirstLocal() + i);  /* this is the first one */
@@ -1428,7 +1428,7 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
   lu_byte extra = fs->getFreeReg();  /* eventual position to save local variable */
   int conflict = 0;
   for (; lh; lh = lh->prev) {  /* check all previous assignments */
-    if (vkisindexed(lh->v.getKind())) {  /* assignment to table field? */
+    if (expdesc::isIndexed(lh->v.getKind())) {  /* assignment to table field? */
       if (lh->v.getKind() == VINDEXUP) {  /* is table an upvalue? */
         if (v->getKind() == VUPVAL && lh->v.getIndexedTableReg() == v->getInfo()) {
           conflict = 1;  /* table is the upvalue being assigned now */
@@ -1478,13 +1478,13 @@ static void storevartop (FuncState *fs, expdesc *var) {
 */
 static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
-  check_condition(ls, vkisvar(lh->v.getKind()), "syntax error");
+  check_condition(ls, expdesc::isVar(lh->v.getKind()), "syntax error");
   check_readonly(ls, &lh->v);
   if (testnext(ls, ',')) {  /* restassign -> ',' suffixedexp restassign */
     struct LHS_assign nv;
     nv.prev = lh;
     suffixedexp(ls, &nv.v);
-    if (!vkisindexed(nv.v.getKind()))
+    if (!expdesc::isIndexed(nv.v.getKind()))
       check_conflict(ls, lh, &nv.v);
     enterlevel(ls);  /* control recursion depth */
     restassign(ls, &nv, nvars+1);

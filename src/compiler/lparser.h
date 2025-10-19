@@ -67,9 +67,10 @@ typedef enum {
 } expkind;
 
 
-#define vkisvar(k)	(VLOCAL <= (k) && (k) <= VINDEXSTR)
-#define vkisindexed(k)	(VINDEXED <= (k) && (k) <= VINDEXSTR)
-
+/* Phase 44.6: vkisvar and vkisindexed macros replaced with expdesc static methods:
+** - vkisvar(k) → expdesc::isVar(k)
+** - vkisindexed(k) → expdesc::isIndexed(k)
+*/
 
 class expdesc {
 private:
@@ -132,6 +133,18 @@ public:
   int getFalseList() const noexcept { return f; }
   void setFalseList(int list) noexcept { f = list; }
   int* getFalseListRef() noexcept { return &f; }
+
+  // Phase 44.6: Expression kind helper methods
+
+  // Check if expression kind is a variable
+  static bool isVar(expkind kind) noexcept {
+    return VLOCAL <= kind && kind <= VINDEXSTR;
+  }
+
+  // Check if expression kind is indexed
+  static bool isIndexed(expkind kind) noexcept {
+    return VINDEXED <= kind && kind <= VINDEXSTR;
+  }
 };
 
 
@@ -143,25 +156,38 @@ public:
 #define GDKREG		4   /* regular global */
 #define GDKCONST	5   /* global constant */
 
-/* variables that live in registers */
-#define varinreg(v)	((v)->vd.kind <= RDKTOCLOSE)
-
-/* test for global variables */
-#define varglobal(v)	((v)->vd.kind >= GDKREG)
-
+/* Phase 44.6: varinreg and varglobal macros replaced with Vardesc methods:
+** - varinreg(v) → v->isInReg()
+** - varglobal(v) → v->isGlobal()
+*/
 
 /* description of an active variable */
-typedef union Vardesc {
-  struct {
-    Value value_;  /* value for compile-time constant */
-    lu_byte tt_;   /* type tag for compile-time constant */
-    lu_byte kind;
-    lu_byte ridx;  /* register holding the variable */
-    short pidx;  /* index of the variable in the Proto's 'locvars' array */
-    TString *name;  /* variable name */
-  } vd;
-  TValue k;  /* constant value (if any) */
-} Vardesc;
+class Vardesc {
+public:
+  union {
+    struct {
+      Value value_;  /* value for compile-time constant */
+      lu_byte tt_;   /* type tag for compile-time constant */
+      lu_byte kind;
+      lu_byte ridx;  /* register holding the variable */
+      short pidx;  /* index of the variable in the Proto's 'locvars' array */
+      TString *name;  /* variable name */
+    } vd;
+    TValue k;  /* constant value (if any) */
+  };
+
+  // Phase 44.6: Variable kind helper methods
+
+  // Check if variable is in register
+  bool isInReg() const noexcept {
+    return vd.kind <= RDKTOCLOSE;
+  }
+
+  // Check if variable is global
+  bool isGlobal() const noexcept {
+    return vd.kind >= GDKREG;
+  }
+};
 
 
 
