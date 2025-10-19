@@ -60,7 +60,7 @@
 ** the size of the C stack.)
 */
 #if !defined(LUAI_MAXCCALLS)
-#define LUAI_MAXCCALLS		200
+inline constexpr int LUAI_MAXCCALLS = 200;
 #endif
 
 

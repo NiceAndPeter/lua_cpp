@@ -24,7 +24,7 @@
 ** mark for entries in 'lineinfo' array that has absolute information in
 ** 'abslineinfo' array
 */
-#define ABSLINEINFO	(-0x80)
+inline constexpr int ABSLINEINFO = (-0x80);
 
 
 /*
@@ -32,7 +32,7 @@
 ** information. (A power of two allows fast divisions.)
 */
 #if !defined(MAXIWTHABS)
-#define MAXIWTHABS	128
+inline constexpr int MAXIWTHABS = 128;
 #endif
 
 

@@ -36,8 +36,8 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 ** for its hash part.
 */
 
-#define BITDUMMY		(1 << 6)
-#define NOTBITDUMMY		cast_byte(~BITDUMMY)
+inline constexpr lu_byte BITDUMMY = (1 << 6);
+inline constexpr lu_byte NOTBITDUMMY = cast_byte(~BITDUMMY);
 #define isdummy(t)		((t)->getFlags() & BITDUMMY)
 
 #define setnodummy(t)		((t)->clearFlagBits(BITDUMMY))
@@ -73,10 +73,10 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 
 /* results from pset */
-#define HOK		0
-#define HNOTFOUND	1
-#define HNOTATABLE	2
-#define HFIRSTNODE	3
+inline constexpr int HOK = 0;
+inline constexpr int HNOTFOUND = 1;
+inline constexpr int HNOTATABLE = 2;
+inline constexpr int HFIRSTNODE = 3;
 
 /*
 ** 'luaH_get*' operations set 'res', unless the value is absent, and
