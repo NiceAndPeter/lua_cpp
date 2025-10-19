@@ -38,6 +38,7 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 
 /*
 ** size and position of opcode arguments.
+** (SIZE_* must remain macros for use in preprocessor conditionals)
 */
 #define SIZE_C		8
 #define SIZE_vC		10
@@ -52,18 +53,19 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 
 #define POS_OP		0
 
-#define POS_A		(POS_OP + SIZE_OP)
-#define POS_k		(POS_A + SIZE_A)
-#define POS_B		(POS_k + 1)
-#define POS_vB		(POS_k + 1)
-#define POS_C		(POS_B + SIZE_B)
-#define POS_vC		(POS_vB + SIZE_vB)
+/* Position constants can be constexpr */
+inline constexpr int POS_A = (POS_OP + SIZE_OP);
+inline constexpr int POS_k = (POS_A + SIZE_A);
+inline constexpr int POS_B = (POS_k + 1);
+inline constexpr int POS_vB = (POS_k + 1);
+inline constexpr int POS_C = (POS_B + SIZE_B);
+inline constexpr int POS_vC = (POS_vB + SIZE_vB);
 
-#define POS_Bx		POS_k
+inline constexpr int POS_Bx = POS_k;
 
-#define POS_Ax		POS_A
+inline constexpr int POS_Ax = POS_A;
 
-#define POS_sJ		POS_A
+inline constexpr int POS_sJ = POS_A;
 
 
 /*
@@ -80,14 +82,16 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 
 
 #if L_INTHASBITS(SIZE_Bx)
-#define MAXARG_Bx	((1<<SIZE_Bx)-1)
+inline constexpr int MAXARG_Bx = ((1<<SIZE_Bx)-1);
 #else
-#define MAXARG_Bx	INT_MAX
+inline constexpr int MAXARG_Bx = INT_MAX;
 #endif
 
+/* OFFSET_sBx must remain macro (used in SETARG_sBx macro) */
 #define OFFSET_sBx	(MAXARG_Bx>>1)         /* 'sBx' is signed */
 
 
+/* MAXARG_Ax must remain macro (used in preprocessor conditionals) */
 #if L_INTHASBITS(SIZE_Ax)
 #define MAXARG_Ax	((1<<SIZE_Ax)-1)
 #else
@@ -95,18 +99,19 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 #endif
 
 #if L_INTHASBITS(SIZE_sJ)
-#define MAXARG_sJ	((1 << SIZE_sJ) - 1)
+inline constexpr int MAXARG_sJ = ((1 << SIZE_sJ) - 1);
 #else
-#define MAXARG_sJ	INT_MAX
+inline constexpr int MAXARG_sJ = INT_MAX;
 #endif
 
-#define OFFSET_sJ	(MAXARG_sJ >> 1)
+inline constexpr int OFFSET_sJ = (MAXARG_sJ >> 1);
 
 
-#define MAXARG_A	((1<<SIZE_A)-1)
-#define MAXARG_B	((1<<SIZE_B)-1)
-#define MAXARG_vB	((1<<SIZE_vB)-1)
-#define MAXARG_C	((1<<SIZE_C)-1)
+inline constexpr int MAXARG_A = ((1<<SIZE_A)-1);
+inline constexpr int MAXARG_B = ((1<<SIZE_B)-1);
+inline constexpr int MAXARG_vB = ((1<<SIZE_vB)-1);
+inline constexpr int MAXARG_C = ((1<<SIZE_C)-1);
+/* MAXARG_vC and OFFSET_sC must remain macros (used in preprocessor conditionals and macros) */
 #define MAXARG_vC	((1<<SIZE_vC)-1)
 #define OFFSET_sC	(MAXARG_C >> 1)
 
@@ -199,7 +204,7 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 
 
 #if !defined(MAXINDEXRK)  /* (for debugging only) */
-#define MAXINDEXRK	MAXARG_B
+inline constexpr int MAXINDEXRK = MAXARG_B;
 #endif
 
 
@@ -207,12 +212,12 @@ enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 ** Maximum size for the stack of a Lua function. It must fit in 8 bits.
 ** The highest valid register is one less than this value.
 */
-#define MAX_FSTACK	MAXARG_A
+inline constexpr int MAX_FSTACK = MAXARG_A;
 
 /*
 ** Invalid register (one more than last valid register).
 */
-#define NO_REG		MAX_FSTACK
+inline constexpr int NO_REG = MAX_FSTACK;
 
 
 
@@ -344,7 +349,7 @@ OP_EXTRAARG/*	Ax	extra (larger) argument for previous opcode	*/
 } OpCode;
 
 
-#define NUM_OPCODES	((int)(OP_EXTRAARG) + 1)
+inline constexpr int NUM_OPCODES = ((int)(OP_EXTRAARG) + 1);
 
 
 
