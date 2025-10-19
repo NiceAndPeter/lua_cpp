@@ -325,7 +325,7 @@ static void relstack (lua_State *L) {
   L->getTop().offset = savestack(L, L->getTop().p);
   L->getTbclist().offset = savestack(L, L->getTbclist().p);
   for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
-    up->setOffset(savestack(L, uplevel(up)));
+    up->setOffset(savestack(L, up->getLevel()));
   for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
     ci->topRef().offset = savestack(L, ci->topRef().p);
     ci->funcRef().offset = savestack(L, ci->funcRef().p);
@@ -373,7 +373,7 @@ static void correctstack (lua_State *L, StkId oldstack) {
   L->getTop().p = L->getTop().p - oldstack + newstack;
   L->getTbclist().p = L->getTbclist().p - oldstack + newstack;
   for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
-    up->setVP(s2v(uplevel(up) - oldstack + newstack));
+    up->setVP(s2v(up->getLevel() - oldstack + newstack));
   for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
     ci->topRef().p = ci->topRef().p - oldstack + newstack;
     ci->funcRef().p = ci->funcRef().p - oldstack + newstack;

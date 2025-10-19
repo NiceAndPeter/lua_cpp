@@ -110,9 +110,9 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
   UpVal **pp = L->getOpenUpvalPtr();
   UpVal *p;
   lua_assert(isintwups(L) || L->getOpenUpval() == NULL);
-  while ((p = *pp) != NULL && uplevel(p) >= level) {  /* search for it */
+  while ((p = *pp) != NULL && p->getLevel() >= level) {  /* search for it */
     lua_assert(!isdead(G(L), p));
-    if (uplevel(p) == level)  /* corresponding upvalue? */
+    if (p->getLevel() == level)  /* corresponding upvalue? */
       return p;  /* return it */
     pp = p->getOpenNextPtr();
   }
@@ -206,7 +206,7 @@ void luaF_newtbcupval (lua_State *L, StkId level) {
 
 
 void UpVal::unlink() {
-  lua_assert(upisopen(this));
+  lua_assert(this->isOpen());
   *getOpenPrevious() = getOpenNext();
   if (getOpenNext())
     getOpenNext()->setOpenPrevious(getOpenPrevious());
@@ -222,9 +222,9 @@ void luaF_unlinkupval (UpVal *uv) {
 */
 void luaF_closeupval (lua_State *L, StkId level) {
   UpVal *uv;
-  while ((uv = L->getOpenUpval()) != NULL && uplevel(uv) >= level) {
+  while ((uv = L->getOpenUpval()) != NULL && uv->getLevel() >= level) {
     TValue *slot = uv->getValueSlot();  /* new position for value */
-    lua_assert(uplevel(uv) < L->getTop().p);
+    lua_assert(uv->getLevel() < L->getTop().p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
     setobj(L, slot, uv->getVP());  /* move value to upvalue slot */
     uv->setVP(slot);  /* now current value lives here */

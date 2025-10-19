@@ -388,7 +388,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
     }
     case LUA_VUPVAL: {
       UpVal *uv = gco2upv(o);
-      if (upisopen(uv))
+      if (uv->isOpen())
         set2gray(uv);  /* open upvalues are kept gray */
       else
         set2black(uv);  /* closed upvalues are visited here */
@@ -459,7 +459,7 @@ static void remarkupvals (global_State *g) {
       for (uv = thread->getOpenUpval(); uv != NULL; uv = uv->getOpenNext()) {
         lua_assert(getage(uv) <= getage(thread));
         if (!iswhite(uv)) {  /* upvalue already visited? */
-          lua_assert(upisopen(uv) && isgray(uv));
+          lua_assert(uv->isOpen() && isgray(uv));
           markvalue(g, uv->getVP());  /* mark its value */
         }
       }
@@ -869,7 +869,7 @@ static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
 
 
 static void freeupval (lua_State *L, UpVal *uv) {
-  if (upisopen(uv))
+  if (uv->isOpen())
     luaF_unlinkupval(uv);
   luaM_free(L, uv);
 }
@@ -1222,7 +1222,7 @@ static void sweep2old (lua_State *L, GCObject **p) {
         lua_State *th = gco2th(curr);
         linkgclistThread(th, *g->getGrayAgainPtr());  /* insert into 'grayagain' list */
       }
-      else if (curr->getType() == LUA_VUPVAL && upisopen(gco2upv(curr)))
+      else if (curr->getType() == LUA_VUPVAL && gco2upv(curr)->isOpen())
         set2gray(curr);  /* open upvalues are always gray */
       else  /* everything else is black */
         nw2black(curr);

@@ -972,6 +972,12 @@ public:
   // Status check
   bool isOpen() const noexcept { return v.p != &u.value; }
 
+  // Level accessor for open upvalues (Phase 44.3)
+  StkId getLevel() const noexcept {
+    lua_assert(isOpen());
+    return cast(StkId, v.p);
+  }
+
   // Backward compatibility (getValue returns current value pointer)
   TValue* getValue() noexcept { return v.p; }
   const TValue* getValue() const noexcept { return v.p; }

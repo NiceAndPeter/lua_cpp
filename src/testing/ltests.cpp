@@ -474,7 +474,7 @@ static void checkLclosure (global_State *g, LClosure *cl) {
     UpVal *uv = cl->getUpval(i);
     if (uv) {
       checkobjrefN(g, clgc, uv);
-      if (!upisopen(uv))
+      if (!uv->isOpen())
         checkvalref(g, obj2gco(uv), uv->getVP());
     }
   }
@@ -502,7 +502,7 @@ static void check_stack (global_State *g, lua_State *L1) {
     return;
   }
   for (uv = L1->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
-    assert(upisopen(uv));  /* must be open */
+    assert(uv->isOpen());  /* must be open */
   assert(L1->getTop().p <= L1->getStackLast().p);
   assert(L1->getTbclist().p <= L1->getTop().p);
   for (ci = L1->getCI(); ci != NULL; ci = ci->getPrevious()) {
@@ -580,7 +580,7 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
         getage(o) == GCAge::Touched1 ||
         getage(o) == GCAge::Old0 ||
         o->getType() == LUA_VTHREAD ||
-        (o->getType() == LUA_VUPVAL && upisopen(gco2upv(o))));
+        (o->getType() == LUA_VUPVAL && gco2upv(o)->isOpen()));
       }
       assert(getage(o) != GCAge::Touched1 || isgray(o));
     }
@@ -640,7 +640,7 @@ static void incifingray (global_State *g, GCObject *o, l_mem *count) {
     return;  /* gray lists not being kept in these phases */
   if (o->getType() == LUA_VUPVAL) {
     /* only open upvalues can be gray */
-    assert(!isgray(o) || upisopen(gco2upv(o)));
+    assert(!isgray(o) || gco2upv(o)->isOpen());
     return;  /* upvalues are never in gray lists */
   }
   /* these are the ones that must be in gray lists */

@@ -28,12 +28,10 @@
 */
 inline constexpr int MAXUPVAL = 255;
 
-
-#define upisopen(up)	((up)->isOpen())
-
-
-#define uplevel(up)	check_exp(upisopen(up), cast(StkId, (up)->getVP()))
-
+/* Phase 44.3: UpVal macros replaced with methods:
+** - upisopen(up) → up->isOpen()
+** - uplevel(up) → up->getLevel()
+*/
 
 /*
 ** maximum number of misses before giving up the cache of closures
