@@ -152,10 +152,10 @@ typedef union {
 ** part?") when indexing. Its sole node has an empty value and a key
 ** (DEADKEY, NULL) that is different from any valid TValue.
 */
-static const Node dummynode_ = {
-  {{NULL}, LUA_VEMPTY,  /* value's value and type */
-   LUA_TDEADKEY, 0, {NULL}}  /* key type, next, and key value */
-};
+static const Node dummynode_ = Node(
+  {NULL}, LUA_VEMPTY,  /* value's value and type */
+  LUA_TDEADKEY, 0, {NULL}  /* key type, next, and key value */
+);
 
 
 static const TValue absentkey = {ABSTKEYCONSTANT};
@@ -250,7 +250,7 @@ static Node *mainpositionTV (const Table *t, const TValue *key) {
 
 static inline Node *mainpositionfromnode (const Table *t, Node *nd) {
   TValue key;
-  getnodekey(cast(lua_State *, NULL), &key, nd);
+  nd->getKey(cast(lua_State *, NULL), &key);
   return mainpositionTV(t, &key);
 }
 
@@ -275,34 +275,34 @@ static inline Node *mainpositionfromnode (const Table *t, Node *nd) {
 ** on the table or nil.)
 */
 static int equalkey (const TValue *k1, const Node *n2, int deadok) {
-  if (rawtt(k1) != keytt(n2)) {  /* not the same variants? */
-    if (keyisshrstr(n2) && ttislngstring(k1)) {
+  if (rawtt(k1) != n2->getKeyType()) {  /* not the same variants? */
+    if (n2->isKeyShrStr() && ttislngstring(k1)) {
       /* an external string can be equal to a short-string key */
-      return luaS_eqstr(tsvalue(k1), keystrval(n2));
+      return luaS_eqstr(tsvalue(k1), n2->getKeyStrValue());
     }
-    else if (deadok && keyisdead(n2) && iscollectable(k1)) {
+    else if (deadok && n2->isKeyDead() && iscollectable(k1)) {
       /* a collectable value can be equal to a dead key */
-      return gcvalue(k1) == gcvalueraw(keyval(n2));
+      return gcvalue(k1) == gcvalueraw(n2->getKeyValue());
    }
    else
      return 0;  /* otherwise, different variants cannot be equal */
   }
   else {  /* equal variants */
-    switch (keytt(n2)) {
+    switch (n2->getKeyType()) {
       case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE:
         return 1;
       case LUA_VNUMINT:
-        return (ivalue(k1) == keyival(n2));
+        return (ivalue(k1) == n2->getKeyIntValue());
       case LUA_VNUMFLT:
-        return luai_numeq(fltvalue(k1), fltvalueraw(keyval(n2)));
+        return luai_numeq(fltvalue(k1), fltvalueraw(n2->getKeyValue()));
       case LUA_VLIGHTUSERDATA:
-        return pvalue(k1) == pvalueraw(keyval(n2));
+        return pvalue(k1) == pvalueraw(n2->getKeyValue());
       case LUA_VLCF:
-        return fvalue(k1) == fvalueraw(keyval(n2));
+        return fvalue(k1) == fvalueraw(n2->getKeyValue());
       case ctb(LUA_VLNGSTR):
-        return luaS_eqstr(tsvalue(k1), keystrval(n2));
+        return luaS_eqstr(tsvalue(k1), n2->getKeyStrValue());
       default:
-        return gcvalue(k1) == gcvalueraw(keyval(n2));
+        return gcvalue(k1) == gcvalueraw(n2->getKeyValue());
     }
   }
 }
@@ -397,7 +397,7 @@ int luaH_next (lua_State *L, Table *t, StkId key) {
   for (i -= asize; i < t->nodeSize(); i++) {  /* hash part */
     if (!isempty(gval(gnode(t, i)))) {  /* a non-empty entry? */
       Node *n = gnode(t, i);
-      getnodekey(L, s2v(key), n);
+      n->getKey(L, s2v(key));
       setobj2s(L, key + 1, gval(n));
       return 1;
     }
@@ -549,13 +549,13 @@ static void numusehash (const Table *t, Counters *ct) {
   while (i--) {
     const Node *n = &t->getNodeArray()[i];
     if (isempty(gval(n))) {
-      lua_assert(!keyisnil(n));  /* entry was deleted; key cannot be nil */
+      lua_assert(!n->isKeyNil());  /* entry was deleted; key cannot be nil */
       ct->deleted = 1;
     }
     else {
       total++;
-      if (keyisinteger(n))
-        countint(keyival(n), ct);
+      if (n->isKeyInteger())
+        countint(n->getKeyIntValue(), ct);
     }
   }
   ct->total += total;
@@ -649,7 +649,7 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     for (i = 0; i < cast_int(size); i++) {
       Node *n = gnode(t, i);
       gnext(n) = 0;
-      setnilkey(n);
+      n->setKeyNil();
       setempty(gval(n));
     }
   }
@@ -668,7 +668,7 @@ static void reinserthash (lua_State *L, Table *ot, Table *t) {
       /* doesn't need barrier/invalidate cache, as entry was
          already present in the table */
       TValue k;
-      getnodekey(L, &k, old);
+      old->getKey(L, &k);
       newcheckedkey(t, &k, gval(old));
     }
   }
@@ -903,7 +903,7 @@ static Node *getfreepos (Table *t) {
     /* look for a spot before 'lastfree', updating 'lastfree' */
     while (getlastfree(t) > t->getNodeArray()) {
       Node *free = --getlastfree(t);
-      if (keyisnil(free))
+      if (free->isKeyNil())
         return free;
     }
   }
@@ -911,7 +911,7 @@ static Node *getfreepos (Table *t) {
     unsigned i = t->nodeSize();
     while (i--) {  /* do a linear search */
       Node *free = gnode(t, i);
-      if (keyisnil(free))
+      if (free->isKeyNil())
         return free;
     }
   }
@@ -960,7 +960,7 @@ static int insertkey (Table *t, const TValue *key, TValue *value) {
       mp = f;
     }
   }
-  setnodekey(mp, key);
+  mp->setKey(key);
   lua_assert(isempty(gval(mp)));
   setobj2t(cast(lua_State *, 0), gval(mp), value);
   return 1;
@@ -1002,7 +1002,7 @@ static const TValue *getintfromhash (Table *t, lua_Integer key) {
   Node *n = hashint(t, key);
   lua_assert(!ikeyinarray(t, key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
-    if (keyisinteger(n) && keyival(n) == key)
+    if (n->isKeyInteger() && n->getKeyIntValue() == key)
       return gval(n);  /* that's it */
     else {
       int nx = gnext(n);
@@ -1319,7 +1319,7 @@ const TValue* Table::HgetShortStr(TString* key) {
   Node *n = hashstr(this, key);
   lua_assert(strisshr(key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
-    if (keyisshrstr(n) && eqshrstr(keystrval(n), key))
+    if (n->isKeyShrStr() && eqshrstr(n->getKeyStrValue(), key))
       return gval(n);  /* that's it */
     else {
       int nx = gnext(n);

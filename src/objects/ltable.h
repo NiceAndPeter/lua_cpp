@@ -16,11 +16,11 @@ inline Node* gnode(Table* t, unsigned int i) noexcept { return t->getNode(i); }
 inline Node* gnode(const Table* t, unsigned int i) noexcept {
   return const_cast<Table*>(t)->getNode(i);
 }
-inline TValue* gval(Node* n) noexcept { return &n->i_val; }
-inline const TValue* gval(const Node* n) noexcept { return &n->i_val; }
+inline TValue* gval(Node* n) noexcept { return n->getValue(); }
+inline const TValue* gval(const Node* n) noexcept { return n->getValue(); }
 // gnext returns reference to allow modification
-inline int& gnext(Node* n) noexcept { return n->u.next; }
-inline int gnext(const Node* n) noexcept { return n->u.next; }
+inline int& gnext(Node* n) noexcept { return n->getNext(); }
+inline int gnext(const Node* n) noexcept { return n->getNext(); }
 
 
 /*

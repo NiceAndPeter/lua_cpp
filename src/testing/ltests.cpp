@@ -423,8 +423,8 @@ static void checktable (global_State *g, Table *h) {
   for (n = gnode(h, 0); n < limit; n++) {
     if (!isempty(gval(n))) {
       TValue k;
-      getnodekey(mainthread(g), &k, n);
-      assert(!keyisnil(n));
+      n->getKey(mainthread(g), &k);
+      assert(!n->isKeyNil());
       checkvalref(g, hgc, &k);
       checkvalref(g, hgc, gval(n));
     }
@@ -1142,7 +1142,7 @@ static int table_query (lua_State *L) {
   }
   else if (cast_uint(i -= cast_int(asize)) < t->nodeSize()) {
     TValue k;
-    getnodekey(L, &k, gnode(t, i));
+    gnode(t, i)->getKey(L, &k);
     if (!isempty(gval(gnode(t, i))) ||
         ttisnil(&k) ||
         ttisnumber(&k)) {

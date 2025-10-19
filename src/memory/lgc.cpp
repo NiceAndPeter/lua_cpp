@@ -103,7 +103,7 @@ inline void set2black(GCObject* x) noexcept {
 
 #define valiswhite(x)   (iscollectable(x) && iswhite(gcvalue(x)))
 
-#define keyiswhite(n)   (keyiscollectable(n) && iswhite(gckey(n)))
+#define keyiswhite(n)   (n->isKeyCollectable() && iswhite(n->getKeyGC()))
 
 
 /*
@@ -122,7 +122,7 @@ inline void set2black(GCObject* x) noexcept {
 #define markvalue(g,o) { checkliveness(mainthread(g),o); \
   if (valiswhite(o)) reallymarkobject(g,gcvalue(o)); }
 
-#define markkey(g, n)	{ if keyiswhite(n) reallymarkobject(g,gckey(n)); }
+#define markkey(g, n)	{ if keyiswhite(n) reallymarkobject(g,n->getKeyGC()); }
 
 #define markobject(g,t)	{ if (iswhite(t)) reallymarkobject(g, obj2gco(t)); }
 
@@ -259,8 +259,8 @@ inline void linkgclistThread(lua_State *th, GCObject *&p) {
 */
 static void clearkey (Node *n) {
   lua_assert(isempty(gval(n)));
-  if (keyiscollectable(n))
-    setdeadkey(n);  /* unused key; remove it */
+  if (n->isKeyCollectable())
+    n->setKeyDead();  /* unused key; remove it */
 }
 
 
@@ -535,7 +535,7 @@ static void traverseweakvalue (global_State *g, Table *h) {
     if (isempty(gval(n)))  /* entry is empty? */
       clearkey(n);  /* clear its key */
     else {
-      lua_assert(!keyisnil(n));
+      lua_assert(!n->isKeyNil());
       markkey(g, n);
       if (!hasclears && iscleared(g, gcvalueN(gval(n))))  /* a white value? */
         hasclears = 1;  /* table will have to be cleared */
@@ -592,7 +592,7 @@ static int traverseephemeron (global_State *g, Table *h, int inv) {
     Node *n = inv ? gnode(h, nsize - 1 - i) : gnode(h, i);
     if (isempty(gval(n)))  /* entry is empty? */
       clearkey(n);  /* clear its key */
-    else if (iscleared(g, gckeyN(n))) {  /* key is not marked (yet)? */
+    else if (iscleared(g, n->getKeyGCOrNull())) {  /* key is not marked (yet)? */
       hasclears = 1;  /* table must be cleared */
       if (valiswhite(gval(n)))  /* value not marked yet? */
         hasww = 1;  /* white-white entry */
@@ -622,7 +622,7 @@ static void traversestrongtable (global_State *g, Table *h) {
     if (isempty(gval(n)))  /* entry is empty? */
       clearkey(n);  /* clear its key */
     else {
-      lua_assert(!keyisnil(n));
+      lua_assert(!n->isKeyNil());
       markkey(g, n);
       markvalue(g, gval(n));
     }
@@ -834,7 +834,7 @@ static void clearbykeys (global_State *g, GCObject *l) {
     Node *limit = gnodelast(h);
     Node *n;
     for (n = gnode(h, 0); n < limit; n++) {
-      if (iscleared(g, gckeyN(n)))  /* unmarked key? */
+      if (iscleared(g, n->getKeyGCOrNull()))  /* unmarked key? */
         setempty(gval(n));  /* remove entry */
       if (isempty(gval(n)))  /* is entry empty? */
         clearkey(n);  /* clear its key */
