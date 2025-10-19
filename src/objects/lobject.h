@@ -22,16 +22,16 @@ enum class GCAge : lu_byte;
 /*
 ** Extra types for collectable non-values
 */
-#define LUA_TUPVAL	LUA_NUMTYPES  /* upvalues */
-#define LUA_TPROTO	(LUA_NUMTYPES+1)  /* function prototypes */
-#define LUA_TDEADKEY	(LUA_NUMTYPES+2)  /* removed keys in tables */
+inline constexpr int LUA_TUPVAL = LUA_NUMTYPES;      /* upvalues */
+inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
+inline constexpr int LUA_TDEADKEY = (LUA_NUMTYPES+2);  /* removed keys in tables */
 
 
 
 /*
 ** number of all possible types (including LUA_TNONE but excluding DEADKEY)
 */
-#define LUA_TOTALTYPES		(LUA_TPROTO + 2)
+inline constexpr int LUA_TOTALTYPES = (LUA_TPROTO + 2);
 
 
 /*
@@ -85,16 +85,16 @@ constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 */
 
 /* Standard nil */
-#define LUA_VNIL	makevariant(LUA_TNIL, 0)
+inline constexpr int LUA_VNIL = makevariant(LUA_TNIL, 0);
 
 /* Empty slot (which might be different from a slot containing nil) */
-#define LUA_VEMPTY	makevariant(LUA_TNIL, 1)
+inline constexpr int LUA_VEMPTY = makevariant(LUA_TNIL, 1);
 
 /* Value returned for a key not found in a table (absent key) */
-#define LUA_VABSTKEY	makevariant(LUA_TNIL, 2)
+inline constexpr int LUA_VABSTKEY = makevariant(LUA_TNIL, 2);
 
 /* Special variant to signal that a fast get is accessing a non-table */
-#define LUA_VNOTABLE    makevariant(LUA_TNIL, 3)
+inline constexpr int LUA_VNOTABLE = makevariant(LUA_TNIL, 3);
 
 
 /* macro to test for (any kind of) nil */
@@ -164,8 +164,8 @@ inline void setempty(TValue* v) noexcept { settt_(v, LUA_VEMPTY); }
 */
 
 
-#define LUA_VFALSE	makevariant(LUA_TBOOLEAN, 0)
-#define LUA_VTRUE	makevariant(LUA_TBOOLEAN, 1)
+inline constexpr int LUA_VFALSE = makevariant(LUA_TBOOLEAN, 0);
+inline constexpr int LUA_VTRUE = makevariant(LUA_TBOOLEAN, 1);
 
 constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_TBOOLEAN); }
 constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
@@ -194,7 +194,7 @@ inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
 ** ===================================================================
 */
 
-#define LUA_VTHREAD		makevariant(LUA_TTHREAD, 0)
+inline constexpr int LUA_VTHREAD = makevariant(LUA_TTHREAD, 0);
 
 constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
 
@@ -370,8 +370,8 @@ inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue(
 */
 
 /* Variant tags for numbers */
-#define LUA_VNUMINT	makevariant(LUA_TNUMBER, 0)  /* integer numbers */
-#define LUA_VNUMFLT	makevariant(LUA_TNUMBER, 1)  /* float numbers */
+inline constexpr int LUA_VNUMINT = makevariant(LUA_TNUMBER, 0);  /* integer numbers */
+inline constexpr int LUA_VNUMFLT = makevariant(LUA_TNUMBER, 1);  /* float numbers */
 
 constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TNUMBER); }
 constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
@@ -409,8 +409,8 @@ inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); 
 */
 
 /* Variant tags for strings */
-#define LUA_VSHRSTR	makevariant(LUA_TSTRING, 0)  /* short strings */
-#define LUA_VLNGSTR	makevariant(LUA_TSTRING, 1)  /* long strings */
+inline constexpr int LUA_VSHRSTR = makevariant(LUA_TSTRING, 0);  /* short strings */
+inline constexpr int LUA_VLNGSTR = makevariant(LUA_TSTRING, 1);  /* long strings */
 
 constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
 constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
@@ -578,9 +578,9 @@ inline const char* getlstr(const TString* ts, size_t& len) noexcept {
 ** Light userdata should be a variant of userdata, but for compatibility
 ** reasons they are also different types.
 */
-#define LUA_VLIGHTUSERDATA	makevariant(LUA_TLIGHTUSERDATA, 0)
+inline constexpr int LUA_VLIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0);
 
-#define LUA_VUSERDATA		makevariant(LUA_TUSERDATA, 0)
+inline constexpr int LUA_VUSERDATA = makevariant(LUA_TUSERDATA, 0);
 
 constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
 constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
@@ -689,7 +689,7 @@ inline const void* Udata::getMemory() const noexcept {
 ** ===================================================================
 */
 
-#define LUA_VPROTO	makevariant(LUA_TPROTO, 0)
+inline constexpr int LUA_VPROTO = makevariant(LUA_TPROTO, 0);
 
 
 typedef l_uint32 Instruction;
@@ -892,13 +892,13 @@ public:
 ** ===================================================================
 */
 
-#define LUA_VUPVAL	makevariant(LUA_TUPVAL, 0)
+inline constexpr int LUA_VUPVAL = makevariant(LUA_TUPVAL, 0);
 
 
 /* Variant tags for functions */
-#define LUA_VLCL	makevariant(LUA_TFUNCTION, 0)  /* Lua closure */
-#define LUA_VLCF	makevariant(LUA_TFUNCTION, 1)  /* light C function */
-#define LUA_VCCL	makevariant(LUA_TFUNCTION, 2)  /* C closure */
+inline constexpr int LUA_VLCL = makevariant(LUA_TFUNCTION, 0);  /* Lua closure */
+inline constexpr int LUA_VLCF = makevariant(LUA_TFUNCTION, 1);  /* light C function */
+inline constexpr int LUA_VCCL = makevariant(LUA_TFUNCTION, 2);  /* C closure */
 
 constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
 constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
@@ -1083,7 +1083,7 @@ typedef union Closure {
 ** ===================================================================
 */
 
-#define LUA_VTABLE	makevariant(LUA_TTABLE, 0)
+inline constexpr int LUA_VTABLE = makevariant(LUA_TTABLE, 0);
 
 constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
 
@@ -1361,7 +1361,7 @@ public:
 
 
 /* size of buffer for 'luaO_utf8esc' function */
-#define UTF8BUFFSZ	8
+inline constexpr int UTF8BUFFSZ = 8;
 
 
 /* macro to call 'luaO_pushvfstring' correctly */
