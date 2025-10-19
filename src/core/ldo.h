@@ -41,16 +41,16 @@
 #define luaD_checkstack(L,n)	luaD_checkstackaux(L,n,(void)0,(void)0)
 
 
-
-#define savestack(L,pt)		(cast_charp(pt) - cast_charp(L->getStack().p))
-#define restorestack(L,n)	cast(StkId, cast_charp(L->getStack().p) + (n))
-
+/* Phase 44.4: savestack/restorestack macros replaced with lua_State methods:
+** - savestack(L, pt) → L->saveStack(pt)
+** - restorestack(L, n) → L->restoreStack(n)
+*/
 
 /* macro to check stack size, preserving 'p' */
 #define checkstackp(L,n,p)  \
   luaD_checkstackaux(L, n, \
-    ptrdiff_t t__ = savestack(L, p),  /* save 'p' */ \
-    p = restorestack(L, t__))  /* 'pos' part: restore 'p' */
+    ptrdiff_t t__ = L->saveStack(p),  /* save 'p' */ \
+    p = L->restoreStack(t__))  /* 'pos' part: restore 'p' */
 
 
 /*

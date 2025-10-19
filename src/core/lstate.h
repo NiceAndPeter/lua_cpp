@@ -500,6 +500,27 @@ public:
   void incrementNonYieldable() noexcept { nCcalls += 0x10000; }
   void decrementNonYieldable() noexcept { nCcalls -= 0x10000; }
 
+  // Phase 44.4: Additional lua_State helper methods
+
+  // Thread with upvalues list check
+  bool isInTwups() const noexcept {
+    return twups != this;
+  }
+
+  // Hook count management
+  void resetHookCount() noexcept {
+    hookcount = basehookcount;
+  }
+
+  // Stack pointer save/restore (for reallocation safety)
+  ptrdiff_t saveStack(StkId pt) const noexcept {
+    return cast_charp(pt) - cast_charp(stack.p);
+  }
+
+  StkId restoreStack(ptrdiff_t n) const noexcept {
+    return cast(StkId, cast_charp(stack.p) + n);
+  }
+
   // Existing accessors (kept for compatibility)
   CallInfo* getCallInfo() const noexcept { return ci; }  // Alias for getCI()
 

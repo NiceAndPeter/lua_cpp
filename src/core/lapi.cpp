@@ -1089,19 +1089,19 @@ LUA_API int lua_pcallk (lua_State *L, int nargs, int nresults, int errfunc,
   else {
     StkId o = index2stack(L, errfunc);
     api_check(L, ttisfunction(s2v(o)), "error handler must be a function");
-    func = savestack(L, o);
+    func = L->saveStack(o);
   }
   c.func = L->getTop().p - (nargs+1);  /* function to be called */
   if (k == NULL || !yieldable(L)) {  /* no continuation or no yieldable? */
     c.nresults = nresults;  /* do a 'conventional' protected call */
-    status = L->pCall( f_call, &c, savestack(L, c.func), func);
+    status = L->pCall( f_call, &c, L->saveStack(c.func), func);
   }
   else {  /* prepare continuation (call is already protected by 'resume') */
     CallInfo *ci = L->getCI();
     ci->setK(k);  /* save continuation */
     ci->setCtx(ctx);  /* save context */
     /* save information for error recovery */
-    ci->setFuncIdx(cast_int(savestack(L, c.func)));
+    ci->setFuncIdx(cast_int(L->saveStack(c.func)));
     ci->setOldErrFunc(L->getErrFunc());
     L->setErrFunc(func);
     ci->setOAH(L->getAllowHook());  /* save value of 'allowhook' */
@@ -1147,13 +1147,13 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
 */
 LUA_API int lua_dump (lua_State *L, lua_Writer writer, void *data, int strip) {
   int status;
-  ptrdiff_t otop = savestack(L, L->getTop().p);  /* original top */
+  ptrdiff_t otop = L->saveStack(L->getTop().p);  /* original top */
   TValue *f = s2v(L->getTop().p - 1);  /* function to be dumped */
   lua_lock(L);
   api_checkpop(L, 1);
   api_check(L, isLfunction(f), "Lua function expected");
   status = luaU_dump(L, clLvalue(f)->getProto(), writer, data, strip);
-  L->getTop().p = restorestack(L, otop);  /* restore top */
+  L->getTop().p = L->restoreStack(otop);  /* restore top */
   lua_unlock(L);
   return status;
 }

@@ -17,10 +17,9 @@
 
 #define sizeLclosure(n)  LClosure::sizeForUpvalues(n)
 
-
-/* test whether thread is in 'twups' list */
-#define isintwups(L)	(L->getTwups() != L)
-
+/* Phase 44.4: isintwups macro replaced with lua_State method:
+** - isintwups(L) → L->isInTwups()
+*/
 
 /*
 ** maximum number of upvalues in a closure (both C and Lua). (Value

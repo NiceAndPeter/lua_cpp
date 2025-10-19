@@ -17,8 +17,9 @@
 /* Active Lua function (given call info) */
 #define ci_func(ci)		(clLvalue(s2v((ci)->funcRef().p)))
 
-
-#define resethookcount(L)	(L->setHookCount(L->getBaseHookCount()))
+/* Phase 44.4: resethookcount macro replaced with lua_State method:
+** - resethookcount(L) → L->resetHookCount()
+*/
 
 /*
 ** mark for entries in 'lineinfo' array that has absolute information in

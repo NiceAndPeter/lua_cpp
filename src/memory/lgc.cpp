@@ -742,7 +742,7 @@ static l_mem traversethread (global_State *g, lua_State *th) {
   if (o == NULL)
     return 0;  /* stack not completely built yet */
   lua_assert(g->getGCState() == GCState::Atomic ||
-             th->getOpenUpval() == NULL || isintwups(th));
+             th->getOpenUpval() == NULL || th->isInTwups());
   for (; o < th->getTop().p; o++)  /* mark live elements in the stack */
     markvalue(g, s2v(o));
   for (uv = th->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
@@ -753,7 +753,7 @@ static l_mem traversethread (global_State *g, lua_State *th) {
     for (o = th->getTop().p; o < th->getStackLast().p + EXTRA_STACK; o++)
       setnilvalue(s2v(o));  /* clear dead stack slice */
     /* 'remarkupvals' may have removed thread from 'twups' list */
-    if (!isintwups(th) && th->getOpenUpval() != NULL) {
+    if (!th->isInTwups() && th->getOpenUpval() != NULL) {
       th->setTwups(g->getTwups());  /* link it back to the list */
       g->setTwups(th);
     }
@@ -1078,7 +1078,7 @@ static void GCTM (lua_State *L) {
     setobj2s(L, L->getTop().p++, tm);  /* push finalizer... */
     setobj2s(L, L->getTop().p++, &v);  /* ... and its argument */
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
-    status = L->pCall( dothecall, NULL, savestack(L, L->getTop().p - 2), 0);
+    status = L->pCall( dothecall, NULL, L->saveStack(L->getTop().p - 2), 0);
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
     L->setAllowHook(oldah);  /* restore hooks */
     g->setGCStp(oldgcstp);  /* restore state */

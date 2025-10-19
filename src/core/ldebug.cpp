@@ -138,7 +138,7 @@ LUA_API void lua_sethook (lua_State *L, lua_Hook func, int mask, int count) {
   }
   L->setHook(func);
   L->setBaseHookCount(count);
-  resethookcount(L);
+  L->resetHookCount();
   L->setHookMask(cast_byte(mask));
   if (mask)
     settraps(L->getCI());  /* to trace inside 'luaV_execute' */
@@ -878,7 +878,7 @@ const char *luaG_addinfo (lua_State *L, const char *msg, TString *src,
 // lua_State method
 l_noret lua_State::errorMsg() {
   if (getErrFunc() != 0) {  /* is there an error handling function? */
-    StkId errfunc_ptr = restorestack(this, getErrFunc());
+    StkId errfunc_ptr = this->restoreStack(getErrFunc());
     lua_assert(ttisfunction(s2v(errfunc_ptr)));
     setobjs2s(this, top.p, top.p - 1);  /* move argument */
     setobjs2s(this, top.p - 1, errfunc_ptr);  /* push function */
@@ -1009,7 +1009,7 @@ int lua_State::traceExec(const Instruction *pc) {
   ci_local->setSavedPC(pc);  /* save 'pc' */
   counthook = (mask & LUA_MASKCOUNT) && (--getHookCountRef() == 0);
   if (counthook)
-    resethookcount(this);  /* reset count */
+    this->resetHookCount();  /* reset count */
   else if (!(mask & LUA_MASKLINE))
     return 1;  /* no line hook and count != 0; nothing to be done now */
   if (ci_local->callStatusRef() & CIST_HOOKYIELD) {  /* hook yielded last time? */

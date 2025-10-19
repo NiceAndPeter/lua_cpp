@@ -94,7 +94,7 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
   if (next)
     next->setOpenPrevious(uv->getOpenNextPtr());  /* link next's previous to our next field */
   *prev = uv;
-  if (!isintwups(L)) {  /* thread not in list of threads with upvalues? */
+  if (!L->isInTwups()) {  /* thread not in list of threads with upvalues? */
     L->setTwups(G(L)->getTwups());  /* link it to the list */
     G(L)->setTwups(L);
   }
@@ -109,7 +109,7 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
 UpVal *luaF_findupval (lua_State *L, StkId level) {
   UpVal **pp = L->getOpenUpvalPtr();
   UpVal *p;
-  lua_assert(isintwups(L) || L->getOpenUpval() == NULL);
+  lua_assert(L->isInTwups() || L->getOpenUpval() == NULL);
   while ((p = *pp) != NULL && p->getLevel() >= level) {  /* search for it */
     lua_assert(!isdead(G(L), p));
     if (p->getLevel() == level)  /* corresponding upvalue? */
@@ -254,13 +254,13 @@ static void poptbclist (lua_State *L) {
 ** level. Return restored 'level'.
 */
 StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy) {
-  ptrdiff_t levelrel = savestack(L, level);
+  ptrdiff_t levelrel = L->saveStack(level);
   luaF_closeupval(L, level);  /* first, close the upvalues */
   while (L->getTbclist().p >= level) {  /* traverse tbc's down to that level */
     StkId tbc = L->getTbclist().p;  /* get variable index */
     poptbclist(L);  /* remove it from list */
     prepcallclosemth(L, tbc, status, yy);  /* close variable */
-    level = restorestack(L, levelrel);
+    level = L->restoreStack(levelrel);
   }
   return level;
 }
