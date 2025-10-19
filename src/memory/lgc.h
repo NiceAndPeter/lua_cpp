@@ -106,27 +106,26 @@ constexpr bool testbit(lu_byte x, int b) noexcept {
 ** used for object "age" in generational mode. Last bit is used
 ** by tests.
 */
-#define WHITE0BIT	3  /* object is white (type 0) */
-#define WHITE1BIT	4  /* object is white (type 1) */
-#define BLACKBIT	5  /* object is black */
-#define FINALIZEDBIT	6  /* object has been marked for finalization */
+constexpr int WHITE0BIT = 3;     /* object is white (type 0) */
+constexpr int WHITE1BIT = 4;     /* object is white (type 1) */
+constexpr int BLACKBIT = 5;      /* object is black */
+constexpr int FINALIZEDBIT = 6;  /* object has been marked for finalization */
+constexpr int TESTBIT = 7;
 
-#define TESTBIT		7
-
-
-
-#define WHITEBITS	bit2mask(WHITE0BIT, WHITE1BIT)
+constexpr lu_byte WHITEBITS = bit2mask(WHITE0BIT, WHITE1BIT);
 
 /* object age in generational mode */
-#define G_NEW		0	/* created in current cycle */
-#define G_SURVIVAL	1	/* created in previous cycle */
-#define G_OLD0		2	/* marked old by frw. barrier in this cycle */
-#define G_OLD1		3	/* first full cycle as old */
-#define G_OLD		4	/* really old object (not to be visited) */
-#define G_TOUCHED1	5	/* old object touched this cycle */
-#define G_TOUCHED2	6	/* old object touched in previous cycle */
+enum class GCAge : lu_byte {
+	New       = 0,  /* created in current cycle */
+	Survival  = 1,  /* created in previous cycle */
+	Old0      = 2,  /* marked old by frw. barrier in this cycle */
+	Old1      = 3,  /* first full cycle as old */
+	Old       = 4,  /* really old object (not to be visited) */
+	Touched1  = 5,  /* old object touched this cycle */
+	Touched2  = 6   /* old object touched in previous cycle */
+};
 
-#define AGEBITS		7  /* all age bits (111) */
+constexpr lu_byte AGEBITS = 7;  /* all age bits (111) */
 
 // GCObject color and age inline method implementations
 
@@ -142,26 +141,26 @@ inline bool GCObject::isGray() const noexcept {
   return !testbits(marked, bitmask(BLACKBIT) | WHITEBITS);
 }
 
-inline lu_byte GCObject::getAge() const noexcept {
-  return marked & AGEBITS;
+inline GCAge GCObject::getAge() const noexcept {
+  return static_cast<GCAge>(marked & AGEBITS);
 }
 
-inline void GCObject::setAge(lu_byte age) noexcept {
-  marked = cast_byte((marked & (~AGEBITS)) | age);
+inline void GCObject::setAge(GCAge age) noexcept {
+  marked = cast_byte((marked & (~AGEBITS)) | static_cast<lu_byte>(age));
 }
 
 inline bool GCObject::isOld() const noexcept {
-  return getAge() > G_SURVIVAL;
+  return getAge() > GCAge::Survival;
 }
 
 template<typename Derived>
-inline void GCBase<Derived>::setAge(lu_byte age) noexcept {
-  marked = cast_byte((marked & (~AGEBITS)) | age);
+inline void GCBase<Derived>::setAge(GCAge age) noexcept {
+  marked = cast_byte((marked & (~AGEBITS)) | static_cast<lu_byte>(age));
 }
 
 template<typename Derived>
 inline bool GCBase<Derived>::isOld() const noexcept {
-  return getAge() > G_SURVIVAL;
+  return getAge() > GCAge::Survival;
 }
 
 // Wrapper functions for backward compatibility
@@ -182,12 +181,17 @@ inline bool isgray(const T* x) noexcept {
 }
 
 template<typename T>
-inline lu_byte getage(const T* o) noexcept {
+inline GCAge getage(const T* o) noexcept {
   return reinterpret_cast<const GCObject*>(o)->getAge();
 }
 
 template<typename T>
 inline void setage(T* o, lu_byte a) noexcept {
+  reinterpret_cast<GCObject*>(o)->setAge(static_cast<GCAge>(a));
+}
+
+template<typename T>
+inline void setage(T* o, GCAge a) noexcept {
   reinterpret_cast<GCObject*>(o)->setAge(a);
 }
 
@@ -285,35 +289,35 @@ inline lu_byte global_State::getWhite() const noexcept {
 ** Minor collections will shift to major ones after LUAI_MINORMAJOR%
 ** bytes become old.
 */
-#define LUAI_MINORMAJOR         70
+inline constexpr int LUAI_MINORMAJOR = 70;
 
 /*
 ** Major collections will shift to minor ones after a collection
 ** collects at least LUAI_MAJORMINOR% of the new bytes.
 */
-#define LUAI_MAJORMINOR         50
+inline constexpr int LUAI_MAJORMINOR = 50;
 
 /*
 ** A young (minor) collection will run after creating LUAI_GENMINORMUL%
 ** new bytes.
 */
-#define LUAI_GENMINORMUL         20
+inline constexpr int LUAI_GENMINORMUL = 20;
 
 
 /* incremental */
 
 /* Number of bytes must be LUAI_GCPAUSE% before starting new cycle */
-#define LUAI_GCPAUSE    250
+inline constexpr int LUAI_GCPAUSE = 250;
 
 /*
 ** Step multiplier: The collector handles LUAI_GCMUL% work units for
 ** each new allocated word. (Each "work unit" corresponds roughly to
 ** sweeping one object or traversing one slot.)
 */
-#define LUAI_GCMUL      200
+inline constexpr int LUAI_GCMUL = 200;
 
 /* How many bytes to allocate before next GC step */
-#define LUAI_GCSTEPSIZE	(200 * sizeof(Table))
+inline constexpr size_t LUAI_GCSTEPSIZE = (200 * sizeof(Table));
 
 
 #define setgcparam(g,p,v)  ((g)->setGCParam(LUA_GCP##p, luaO_codeparam(v)))
@@ -325,9 +329,9 @@ inline lu_byte global_State::getWhite() const noexcept {
 /*
 ** Control when GC is running:
 */
-#define GCSTPUSR	1  /* bit true when GC stopped by user */
-#define GCSTPGC		2  /* bit true when GC stopped by itself */
-#define GCSTPCLS	4  /* bit true when closing Lua state */
+inline constexpr lu_byte GCSTPUSR = 1;  /* bit true when GC stopped by user */
+inline constexpr lu_byte GCSTPGC  = 2;  /* bit true when GC stopped by itself */
+inline constexpr lu_byte GCSTPCLS = 4;  /* bit true when closing Lua state */
 
 
 /*

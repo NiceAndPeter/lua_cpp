@@ -104,7 +104,7 @@ typedef void (*Pfunc) (lua_State *L, void *ud);
 */
 
 /* Non-yieldable call increment */
-#define nyci	(0x10000 | 1)
+inline constexpr unsigned int nyci = (0x10000 | 1);
 
 
 /*
@@ -131,7 +131,7 @@ struct lua_longjmp;
 ** there will be a stack check soon after the push. Function frames
 ** never use this extra space, so it does not need to be kept clean.
 */
-#define EXTRA_STACK   5
+inline constexpr int EXTRA_STACK = 5;
 
 
 /*
@@ -140,12 +140,12 @@ struct lua_longjmp;
 ** (M == 1 makes a direct cache.)
 */
 #if !defined(STRCACHE_N)
-#define STRCACHE_N              53
-#define STRCACHE_M              2
+inline constexpr int STRCACHE_N = 53;
+inline constexpr int STRCACHE_M = 2;
 #endif
 
 
-#define BASIC_STACK_SIZE        (2*LUA_MINSTACK)
+inline constexpr int BASIC_STACK_SIZE = (2*LUA_MINSTACK);
 
 
 /*
@@ -199,42 +199,42 @@ public:
 ** Maximum expected number of results from a function
 ** (must fit in CIST_NRESULTS).
 */
-#define MAXRESULTS	250
+inline constexpr int MAXRESULTS = 250;
 
 
 /*
 ** Bits in CallInfo status
 */
 /* bits 0-7 are the expected number of results from this function + 1 */
-#define CIST_NRESULTS	0xffu
+inline constexpr l_uint32 CIST_NRESULTS = 0xffu;
 
 /* bits 8-11 count call metamethods (and their extra arguments) */
-#define CIST_CCMT	8  /* the offset, not the mask */
-#define MAX_CCMT	(0xfu << CIST_CCMT)
+inline constexpr int CIST_CCMT = 8;  /* the offset, not the mask */
+inline constexpr l_uint32 MAX_CCMT = (0xfu << CIST_CCMT);
 
 /* Bits 12-14 are used for CIST_RECST (see below) */
-#define CIST_RECST	12  /* the offset, not the mask */
+inline constexpr int CIST_RECST = 12;  /* the offset, not the mask */
 
 /* call is running a C function (still in first 16 bits) */
-#define CIST_C		(1u << (CIST_RECST + 3))
+inline constexpr l_uint32 CIST_C = (1u << (CIST_RECST + 3));
 /* call is on a fresh "luaV_execute" frame */
-#define CIST_FRESH	(cast(l_uint32, CIST_C) << 1)
+inline constexpr l_uint32 CIST_FRESH = (cast(l_uint32, CIST_C) << 1);
 /* function is closing tbc variables */
-#define CIST_CLSRET	(CIST_FRESH << 1)
+inline constexpr l_uint32 CIST_CLSRET = (CIST_FRESH << 1);
 /* function has tbc variables to close */
-#define CIST_TBC	(CIST_CLSRET << 1)
+inline constexpr l_uint32 CIST_TBC = (CIST_CLSRET << 1);
 /* original value of 'allowhook' */
-#define CIST_OAH	(CIST_TBC << 1)
+inline constexpr l_uint32 CIST_OAH = (CIST_TBC << 1);
 /* call is running a debug hook */
-#define CIST_HOOKED	(CIST_OAH << 1)
+inline constexpr l_uint32 CIST_HOOKED = (CIST_OAH << 1);
 /* doing a yieldable protected call */
-#define CIST_YPCALL	(CIST_HOOKED << 1)
+inline constexpr l_uint32 CIST_YPCALL = (CIST_HOOKED << 1);
 /* call was tail called */
-#define CIST_TAIL	(CIST_YPCALL << 1)
+inline constexpr l_uint32 CIST_TAIL = (CIST_YPCALL << 1);
 /* last hook called yielded */
-#define CIST_HOOKYIELD	(CIST_TAIL << 1)
+inline constexpr l_uint32 CIST_HOOKYIELD = (CIST_TAIL << 1);
 /* function "called" a finalizer */
-#define CIST_FIN	(CIST_HOOKYIELD << 1)
+inline constexpr l_uint32 CIST_FIN = (CIST_HOOKYIELD << 1);
 
 
 /*

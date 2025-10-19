@@ -301,7 +301,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
     reallymarkobject(g, v);  /* restore invariant */
     if (isold(o)) {
       lua_assert(!isold(v));  /* white object could not be old */
-      setage(v, G_OLD0);  /* restore generational invariant */
+      setage(v, GCAge::Old0);  /* restore generational invariant */
     }
   }
   else {  /* sweep phase */
@@ -320,13 +320,13 @@ void luaC_barrierback_ (lua_State *L, GCObject *o) {
   global_State *g = G(L);
   lua_assert(isblack(o) && !isdead(g, o));
   lua_assert((g->getGCKind() != GCKind::GenerationalMinor)
-          || (isold(o) && getage(o) != G_TOUCHED1));
-  if (getage(o) == G_TOUCHED2)  /* already in gray list? */
+          || (isold(o) && getage(o) != GCAge::Touched1));
+  if (getage(o) == GCAge::Touched2)  /* already in gray list? */
     set2gray(o);  /* make it gray to become touched1 */
   else  /* link it in 'grayagain' and paint it gray */
     linkobjgclist(o, *g->getGrayAgainPtr());
   if (isold(o))  /* generational mode? */
-    setage(o, G_TOUCHED1);  /* touched in current cycle */
+    setage(o, GCAge::Touched1);  /* touched in current cycle */
 }
 
 
@@ -511,11 +511,11 @@ static void restartcollection (global_State *g) {
 */
 static void genlink (global_State *g, GCObject *o) {
   lua_assert(isblack(o));
-  if (getage(o) == G_TOUCHED1) {  /* touched in this cycle? */
+  if (getage(o) == GCAge::Touched1) {  /* touched in this cycle? */
     linkobjgclist(o, *g->getGrayAgainPtr());  /* link it back in 'grayagain' */
   }  /* everything else do not need to be linked back */
-  else if (getage(o) == G_TOUCHED2)
-    setage(o, G_OLD);  /* advance age */
+  else if (getage(o) == GCAge::Touched2)
+    setage(o, GCAge::Old);  /* advance age */
 }
 
 
@@ -951,7 +951,7 @@ static void freeobj (lua_State *L, GCObject *o) {
 ** SWEEP PROCESS:
 ** 1. Check if object is dead (has the old white color)
 ** 2. If dead: remove from list and free memory
-** 3. If alive: reset to current white and mark age as G_NEW
+** 3. If alive: reset to current white and mark age as GCAge::New
 **
 ** INCREMENTAL SWEEPING:
 ** The countin parameter limits work per step. This allows sweeping to be
@@ -969,7 +969,7 @@ static GCObject **sweeplist (lua_State *L, GCObject **p, l_mem countin) {
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* change mark to 'white' and age to 'new' */
-      curr->setMarked(cast_byte((marked & ~maskgcbits) | white | G_NEW));
+      curr->setMarked(cast_byte((marked & ~maskgcbits) | white | static_cast<lu_byte>(GCAge::New)));
       p = curr->getNextPtr();  /* go to next element */
     }
   }
@@ -1021,7 +1021,7 @@ static GCObject *udata2finalize (global_State *g) {
   o->clearMarkedBit(FINALIZEDBIT);  /* object is "normal" again */
   if (issweepphase(g))
     makewhite(g, o);  /* "sweep" object */
-  else if (getage(o) == G_OLD1)
+  else if (getage(o) == GCAge::Old1)
     g->setFirstOld1(o);  /* it is the first OLD1 object in the list */
   return o;
 }
@@ -1217,7 +1217,7 @@ static void sweep2old (lua_State *L, GCObject **p) {
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* all surviving objects become old */
-      setage(curr, G_OLD);
+      setage(curr, GCAge::Old);
       if (curr->getType() == LUA_VTHREAD) {  /* threads must be watched */
         lua_State *th = gco2th(curr);
         linkgclistThread(th, *g->getGrayAgainPtr());  /* insert into 'grayagain' list */
@@ -1238,7 +1238,7 @@ static void sweep2old (lua_State *L, GCObject **p) {
 ** during the sweep. So, any white object must be dead.) For
 ** non-dead objects, advance their ages and clear the color of
 ** new objects. (Old objects keep their colors.)
-** The ages of G_TOUCHED1 and G_TOUCHED2 objects cannot be advanced
+** The ages of GCAge::Touched1 and GCAge::Touched2 objects cannot be advanced
 ** here, because these old-generation objects are usually not swept
 ** here.  They will all be advanced in 'correctgraylist'. That function
 ** will also remove objects turned white here from any gray list.
@@ -1246,14 +1246,14 @@ static void sweep2old (lua_State *L, GCObject **p) {
 static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
                             GCObject *limit, GCObject **pfirstold1,
                             l_mem *paddedold) {
-  static const lu_byte nextage[] = {
-    G_SURVIVAL,  /* from G_NEW */
-    G_OLD1,      /* from G_SURVIVAL */
-    G_OLD1,      /* from G_OLD0 */
-    G_OLD,       /* from G_OLD1 */
-    G_OLD,       /* from G_OLD (do not change) */
-    G_TOUCHED1,  /* from G_TOUCHED1 (do not change) */
-    G_TOUCHED2   /* from G_TOUCHED2 (do not change) */
+  static const GCAge nextage[] = {
+    GCAge::Survival,  /* from GCAge::New */
+    GCAge::Old1,      /* from GCAge::Survival */
+    GCAge::Old1,      /* from GCAge::Old0 */
+    GCAge::Old,       /* from GCAge::Old1 */
+    GCAge::Old,       /* from GCAge::Old (do not change) */
+    GCAge::Touched1,  /* from GCAge::Touched1 (do not change) */
+    GCAge::Touched2   /* from GCAge::Touched2 (do not change) */
   };
   l_mem addedold = 0;
   int white = g->getWhite();
@@ -1265,15 +1265,15 @@ static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
       freeobj(L, curr);  /* erase 'curr' */
     }
     else {  /* correct mark and age */
-      int age = getage(curr);
-      if (age == G_NEW) {  /* new objects go back to white */
+      GCAge age = getage(curr);
+      if (age == GCAge::New) {  /* new objects go back to white */
         int marked = curr->getMarked() & ~maskgcbits;  /* erase GC bits */
-        curr->setMarked(cast_byte(marked | G_SURVIVAL | white));
+        curr->setMarked(cast_byte(marked | static_cast<lu_byte>(GCAge::Survival) | white));
       }
       else {  /* all other objects will be old, and so keep their color */
-        lua_assert(age != G_OLD1);  /* advanced in 'markold' */
-        setage(curr, nextage[age]);
-        if (getage(curr) == G_OLD1) {
+        lua_assert(age != GCAge::Old1);  /* advanced in 'markold' */
+        setage(curr, nextage[static_cast<size_t>(age)]);
+        if (getage(curr) == GCAge::Old1) {
           addedold += objsize(curr);  /* bytes becoming old */
           if (*pfirstold1 == NULL)
             *pfirstold1 = curr;  /* first OLD1 object in the list */
@@ -1304,10 +1304,10 @@ static GCObject **correctgraylist (GCObject **p) {
     GCObject **next = getgclist(curr);
     if (iswhite(curr))
       goto remove;  /* remove all white objects */
-    else if (getage(curr) == G_TOUCHED1) {  /* touched in this cycle? */
+    else if (getage(curr) == GCAge::Touched1) {  /* touched in this cycle? */
       lua_assert(isgray(curr));
       nw2black(curr);  /* make it black, for next barrier */
-      setage(curr, G_TOUCHED2);
+      setage(curr, GCAge::Touched2);
       goto remain;  /* keep it in the list and go to next element */
     }
     else if (curr->getType() == LUA_VTHREAD) {
@@ -1316,8 +1316,8 @@ static GCObject **correctgraylist (GCObject **p) {
     }
     else {  /* everything else is removed */
       lua_assert(isold(curr));  /* young objects should be white here */
-      if (getage(curr) == G_TOUCHED2)  /* advance from TOUCHED2... */
-        setage(curr, G_OLD);  /* ... to OLD */
+      if (getage(curr) == GCAge::Touched2)  /* advance from TOUCHED2... */
+        setage(curr, GCAge::Old);  /* ... to OLD */
       nw2black(curr);  /* make object black (to be removed) */
       goto remove;
     }
@@ -1350,9 +1350,9 @@ static void correctgraylists (global_State *g) {
 static void markold (global_State *g, GCObject *from, GCObject *to) {
   GCObject *p;
   for (p = from; p != to; p = p->getNext()) {
-    if (getage(p) == G_OLD1) {
+    if (getage(p) == GCAge::Old1) {
       lua_assert(!iswhite(p));
-      setage(p, G_OLD);  /* now they are old */
+      setage(p, GCAge::Old);  /* now they are old */
       if (isblack(p))
         reallymarkobject(g, p);
     }
@@ -1884,7 +1884,7 @@ void GCObject::fix(lua_State* L) {
   global_State *g = G(L);
   lua_assert(g->getAllGC() == this);  /* object must be 1st in 'allgc' list! */
   set2gray(this);  /* they will be gray forever */
-  setage(this, G_OLD);  /* and old forever */
+  setage(this, GCAge::Old);  /* and old forever */
   g->setAllGC(getNext());  /* remove object from 'allgc' list */
   setNext(g->getFixedGC());  /* link it to 'fixedgc' list */
   g->setFixedGC(this);

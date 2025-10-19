@@ -16,6 +16,8 @@
 #include "lua.h"
 #include "ltvalue.h"  /* TValue class */
 
+/* Forward declarations */
+enum class GCAge : lu_byte;
 
 /*
 ** Extra types for collectable non-values
@@ -248,8 +250,8 @@ public:
   inline bool isWhite() const noexcept;
   inline bool isBlack() const noexcept;
   inline bool isGray() const noexcept;
-  inline lu_byte getAge() const noexcept;
-  inline void setAge(lu_byte age) noexcept;
+  inline GCAge getAge() const noexcept;
+  inline void setAge(GCAge age) noexcept;
   inline bool isOld() const noexcept;
 
   // GC operations (implemented in lgc.cpp)
@@ -310,7 +312,7 @@ public:
     constexpr bool isMarked() const noexcept { return marked != 0; }
 
     // GC color and age methods (defined in lgc.h after constants)
-    inline void setAge(lu_byte age) noexcept;
+    inline void setAge(GCAge age) noexcept;
     inline bool isOld() const noexcept;
 
     // Cast to GCObject* for compatibility
