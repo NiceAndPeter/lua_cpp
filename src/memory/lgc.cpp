@@ -116,7 +116,7 @@ inline void set2black(GCObject* x) noexcept {
 ** Access to collectable objects in array part of tables
 */
 #define gcvalarr(t,i)  \
-	((*getArrTag(t,i) & BIT_ISCOLLECTABLE) ? getArrVal(t,i)->gc : NULL)
+	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : NULL)
 
 
 #define markvalue(g,o) { checkliveness(mainthread(g),o); \
@@ -148,7 +148,7 @@ static void entersweep (lua_State *L);
 /*
 ** one after last element in a hash array
 */
-#define gnodelast(h)	gnode(h, cast_sizet(sizenode(h)))
+#define gnodelast(h)	gnode(h, cast_sizet((h)->nodeSize()))
 
 
 static l_mem objsize (GCObject *o) {
@@ -584,7 +584,7 @@ static int traverseephemeron (global_State *g, Table *h, int inv) {
   int hasclears = 0;  /* true if table has white keys */
   int hasww = 0;  /* true if table has entry "white-key -> white-value" */
   unsigned int i;
-  unsigned int nsize = sizenode(h);
+  unsigned int nsize = h->nodeSize();
   int marked = traversearray(g, h);  /* traverse array part */
   /* traverse hash part; if 'inv', traverse descending
      (see 'convergeephemerons') */
@@ -666,7 +666,7 @@ static l_mem traversetable (global_State *g, Table *h) {
         linkgclistTable(h, *g->getAllWeakPtr());  /* must clear collected entries */
       break;
   }
-  return cast(l_mem, 1 + 2*sizenode(h) + h->arraySize());
+  return cast(l_mem, 1 + 2*h->nodeSize() + h->arraySize());
 }
 
 
@@ -856,7 +856,7 @@ static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
     for (i = 0; i < asize; i++) {
       GCObject *o = gcvalarr(h, i);
       if (iscleared(g, o))  /* value was collected? */
-        *getArrTag(h, i) = LUA_VEMPTY;  /* remove entry */
+        *h->getArrayTag(i) = LUA_VEMPTY;  /* remove entry */
     }
     for (n = gnode(h, 0); n < limit; n++) {
       if (iscleared(g, gcvalueN(gval(n))))  /* unmarked value? */

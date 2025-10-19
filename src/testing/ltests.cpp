@@ -412,7 +412,7 @@ static void checkvalref (global_State *g, GCObject *f, const TValue *t) {
 static void checktable (global_State *g, Table *h) {
   unsigned int i;
   unsigned int asize = h->arraySize();
-  Node *n, *limit = gnode(h, sizenode(h));
+  Node *n, *limit = gnode(h, h->nodeSize());
   GCObject *hgc = obj2gco(h);
   checkobjrefN(g, hgc, h->getMetatable());
   for (i = 0; i < asize; i++) {
@@ -1127,20 +1127,20 @@ static int table_query (lua_State *L) {
   asize = t->arraySize();
   if (i == -1) {
     lua_pushinteger(L, cast_Integer(asize));
-    lua_pushinteger(L, cast_Integer(allocsizenode(t)));
-    lua_pushinteger(L, cast_Integer(asize > 0 ? *lenhint(t) : 0));
+    lua_pushinteger(L, cast_Integer(t->allocatedNodeSize()));
+    lua_pushinteger(L, cast_Integer(asize > 0 ? *t->getLenHint() : 0));
     return 3;
   }
   else if (cast_uint(i) < asize) {
     lua_pushinteger(L, i);
-    if (!tagisempty(*getArrTag(t, i)))
+    if (!tagisempty(*t->getArrayTag(i)))
       arr2obj(t, cast_uint(i), s2v(L->getTop().p));
     else
       setnilvalue(s2v(L->getTop().p));
     api_incr_top(L);
     lua_pushnil(L);
   }
-  else if (cast_uint(i -= cast_int(asize)) < sizenode(t)) {
+  else if (cast_uint(i -= cast_int(asize)) < t->nodeSize()) {
     TValue k;
     getnodekey(L, &k, gnode(t, i));
     if (!isempty(gval(gnode(t, i))) ||

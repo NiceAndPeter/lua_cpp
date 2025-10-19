@@ -1282,6 +1282,39 @@ public:
   void setNoDummy() noexcept { flags &= cast_byte(~(1 << 6)); }
   // invalidateTMCache uses maskflags from ltm.h, so can't inline here - use macro instead
 
+  // Phase 44.1: Additional table helper methods
+  inline unsigned int allocatedNodeSize() const noexcept {
+    return isDummy() ? 0 : nodeSize();
+  }
+
+  inline unsigned int* getLenHint() noexcept {
+    return cast(unsigned*, array);
+  }
+
+  inline const unsigned int* getLenHint() const noexcept {
+    return cast(const unsigned*, array);
+  }
+
+  inline lu_byte* getArrayTag(lua_Unsigned k) noexcept {
+    return cast(lu_byte*, array) + sizeof(unsigned) + k;
+  }
+
+  inline const lu_byte* getArrayTag(lua_Unsigned k) const noexcept {
+    return cast(const lu_byte*, array) + sizeof(unsigned) + k;
+  }
+
+  inline Value* getArrayVal(lua_Unsigned k) noexcept {
+    return array - 1 - k;
+  }
+
+  inline const Value* getArrayVal(lua_Unsigned k) const noexcept {
+    return array - 1 - k;
+  }
+
+  static inline unsigned int powerOfTwo(unsigned int x) noexcept {
+    return (1u << x);
+  }
+
   // Node accessors (Phase 19: Table macro reduction)
   Node* getNode(unsigned int i) noexcept { return &node[i]; }
   const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
@@ -1356,8 +1389,8 @@ public:
 	(check_exp((size&(size-1))==0, (cast_uint(s) & cast_uint((size)-1))))
 
 
-#define twoto(x)	(1u<<(x))
-#define sizenode(t)	(twoto((t)->getLsizenode()))
+/* Phase 44.1: twoto now Table::powerOfTwo(x) static method */
+/* Phase 44.1: sizenode now Table::nodeSize() method */
 
 
 /* size of buffer for 'luaO_utf8esc' function */

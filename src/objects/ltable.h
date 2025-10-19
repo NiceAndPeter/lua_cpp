@@ -38,26 +38,16 @@ inline int gnext(const Node* n) noexcept { return n->u.next; }
 
 inline constexpr lu_byte BITDUMMY = (1 << 6);
 inline constexpr lu_byte NOTBITDUMMY = cast_byte(~BITDUMMY);
-#define isdummy(t)		((t)->getFlags() & BITDUMMY)
-
-#define setnodummy(t)		((t)->clearFlagBits(BITDUMMY))
-#define setdummy(t)		((t)->setFlagBits(BITDUMMY))
-
-
-
-/* allocated size for hash nodes */
-#define allocsizenode(t)	(isdummy(t) ? 0 : sizenode(t))
-
-
-/* returns the Node, given the value of a table entry */
-#define nodefromval(v)	cast(Node *, (v))
+/* Phase 44.1: isdummy, setnodummy, setdummy now Table methods isDummy(), setNoDummy(), setDummy() */
+/* Phase 44.1: allocsizenode now Table::allocatedNodeSize() method */
+/* Phase 44.1: nodefromval replaced with direct cast(Node*, v) */
 
 
 
 #define luaH_fastgeti(t,k,res,tag) \
   { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
     if ((u < h->arraySize())) { \
-      tag = *getArrTag(h, u); \
+      tag = *h->getArrayTag(u); \
       if (!tagisempty(tag)) { farr2val(h, u, tag, (res)); }} \
     else { tag = luaH_getint(h, (k), res); }}
 
@@ -65,7 +55,7 @@ inline constexpr lu_byte NOTBITDUMMY = cast_byte(~BITDUMMY);
 #define luaH_fastseti(t,k,val,hres) \
   { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
     if ((u < h->arraySize())) { \
-      lu_byte *tag = getArrTag(h, u); \
+      lu_byte *tag = h->getArrayTag(u); \
       if (checknoTM(h->getMetatable(), TM_NEWINDEX) || !tagisempty(*tag)) \
         { fval2arr(h, u, tag, (val)); hres = HOK; } \
       else hres = ~cast_int(u); } \
@@ -113,15 +103,12 @@ inline constexpr int HFIRSTNODE = 3;
   --------------------------------------------------------
                                        ^ t->array
 
-** All accesses to 't->array' should be through the macros 'getArrTag'
-** and 'getArrVal'.
+** All accesses to 't->array' should be through Table methods getArrayTag()
+** and getArrayVal().
 */
 
-/* Computes the address of the tag for the abstract C-index 'k' */
-#define getArrTag(t,k)	(cast(lu_byte*, (t)->getArray()) + sizeof(unsigned) + (k))
-
-/* Computes the address of the value for the abstract C-index 'k' */
-#define getArrVal(t,k)	((t)->getArray() - 1 - (k))
+/* Phase 44.1: getArrTag now Table::getArrayTag(k) method */
+/* Phase 44.1: getArrVal now Table::getArrayVal(k) method */
 
 
 /*
@@ -129,21 +116,22 @@ inline constexpr int HFIRSTNODE = 3;
 ** see luaH_getn. It is stored there to avoid wasting space in
 ** the structure Table for tables with no array part.
 */
-#define lenhint(t)	cast(unsigned*, (t)->getArray())
+/* Phase 44.1: lenhint now Table::getLenHint() method */
 
 
 /*
 ** Move TValues to/from arrays, using C indices
 ** Phase 27: Converted to inline functions using TValue methods
+** Phase 44.1: Updated to use Table methods instead of macros
 */
 inline void arr2obj(const Table* h, lua_Unsigned k, TValue* val) noexcept {
-  val->setType(*getArrTag(const_cast<Table*>(h), k));
-  val->valueField() = *getArrVal(const_cast<Table*>(h), k);
+  val->setType(*h->getArrayTag(k));
+  val->valueField() = *h->getArrayVal(k);
 }
 
 inline void obj2arr(Table* h, lua_Unsigned k, const TValue* val) noexcept {
-  *getArrTag(h, k) = val->getType();
-  *getArrVal(h, k) = val->getValue();
+  *h->getArrayTag(k) = val->getType();
+  *h->getArrayVal(k) = val->getValue();
 }
 
 /*
@@ -153,12 +141,12 @@ inline void obj2arr(Table* h, lua_Unsigned k, const TValue* val) noexcept {
 */
 inline void farr2val(const Table* h, lua_Unsigned k, lu_byte tag, TValue* res) noexcept {
   res->setType(tag);
-  res->valueField() = *getArrVal(const_cast<Table*>(h), k);
+  res->valueField() = *h->getArrayVal(k);
 }
 
 inline void fval2arr(Table* h, lua_Unsigned k, lu_byte* tag, const TValue* val) noexcept {
   *tag = val->getType();
-  *getArrVal(h, k) = val->getValue();
+  *h->getArrayVal(k) = val->getValue();
 }
 
 
