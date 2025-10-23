@@ -146,21 +146,57 @@ typedef LUAI_UACINT l_uacInt;
 // (Lua code uses cast() for many purposes including const-casting)
 #define cast(t, exp)	((t)(exp))
 
-// C++ versions use static_cast for numeric conversions (type safe)
+// C++ constexpr inline functions for type-safe numeric conversions
+// These replace macros with zero-overhead functions that provide:
+// - Better type safety through template parameter deduction
+// - Improved compiler diagnostics
+// - Debugger-friendly code (can step through functions)
+// - constexpr allows compile-time evaluation where possible
+
+// cast_void kept as macro - used in comma expressions and ternary operators
 #define cast_void(i)	static_cast<void>(i)
-#define cast_num(i)	static_cast<lua_Number>(i)
-#define cast_int(i)	static_cast<int>(i)
-#define cast_short(i)	static_cast<short>(i)
-#define cast_uint(i)	static_cast<unsigned int>(i)
-#define cast_byte(i)	static_cast<lu_byte>(i)
-#define cast_uchar(i)	static_cast<unsigned char>(i)
-#define cast_char(i)	static_cast<char>(i)
-#define cast_Integer(i)	static_cast<lua_Integer>(i)
+
+constexpr inline lua_Number cast_num(auto i) noexcept {
+    return static_cast<lua_Number>(i);
+}
+
+constexpr inline int cast_int(auto i) noexcept {
+    return static_cast<int>(i);
+}
+
+constexpr inline short cast_short(auto i) noexcept {
+    return static_cast<short>(i);
+}
+
+constexpr inline unsigned int cast_uint(auto i) noexcept {
+    return static_cast<unsigned int>(i);
+}
+
+constexpr inline lu_byte cast_byte(auto i) noexcept {
+    return static_cast<lu_byte>(i);
+}
+
+constexpr inline unsigned char cast_uchar(auto i) noexcept {
+    return static_cast<unsigned char>(i);
+}
+
+constexpr inline char cast_char(auto i) noexcept {
+    return static_cast<char>(i);
+}
+
+constexpr inline lua_Integer cast_Integer(auto i) noexcept {
+    return static_cast<lua_Integer>(i);
+}
+
+// cast_sizet kept as macro - used in contexts where result may be passed to
+// functions expecting different integer types (avoiding conversion warnings)
+#define cast_sizet(i)	cast(size_t, (i))
+
+// cast_Inst kept as macro - Instruction type defined in lobject.h
 #define cast_Inst(i)	static_cast<Instruction>(i)
 
 // These need C-style cast for compatibility (used with pointers, etc.)
 #define cast_voidp(i)	cast(void*, (i))
-#define cast_sizet(i)	cast(size_t, (i))
 #define cast_charp(i)	cast(char*, (i))
 
 

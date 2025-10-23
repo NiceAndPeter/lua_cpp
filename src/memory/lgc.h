@@ -55,10 +55,6 @@
 */
 
 
-#define issweepphase(g)  \
-	(GCState::SweepAllGC <= (g)->getGCState() && (g)->getGCState() <= GCState::SweepEnd)
-
-
 /*
 ** macro to tell when main invariant (white objects cannot point to black
 ** ones) must be kept. During a collection, the sweep phase may break
@@ -69,6 +65,11 @@
 
 inline bool global_State::keepInvariant() const noexcept {
 	return gcstate <= static_cast<lu_byte>(GCState::Atomic);
+}
+
+// Phase 47: Check if GC is in sweep phase
+inline bool global_State::isSweepPhase() const noexcept {
+	return GCState::SweepAllGC <= getGCState() && getGCState() <= GCState::SweepEnd;
 }
 
 
@@ -94,11 +95,8 @@ constexpr bool testbit(lu_byte x, int b) noexcept {
     return (testbits(x, cast_byte(bitmask(b))) != 0);
 }
 
-// Bit manipulation - keep as macros since they modify arguments
-#define setbits(x,m)		((x) = cast_byte((x) | (m)))
-#define resetbits(x,m)		((x) &= cast_byte(~(m)))
-#define l_setbit(x,b)		setbits(x, bitmask(b))
-#define resetbit(x,b)		resetbits(x, bitmask(b))
+// Phase 47: Removed unused bit manipulation macros (setbits, resetbits, l_setbit, resetbit)
+// Bit manipulation is now handled through GCObject methods like setMarked()
 
 
 /*
@@ -320,6 +318,8 @@ inline constexpr int LUAI_GCMUL = 200;
 inline constexpr size_t LUAI_GCSTEPSIZE = (200 * sizeof(Table));
 
 
+// Phase 47: These macros must remain as macros due to token pasting (##)
+// They expand parameter names like STEPMUL to LUA_GCPSTEPMUL at compile time
 #define setgcparam(g,p,v)  ((g)->setGCParam(LUA_GCP##p, luaO_codeparam(v)))
 #define applygcparam(g,p,x)  luaO_applyparam((g)->getGCParam(LUA_GCP##p), x)
 

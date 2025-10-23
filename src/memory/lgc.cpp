@@ -305,7 +305,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
     }
   }
   else {  /* sweep phase */
-    lua_assert(issweepphase(g));
+    lua_assert(g->isSweepPhase());
     if (g->getGCKind() != GCKind::GenerationalMinor)  /* incremental mode? */
       makewhite(g, o);  /* mark 'o' as white to avoid other barriers */
   }
@@ -1019,7 +1019,7 @@ static GCObject *udata2finalize (global_State *g) {
   o->setNext(g->getAllGC());  /* return it to 'allgc' list */
   g->setAllGC(o);
   o->clearMarkedBit(FINALIZEDBIT);  /* object is "normal" again */
-  if (issweepphase(g))
+  if (g->isSweepPhase())
     makewhite(g, o);  /* "sweep" object */
   else if (getage(o) == GCAge::Old1)
     g->setFirstOld1(o);  /* it is the first OLD1 object in the list */
@@ -1898,7 +1898,7 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     return;  /* nothing to be done */
   else {  /* move 'this' to 'finobj' list */
     GCObject **p;
-    if (issweepphase(g)) {
+    if (g->isSweepPhase()) {
       makewhite(g, this);  /* "sweep" object 'this' */
       if (g->getSweepGC() == &this->next)  /* should not remove 'sweepgc' object */
         g->setSweepGC(sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */

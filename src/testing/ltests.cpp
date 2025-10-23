@@ -304,7 +304,7 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
 */
 static int testobjref1 (global_State *g, GCObject *f, GCObject *t) {
   if (isdead(g,t)) return 0;
-  if (issweepphase(g))
+  if (g->isSweepPhase())
     return 1;  /* no invariants */
   else if (g->getGCKind() != GCKind::GenerationalMinor)
     return !(isblack(f) && iswhite(t));  /* basic incremental invariant */
@@ -691,7 +691,7 @@ int lua_checkmemory (lua_State *L) {
     assert(!iswhite(gcvalue(g->getRegistry())));
   }
   assert(!isdead(g, gcvalue(g->getRegistry())));
-  assert(g->getSweepGC() == NULL || issweepphase(g));
+  assert(g->getSweepGC() == NULL || g->isSweepPhase());
   totalin = checkgrays(g);
 
   /* check 'fixedgc' list */

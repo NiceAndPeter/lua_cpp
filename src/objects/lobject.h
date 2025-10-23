@@ -420,8 +420,6 @@ constexpr bool TValue::isString() const noexcept { return checktype(this, LUA_TS
 constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LUA_VSHRSTR)); }
 constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LUA_VLNGSTR)); }
 
-#define tsvalueraw(v)	(gco2ts((v).gc))
-
 inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 
 
@@ -547,9 +545,39 @@ inline char* rawgetshrstr(TString* ts) noexcept {
 inline const char* rawgetshrstr(const TString* ts) noexcept {
 	return ts->getContentsAddr();
 }
-#define getshrstr(ts)	check_exp(strisshr(ts), rawgetshrstr(ts))
-#define getlngstr(ts)	check_exp(!strisshr(ts), (ts)->getContentsField())
-#define getstr(ts) 	(strisshr(ts) ? rawgetshrstr(ts) : (ts)->getContentsField())
+
+/*
+** String accessor functions (Phase 46: converted from macros to inline functions)
+** These provide type-safe access to string contents with assertions.
+*/
+
+/* Get short string contents (asserts string is short) */
+inline char* getshrstr(TString* ts) noexcept {
+	lua_assert(ts->isShort());
+	return ts->getContentsAddr();
+}
+inline const char* getshrstr(const TString* ts) noexcept {
+	lua_assert(ts->isShort());
+	return ts->getContentsAddr();
+}
+
+/* Get long string contents (asserts string is long) */
+inline char* getlngstr(TString* ts) noexcept {
+	lua_assert(ts->isLong());
+	return ts->getContentsField();
+}
+inline const char* getlngstr(const TString* ts) noexcept {
+	lua_assert(ts->isLong());
+	return ts->getContentsField();
+}
+
+/* Get string contents (works for both short and long strings) */
+inline char* getstr(TString* ts) noexcept {
+	return ts->getContentsPtr();
+}
+inline const char* getstr(const TString* ts) noexcept {
+	return ts->c_str();
+}
 
 
 /* get string length from 'TString *ts' */
@@ -632,11 +660,11 @@ public:
   GCObject** getGclistPtr() noexcept { return &gclist; }
   UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
   const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
-  // Note: getMemory() uses macro udatamemoffset which requires Udata0 to be defined
+  // Note: getMemory() uses function udatamemoffset which requires Udata0 to be defined
   inline void* getMemory() noexcept;
   inline const void* getMemory() const noexcept;
 
-  // Static method to compute UV offset (needed for udatamemoffset macro)
+  // Static method to compute UV offset (needed for udatamemoffset function)
   static constexpr size_t uvOffset() noexcept { return offsetof(Udata, uv); }
 };
 
@@ -660,17 +688,28 @@ typedef struct Udata0 : public GCBase<Udata0> {
 
 
 /* compute the offset of the memory area of a userdata */
+// Phase 49: Convert macro to constexpr function
 // offsetof for non-standard-layout types (classes with GCBase inheritance)
 // This triggers -Winvalid-offsetof but is safe because we control the memory layout
-#define udatamemoffset(nuv) \
-       ((nuv) == 0 ? offsetof(Udata0, bindata)  \
-		   : Udata::uvOffset() + (sizeof(UValue) * (nuv)))
+constexpr inline size_t udatamemoffset(int nuv) noexcept {
+	return (nuv == 0) ? offsetof(Udata0, bindata)
+	                  : Udata::uvOffset() + (sizeof(UValue) * nuv);
+}
 
 /* get the address of the memory block inside 'Udata' */
-#define getudatamem(u)	(cast_charp(u) + udatamemoffset((u)->getNumUserValues()))
+// Phase 49: Convert macro to inline function with const overload
+inline char* getudatamem(Udata* u) noexcept {
+	return cast_charp(u) + udatamemoffset(u->getNumUserValues());
+}
+inline const char* getudatamem(const Udata* u) noexcept {
+	return cast_charp(u) + udatamemoffset(u->getNumUserValues());
+}
 
 /* compute the size of a userdata */
-#define sizeudata(nuv,nb)	(udatamemoffset(nuv) + (nb))
+// Phase 49: Convert macro to constexpr function
+constexpr inline size_t sizeudata(int nuv, size_t nb) noexcept {
+	return udatamemoffset(nuv) + nb;
+}
 
 // Implementation of Udata::getMemory() now that Udata0 is defined
 inline void* Udata::getMemory() noexcept {

@@ -754,6 +754,7 @@ public:
   GCState getGCState() const noexcept { return static_cast<GCState>(gcstate); }
   void setGCState(GCState state) noexcept { gcstate = static_cast<lu_byte>(state); }
   bool keepInvariant() const noexcept;  // Defined in lgc.h (needs GCState::Atomic)
+  bool isSweepPhase() const noexcept;   // Defined in lgc.h (needs GCState::SweepAllGC/SweepEnd)
 
   GCKind getGCKind() const noexcept { return static_cast<GCKind>(gckind); }
   void setGCKind(GCKind kind) noexcept { gckind = static_cast<lu_byte>(kind); }
