@@ -1465,23 +1465,17 @@ lua_Unsigned Table::getn(lua_State* L) {
   return luaH_getn(L, this);
 }
 
-// Phase 33: Constructor/destructor/factory pattern
-Table::Table() {
-  // Constructor: initialize table fields
-  metatable = NULL;
-  flags = maskflags;  /* table has no metamethod fields */
-  array = NULL;
-  asize = 0;
-  gclist = NULL;
-  // Note: node initialization requires lua_State, done in create()
-}
-
+// Phase 50: Factory pattern with placement new operator
 Table* Table::create(lua_State* L) {
-  // Factory method: allocate + construct table
-  GCObject *o = luaC_newobj(L, LUA_VTABLE, sizeof(Table));
-  Table *t = gco2t(o);
-  new (t) Table();  // Placement new to call constructor
-  setnodevector(L, t, 0);  // Initialize node vector (needs L for allocation)
+  // Use placement new operator - calls constructor from lobject.h
+  Table *t = new (L, LUA_VTABLE) Table();
+
+  // Set non-default values
+  t->setFlags(maskflags);  /* table has no metamethod fields */
+
+  // Initialize node vector (needs L for allocation)
+  setnodevector(L, t, 0);
+
   return t;
 }
 

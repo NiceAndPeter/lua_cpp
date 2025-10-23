@@ -448,6 +448,36 @@ private:
   void *ud;  /* user data for external strings */
 
 public:
+  // Phase 50: Constructor - initializes only fields common to both short and long strings
+  // For short strings: only fields up to 'u' exist (contents/falloc/ud are overlay for string data)
+  // For long strings: all fields exist
+  TString() noexcept {
+    extra = 0;
+    shrlen = 0;
+    hash = 0;
+    u.lnglen = 0;  // Zero-initialize union
+    // Note: contents, falloc, ud are NOT initialized here!
+    // They will be initialized by the caller only for long strings.
+  }
+
+  // Phase 50: Destructor - trivial (GC handles deallocation)
+  // MUST be empty (not = default) because for short strings, not all fields exist in memory!
+  ~TString() noexcept {}
+
+  // Phase 50: Special placement new for variable-size objects
+  // This is used when we need exact size control (for short strings)
+  static void* operator new(size_t /*size*/, void* ptr) noexcept {
+    return ptr;  // Just return the pointer, no allocation
+  }
+
+  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  // Note: For TString, this may allocate less than sizeof(TString) for short strings!
+  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+
+  // Disable regular new/delete (must use placement new with GC)
+  static void* operator new(size_t) = delete;
+  static void operator delete(void*) = delete;
+
   // Type checks
   bool isShort() const noexcept { return shrlen >= 0; }
   bool isLong() const noexcept { return shrlen < 0; }
@@ -462,13 +492,15 @@ public:
   unsigned int getHash() const noexcept { return hash; }
   lu_byte getExtra() const noexcept { return extra; }
   const char* c_str() const noexcept {
-    return isShort() ? cast_charp(&contents) : contents;
+    return isShort() ? getContentsAddr() : contents;
   }
-  char* getContentsPtr() noexcept { return isShort() ? cast_charp(&contents) : contents; }
+  char* getContentsPtr() noexcept { return isShort() ? getContentsAddr() : contents; }
   char* getContentsField() noexcept { return contents; }
   const char* getContentsField() const noexcept { return contents; }
-  char* getContentsAddr() noexcept { return cast_charp(&contents); }
-  const char* getContentsAddr() const noexcept { return cast_charp(&contents); }
+  // For short strings: return address where inline string data starts (after 'u' union)
+  // For long strings: would return same address (where contents pointer is stored)
+  char* getContentsAddr() noexcept { return cast_charp(this) + contentsOffset(); }
+  const char* getContentsAddr() const noexcept { return cast_charp(this) + contentsOffset(); }
   lua_Alloc getFalloc() const noexcept { return falloc; }
   void* getUserData() const noexcept { return ud; }
 
@@ -646,6 +678,31 @@ private:
   UValue uv[1];  /* user values */
 
 public:
+  // Phase 50: Constructor - initializes all fields to safe defaults
+  Udata() noexcept {
+    nuvalue = 0;
+    len = 0;
+    metatable = nullptr;
+    gclist = nullptr;
+    // Note: uv array will be initialized by caller if needed
+  }
+
+  // Phase 50: Destructor - trivial (GC handles deallocation)
+  // MUST be empty (not = default) for variable-size objects
+  ~Udata() noexcept {}
+
+  // Phase 50: Special placement new for variable-size objects
+  static void* operator new(size_t /*size*/, void* ptr) noexcept {
+    return ptr;  // Just return the pointer, no allocation
+  }
+
+  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+
+  // Disable regular new/delete (must use placement new with GC)
+  static void* operator new(size_t) = delete;
+  static void operator delete(void*) = delete;
+
   // Inline accessors
   size_t getLen() const noexcept { return len; }
   void setLen(size_t l) noexcept { len = l; }
@@ -848,6 +905,41 @@ private:
   GCObject *gclist;
 
 public:
+  // Phase 50: Constructor - initializes all fields to safe defaults
+  Proto() noexcept {
+    numparams = 0;
+    flag = 0;
+    maxstacksize = 0;
+    sizeupvalues = 0;
+    sizek = 0;
+    sizecode = 0;
+    sizelineinfo = 0;
+    sizep = 0;
+    sizelocvars = 0;
+    sizeabslineinfo = 0;
+    linedefined = 0;
+    lastlinedefined = 0;
+    k = nullptr;
+    code = nullptr;
+    p = nullptr;
+    upvalues = nullptr;
+    lineinfo = nullptr;
+    abslineinfo = nullptr;
+    locvars = nullptr;
+    source = nullptr;
+    gclist = nullptr;
+  }
+
+  // Phase 50: Destructor - trivial (GC calls free() method explicitly)
+  ~Proto() noexcept = default;
+
+  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  static void* operator new(size_t size, lua_State* L, lu_byte tt);
+
+  // Disable regular new/delete (must use placement new with GC)
+  static void* operator new(size_t) = delete;
+  static void operator delete(void*) = delete;
+
   // Inline accessors
   lu_byte getNumParams() const noexcept { return numparams; }
   lu_byte getFlag() const noexcept { return flag; }
@@ -995,6 +1087,24 @@ private:
   } u;
 
 public:
+  // Phase 50: Constructor - initializes all fields to safe defaults
+  UpVal() noexcept {
+    v.p = nullptr;  // Initialize v union (pointer variant)
+    // Initialize u union as closed upvalue with nil
+    u.value.valueField().n = 0;  // Zero-initialize Value union
+    u.value.setType(LUA_TNIL);
+  }
+
+  // Phase 50: Destructor - trivial (GC handles deallocation)
+  ~UpVal() noexcept = default;
+
+  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  static void* operator new(size_t size, lua_State* L, lu_byte tt);
+
+  // Disable regular new/delete (must use placement new with GC)
+  static void* operator new(size_t) = delete;
+  static void operator delete(void*) = delete;
+
   // Inline accessors for v union
   TValue* getVP() noexcept { return v.p; }
   const TValue* getVP() const noexcept { return v.p; }
@@ -1372,6 +1482,27 @@ private:
   GCObject *gclist;
 
 public:
+  // Phase 50: Constructor - initializes all fields to safe defaults
+  Table() noexcept {
+    flags = 0;
+    lsizenode = 0;
+    asize = 0;
+    array = nullptr;
+    node = nullptr;
+    metatable = nullptr;
+    gclist = nullptr;
+  }
+
+  // Phase 50: Destructor - trivial (GC handles deallocation)
+  ~Table() noexcept = default;
+
+  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  static void* operator new(size_t size, lua_State* L, lu_byte tt);
+
+  // Disable regular new/delete (must use placement new with GC)
+  static void* operator new(size_t) = delete;
+  static void operator delete(void*) = delete;
+
   // Inline accessors
   lu_byte getFlags() const noexcept { return flags; }
   void setFlags(lu_byte f) noexcept { flags = f; }
@@ -1472,8 +1603,7 @@ public:
   int tableNext(lua_State* L, StkId key);  // renamed from next() to avoid conflict with GC field
   lua_Unsigned getn(lua_State* L);
 
-  // Phase 33: Constructor/destructor/factory pattern
-  Table();  // Constructor for initialization
+  // Phase 33: Factory and helper methods
   static Table* create(lua_State* L);  // Factory method (replaces luaH_new)
   void destroy(lua_State* L);  // Explicit destructor (replaces luaH_free)
   Node* mainPosition(const TValue* key) const;  // replaces luaH_mainposition

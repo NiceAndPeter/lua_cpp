@@ -399,6 +399,31 @@ inline void* LClosure::operator new(size_t size, lua_State* L, lu_byte tt, size_
   return luaC_newobj(L, tt, size + extra);
 }
 
+// Udata placement new operator
+inline void* Udata::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+  return luaC_newobj(L, tt, size + extra);
+}
+
+// TString placement new operator
+inline void* TString::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+  return luaC_newobj(L, tt, size + extra);
+}
+
+// Proto placement new operator
+inline void* Proto::operator new(size_t size, lua_State* L, lu_byte tt) {
+  return luaC_newobj(L, tt, size);
+}
+
+// UpVal placement new operator
+inline void* UpVal::operator new(size_t size, lua_State* L, lu_byte tt) {
+  return luaC_newobj(L, tt, size);
+}
+
+// Table placement new operator
+inline void* Table::operator new(size_t size, lua_State* L, lu_byte tt) {
+  return luaC_newobj(L, tt, size);
+}
+
 /* }================================================================== */
 
 

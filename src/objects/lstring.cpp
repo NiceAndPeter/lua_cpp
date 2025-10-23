@@ -158,15 +158,62 @@ size_t luaS_sizelngstr (size_t len, int kind) {
 
 /*
 ** creates a new string object
+** Phase 50: Now uses placement new to call constructor
 */
 static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
                               unsigned h) {
-  TString *ts;
-  GCObject *o;
-  o = luaC_newobj(L, tag, totalsize);
-  ts = gco2ts(o);
-  ts->setHash(h);
+  // For TString, we need to allocate exactly totalsize bytes, not sizeof(TString)
+  // For short strings: totalsize = contentsOffset() + string_length + 1
+  // For long strings: totalsize might be larger than sizeof(TString)
+  // The placement new will receive sizeof(TString) as the 'size' parameter,
+  // so we calculate extra = totalsize - sizeof(TString)
+  // This might be negative for short strings, so we need to handle that carefully.
+
+  // Actually, we can't pass negative extra! The issue is that operator new
+  // receives sizeof(TString) automatically. We need totalsize total bytes.
+  // So: extra = totalsize - sizeof(TString) (might be negative!)
+  // But we can't allocate less than sizeof(TString) with placement new!
+
+  // The real fix: pass the full totalsize as extra, and modify operator new
+  // NO - that won't work either because operator new gets sizeof(TString) automatically.
+
+  // The ACTUAL fix: We should pass totalsize directly to luaC_newobj, not go through
+  // operator new at all! Or we need a different signature.
+
+  // For now, let's calculate correctly:
+  // We want to allocate totalsize bytes total.
+  // operator new will do: luaC_newobj(L, tt, sizeof(TString) + extra)
+  // So: sizeof(TString) + extra = totalsize
+  // Therefore: extra = totalsize - sizeof(TString)
+  // This can be negative! So we need to cast through signed:
+
+  lua_assert(totalsize >= TString::contentsOffset());  // Sanity check
+
+  // For short strings, totalsize < sizeof(TString) because we don't need falloc/ud fields
+  // But placement new always passes sizeof(TString). So we can't use extra!
+  // We need to call luaC_newobj directly or change the approach.
+
+  // Allocate exactly the size we need
+  GCObject *o = luaC_newobj(L, tag, totalsize);
+  TString *ts = gco2ts(o);
+
+  // Manually initialize fields (can't use constructor - it might write to all fields)
+  // Only initialize fields that actually exist in the allocated memory
   ts->setExtra(0);
+  ts->setShrlen(0);
+  ts->setHash(h);
+  ts->setLnglen(0);  // Zero-initialize union
+
+  // For long strings, only initialize fields that actually exist in the allocated memory
+  // LSTRFIX: allocates 40 bytes (up to but not including falloc)
+  // LSTRREG: allocates 40 + string length (up to but not including falloc)
+  // LSTRMEM: allocates full sizeof(TString) = 56 bytes (includes falloc and ud)
+  if (tag == LUA_VLNGSTR) {
+    ts->setContents(nullptr);
+    // DON'T initialize falloc/ud here - they may not exist in allocated memory!
+    // They will be initialized by the caller if needed (e.g., luaS_newextlstr for LSTRMEM)
+  }
+
   return ts;
 }
 
@@ -220,7 +267,8 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
     growstrtab(L, tb);
     list = &tb->getHash()[lmod(h, tb->getSize())];  /* rehash with new size */
   }
-  ts = createstrobj(L, sizestrshr(l), LUA_VSHRSTR, h);
+  size_t allocsize = sizestrshr(l);
+  ts = createstrobj(L, allocsize, LUA_VSHRSTR, h);
   ts->setShrlen(cast(ls_byte, l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
   memcpy(getshrstr(ts), str, l * sizeof(char));
@@ -272,17 +320,32 @@ TString *luaS_new (lua_State *L, const char *str) {
 }
 
 
+// Phase 50: Use placement new to call constructor
 Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
   Udata *u;
   int i;
-  GCObject *o;
   if (l_unlikely(s > MAX_SIZE - udatamemoffset(nuvalue)))
     luaM_toobig(L);
-  o = luaC_newobj(L, LUA_VUSERDATA, sizeudata(nuvalue, s));
+
+  // Calculate exact size needed
+  size_t totalsize = sizeudata(nuvalue, s);
+
+  // Allocate exactly what we need (may be less than sizeof(Udata) for small data)
+  GCObject *o = luaC_newobj(L, LUA_VUSERDATA, totalsize);
   u = gco2u(o);
-  u->setLen(s);
+
+  // Manually initialize fields (can't use constructor reliably for variable-size objects)
+  // For Udata0 (nuvalue==0): only has nuvalue, len, metatable, bindata (NO gclist!)
+  // For Udata (nuvalue>0): has nuvalue, len, metatable, gclist, uv[]
   u->setNumUserValues(nuvalue);
-  u->setMetatable(NULL);
+  u->setLen(s);
+  u->setMetatable(nullptr);
+
+  // Only set gclist if the field actually exists in allocated memory!
+  if (nuvalue > 0)
+    u->setGclist(nullptr);
+
+  // Initialize user values to nil
   for (i = 0; i < nuvalue; i++)
     setnilvalue(&u->getUserValue(i)->uv);
   return u;

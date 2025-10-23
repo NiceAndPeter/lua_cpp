@@ -868,53 +868,71 @@ static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
 }
 
 
+// Phase 50: Call destructor before freeing
 static void freeupval (lua_State *L, UpVal *uv) {
   if (uv->isOpen())
     luaF_unlinkupval(uv);
+  uv->~UpVal();  // Call destructor
   luaM_free(L, uv);
 }
 
 
+// Phase 50: Call destructors before freeing memory (proper RAII)
 static void freeobj (lua_State *L, GCObject *o) {
   assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
   switch (o->getType()) {
-    case LUA_VPROTO:
-      gco2p(o)->free(L);  /* Phase 25b */
+    case LUA_VPROTO: {
+      Proto *p = gco2p(o);
+      p->free(L);  /* Phase 25b - frees internal arrays */
+      // Proto destructor is trivial, but call it for completeness
+      p->~Proto();
       break;
-    case LUA_VUPVAL:
-      freeupval(L, gco2upv(o));
+    }
+    case LUA_VUPVAL: {
+      UpVal *uv = gco2upv(o);
+      freeupval(L, uv);  // Note: freeupval calls destructor internally
       break;
+    }
     case LUA_VLCL: {
       LClosure *cl = gco2lcl(o);
+      cl->~LClosure();  // Call destructor
       luaM_freemem(L, cl, sizeLclosure(cl->getNumUpvalues()));
       break;
     }
     case LUA_VCCL: {
       CClosure *cl = gco2ccl(o);
+      cl->~CClosure();  // Call destructor
       luaM_freemem(L, cl, sizeCclosure(cl->getNumUpvalues()));
       break;
     }
-    case LUA_VTABLE:
-      luaH_free(L, gco2t(o));
+    case LUA_VTABLE: {
+      Table *t = gco2t(o);
+      luaH_free(L, t);  // Note: luaH_free calls destroy() which should handle cleanup
       break;
+    }
     case LUA_VTHREAD:
       luaE_freethread(L, gco2th(o));
       break;
     case LUA_VUSERDATA: {
       Udata *u = gco2u(o);
+      u->~Udata();  // Call destructor
       luaM_freemem(L, o, sizeudata(u->getNumUserValues(), u->getLen()));
       break;
     }
     case LUA_VSHRSTR: {
       TString *ts = gco2ts(o);
+      size_t sz = sizestrshr(cast_uint(ts->getShrlen()));
       ts->remove(L);  /* use method instead of free function */
-      luaM_freemem(L, ts, sizestrshr(cast_uint(ts->getShrlen())));
+      // DON'T call destructor for TString - it's empty and might cause issues with variable-size objects
+      // ts->~TString();
+      luaM_freemem(L, ts, sz);
       break;
     }
     case LUA_VLNGSTR: {
       TString *ts = gco2ts(o);
       if (ts->getShrlen() == LSTRMEM)  /* must free external string? */
         (*ts->getFalloc())(ts->getUserData(), ts->getContentsField(), ts->getLnglen() + 1, 0);
+      ts->~TString();  // Call destructor
       luaM_freemem(L, ts, luaS_sizelngstr(ts->getLnglen(), ts->getShrlen()));
       break;
     }

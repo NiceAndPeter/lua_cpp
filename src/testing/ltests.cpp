@@ -205,8 +205,9 @@ static void freeblock (Memcontrol *mc, memHeader *block) {
   if (block) {
     size_t size = block->d.size;
     int i;
-    for (i = 0; i < MARKSIZE; i++)  /* check marks after block */
+    for (i = 0; i < MARKSIZE; i++) {  /* check marks after block */
       lua_assert(*(cast_charp(block + 1) + size + i) == MARK);
+    }
     mc->objcount[block->d.type]--;
     fillmem(block, sizeof(memHeader) + size + MARKSIZE);  /* erase block */
     free(block);  /* actually free block */

@@ -66,13 +66,15 @@ LClosure* LClosure::create(lua_State* L, int nupvals) {
 
 /*
 ** fill a closure with new closed upvalues
+** Phase 50: Now uses placement new
 */
 void LClosure::initUpvals(lua_State* L) {
   int i;
   for (i = 0; i < nupvalues; i++) {
-    GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
-    UpVal *uv = gco2upv(o);
+    // Use placement new - calls constructor (initializes to closed nil upvalue)
+    UpVal *uv = new (L, LUA_VUPVAL) UpVal();
     uv->setVP(uv->getValueSlot());  /* make it closed */
+    // Constructor already sets value to nil, but keeping setnilvalue for clarity
     setnilvalue(uv->getVP());
     upvals[i] = uv;
     luaC_objbarrier(L, this, uv);
@@ -83,10 +85,11 @@ void LClosure::initUpvals(lua_State* L) {
 /*
 ** Create a new upvalue at the given level, and link it to the list of
 ** open upvalues of 'L' after entry 'prev'.
+** Phase 50: Now uses placement new
 **/
 static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
-  GCObject *o = luaC_newobj(L, LUA_VUPVAL, sizeof(UpVal));
-  UpVal *uv = gco2upv(o);
+  // Use placement new - calls constructor
+  UpVal *uv = new (L, LUA_VUPVAL) UpVal();
   UpVal *next = *prev;
   uv->setVP(s2v(level));  /* current value lives in the stack */
   uv->setOpenNext(next);  /* link it to list of open upvalues */
@@ -266,29 +269,11 @@ StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy) {
 }
 
 
+// Phase 50: Use placement new to call constructor
 Proto *luaF_newproto (lua_State *L) {
-  GCObject *o = luaC_newobj(L, LUA_VPROTO, sizeof(Proto));
-  Proto *f = gco2p(o);
-  f->setConstants(NULL);
-  f->setConstantsSize(0);
-  f->setProtos(NULL);
-  f->setProtosSize(0);
-  f->setCode(NULL);
-  f->setCodeSize(0);
-  f->setLineInfo(NULL);
-  f->setLineInfoSize(0);
-  f->setAbsLineInfo(NULL);
-  f->setAbsLineInfoSize(0);
-  f->setUpvalues(NULL);
-  f->setUpvaluesSize(0);
-  f->setNumParams(0);
-  f->setFlag(0);
-  f->setMaxStackSize(0);
-  f->setLocVars(NULL);
-  f->setLocVarsSize(0);
-  f->setLineDefined(0);
-  f->setLastLineDefined(0);
-  f->setSource(NULL);
+  // Use placement new - calls constructor which initializes all fields to safe defaults
+  Proto *f = new (L, LUA_VPROTO) Proto();
+  // Constructor handles all initialization
   return f;
 }
 
