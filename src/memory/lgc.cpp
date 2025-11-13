@@ -101,15 +101,21 @@ inline void set2black(GCObject* x) noexcept {
 }
 
 
-#define valiswhite(x)   (iscollectable(x) && iswhite(gcvalue(x)))
+inline bool valiswhite(const TValue* x) noexcept {
+	return iscollectable(x) && iswhite(gcvalue(x));
+}
 
-#define keyiswhite(n)   (n->isKeyCollectable() && iswhite(n->getKeyGC()))
+inline bool keyiswhite(const Node* n) noexcept {
+	return n->isKeyCollectable() && iswhite(n->getKeyGC());
+}
 
 
 /*
 ** Protected access to objects in values
 */
-#define gcvalueN(o)     (iscollectable(o) ? gcvalue(o) : NULL)
+inline GCObject* gcvalueN(const TValue* o) noexcept {
+	return iscollectable(o) ? gcvalue(o) : NULL;
+}
 
 
 /*
@@ -122,7 +128,7 @@ inline void set2black(GCObject* x) noexcept {
 #define markvalue(g,o) { checkliveness(mainthread(g),o); \
   if (valiswhite(o)) reallymarkobject(g,gcvalue(o)); }
 
-#define markkey(g, n)	{ if keyiswhite(n) reallymarkobject(g,n->getKeyGC()); }
+#define markkey(g, n)	{ if (keyiswhite(n)) reallymarkobject(g,n->getKeyGC()); }
 
 #define markobject(g,t)	{ if (iswhite(t)) reallymarkobject(g, obj2gco(t)); }
 
@@ -148,7 +154,13 @@ static void entersweep (lua_State *L);
 /*
 ** one after last element in a hash array
 */
-#define gnodelast(h)	gnode(h, cast_sizet((h)->nodeSize()))
+inline Node* gnodelast(Table* h) noexcept {
+	return gnode(h, cast_sizet(h->nodeSize()));
+}
+
+inline Node* gnodelast(const Table* h) noexcept {
+	return gnode(h, cast_sizet(h->nodeSize()));
+}
 
 
 static l_mem objsize (GCObject *o) {
