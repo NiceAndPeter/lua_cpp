@@ -115,92 +115,175 @@ inline constexpr int MAXARG_C = ((1<<SIZE_C)-1);
 #define MAXARG_vC	((1<<SIZE_vC)-1)
 #define OFFSET_sC	(MAXARG_C >> 1)
 
-#define int2sC(i)	((i) + OFFSET_sC)
-#define sC2int(i)	((i) - OFFSET_sC)
+inline constexpr int int2sC(int i) noexcept {
+	return i + OFFSET_sC;
+}
+
+inline constexpr int sC2int(int i) noexcept {
+	return i - OFFSET_sC;
+}
 
 
 /* creates a mask with 'n' 1 bits at position 'p' */
-#define MASK1(n,p)	((~((~(Instruction)0)<<(n)))<<(p))
+inline constexpr Instruction MASK1(int n, int p) noexcept {
+	return (~((~(Instruction)0) << n)) << p;
+}
 
 /* creates a mask with 'n' 0 bits at position 'p' */
-#define MASK0(n,p)	(~MASK1(n,p))
+inline constexpr Instruction MASK0(int n, int p) noexcept {
+	return ~MASK1(n, p);
+}
 
 /*
 ** the following macros help to manipulate instructions
 */
 
-#define GET_OPCODE(i)	(cast(OpCode, ((i)>>POS_OP) & MASK1(SIZE_OP,0)))
-#define SET_OPCODE(i,o)	((i) = (((i)&MASK0(SIZE_OP,POS_OP)) | \
-		((cast_Inst(o)<<POS_OP)&MASK1(SIZE_OP,POS_OP))))
+inline constexpr int GET_OPCODE(Instruction i) noexcept {
+	return cast_int((i >> POS_OP) & MASK1(SIZE_OP, 0));
+}
+inline void SET_OPCODE(Instruction& i, int o) noexcept {
+	i = ((i & MASK0(SIZE_OP, POS_OP)) | ((cast_Inst(o) << POS_OP) & MASK1(SIZE_OP, POS_OP)));
+}
+
+/* Forward declaration for getOpMode (defined later after OpCode enum) */
+inline OpMode getOpMode(int m) noexcept;
 
 #define checkopm(i,m)	(getOpMode(GET_OPCODE(i)) == m)
 
 
-#define getarg(i,pos,size)	(cast_int(((i)>>(pos)) & MASK1(size,0)))
-#define setarg(i,v,pos,size)	((i) = (((i)&MASK0(size,pos)) | \
-                ((cast_Inst(v)<<pos)&MASK1(size,pos))))
+inline constexpr int getarg(Instruction i, int pos, int size) noexcept {
+	return cast_int((i >> pos) & MASK1(size, 0));
+}
 
-#define GETARG_A(i)	getarg(i, POS_A, SIZE_A)
-#define SETARG_A(i,v)	setarg(i, v, POS_A, SIZE_A)
+inline void setarg(Instruction& i, unsigned int v, int pos, int size) noexcept {
+	i = ((i & MASK0(size, pos)) | ((cast_Inst(v) << pos) & MASK1(size, pos)));
+}
 
-#define GETARG_B(i)  \
-	check_exp(checkopm(i, iABC), getarg(i, POS_B, SIZE_B))
-#define GETARG_vB(i)  \
-	check_exp(checkopm(i, ivABC), getarg(i, POS_vB, SIZE_vB))
-#define GETARG_sB(i)	sC2int(GETARG_B(i))
-#define SETARG_B(i,v)	setarg(i, v, POS_B, SIZE_B)
-#define SETARG_vB(i,v)	setarg(i, v, POS_vB, SIZE_vB)
+inline constexpr int GETARG_A(Instruction i) noexcept {
+	return getarg(i, POS_A, SIZE_A);
+}
+inline void SETARG_A(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_A, SIZE_A);
+}
 
-#define GETARG_C(i)  \
-	check_exp(checkopm(i, iABC), getarg(i, POS_C, SIZE_C))
-#define GETARG_vC(i)  \
-	check_exp(checkopm(i, ivABC), getarg(i, POS_vC, SIZE_vC))
-#define GETARG_sC(i)	sC2int(GETARG_C(i))
-#define SETARG_C(i,v)	setarg(i, v, POS_C, SIZE_C)
-#define SETARG_vC(i,v)	setarg(i, v, POS_vC, SIZE_vC)
+inline constexpr int GETARG_B(Instruction i) noexcept {
+	lua_assert(checkopm(i, iABC));
+	return getarg(i, POS_B, SIZE_B);
+}
 
-#define TESTARG_k(i)	(cast_int(((i) & (1u << POS_k))))
-#define GETARG_k(i)	getarg(i, POS_k, 1)
-#define SETARG_k(i,v)	setarg(i, v, POS_k, 1)
+inline constexpr int GETARG_vB(Instruction i) noexcept {
+	lua_assert(checkopm(i, ivABC));
+	return getarg(i, POS_vB, SIZE_vB);
+}
 
-#define GETARG_Bx(i)	check_exp(checkopm(i, iABx), getarg(i, POS_Bx, SIZE_Bx))
-#define SETARG_Bx(i,v)	setarg(i, v, POS_Bx, SIZE_Bx)
+inline constexpr int GETARG_sB(Instruction i) noexcept {
+	return sC2int(GETARG_B(i));
+}
+inline void SETARG_B(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_B, SIZE_B);
+}
 
-#define GETARG_Ax(i)	check_exp(checkopm(i, iAx), getarg(i, POS_Ax, SIZE_Ax))
-#define SETARG_Ax(i,v)	setarg(i, v, POS_Ax, SIZE_Ax)
+inline void SETARG_vB(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_vB, SIZE_vB);
+}
 
-#define GETARG_sBx(i)  \
-	check_exp(checkopm(i, iAsBx), getarg(i, POS_Bx, SIZE_Bx) - OFFSET_sBx)
-#define SETARG_sBx(i,b)	SETARG_Bx((i),cast_uint((b)+OFFSET_sBx))
+inline constexpr int GETARG_C(Instruction i) noexcept {
+	lua_assert(checkopm(i, iABC));
+	return getarg(i, POS_C, SIZE_C);
+}
 
-#define GETARG_sJ(i)  \
-	check_exp(checkopm(i, isJ), getarg(i, POS_sJ, SIZE_sJ) - OFFSET_sJ)
-#define SETARG_sJ(i,j) \
-	setarg(i, cast_uint((j)+OFFSET_sJ), POS_sJ, SIZE_sJ)
+inline constexpr int GETARG_vC(Instruction i) noexcept {
+	lua_assert(checkopm(i, ivABC));
+	return getarg(i, POS_vC, SIZE_vC);
+}
+
+inline constexpr int GETARG_sC(Instruction i) noexcept {
+	return sC2int(GETARG_C(i));
+}
+inline void SETARG_C(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_C, SIZE_C);
+}
+
+inline void SETARG_vC(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_vC, SIZE_vC);
+}
+
+inline constexpr int TESTARG_k(Instruction i) noexcept {
+	return cast_int(i & (1u << POS_k));
+}
+
+inline constexpr int GETARG_k(Instruction i) noexcept {
+	return getarg(i, POS_k, 1);
+}
+inline void SETARG_k(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_k, 1);
+}
+
+inline constexpr int GETARG_Bx(Instruction i) noexcept {
+	lua_assert(checkopm(i, iABx));
+	return getarg(i, POS_Bx, SIZE_Bx);
+}
+inline void SETARG_Bx(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_Bx, SIZE_Bx);
+}
+
+inline constexpr int GETARG_Ax(Instruction i) noexcept {
+	lua_assert(checkopm(i, iAx));
+	return getarg(i, POS_Ax, SIZE_Ax);
+}
+inline void SETARG_Ax(Instruction& i, unsigned int v) noexcept {
+	setarg(i, v, POS_Ax, SIZE_Ax);
+}
+
+inline constexpr int GETARG_sBx(Instruction i) noexcept {
+	lua_assert(checkopm(i, iAsBx));
+	return getarg(i, POS_Bx, SIZE_Bx) - OFFSET_sBx;
+}
+inline void SETARG_sBx(Instruction& i, int b) noexcept {
+	SETARG_Bx(i, cast_uint(b + OFFSET_sBx));
+}
+
+inline constexpr int GETARG_sJ(Instruction i) noexcept {
+	lua_assert(checkopm(i, isJ));
+	return getarg(i, POS_sJ, SIZE_sJ) - OFFSET_sJ;
+}
+inline void SETARG_sJ(Instruction& i, int j) noexcept {
+	setarg(i, cast_uint(j + OFFSET_sJ), POS_sJ, SIZE_sJ);
+}
 
 
-#define CREATE_ABCk(o,a,b,c,k)	((cast_Inst(o)<<POS_OP) \
-			| (cast_Inst(a)<<POS_A) \
-			| (cast_Inst(b)<<POS_B) \
-			| (cast_Inst(c)<<POS_C) \
-			| (cast_Inst(k)<<POS_k))
+inline constexpr Instruction CREATE_ABCk(int o, int a, int b, int c, int k) noexcept {
+	return (cast_Inst(o) << POS_OP)
+		| (cast_Inst(a) << POS_A)
+		| (cast_Inst(b) << POS_B)
+		| (cast_Inst(c) << POS_C)
+		| (cast_Inst(k) << POS_k);
+}
 
-#define CREATE_vABCk(o,a,b,c,k)	((cast_Inst(o)<<POS_OP) \
-			| (cast_Inst(a)<<POS_A) \
-			| (cast_Inst(b)<<POS_vB) \
-			| (cast_Inst(c)<<POS_vC) \
-			| (cast_Inst(k)<<POS_k))
+inline constexpr Instruction CREATE_vABCk(int o, int a, int b, int c, int k) noexcept {
+	return (cast_Inst(o) << POS_OP)
+		| (cast_Inst(a) << POS_A)
+		| (cast_Inst(b) << POS_vB)
+		| (cast_Inst(c) << POS_vC)
+		| (cast_Inst(k) << POS_k);
+}
 
-#define CREATE_ABx(o,a,bc)	((cast_Inst(o)<<POS_OP) \
-			| (cast_Inst(a)<<POS_A) \
-			| (cast_Inst(bc)<<POS_Bx))
+inline constexpr Instruction CREATE_ABx(int o, int a, int bc) noexcept {
+	return (cast_Inst(o) << POS_OP)
+		| (cast_Inst(a) << POS_A)
+		| (cast_Inst(bc) << POS_Bx);
+}
 
-#define CREATE_Ax(o,a)		((cast_Inst(o)<<POS_OP) \
-			| (cast_Inst(a)<<POS_Ax))
+inline constexpr Instruction CREATE_Ax(int o, int a) noexcept {
+	return (cast_Inst(o) << POS_OP)
+		| (cast_Inst(a) << POS_Ax);
+}
 
-#define CREATE_sJ(o,j,k)	((cast_Inst(o) << POS_OP) \
-			| (cast_Inst(j) << POS_sJ) \
-			| (cast_Inst(k) << POS_k))
+inline constexpr Instruction CREATE_sJ(int o, int j, int k) noexcept {
+	return (cast_Inst(o) << POS_OP)
+		| (cast_Inst(j) << POS_sJ)
+		| (cast_Inst(k) << POS_k);
+}
 
 
 #if !defined(MAXINDEXRK)  /* (for debugging only) */
@@ -419,12 +502,29 @@ inline constexpr int NUM_OPCODES = ((int)(OP_EXTRAARG) + 1);
 
 LUAI_DDEC(const lu_byte luaP_opmodes[NUM_OPCODES];)
 
-#define getOpMode(m)	(cast(enum OpMode, luaP_opmodes[m] & 7))
-#define testAMode(m)	(luaP_opmodes[m] & (1 << 3))
-#define testTMode(m)	(luaP_opmodes[m] & (1 << 4))
-#define testITMode(m)	(luaP_opmodes[m] & (1 << 5))
-#define testOTMode(m)	(luaP_opmodes[m] & (1 << 6))
-#define testMMMode(m)	(luaP_opmodes[m] & (1 << 7))
+inline OpMode getOpMode(int m) noexcept {
+	return cast(enum OpMode, luaP_opmodes[m] & 7);
+}
+
+inline bool testAMode(int m) noexcept {
+	return (luaP_opmodes[m] & (1 << 3)) != 0;
+}
+
+inline bool testTMode(int m) noexcept {
+	return (luaP_opmodes[m] & (1 << 4)) != 0;
+}
+
+inline bool testITMode(int m) noexcept {
+	return (luaP_opmodes[m] & (1 << 5)) != 0;
+}
+
+inline bool testOTMode(int m) noexcept {
+	return (luaP_opmodes[m] & (1 << 6)) != 0;
+}
+
+inline bool testMMMode(int m) noexcept {
+	return (luaP_opmodes[m] & (1 << 7)) != 0;
+}
 
 
 LUAI_FUNC int luaP_isOT (Instruction i);

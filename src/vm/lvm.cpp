@@ -886,7 +886,7 @@ void luaV_finishOp (lua_State *L) {
   CallInfo *ci = L->getCI();
   StkId base = ci->funcRef().p + 1;
   Instruction inst = *(ci->getSavedPC() - 1);  /* interrupted instruction */
-  OpCode op = GET_OPCODE(inst);
+  OpCode op = static_cast<OpCode>(GET_OPCODE(inst));
   switch (op) {  /* finish its execution */
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
       setobjs2s(L, base + GETARG_A(*(ci->getSavedPC() - 2)), --L->getTop().p);

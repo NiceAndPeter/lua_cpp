@@ -455,7 +455,7 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
     lastpc--;  /* previous instruction was not actually executed */
   for (pc = 0; pc < lastpc; pc++) {
     Instruction i = p->getCode()[pc];
-    OpCode op = GET_OPCODE(i);
+    OpCode op = static_cast<OpCode>(GET_OPCODE(i));
     int a = GETARG_A(i);
     int change;  /* true if current instruction changed 'reg' */
     switch (op) {
@@ -519,7 +519,7 @@ static const char *basicgetobjname (const Proto *p, int *ppc, int reg,
   *ppc = pc = findsetreg(p, pc, reg);
   if (pc != -1) {  /* could find instruction? */
     Instruction i = p->getCode()[pc];
-    OpCode op = GET_OPCODE(i);
+    OpCode op = static_cast<OpCode>(GET_OPCODE(i));
     switch (op) {
       case OP_MOVE: {
         int b = GETARG_B(i);  /* move from 'b' to 'a' */
@@ -580,7 +580,7 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
     return kind;
   else if (lastpc != -1) {  /* could find instruction? */
     Instruction i = p->getCode()[lastpc];
-    OpCode op = GET_OPCODE(i);
+    OpCode op = static_cast<OpCode>(GET_OPCODE(i));
     switch (op) {
       case OP_GETTABUP: {
         int k = GETARG_C(i);  /* key index */

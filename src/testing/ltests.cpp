@@ -735,7 +735,7 @@ int lua_checkmemory (lua_State *L) {
 static char *buildop (Proto *p, int pc, char *buff) {
   char *obuff = buff;
   Instruction i = p->getCode()[pc];
-  OpCode o = GET_OPCODE(i);
+  OpCode o = static_cast<OpCode>(GET_OPCODE(i));
   const char *name = opnames[o];
   int line = luaG_getfuncline(p, pc);
   int lineinfo = (p->getLineInfo() != NULL) ? p->getLineInfo()[pc] : 0;
