@@ -677,7 +677,10 @@ const char *luaO_pushfstring (lua_State *L, const char *fmt, ...) {
 #define PRE	"[string \""
 #define POS	"\"]"
 
-#define addstr(a,b,l)	( memcpy(a,b,(l) * sizeof(char)), a += (l) )
+inline void addstr(char*& a, const char* b, size_t l) noexcept {
+	memcpy(a, b, l * sizeof(char));
+	a += l;
+}
 
 void luaO_chunkid (char *out, const char *source, size_t srclen) {
   size_t bufflen = LUA_IDSIZE;  /* free space in buffer */
