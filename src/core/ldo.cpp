@@ -34,7 +34,9 @@
 
 
 
-#define errorstatus(s)	((s) > LUA_YIELD)
+inline constexpr bool errorstatus(int s) noexcept {
+	return (s) > LUA_YIELD;
+}
 
 
 /*
@@ -610,7 +612,9 @@ void lua_State::postCall(CallInfo *ci_arg, int nres) {
 
 
 
-#define next_ci(L)  (L->getCI()->getNext() ? L->getCI()->getNext() : luaE_extendCI(L))
+inline CallInfo* next_ci(lua_State* L) {
+	return L->getCI()->getNext() ? L->getCI()->getNext() : luaE_extendCI(L);
+}
 
 
 /*
