@@ -39,7 +39,10 @@ typedef struct {
 ** All high-level dumps go through dumpVector; you can change it to
 ** change the endianness of the result
 */
-#define dumpVector(D,v,n)	dumpBlock(D,v,(n)*sizeof((v)[0]))
+template<typename T>
+inline void dumpVector(DumpState* D, const T* v, size_t n) {
+	dumpBlock(D, v, n * sizeof(T));
+}
 
 #define dumpLiteral(D, s)	dumpBlock(D,s,sizeof(s) - sizeof(char))
 
@@ -74,7 +77,10 @@ static void dumpAlign (DumpState *D, unsigned align) {
 }
 
 
-#define dumpVar(D,x)		dumpVector(D,&x,1)
+template<typename T>
+inline void dumpVar(DumpState* D, const T& x) {
+	dumpVector(D, &x, 1);
+}
 
 
 static void dumpByte (DumpState *D, int y) {

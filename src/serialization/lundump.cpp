@@ -52,7 +52,10 @@ static l_noret error (LoadState *S, const char *why) {
 ** All high-level loads go through loadVector; you can change it to
 ** adapt to the endianness of the input
 */
-#define loadVector(S,b,n)	loadBlock(S,b,cast_sizet(n)*sizeof((b)[0]))
+template<typename T>
+inline void loadVector(LoadState* S, T* b, size_t n) {
+	loadBlock(S, b, cast_sizet(n) * sizeof(T));
+}
 
 static void loadBlock (LoadState *S, void *b, size_t size) {
   if (luaZ_read(S->Z, b, size) != 0)
@@ -82,7 +85,10 @@ static const void *getaddr_ (LoadState *S, size_t size) {
 }
 
 
-#define loadVar(S,x)		loadVector(S,&x,1)
+template<typename T>
+inline void loadVar(LoadState* S, T& x) {
+	loadVector(S, &x, 1);
+}
 
 
 static lu_byte loadByte (LoadState *S) {
