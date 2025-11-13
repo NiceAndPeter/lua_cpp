@@ -32,7 +32,9 @@
 
 
 /* (note that expressions VJMP also have jumps.) */
-#define hasjumps(e)	((e)->getTrueList() != (e)->getFalseList())
+inline bool hasjumps(const expdesc* e) noexcept {
+	return e->getTrueList() != e->getFalseList();
+}
 
 
 static int codesJ (FuncState *fs, OpCode o, int sj, int k);

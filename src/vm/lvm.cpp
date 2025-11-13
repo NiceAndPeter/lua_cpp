@@ -335,7 +335,7 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
       return tag;  /* return tag of the result */
     }
     t = tm;  /* else try to access 'tm[key]' */
-    luaV_fastget(t, key, s2v(val), luaH_get, tag);
+    tag = luaV_fastget(t, key, s2v(val), luaH_get);
     if (!tagisempty(tag))
       return tag;  /* done */
     /* else repeat (tail call 'luaV_finishget') */
@@ -395,7 +395,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       return;
     }
     t = tm;  /* else repeat assignment over 'tm' */
-    luaV_fastset(t, key, val, hres, luaH_pset);
+    hres = luaV_fastset(t, key, val, luaH_pset);
     if (hres == HOK) {
       luaV_finishfastset(L, t, val);
       return;  /* done */
@@ -1457,7 +1457,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
         lu_byte tag;
-        luaV_fastget(upval, key, s2v(ra), luaH_getshortstr, tag);
+        tag = luaV_fastget(upval, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect(luaV_finishget(L, upval, rc, ra, tag));
         vmbreak;
@@ -1471,7 +1471,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           luaV_fastgeti(rb, ivalue(rc), s2v(ra), tag);
         }
         else
-          luaV_fastget(rb, rc, s2v(ra), luaH_get, tag);
+          tag = luaV_fastget(rb, rc, s2v(ra), luaH_get);
         if (tagisempty(tag))
           Protect(luaV_finishget(L, rb, rc, ra, tag));
         vmbreak;
@@ -1495,7 +1495,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
         lu_byte tag;
-        luaV_fastget(rb, key, s2v(ra), luaH_getshortstr, tag);
+        tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect(luaV_finishget(L, rb, rc, ra, tag));
         vmbreak;
@@ -1506,7 +1506,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = KB(i);
         TValue *rc = RKC(i);
         TString *key = tsvalue(rb);  /* key must be a short string */
-        luaV_fastset(upval, key, rc, hres, luaH_psetshortstr);
+        hres = luaV_fastset(upval, key, rc, luaH_psetshortstr);
         if (hres == HOK)
           luaV_finishfastset(L, upval, rc);
         else
@@ -1522,7 +1522,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           luaV_fastseti(s2v(ra), ivalue(rb), rc, hres);
         }
         else {
-          luaV_fastset(s2v(ra), rb, rc, hres, luaH_pset);
+          hres = luaV_fastset(s2v(ra), rb, rc, luaH_pset);
         }
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
@@ -1551,7 +1551,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = KB(i);
         TValue *rc = RKC(i);
         TString *key = tsvalue(rb);  /* key must be a short string */
-        luaV_fastset(s2v(ra), key, rc, hres, luaH_psetshortstr);
+        hres = luaV_fastset(s2v(ra), key, rc, luaH_psetshortstr);
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
         else
@@ -1586,7 +1586,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
         setobj2s(L, ra + 1, rb);
-        luaV_fastget(rb, key, s2v(ra), luaH_getshortstr, tag);
+        tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect(luaV_finishget(L, rb, rc, ra, tag));
         vmbreak;

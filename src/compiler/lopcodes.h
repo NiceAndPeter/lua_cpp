@@ -148,7 +148,9 @@ inline void SET_OPCODE(Instruction& i, int o) noexcept {
 /* Forward declaration for getOpMode (defined later after OpCode enum) */
 inline OpMode getOpMode(int m) noexcept;
 
-#define checkopm(i,m)	(getOpMode(GET_OPCODE(i)) == m)
+inline constexpr bool checkopm(Instruction i, OpMode m) noexcept {
+	return getOpMode(GET_OPCODE(i)) == m;
+}
 
 
 inline constexpr int getarg(Instruction i, int pos, int size) noexcept {

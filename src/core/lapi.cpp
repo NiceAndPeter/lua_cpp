@@ -670,7 +670,7 @@ LUA_API int lua_pushthread (lua_State *L) {
 static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
   lu_byte tag;
   TString *str = luaS_new(L, k);
-  luaV_fastget(t, str, s2v(L->getTop().p), luaH_getstr, tag);
+  tag = luaV_fastget(t, str, s2v(L->getTop().p), luaH_getstr);
   if (!tagisempty(tag))
     api_incr_top(L);
   else {
@@ -710,7 +710,7 @@ LUA_API int lua_gettable (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 1);
   t = index2value(L, idx);
-  luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), luaH_get, tag);
+  tag = luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), luaH_get);
   if (tagisempty(tag))
     tag = luaV_finishget(L, t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
   lua_unlock(L);
@@ -860,7 +860,7 @@ static void auxsetstr (lua_State *L, const TValue *t, const char *k) {
   int hres;
   TString *str = luaS_new(L, k);
   api_checkpop(L, 1);
-  luaV_fastset(t, str, s2v(L->getTop().p - 1), hres, luaH_psetstr);
+  hres = luaV_fastset(t, str, s2v(L->getTop().p - 1), luaH_psetstr);
   if (hres == HOK) {
     luaV_finishfastset(L, t, s2v(L->getTop().p - 1));
     L->getTop().p--;  /* pop value */
@@ -889,7 +889,7 @@ LUA_API void lua_settable (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 2);
   t = index2value(L, idx);
-  luaV_fastset(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), hres, luaH_pset);
+  hres = luaV_fastset(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), luaH_pset);
   if (hres == HOK)
     luaV_finishfastset(L, t, s2v(L->getTop().p - 1));
   else

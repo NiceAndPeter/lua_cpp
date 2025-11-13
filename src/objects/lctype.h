@@ -42,25 +42,46 @@
 #define SPACEBIT	3
 #define XDIGITBIT	4
 
+/* one entry for each character and for -1 (EOZ) */
+LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
 
-#define MASK(B)		(1 << (B))
-
+inline constexpr int MASK(int B) noexcept {
+	return (1 << B);
+}
 
 /*
 ** add 1 to char to allow index -1 (EOZ)
 */
-#define testprop(c,p)	(luai_ctype_[(c)+1] & (p))
+inline bool testprop(int c, int p) noexcept {
+	return (luai_ctype_[(c)+1] & (p)) != 0;
+}
 
 /*
 ** 'lalpha' (Lua alphabetic) and 'lalnum' (Lua alphanumeric) both include '_'
 */
-#define lislalpha(c)	testprop(c, MASK(ALPHABIT))
-#define lislalnum(c)	testprop(c, (MASK(ALPHABIT) | MASK(DIGITBIT)))
-#define lisdigit(c)	testprop(c, MASK(DIGITBIT))
-#define lisspace(c)	testprop(c, MASK(SPACEBIT))
-#define lisprint(c)	testprop(c, MASK(PRINTBIT))
-#define lisxdigit(c)	testprop(c, MASK(XDIGITBIT))
+inline bool lislalpha(int c) noexcept {
+	return testprop(c, MASK(ALPHABIT));
+}
 
+inline bool lislalnum(int c) noexcept {
+	return testprop(c, (MASK(ALPHABIT) | MASK(DIGITBIT)));
+}
+
+inline bool lisdigit(int c) noexcept {
+	return testprop(c, MASK(DIGITBIT));
+}
+
+inline bool lisspace(int c) noexcept {
+	return testprop(c, MASK(SPACEBIT));
+}
+
+inline bool lisprint(int c) noexcept {
+	return testprop(c, MASK(PRINTBIT));
+}
+
+inline bool lisxdigit(int c) noexcept {
+	return testprop(c, MASK(XDIGITBIT));
+}
 
 /*
 ** In ASCII, this 'ltolower' is correct for alphabetic characters and
@@ -68,13 +89,10 @@
 ** the character either is an upper-case letter or is unchanged by
 ** the transformation, which holds for lower-case letters and '.'.)
 */
-#define ltolower(c)  \
-  check_exp(('A' <= (c) && (c) <= 'Z') || (c) == ((c) | ('A' ^ 'a')),  \
-            (c) | ('A' ^ 'a'))
-
-
-/* one entry for each character and for -1 (EOZ) */
-LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
+inline int ltolower(int c) noexcept {
+	return check_exp(('A' <= (c) && (c) <= 'Z') || (c) == ((c) | ('A' ^ 'a')),
+	                 (c) | ('A' ^ 'a'));
+}
 
 
 #else			/* }{ */
@@ -85,15 +103,33 @@ LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
 
 #include <ctype.h>
 
+inline bool lislalpha(int c) noexcept {
+	return isalpha(c) || (c) == '_';
+}
 
-#define lislalpha(c)	(isalpha(c) || (c) == '_')
-#define lislalnum(c)	(isalnum(c) || (c) == '_')
-#define lisdigit(c)	(isdigit(c))
-#define lisspace(c)	(isspace(c))
-#define lisprint(c)	(isprint(c))
-#define lisxdigit(c)	(isxdigit(c))
+inline bool lislalnum(int c) noexcept {
+	return isalnum(c) || (c) == '_';
+}
 
-#define ltolower(c)	(tolower(c))
+inline bool lisdigit(int c) noexcept {
+	return isdigit(c) != 0;
+}
+
+inline bool lisspace(int c) noexcept {
+	return isspace(c) != 0;
+}
+
+inline bool lisprint(int c) noexcept {
+	return isprint(c) != 0;
+}
+
+inline bool lisxdigit(int c) noexcept {
+	return isxdigit(c) != 0;
+}
+
+inline int ltolower(int c) noexcept {
+	return tolower(c);
+}
 
 #endif			/* } */
 
