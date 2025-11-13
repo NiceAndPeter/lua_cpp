@@ -47,13 +47,17 @@ inline constexpr size_t sizestrshr(size_t l) noexcept {
 /*
 ** test whether a string is a reserved word
 */
-#define isreserved(s)	(strisshr(s) && (s)->getExtra() > 0)
+inline bool isreserved(const TString* s) noexcept {
+	return strisshr(s) && (s)->getExtra() > 0;
+}
 
 
 /*
 ** equality for short strings, which are always internalized
 */
-#define eqshrstr(a,b)	check_exp((a)->getType() == LUA_VSHRSTR, (a) == (b))
+inline bool eqshrstr(const TString* a, const TString* b) noexcept {
+	return check_exp((a)->getType() == LUA_VSHRSTR, (a) == (b));
+}
 
 
 LUAI_FUNC unsigned luaS_hash (const char *str, size_t l, unsigned seed);
