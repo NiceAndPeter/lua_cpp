@@ -1050,7 +1050,9 @@ constexpr bool TValue::isLightCFunction() const noexcept { return checktag(this,
 constexpr bool TValue::isCClosure() const noexcept { return checktag(this, ctb(LUA_VCCL)); }
 constexpr bool TValue::isClosure() const noexcept { return isLClosure() || isCClosure(); }
 
-#define isLfunction(o)	ttisLclosure(o)
+inline constexpr bool isLfunction(const TValue* o) noexcept {
+	return ttisLclosure(o);
+}
 
 constexpr bool TValue::isLuaFunction() const noexcept { return isLClosure(); }
 
@@ -1233,8 +1235,9 @@ typedef union Closure {
   LClosure l;
 } Closure;
 
-
-#define getproto(o)	(clLvalue(o)->getProto())
+inline Proto* getproto(const TValue* o) noexcept {
+	return clLvalue(o)->getProto();
+}
 
 /* }================================================================== */
 
@@ -1634,8 +1637,10 @@ public:
 /*
 ** 'module' operation for hashing (size is always a power of 2)
 */
-#define lmod(s,size) \
-	(check_exp((size&(size-1))==0, (cast_uint(s) & cast_uint((size)-1))))
+inline unsigned int lmod(int s, unsigned int size) noexcept {
+	lua_assert((size & (size - 1)) == 0);  /* size must be power of 2 */
+	return cast_uint(s) & cast_uint(size - 1);
+}
 
 
 /* Phase 44.1: twoto now Table::powerOfTwo(x) static method */

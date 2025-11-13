@@ -51,7 +51,7 @@ typedef enum {
 ** corresponding metamethod field. (Bit 6 of the flag indicates that
 ** the table is using the dummy node; bit 7 is used for 'isrealasize'.)
 */
-#define maskflags	cast_byte(~(~0u << (TM_EQ + 1)))
+inline constexpr lu_byte maskflags = cast_byte(~(~0u << (TM_EQ + 1)));
 
 // Phase 19: Convert invalidateTMcache macro to inline function
 inline void invalidateTMcache(Table* t) noexcept {
@@ -62,18 +62,25 @@ inline void invalidateTMcache(Table* t) noexcept {
 ** Test whether there is no tagmethod.
 ** (Because tagmethods use raw accesses, the result may be an "empty" nil.)
 */
-#define notm(tm)	ttisnil(tm)
+inline bool notm(const TValue* tm) noexcept {
+	return ttisnil(tm);
+}
 
-#define checknoTM(mt,e)	((mt) == NULL || (mt)->getFlags() & (1u<<(e)))
+inline bool checknoTM(const Table* mt, TMS e) noexcept {
+	return mt == nullptr || (mt->getFlags() & (1u << e));
+}
 
+/* gfasttm and fasttm must remain macros due to forward declaration dependencies */
 #define gfasttm(g,mt,e)  \
   (checknoTM(mt, e) ? NULL : luaT_gettm(mt, e, (g)->getTMName(e)))
 
 #define fasttm(l,mt,e)	gfasttm(G(l), mt, e)
 
-#define ttypename(x)	luaT_typenames_[(x) + 1]
-
 LUAI_DDEC(const char *const luaT_typenames_[LUA_TOTALTYPES];)
+
+inline const char* ttypename(int x) noexcept {
+	return luaT_typenames_[x + 1];
+}
 
 
 LUAI_FUNC const char *luaT_objtypename (lua_State *L, const TValue *o);
