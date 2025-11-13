@@ -377,14 +377,18 @@ static unsigned checkrange (lua_Integer k, unsigned limit) {
 ** Return the index 'k' if 'k' is an appropriate key to live in the
 ** array part of a table, 0 otherwise.
 */
-#define arrayindex(k)	checkrange(k, MAXASIZE)
+inline unsigned arrayindex(lua_Integer k) noexcept {
+	return checkrange(k, MAXASIZE);
+}
 
 
 /*
 ** Check whether an integer key is in the array part of a table and
 ** return its index there, or zero.
 */
-#define ikeyinarray(t,k)	checkrange(k, (t)->arraySize())
+inline unsigned ikeyinarray(const Table* t, lua_Integer k) noexcept {
+	return checkrange(k, t->arraySize());
+}
 
 
 /*
@@ -443,7 +447,9 @@ int luaH_next (lua_State *L, Table *t, StkId key) {
 
 
 /* Extra space in Node array if it has a lastfree entry */
-#define extraLastfree(t)	(haslastfree(t) ? sizeof(Limbox) : 0)
+inline size_t extraLastfree(const Table* t) noexcept {
+	return haslastfree(t) ? sizeof(Limbox) : 0;
+}
 
 /* 'node' size in bytes */
 static size_t sizehash (Table *t) {
@@ -493,7 +499,9 @@ typedef struct {
 ** entry: Two values plus 'next' versus one value.) Evaluate with size_t
 ** to avoid overflows.
 */
-#define arrayXhash(na,nh)	(cast_sizet(na) <= cast_sizet(nh) * 3)
+inline bool arrayXhash(unsigned na, unsigned nh) noexcept {
+	return cast_sizet(na) <= cast_sizet(nh) * 3;
+}
 
 /*
 ** Compute the optimal size for the array part of table 't'.
