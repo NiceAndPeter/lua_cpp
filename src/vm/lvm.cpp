@@ -692,7 +692,9 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
 #define tostring(L,o)  \
 	(ttisstring(o) || (cvt2str(o) && (luaO_tostring(L, o), 1)))
 
-#define isemptystr(o)	(ttisshrstring(o) && tsvalue(o)->length() == 0)
+inline bool isemptystr(const TValue* o) noexcept {
+	return ttisshrstring(o) && tsvalue(o)->length() == 0;
+}
 
 /* copy strings in stack from top - n up to top - 1 to buffer */
 static void copy2buff (StkId top, int n, char *buff) {
@@ -961,10 +963,21 @@ void luaV_finishOp (lua_State *L) {
 #define l_bor(a,b)	intop(|, a, b)
 #define l_bxor(a,b)	intop(^, a, b)
 
-#define l_lti(a,b)	(a < b)
-#define l_lei(a,b)	(a <= b)
-#define l_gti(a,b)	(a > b)
-#define l_gei(a,b)	(a >= b)
+inline constexpr bool l_lti(lua_Integer a, lua_Integer b) noexcept {
+	return a < b;
+}
+
+inline constexpr bool l_lei(lua_Integer a, lua_Integer b) noexcept {
+	return a <= b;
+}
+
+inline constexpr bool l_gti(lua_Integer a, lua_Integer b) noexcept {
+	return a > b;
+}
+
+inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
+	return a >= b;
+}
 
 
 /*

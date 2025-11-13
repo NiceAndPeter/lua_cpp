@@ -35,12 +35,16 @@
 #define MAXVARS		200
 
 
-#define hasmultret(k)		((k) == VCALL || (k) == VVARARG)
+inline bool hasmultret(expkind k) noexcept {
+	return (k) == VCALL || (k) == VVARARG;
+}
 
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
-#define eqstr(a,b)	((a) == (b))
+inline bool eqstr(const TString* a, const TString* b) noexcept {
+	return (a) == (b);
+}
 
 
 /*
@@ -555,10 +559,13 @@ static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
 }
 
 
-#define enterlevel(ls)	luaE_incCstack(ls->getLuaState())
+inline void enterlevel(LexState* ls) {
+	luaE_incCstack(ls->getLuaState());
+}
 
-
-#define leavelevel(ls) ((ls)->getLuaState()->getNCcallsRef()--)
+inline void leavelevel(LexState* ls) noexcept {
+	ls->getLuaState()->getNCcallsRef()--;
+}
 
 
 /*
