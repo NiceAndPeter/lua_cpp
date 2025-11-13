@@ -84,8 +84,13 @@ typedef union {
   char padding[offsetof(Limbox_aux, follows_pNode)];
 } Limbox;
 
-#define haslastfree(t)     ((t)->getLsizenode() >= LIMFORLAST)
-#define getlastfree(t)     ((cast(Limbox *, (t)->getNodeArray()) - 1)->lastfree)
+inline bool haslastfree(const Table* t) noexcept {
+	return t->getLsizenode() >= LIMFORLAST;
+}
+
+inline Node*& getlastfree(Table* t) noexcept {
+	return (cast(Limbox *, t->getNodeArray()) - 1)->lastfree;
+}
 
 
 /*
@@ -128,20 +133,51 @@ typedef union {
 ** When the original hash value is good, hashing by a power of 2
 ** avoids the cost of '%'.
 */
-#define hashpow2(t,n)		(gnode(t, lmod((n), (t)->nodeSize())))
+inline Node* hashpow2(Table* t, unsigned int n) noexcept {
+	return gnode(t, lmod(n, t->nodeSize()));
+}
+
+inline Node* hashpow2(const Table* t, unsigned int n) noexcept {
+	return gnode(t, lmod(n, t->nodeSize()));
+}
 
 /*
 ** for other types, it is better to avoid modulo by power of 2, as
 ** they can have many 2 factors.
 */
-#define hashmod(t,n)	(gnode(t, cast_uint((n) % (((t)->nodeSize()-1u)|1u))))
+inline Node* hashmod(Table* t, lua_Unsigned n) noexcept {
+	return gnode(t, cast_uint(n % ((t->nodeSize()-1u)|1u)));
+}
 
+inline Node* hashmod(const Table* t, lua_Unsigned n) noexcept {
+	return gnode(t, cast_uint(n % ((t->nodeSize()-1u)|1u)));
+}
 
-#define hashstr(t,str)		hashpow2(t, (str)->getHash())
-#define hashboolean(t,p)	hashpow2(t, p)
+inline Node* hashstr(Table* t, const TString* str) noexcept {
+	return hashpow2(t, str->getHash());
+}
 
+inline Node* hashstr(const Table* t, const TString* str) noexcept {
+	return hashpow2(t, str->getHash());
+}
 
-#define hashpointer(t,p)	hashmod(t, point2uint(p))
+inline Node* hashboolean(Table* t, int p) noexcept {
+	return hashpow2(t, p);
+}
+
+inline Node* hashboolean(const Table* t, int p) noexcept {
+	return hashpow2(t, p);
+}
+
+template<typename T>
+inline Node* hashpointer(Table* t, T* p) noexcept {
+	return hashmod(t, point2uint(p));
+}
+
+template<typename T>
+inline Node* hashpointer(const Table* t, T* p) noexcept {
+	return hashmod(t, point2uint(p));
+}
 
 
 #define dummynode		(&dummynode_)
