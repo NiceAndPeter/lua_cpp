@@ -17,7 +17,7 @@
 ** Marks the end of a patch list. It is an invalid value both as an absolute
 ** address, and as a list link (would link an element to itself).
 */
-#define NO_JUMP (-1)
+inline constexpr int NO_JUMP = -1;
 
 
 /*
@@ -42,22 +42,18 @@ typedef enum BinOpr {
 
 
 /* true if operation is foldable (that is, it is arithmetic or bitwise) */
-#define foldbinop(op)	((op) <= OPR_SHR)
-
-
-#define luaK_codeABC(fs,o,a,b,c)	luaK_codeABCk(fs,o,a,b,c,0)
+inline constexpr bool foldbinop(BinOpr op) noexcept {
+	return op <= OPR_SHR;
+}
 
 
 typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
 
 
 /* get (pointer to) instruction of given 'expdesc' */
-#define getinstruction(fs,e)	((fs)->getProto()->getCode()[(e)->getInfo()])
-
-
-#define luaK_setmultret(fs,e)	luaK_setreturns(fs, e, LUA_MULTRET)
-
-#define luaK_jumpto(fs,t)	luaK_patchlist(fs, luaK_jump(fs), t)
+inline Instruction& getinstruction(FuncState* fs, expdesc* e) noexcept {
+	return fs->getProto()->getCode()[e->getInfo()];
+}
 
 LUAI_FUNC int luaK_code (FuncState *fs, Instruction i);
 LUAI_FUNC int luaK_codeABx (FuncState *fs, OpCode o, int A, int Bx);
@@ -98,6 +94,20 @@ LUAI_FUNC void luaK_settablesize (FuncState *fs, int pc,
 LUAI_FUNC void luaK_setlist (FuncState *fs, int base, int nelems, int tostore);
 LUAI_FUNC void luaK_finish (FuncState *fs);
 LUAI_FUNC l_noret luaK_semerror (LexState *ls, const char *fmt, ...);
+
+/* Inline function definitions (after forward declarations) */
+
+inline int luaK_codeABC(FuncState* fs, OpCode o, int a, int b, int c) noexcept {
+	return luaK_codeABCk(fs, o, a, b, c, 0);
+}
+
+inline void luaK_setmultret(FuncState* fs, expdesc* e) noexcept {
+	luaK_setreturns(fs, e, LUA_MULTRET);
+}
+
+inline void luaK_jumpto(FuncState* fs, int t) noexcept {
+	luaK_patchlist(fs, luaK_jump(fs), t);
+}
 
 
 #endif
