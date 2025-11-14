@@ -2034,23 +2034,87 @@ void FuncState::intCode(int reg, lua_Integer i) {
 }
 
 void FuncState::dischargevars(expdesc *e) {
-  luaK_dischargevars(this, e);
+  switch (e->getKind()) {
+    case VCONST: {
+      const2exp(const2val(this, e), e);
+      break;
+    }
+    case VLOCAL: {  /* already in a register */
+      int temp = e->getLocalRegister();
+      e->setInfo(temp);  /* (can't do a direct assignment; values overlap) */
+      e->setKind(VNONRELOC);  /* becomes a non-relocatable value */
+      break;
+    }
+    case VUPVAL: {  /* move value to some (pending) register */
+      e->setInfo(codeABC(OP_GETUPVAL, 0, e->getInfo(), 0));
+      e->setKind(VRELOC);
+      break;
+    }
+    case VINDEXUP: {
+      e->setInfo(codeABC(OP_GETTABUP, 0, e->getIndexedTableReg(), e->getIndexedKeyIndex()));
+      e->setKind(VRELOC);
+      break;
+    }
+    case VINDEXI: {
+      ::freereg(this, e->getIndexedTableReg());
+      e->setInfo(codeABC(OP_GETI, 0, e->getIndexedTableReg(), e->getIndexedKeyIndex()));
+      e->setKind(VRELOC);
+      break;
+    }
+    case VINDEXSTR: {
+      ::freereg(this, e->getIndexedTableReg());
+      e->setInfo(codeABC(OP_GETFIELD, 0, e->getIndexedTableReg(), e->getIndexedKeyIndex()));
+      e->setKind(VRELOC);
+      break;
+    }
+    case VINDEXED: {
+      ::freeregs(this, e->getIndexedTableReg(), e->getIndexedKeyIndex());
+      e->setInfo(codeABC(OP_GETTABLE, 0, e->getIndexedTableReg(), e->getIndexedKeyIndex()));
+      e->setKind(VRELOC);
+      break;
+    }
+    case VVARARG: case VCALL: {
+      setoneret(e);
+      break;
+    }
+    default: break;  /* there is one value available (somewhere) */
+  }
 }
 
 int FuncState::exp2anyreg(expdesc *e) {
-  return luaK_exp2anyreg(this, e);
+  dischargevars(e);
+  if (e->getKind() == VNONRELOC) {  /* expression already has a register? */
+    if (!hasjumps(e))  /* no jumps? */
+      return e->getInfo();  /* result is already in a register */
+    if (e->getInfo() >= luaY_nvarstack(this)) {  /* reg. is not a local? */
+      exp2reg(this, e, e->getInfo());  /* put final result in it */
+      return e->getInfo();
+    }
+    /* else expression has jumps and cannot change its register
+       to hold the jump values, because it is a local variable.
+       Go through to the default case. */
+  }
+  exp2nextreg(e);  /* default: use next available register */
+  return e->getInfo();
 }
 
 void FuncState::exp2anyregup(expdesc *e) {
-  luaK_exp2anyregup(this, e);
+  if (e->getKind() != VUPVAL || hasjumps(e))
+    exp2anyreg(e);
 }
 
 void FuncState::exp2nextreg(expdesc *e) {
-  luaK_exp2nextreg(this, e);
+  dischargevars(e);
+  freeexp(this, e);
+  reserveregs(1);
+  exp2reg(this, e, getFreeReg() - 1);
 }
 
 void FuncState::exp2val(expdesc *e) {
-  luaK_exp2val(this, e);
+  if (e->getKind() == VJMP || hasjumps(e))
+    exp2anyreg(e);
+  else
+    dischargevars(e);
 }
 
 void FuncState::self(expdesc *e, expdesc *key) {
