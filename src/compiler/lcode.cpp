@@ -2280,39 +2280,188 @@ void FuncState::setoneret(expdesc *e) {
 }
 
 int FuncState::jump() {
-  return luaK_jump(this);
+  return ::codesJ(this, OP_JMP, NO_JUMP, 0);
 }
 
 void FuncState::ret(int first, int nret) {
-  luaK_ret(this, first, nret);
+  OpCode op;
+  switch (nret) {
+    case 0: op = OP_RETURN0; break;
+    case 1: op = OP_RETURN1; break;
+    default: op = OP_RETURN; break;
+  }
+  luaY_checklimit(this, nret + 1, MAXARG_B, "returns");
+  codeABC(op, first, nret + 1, 0);
 }
 
 void FuncState::patchlist(int list, int target) {
-  luaK_patchlist(this, list, target);
+  lua_assert(target <= getPC());
+  patchlistaux(this, list, target, NO_REG, target);
 }
 
 void FuncState::patchtohere(int list) {
-  luaK_patchtohere(this, list);
+  int hr = getlabel();  /* mark "here" as a jump target */
+  patchlist(list, hr);
 }
 
 void FuncState::concat(int *l1, int l2) {
-  luaK_concat(this, l1, l2);
+  if (l2 == NO_JUMP) return;  /* nothing to concatenate? */
+  else if (*l1 == NO_JUMP)  /* no original list? */
+    *l1 = l2;  /* 'l1' points to 'l2' */
+  else {
+    int list = *l1;
+    int next;
+    while ((next = getjump(this, list)) != NO_JUMP)  /* find last element */
+      list = next;
+    fixjump(this, list, l2);  /* last element links to 'l2' */
+  }
 }
 
 int FuncState::getlabel() {
-  return luaK_getlabel(this);
+  setLastTarget(getPC());
+  return getPC();
 }
 
-void FuncState::prefix(int opr, expdesc *v, int line) {
-  luaK_prefix(this, static_cast<UnOpr>(opr), v, line);
+void FuncState::prefix(int opr, expdesc *e, int line) {
+  UnOpr op = static_cast<UnOpr>(opr);
+  expdesc ef;
+  ef.setKind(VKINT);
+  ef.setIntValue(0);
+  ef.setFalseList(NO_JUMP);
+  ef.setTrueList(NO_JUMP);
+  dischargevars(e);
+  switch (op) {
+    case OPR_MINUS: case OPR_BNOT:  /* use 'ef' as fake 2nd operand */
+      if (constfolding(this, cast_int(op + LUA_OPUNM), e, &ef))
+        break;
+      /* else */ /* FALLTHROUGH */
+    case OPR_LEN:
+      codeunexpval(this, unopr2op(op), e, line);
+      break;
+    case OPR_NOT: codenot(this, e); break;
+    default: lua_assert(0);
+  }
 }
 
 void FuncState::infix(int opr, expdesc *v) {
-  luaK_infix(this, static_cast<BinOpr>(opr), v);
+  BinOpr op = static_cast<BinOpr>(opr);
+  dischargevars(v);
+  switch (op) {
+    case OPR_AND: {
+      goiftrue(v);  /* go ahead only if 'v' is true */
+      break;
+    }
+    case OPR_OR: {
+      goiffalse(v);  /* go ahead only if 'v' is false */
+      break;
+    }
+    case OPR_CONCAT: {
+      exp2nextreg(v);  /* operand must be on the stack */
+      break;
+    }
+    case OPR_ADD: case OPR_SUB:
+    case OPR_MUL: case OPR_DIV: case OPR_IDIV:
+    case OPR_MOD: case OPR_POW:
+    case OPR_BAND: case OPR_BOR: case OPR_BXOR:
+    case OPR_SHL: case OPR_SHR: {
+      if (!tonumeral(v, NULL))
+        exp2anyreg(v);
+      /* else keep numeral, which may be folded or used as an immediate
+         operand */
+      break;
+    }
+    case OPR_EQ: case OPR_NE: {
+      if (!tonumeral(v, NULL))
+        exp2RK(this, v);
+      /* else keep numeral, which may be an immediate operand */
+      break;
+    }
+    case OPR_LT: case OPR_LE:
+    case OPR_GT: case OPR_GE: {
+      int dummy, dummy2;
+      if (!isSCnumber(v, &dummy, &dummy2))
+        exp2anyreg(v);
+      /* else keep numeral, which may be an immediate operand */
+      break;
+    }
+    default: lua_assert(0);
+  }
 }
 
-void FuncState::posfix(int opr, expdesc *v1, expdesc *v2, int line) {
-  luaK_posfix(this, static_cast<BinOpr>(opr), v1, v2, line);
+void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
+  BinOpr op = static_cast<BinOpr>(opr);
+  dischargevars(e2);
+  if (foldbinop(op) && constfolding(this, cast_int(op + LUA_OPADD), e1, e2))
+    return;  /* done by folding */
+  switch (op) {
+    case OPR_AND: {
+      lua_assert(e1->getTrueList() == NO_JUMP);  /* list closed by 'luaK_infix' */
+      concat(e2->getFalseListRef(), e1->getFalseList());
+      *e1 = *e2;
+      break;
+    }
+    case OPR_OR: {
+      lua_assert(e1->getFalseList() == NO_JUMP);  /* list closed by 'luaK_infix' */
+      concat(e2->getTrueListRef(), e1->getTrueList());
+      *e1 = *e2;
+      break;
+    }
+    case OPR_CONCAT: {  /* e1 .. e2 */
+      exp2nextreg(e2);
+      codeconcat(this, e1, e2, line);
+      break;
+    }
+    case OPR_ADD: case OPR_MUL: {
+      codecommutative(this, op, e1, e2, line);
+      break;
+    }
+    case OPR_SUB: {
+      if (finishbinexpneg(this, e1, e2, OP_ADDI, line, TM_SUB))
+        break; /* coded as (r1 + -I) */
+      /* ELSE */
+    }  /* FALLTHROUGH */
+    case OPR_DIV: case OPR_IDIV: case OPR_MOD: case OPR_POW: {
+      codearith(this, op, e1, e2, 0, line);
+      break;
+    }
+    case OPR_BAND: case OPR_BOR: case OPR_BXOR: {
+      codebitwise(this, op, e1, e2, line);
+      break;
+    }
+    case OPR_SHL: {
+      if (isSCint(e1)) {
+        swapexps(e1, e2);
+        codebini(this, OP_SHLI, e1, e2, 1, line, TM_SHL);  /* I << r2 */
+      }
+      else if (finishbinexpneg(this, e1, e2, OP_SHRI, line, TM_SHL)) {
+        /* coded as (r1 >> -I) */;
+      }
+      else  /* regular case (two registers) */
+       codebinexpval(this, op, e1, e2, line);
+      break;
+    }
+    case OPR_SHR: {
+      if (isSCint(e2))
+        codebini(this, OP_SHRI, e1, e2, 0, line, TM_SHR);  /* r1 >> I */
+      else  /* regular case (two registers) */
+        codebinexpval(this, op, e1, e2, line);
+      break;
+    }
+    case OPR_EQ: case OPR_NE: {
+      codeeq(this, op, e1, e2);
+      break;
+    }
+    case OPR_GT: case OPR_GE: {
+      /* '(a > b)' <=> '(b < a)';  '(a >= b)' <=> '(b <= a)' */
+      swapexps(e1, e2);
+      op = cast(BinOpr, (op - OPR_GT) + OPR_LT);
+    }  /* FALLTHROUGH */
+    case OPR_LT: case OPR_LE: {
+      codeorder(this, op, e1, e2);
+      break;
+    }
+    default: lua_assert(0);
+  }
 }
 
 void FuncState::settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize) {
