@@ -326,7 +326,6 @@ public:
   int codeABCk(int o, int A, int B, int C, int k);
   int codeABC(int o, int A, int B, int C) { return codeABCk(o, A, B, C, 0); }
   int codevABCk(int o, int A, int B, int C, int k);
-  int codesJ(int o, int sj, int k);
   int exp2const(const expdesc *e, TValue *v);
   void fixline(int line);
   void nil(int from, int n);
@@ -341,7 +340,6 @@ public:
   void self(expdesc *e, expdesc *key);
   void indexed(expdesc *t, expdesc *k);
   void goiftrue(expdesc *e);
-  void goiffalse(expdesc *e);
   void storevar(expdesc *var, expdesc *e);
   void setreturns(expdesc *e, int nresults);
   void setoneret(expdesc *e);
@@ -359,6 +357,11 @@ public:
   void settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize);
   void setlist(int base, int nelems, int tostore);
   void finish();
+
+private:
+  // Internal helper methods (only used within lcode.cpp)
+  int codesJ(int o, int sj, int k);
+  void goiffalse(expdesc *e);
 };
 
 
