@@ -70,7 +70,10 @@ typedef lu_byte TStatus;
 /*
 ** test whether an unsigned value is a power of 2 (or zero)
 */
-#define ispow2(x)	(((x) & ((x) - 1)) == 0)
+template<typename T>
+inline constexpr bool ispow2(T x) noexcept {
+	return ((x) & ((x) - 1)) == 0;
+}
 
 
 /* number of chars of a literal string without the ending \0 */
