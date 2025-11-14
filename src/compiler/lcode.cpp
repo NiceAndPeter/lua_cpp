@@ -1926,19 +1926,36 @@ void luaK_finish (FuncState *fs) {
 */
 
 int FuncState::code(Instruction i) {
-  return luaK_code(this, i);
+  Proto *proto = getProto();
+  /* put new instruction in code array */
+  luaM_growvector(getLexState()->getLuaState(), proto->getCodeRef(), getPC(), proto->getCodeSizeRef(), Instruction,
+                  INT_MAX, "opcodes");
+  proto->getCode()[postIncrementPC()] = i;
+  savelineinfo(this, proto, getLexState()->getLastLine());
+  return getPC() - 1;  /* index of new instruction */
 }
 
 int FuncState::codeABx(int o, int A, int Bx) {
-  return luaK_codeABx(this, static_cast<OpCode>(o), A, Bx);
+  OpCode op = static_cast<OpCode>(o);
+  lua_assert(getOpMode(op) == iABx);
+  lua_assert(A <= MAXARG_A && Bx <= MAXARG_Bx);
+  return code(CREATE_ABx(op, A, Bx));
 }
 
 int FuncState::codeABCk(int o, int A, int B, int C, int k) {
-  return luaK_codeABCk(this, static_cast<OpCode>(o), A, B, C, k);
+  OpCode op = static_cast<OpCode>(o);
+  lua_assert(getOpMode(op) == iABC);
+  lua_assert(A <= MAXARG_A && B <= MAXARG_B &&
+             C <= MAXARG_C && (k & ~1) == 0);
+  return code(CREATE_ABCk(op, A, B, C, k));
 }
 
 int FuncState::codevABCk(int o, int A, int B, int C, int k) {
-  return luaK_codevABCk(this, static_cast<OpCode>(o), A, B, C, k);
+  OpCode op = static_cast<OpCode>(o);
+  lua_assert(getOpMode(op) == ivABC);
+  lua_assert(A <= MAXARG_A && B <= MAXARG_vB &&
+             C <= MAXARG_vC && (k & ~1) == 0);
+  return code(CREATE_vABCk(op, A, B, C, k));
 }
 
 int FuncState::codesJ(int o, int sj, int k) {
@@ -1957,19 +1974,41 @@ void FuncState::fixline(int line) {
 }
 
 void FuncState::nil(int from, int n) {
-  luaK_nil(this, from, n);
+  int l = from + n - 1;  /* last register to set nil */
+  Instruction *previous = previousinstruction(this);
+  if (GET_OPCODE(*previous) == OP_LOADNIL) {  /* previous is LOADNIL? */
+    int pfrom = GETARG_A(*previous);  /* get previous range */
+    int pl = pfrom + GETARG_B(*previous);
+    if ((pfrom <= from && from <= pl + 1) ||
+        (from <= pfrom && pfrom <= l + 1)) {  /* can connect both? */
+      if (pfrom < from) from = pfrom;  /* from = min(from, pfrom) */
+      if (pl > l) l = pl;  /* l = max(l, pl) */
+      SETARG_A(*previous, from);
+      SETARG_B(*previous, l - from);
+      return;
+    }  /* else go through */
+  }
+  codeABC(OP_LOADNIL, from, n - 1, 0);  /* else no optimization */
 }
 
 void FuncState::reserveregs(int n) {
-  luaK_reserveregs(this, n);
+  checkstack(n);
+  setFreeReg(cast_byte(getFreeReg() + n));
 }
 
 void FuncState::checkstack(int n) {
-  luaK_checkstack(this, n);
+  int newstack = getFreeReg() + n;
+  if (newstack > getProto()->getMaxStackSize()) {
+    luaY_checklimit(this, newstack, MAX_FSTACK, "registers");
+    getProto()->setMaxStackSize(cast_byte(newstack));
+  }
 }
 
-void FuncState::intCode(int reg, lua_Integer n) {
-  luaK_int(this, reg, n);
+void FuncState::intCode(int reg, lua_Integer i) {
+  if (fitsBx(i))
+    codeAsBx(this, OP_LOADI, reg, cast_int(i));
+  else
+    luaK_codek(this, reg, luaK_intK(this, i));
 }
 
 void FuncState::dischargevars(expdesc *e) {
