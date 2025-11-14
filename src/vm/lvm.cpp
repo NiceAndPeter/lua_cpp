@@ -279,7 +279,7 @@ static int forprep (lua_State *L, StkId ra) {
 ** true iff the loop must continue. (The integer case is
 ** written online with opcode OP_FORLOOP, for performance.)
 */
-static int floatforloop (StkId ra) {
+static int floatforloop (lua_State *L, StkId ra) {
   lua_Number step = fltvalue(s2v(ra + 1));
   lua_Number limit = fltvalue(s2v(ra));
   lua_Number idx = fltvalue(s2v(ra + 2));  /* control variable */
@@ -2008,7 +2008,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
             pc -= GETARG_Bx(i);  /* jump back */
           }
         }
-        else if (floatforloop(ra))  /* float loop */
+        else if (floatforloop(L, ra))  /* float loop */
           pc -= GETARG_Bx(i);  /* jump back */
         updatetrap(ci);  /* allows a signal to break the loop */
         vmbreak;

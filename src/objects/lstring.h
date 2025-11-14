@@ -40,8 +40,11 @@ inline constexpr size_t sizestrshr(size_t l) noexcept {
 }
 
 
-#define luaS_newliteral(L, s)	(luaS_newlstr(L, "" s, \
-                                 (sizeof(s)/sizeof(char))-1))
+/* Create a new string from a string literal, computing length at compile time */
+template<size_t N>
+inline TString* luaS_newliteral(lua_State *L, const char (&s)[N]) {
+    return luaS_newlstr(L, s, N - 1);
+}
 
 
 /*

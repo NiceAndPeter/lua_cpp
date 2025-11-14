@@ -10,6 +10,7 @@
 
 #include <limits.h>
 #include <stddef.h>
+#include <cmath>
 
 
 #include "lua.h"
@@ -279,17 +280,22 @@ typedef unsigned long l_uint32;
 
 
 /*
-** The luai_num* macros define the primitive operations over numbers.
+** The luai_num* operations define the primitive operations over numbers.
+** Converted from macros to inline functions for better type safety and debugging.
 */
-
-/* floor division (defined as 'floor(a/b)') */
-#if !defined(luai_numidiv)
-#define luai_numidiv(L,a,b)     ((void)L, l_floor(luai_numdiv(L,a,b)))
-#endif
 
 /* float division */
 #if !defined(luai_numdiv)
-#define luai_numdiv(L,a,b)      ((a)/(b))
+inline lua_Number luai_numdiv([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b) {
+    return a / b;
+}
+#endif
+
+/* floor division (defined as 'floor(a/b)') */
+#if !defined(luai_numidiv)
+inline lua_Number luai_numidiv([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b) {
+    return l_floor(luai_numdiv(L, a, b));
+}
 #endif
 
 /*
@@ -304,29 +310,61 @@ typedef unsigned long l_uint32;
 ** (as the result 'm' of 'fmod' has the same sign of 'a').
 */
 #if !defined(luai_nummod)
-#define luai_nummod(L,a,b,m)  \
-  { (void)L; (m) = l_mathop(fmod)(a,b); \
-    if (((m) > 0) ? (b) < 0 : ((m) < 0 && (b) > 0)) (m) += (b); }
+inline void luai_nummod([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b, lua_Number &m) {
+    m = l_mathop(fmod)(a, b);
+    if ((m > 0) ? (b < 0) : (m < 0 && b > 0))
+        m += b;
+}
 #endif
 
 /* exponentiation */
 #if !defined(luai_numpow)
-#define luai_numpow(L,a,b)  \
-  ((void)L, (b == 2) ? (a)*(a) : l_mathop(pow)(a,b))
+inline lua_Number luai_numpow([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b) {
+    return (b == 2) ? a * a : l_mathop(pow)(a, b);
+}
 #endif
 
 /* the others are quite standard operations */
 #if !defined(luai_numadd)
-#define luai_numadd(L,a,b)      ((a)+(b))
-#define luai_numsub(L,a,b)      ((a)-(b))
-#define luai_nummul(L,a,b)      ((a)*(b))
-#define luai_numunm(L,a)        (-(a))
-#define luai_numeq(a,b)         ((a)==(b))
-#define luai_numlt(a,b)         ((a)<(b))
-#define luai_numle(a,b)         ((a)<=(b))
-#define luai_numgt(a,b)         ((a)>(b))
-#define luai_numge(a,b)         ((a)>=(b))
-#define luai_numisnan(a)        (!luai_numeq((a), (a)))
+inline lua_Number luai_numadd([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b) {
+    return a + b;
+}
+
+inline lua_Number luai_numsub([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b) {
+    return a - b;
+}
+
+inline lua_Number luai_nummul([[maybe_unused]] lua_State *L, lua_Number a, lua_Number b) {
+    return a * b;
+}
+
+inline lua_Number luai_numunm([[maybe_unused]] lua_State *L, lua_Number a) {
+    return -a;
+}
+
+inline bool luai_numeq(lua_Number a, lua_Number b) {
+    return a == b;
+}
+
+inline bool luai_numlt(lua_Number a, lua_Number b) {
+    return a < b;
+}
+
+inline bool luai_numle(lua_Number a, lua_Number b) {
+    return a <= b;
+}
+
+inline bool luai_numgt(lua_Number a, lua_Number b) {
+    return a > b;
+}
+
+inline bool luai_numge(lua_Number a, lua_Number b) {
+    return a >= b;
+}
+
+inline bool luai_numisnan(lua_Number a) {
+    return !luai_numeq(a, a);
+}
 #endif
 
 

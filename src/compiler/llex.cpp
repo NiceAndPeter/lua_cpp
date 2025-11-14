@@ -61,7 +61,9 @@ static void save (LexState *ls, int c) {
     newsize += (newsize >> 1);  /* new size is 1.5 times the old one */
     luaZ_resizebuffer(ls->getLuaState(), b, newsize);
   }
-  b->buffer[luaZ_bufflen(b)++] = cast_char(c);
+  size_t len = luaZ_bufflen(b);
+  b->buffer[len] = cast_char(c);
+  b->n++;
 }
 
 
