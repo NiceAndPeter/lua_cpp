@@ -2118,23 +2118,139 @@ void FuncState::exp2val(expdesc *e) {
 }
 
 void FuncState::self(expdesc *e, expdesc *key) {
-  luaK_self(this, e, key);
+  int ereg, base;
+  exp2anyreg(e);
+  ereg = e->getInfo();  /* register where 'e' (the receiver) was placed */
+  freeexp(this, e);
+  base = getFreeReg();
+  e->setInfo(base);  /* base register for op_self */
+  e->setKind(VNONRELOC);  /* self expression has a fixed register */
+  reserveregs(2);  /* method and 'self' produced by op_self */
+  lua_assert(key->getKind() == VKSTR);
+  /* is method name a short string in a valid K index? */
+  if (strisshr(key->getStringValue()) && luaK_exp2K(this, key)) {
+    /* can use 'self' opcode */
+    codeABCk(OP_SELF, base, ereg, key->getInfo(), 0);
+  }
+  else {  /* cannot use 'self' opcode; use move+gettable */
+    exp2anyreg(key);  /* put method name in a register */
+    codeABC(OP_MOVE, base + 1, ereg, 0);  /* copy self to base+1 */
+    codeABC(OP_GETTABLE, base, ereg, key->getInfo());  /* get method */
+  }
+  freeexp(this, key);
 }
 
 void FuncState::indexed(expdesc *t, expdesc *k) {
-  luaK_indexed(this, t, k);
+  int keystr = -1;
+  if (k->getKind() == VKSTR)
+    keystr = str2K(this, k);
+  lua_assert(!hasjumps(t) &&
+             (t->getKind() == VLOCAL || t->getKind() == VNONRELOC || t->getKind() == VUPVAL));
+  if (t->getKind() == VUPVAL && !isKstr(this, k))  /* upvalue indexed by non 'Kstr'? */
+    exp2anyreg(t);  /* put it in a register */
+  if (t->getKind() == VUPVAL) {
+    lu_byte temp = cast_byte(t->getInfo());  /* upvalue index */
+    t->setIndexedTableReg(temp);  /* (can't do a direct assignment; values overlap) */
+    lua_assert(isKstr(this, k));
+    t->setIndexedKeyIndex(cast_short(k->getInfo()));  /* literal short string */
+    t->setKind(VINDEXUP);
+  }
+  else {
+    /* register index of the table */
+    t->setIndexedTableReg(cast_byte((t->getKind() == VLOCAL) ? t->getLocalRegister(): t->getInfo()));
+    if (isKstr(this, k)) {
+      t->setIndexedKeyIndex(cast_short(k->getInfo()));  /* literal short string */
+      t->setKind(VINDEXSTR);
+    }
+    else if (isCint(k)) {  /* int. constant in proper range? */
+      t->setIndexedKeyIndex(cast_short(k->getIntValue()));
+      t->setKind(VINDEXI);
+    }
+    else {
+      t->setIndexedKeyIndex(cast_short(exp2anyreg(k)));  /* register */
+      t->setKind(VINDEXED);
+    }
+  }
+  t->setIndexedStringKeyIndex(keystr);  /* string index in 'k' */
+  t->setIndexedReadOnly(0);  /* by default, not read-only */
 }
 
 void FuncState::goiftrue(expdesc *e) {
-  luaK_goiftrue(this, e);
+  int pcpos;  /* pc of new jump */
+  dischargevars(e);
+  switch (e->getKind()) {
+    case VJMP: {  /* condition? */
+      negatecondition(this, e);  /* jump when it is false */
+      pcpos = e->getInfo();  /* save jump position */
+      break;
+    }
+    case VK: case VKFLT: case VKINT: case VKSTR: case VTRUE: {
+      pcpos = NO_JUMP;  /* always true; do nothing */
+      break;
+    }
+    default: {
+      pcpos = jumponcond(this, e, 0);  /* jump when false */
+      break;
+    }
+  }
+  concat(e->getFalseListRef(), pcpos);  /* insert new jump in false list */
+  patchtohere(e->getTrueList());  /* true list jumps to here (to go through) */
+  e->setTrueList(NO_JUMP);
 }
 
 void FuncState::goiffalse(expdesc *e) {
-  luaK_goiffalse(this, e);
+  int pcpos;  /* pc of new jump */
+  dischargevars(e);
+  switch (e->getKind()) {
+    case VJMP: {
+      pcpos = e->getInfo();  /* already jump if true */
+      break;
+    }
+    case VNIL: case VFALSE: {
+      pcpos = NO_JUMP;  /* always false; do nothing */
+      break;
+    }
+    default: {
+      pcpos = jumponcond(this, e, 1);  /* jump if true */
+      break;
+    }
+  }
+  concat(e->getTrueListRef(), pcpos);  /* insert new jump in 't' list */
+  patchtohere(e->getFalseList());  /* false list jumps to here (to go through) */
+  e->setFalseList(NO_JUMP);
 }
 
-void FuncState::storevar(expdesc *var, expdesc *e) {
-  luaK_storevar(this, var, e);
+void FuncState::storevar(expdesc *var, expdesc *ex) {
+  switch (var->getKind()) {
+    case VLOCAL: {
+      freeexp(this, ex);
+      exp2reg(this, ex, var->getLocalRegister());  /* compute 'ex' into proper place */
+      return;
+    }
+    case VUPVAL: {
+      int e = exp2anyreg(ex);
+      codeABC(OP_SETUPVAL, e, var->getInfo(), 0);
+      break;
+    }
+    case VINDEXUP: {
+      codeABRK(this, OP_SETTABUP, var->getIndexedTableReg(), var->getIndexedKeyIndex(), ex);
+      break;
+    }
+    case VINDEXI: {
+      codeABRK(this, OP_SETI, var->getIndexedTableReg(), var->getIndexedKeyIndex(), ex);
+      break;
+    }
+    case VINDEXSTR: {
+      codeABRK(this, OP_SETFIELD, var->getIndexedTableReg(), var->getIndexedKeyIndex(), ex);
+      break;
+    }
+    case VINDEXED: {
+      codeABRK(this, OP_SETTABLE, var->getIndexedTableReg(), var->getIndexedKeyIndex(), ex);
+      break;
+    }
+    default: lua_assert(0);  /* invalid var kind to store */
+  }
+  freeexp(this, ex);
 }
 
 void FuncState::setreturns(expdesc *e, int nresults) {
