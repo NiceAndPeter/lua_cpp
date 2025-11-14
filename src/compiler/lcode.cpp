@@ -1966,11 +1966,33 @@ int FuncState::codesJ(int o, int sj, int k) {
 }
 
 int FuncState::exp2const(const expdesc *e, TValue *v) {
-  return luaK_exp2const(this, e, v);
+  if (hasjumps(e))
+    return 0;  /* not a constant */
+  switch (e->getKind()) {
+    case VFALSE:
+      setbfvalue(v);
+      return 1;
+    case VTRUE:
+      setbtvalue(v);
+      return 1;
+    case VNIL:
+      setnilvalue(v);
+      return 1;
+    case VKSTR: {
+      setsvalue(getLexState()->getLuaState(), v, e->getStringValue());
+      return 1;
+    }
+    case VCONST: {
+      setobj(getLexState()->getLuaState(), v, const2val(this, e));
+      return 1;
+    }
+    default: return tonumeral(e, v);
+  }
 }
 
 void FuncState::fixline(int line) {
-  luaK_fixline(this, line);
+  removelastlineinfo(this);
+  savelineinfo(this, getProto(), line);
 }
 
 void FuncState::nil(int from, int n) {
@@ -2052,11 +2074,29 @@ void FuncState::storevar(expdesc *var, expdesc *e) {
 }
 
 void FuncState::setreturns(expdesc *e, int nresults) {
-  luaK_setreturns(this, e, nresults);
+  Instruction *instr = &getinstruction(this, e);
+  luaY_checklimit(this, nresults + 1, MAXARG_C, "multiple results");
+  if (e->getKind() == VCALL)  /* expression is an open function call? */
+    SETARG_C(*instr, nresults + 1);
+  else {
+    lua_assert(e->getKind() == VVARARG);
+    SETARG_C(*instr, nresults + 1);
+    SETARG_A(*instr, getFreeReg());
+    reserveregs(1);
+  }
 }
 
 void FuncState::setoneret(expdesc *e) {
-  luaK_setoneret(this, e);
+  if (e->getKind() == VCALL) {  /* expression is an open function call? */
+    /* already returns 1 value */
+    lua_assert(GETARG_C(getinstruction(this, e)) == 2);
+    e->setKind(VNONRELOC);  /* result has fixed position */
+    e->setInfo(GETARG_A(getinstruction(this, e)));
+  }
+  else if (e->getKind() == VVARARG) {
+    SETARG_C(getinstruction(this, e), 2);
+    e->setKind(VRELOC);  /* can relocate its simple result */
+  }
 }
 
 int FuncState::jump() {
@@ -2096,13 +2136,58 @@ void FuncState::posfix(int opr, expdesc *v1, expdesc *v2, int line) {
 }
 
 void FuncState::settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize) {
-  luaK_settablesize(this, pcpos, cast_int(ra), cast_int(asize), cast_int(hsize));
+  Instruction *inst = &getProto()->getCode()[pcpos];
+  int extra = asize / (MAXARG_vC + 1);  /* higher bits of array size */
+  int rc = asize % (MAXARG_vC + 1);  /* lower bits of array size */
+  int k = (extra > 0);  /* true iff needs extra argument */
+  int hsize_coded = (hsize != 0) ? luaO_ceillog2(cast_uint(hsize)) + 1 : 0;
+  *inst = CREATE_vABCk(OP_NEWTABLE, ra, hsize_coded, rc, k);
+  *(inst + 1) = CREATE_Ax(OP_EXTRAARG, extra);
 }
 
 void FuncState::setlist(int base, int nelems, int tostore) {
-  luaK_setlist(this, base, nelems, tostore);
+  lua_assert(tostore != 0);
+  if (tostore == LUA_MULTRET)
+    tostore = 0;
+  if (nelems <= MAXARG_vC)
+    codevABCk(OP_SETLIST, base, tostore, nelems, 0);
+  else {
+    int extra = nelems / (MAXARG_vC + 1);
+    nelems %= (MAXARG_vC + 1);
+    codevABCk(OP_SETLIST, base, tostore, nelems, 1);
+    codeextraarg(this, extra);
+  }
+  setFreeReg(cast_byte(base + 1));  /* free registers with list values */
 }
 
 void FuncState::finish() {
-  luaK_finish(this);
+  int i;
+  Proto *p = getProto();
+  for (i = 0; i < getPC(); i++) {
+    Instruction *instr = &p->getCode()[i];
+    /* avoid "not used" warnings when assert is off (for 'onelua.c') */
+    (void)luaP_isOT; (void)luaP_isIT;
+    lua_assert(i == 0 || luaP_isOT(*(instr - 1)) == luaP_isIT(*instr));
+    switch (GET_OPCODE(*instr)) {
+      case OP_RETURN0: case OP_RETURN1: {
+        if (!(getNeedClose() || (p->getFlag() & PF_ISVARARG)))
+          break;  /* no extra work */
+        /* else use OP_RETURN to do the extra work */
+        SET_OPCODE(*instr, OP_RETURN);
+      }  /* FALLTHROUGH */
+      case OP_RETURN: case OP_TAILCALL: {
+        if (getNeedClose())
+          SETARG_k(*instr, 1);  /* signal that it needs to close */
+        if (p->getFlag() & PF_ISVARARG)
+          SETARG_C(*instr, p->getNumParams() + 1);  /* signal that it is vararg */
+        break;
+      }
+      case OP_JMP: {
+        int target = finaltarget(p->getCode(), i);
+        fixjump(this, i, target);
+        break;
+      }
+      default: break;
+    }
+  }
 }
