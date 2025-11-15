@@ -37,8 +37,20 @@
 	  { pre; (L)->growStack(n, 1); pos; } \
 	else { condmovestack(L,pre,pos); }
 
-/* In general, 'pre'/'pos' are empty (nothing to save) */
-#define luaD_checkstack(L,n)	luaD_checkstackaux(L,n,(void)0,(void)0)
+/* Phase 88: Convert luaD_checkstack from macro to inline function
+** In general, 'pre'/'pos' are empty (nothing to save)
+*/
+inline void luaD_checkstack(lua_State* L, int n) noexcept {
+	if (l_unlikely(L->getStackLast().p - L->getTop().p <= n)) {
+		L->growStack(n, 1);
+	}
+#if defined(HARDSTACKTESTS)
+	else {
+		int sz_ = L->getStackSize();
+		L->reallocStack(sz_, 0);
+	}
+#endif
+}
 
 
 /* Phase 44.4: savestack/restorestack macros replaced with lua_State methods:
