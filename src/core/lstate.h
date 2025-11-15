@@ -639,236 +639,464 @@ typedef struct LX {
 
 
 /*
+** global_State Subsystems - Single Responsibility Principle refactoring
+** These classes separate global_State's 46+ fields into focused components
+*/
+
+/* 1. Memory Allocator - Memory allocation management */
+class MemoryAllocator {
+private:
+  lua_Alloc frealloc;  /* function to reallocate memory */
+  void *ud;            /* auxiliary data to 'frealloc' */
+
+public:
+  inline lua_Alloc getFrealloc() const noexcept { return frealloc; }
+  inline void setFrealloc(lua_Alloc f) noexcept { frealloc = f; }
+  inline void* getUd() const noexcept { return ud; }
+  inline void setUd(void* u) noexcept { ud = u; }
+};
+
+
+/* 2. GC Accounting - Memory tracking for garbage collection */
+class GCAccounting {
+private:
+  l_mem totalbytes;    /* Total allocated bytes + debt */
+  l_mem debt;          /* Bytes counted but not yet allocated */
+  l_mem marked;        /* Objects marked in current GC cycle */
+  l_mem majorminor;    /* Counter to control major-minor shifts */
+
+public:
+  inline l_mem getTotalBytes() const noexcept { return totalbytes; }
+  inline void setTotalBytes(l_mem bytes) noexcept { totalbytes = bytes; }
+  inline l_mem& getTotalBytesRef() noexcept { return totalbytes; }
+
+  inline l_mem getDebt() const noexcept { return debt; }
+  inline void setDebt(l_mem d) noexcept { debt = d; }
+  inline l_mem& getDebtRef() noexcept { return debt; }
+
+  inline l_mem getRealTotalBytes() const noexcept { return totalbytes - debt; }
+
+  inline l_mem getMarked() const noexcept { return marked; }
+  inline void setMarked(l_mem m) noexcept { marked = m; }
+  inline l_mem& getMarkedRef() noexcept { return marked; }
+
+  inline l_mem getMajorMinor() const noexcept { return majorminor; }
+  inline void setMajorMinor(l_mem mm) noexcept { majorminor = mm; }
+  inline l_mem& getMajorMinorRef() noexcept { return majorminor; }
+};
+
+
+/* 3. GC Parameters - Garbage collector configuration and state */
+class GCParameters {
+private:
+  lu_byte params[LUA_GCPN];  /* GC tuning parameters */
+  lu_byte currentwhite;      /* Current white color for GC */
+  lu_byte state;             /* State of garbage collector */
+  lu_byte kind;              /* Kind of GC running (incremental/generational) */
+  lu_byte stopem;            /* Stops emergency collections */
+  lu_byte stp;               /* Control whether GC is running */
+  lu_byte emergency;         /* True if this is emergency collection */
+
+public:
+  inline lu_byte* getParams() noexcept { return params; }
+  inline const lu_byte* getParams() const noexcept { return params; }
+  inline lu_byte getParam(int idx) const noexcept { return params[idx]; }
+  inline void setParam(int idx, lu_byte value) noexcept { params[idx] = value; }
+
+  inline lu_byte getCurrentWhite() const noexcept { return currentwhite; }
+  inline void setCurrentWhite(lu_byte cw) noexcept { currentwhite = cw; }
+
+  inline GCState getState() const noexcept { return static_cast<GCState>(state); }
+  inline void setState(GCState s) noexcept { state = static_cast<lu_byte>(s); }
+
+  inline GCKind getKind() const noexcept { return static_cast<GCKind>(kind); }
+  inline void setKind(GCKind k) noexcept { kind = static_cast<lu_byte>(k); }
+
+  inline lu_byte getStopEm() const noexcept { return stopem; }
+  inline void setStopEm(lu_byte stop) noexcept { stopem = stop; }
+
+  inline lu_byte getStp() const noexcept { return stp; }
+  inline void setStp(lu_byte s) noexcept { stp = s; }
+  inline bool isRunning() const noexcept { return stp == 0; }
+
+  inline lu_byte getEmergency() const noexcept { return emergency; }
+  inline void setEmergency(lu_byte em) noexcept { emergency = em; }
+};
+
+
+/* 4. GC Object Lists - Linked lists of GC-managed objects */
+class GCObjectLists {
+private:
+  /* Incremental collector lists */
+  GCObject *allgc;        /* All collectable objects */
+  GCObject **sweepgc;     /* Current sweep position */
+  GCObject *finobj;       /* Objects with finalizers */
+  GCObject *gray;         /* Gray objects (mark phase) */
+  GCObject *grayagain;    /* Objects to revisit */
+  GCObject *weak;         /* Weak-value tables */
+  GCObject *ephemeron;    /* Ephemeron tables (weak keys) */
+  GCObject *allweak;      /* All-weak tables */
+  GCObject *tobefnz;      /* To be finalized */
+  GCObject *fixedgc;      /* Never collected objects */
+
+  /* Generational collector lists */
+  GCObject *survival;     /* Survived one GC cycle */
+  GCObject *old1;         /* Old generation 1 */
+  GCObject *reallyold;    /* Old generation 2+ */
+  GCObject *firstold1;    /* First OLD1 object (optimization) */
+  GCObject *finobjsur;    /* Survival objects with finalizers */
+  GCObject *finobjold1;   /* Old1 objects with finalizers */
+  GCObject *finobjrold;   /* Really old objects with finalizers */
+
+public:
+  /* Incremental collector accessors */
+  inline GCObject* getAllGC() const noexcept { return allgc; }
+  inline void setAllGC(GCObject* gc) noexcept { allgc = gc; }
+  inline GCObject** getAllGCPtr() noexcept { return &allgc; }
+
+  inline GCObject** getSweepGC() const noexcept { return sweepgc; }
+  inline void setSweepGC(GCObject** sweep) noexcept { sweepgc = sweep; }
+  inline GCObject*** getSweepGCPtr() noexcept { return &sweepgc; }
+
+  inline GCObject* getFinObj() const noexcept { return finobj; }
+  inline void setFinObj(GCObject* fobj) noexcept { finobj = fobj; }
+  inline GCObject** getFinObjPtr() noexcept { return &finobj; }
+
+  inline GCObject* getGray() const noexcept { return gray; }
+  inline void setGray(GCObject* g) noexcept { gray = g; }
+  inline GCObject** getGrayPtr() noexcept { return &gray; }
+
+  inline GCObject* getGrayAgain() const noexcept { return grayagain; }
+  inline void setGrayAgain(GCObject* ga) noexcept { grayagain = ga; }
+  inline GCObject** getGrayAgainPtr() noexcept { return &grayagain; }
+
+  inline GCObject* getWeak() const noexcept { return weak; }
+  inline void setWeak(GCObject* w) noexcept { weak = w; }
+  inline GCObject** getWeakPtr() noexcept { return &weak; }
+
+  inline GCObject* getEphemeron() const noexcept { return ephemeron; }
+  inline void setEphemeron(GCObject* e) noexcept { ephemeron = e; }
+  inline GCObject** getEphemeronPtr() noexcept { return &ephemeron; }
+
+  inline GCObject* getAllWeak() const noexcept { return allweak; }
+  inline void setAllWeak(GCObject* aw) noexcept { allweak = aw; }
+  inline GCObject** getAllWeakPtr() noexcept { return &allweak; }
+
+  inline GCObject* getToBeFnz() const noexcept { return tobefnz; }
+  inline void setToBeFnz(GCObject* tbf) noexcept { tobefnz = tbf; }
+  inline GCObject** getToBeFnzPtr() noexcept { return &tobefnz; }
+
+  inline GCObject* getFixedGC() const noexcept { return fixedgc; }
+  inline void setFixedGC(GCObject* fgc) noexcept { fixedgc = fgc; }
+  inline GCObject** getFixedGCPtr() noexcept { return &fixedgc; }
+
+  /* Generational collector accessors */
+  inline GCObject* getSurvival() const noexcept { return survival; }
+  inline void setSurvival(GCObject* s) noexcept { survival = s; }
+  inline GCObject** getSurvivalPtr() noexcept { return &survival; }
+
+  inline GCObject* getOld1() const noexcept { return old1; }
+  inline void setOld1(GCObject* o1) noexcept { old1 = o1; }
+  inline GCObject** getOld1Ptr() noexcept { return &old1; }
+
+  inline GCObject* getReallyOld() const noexcept { return reallyold; }
+  inline void setReallyOld(GCObject* ro) noexcept { reallyold = ro; }
+  inline GCObject** getReallyOldPtr() noexcept { return &reallyold; }
+
+  inline GCObject* getFirstOld1() const noexcept { return firstold1; }
+  inline void setFirstOld1(GCObject* fo1) noexcept { firstold1 = fo1; }
+  inline GCObject** getFirstOld1Ptr() noexcept { return &firstold1; }
+
+  inline GCObject* getFinObjSur() const noexcept { return finobjsur; }
+  inline void setFinObjSur(GCObject* fos) noexcept { finobjsur = fos; }
+  inline GCObject** getFinObjSurPtr() noexcept { return &finobjsur; }
+
+  inline GCObject* getFinObjOld1() const noexcept { return finobjold1; }
+  inline void setFinObjOld1(GCObject* fo1) noexcept { finobjold1 = fo1; }
+  inline GCObject** getFinObjOld1Ptr() noexcept { return &finobjold1; }
+
+  inline GCObject* getFinObjROld() const noexcept { return finobjrold; }
+  inline void setFinObjROld(GCObject* for_) noexcept { finobjrold = for_; }
+  inline GCObject** getFinObjROldPtr() noexcept { return &finobjrold; }
+};
+
+
+/* 5. String Cache - String interning and caching */
+class StringCache {
+private:
+  stringtable strt;                               /* String interning table */
+  TString *cache[STRCACHE_N][STRCACHE_M];        /* API string cache */
+
+public:
+  inline stringtable* getTable() noexcept { return &strt; }
+  inline const stringtable* getTable() const noexcept { return &strt; }
+
+  inline TString* getCache(int n, int m) const noexcept { return cache[n][m]; }
+  inline void setCache(int n, int m, TString* str) noexcept { cache[n][m] = str; }
+};
+
+
+/* 6. Type System - Type metatables and core values */
+class TypeSystem {
+private:
+  TValue registry;                    /* Lua registry */
+  TValue nilvalue;                    /* Canonical nil value */
+  unsigned int seed;                  /* Hash seed for randomization */
+  Table *metatables[LUA_NUMTYPES];   /* Metatables for basic types */
+  TString *tmname[TM_N];             /* Tag method names */
+
+public:
+  inline TValue* getRegistry() noexcept { return &registry; }
+  inline const TValue* getRegistry() const noexcept { return &registry; }
+
+  inline TValue* getNilValue() noexcept { return &nilvalue; }
+  inline const TValue* getNilValue() const noexcept { return &nilvalue; }
+  inline bool isComplete() const noexcept { return ttisnil(&nilvalue); }
+
+  inline unsigned int getSeed() const noexcept { return seed; }
+  inline void setSeed(unsigned int s) noexcept { seed = s; }
+
+  inline Table* getMetatable(int type) const noexcept { return metatables[type]; }
+  inline void setMetatable(int type, Table* mt) noexcept { metatables[type] = mt; }
+  inline Table** getMetatablePtr(int type) noexcept { return &metatables[type]; }
+
+  inline TString* getTMName(int idx) const noexcept { return tmname[idx]; }
+  inline void setTMName(int idx, TString* name) noexcept { tmname[idx] = name; }
+  inline TString** getTMNamePtr(int idx) noexcept { return &tmname[idx]; }
+};
+
+
+/* 7. Runtime Services - Runtime state and service functions */
+class RuntimeServices {
+private:
+  lua_State *twups;           /* Threads with open upvalues */
+  lua_CFunction panic;        /* Panic handler for unprotected errors */
+  TString *memerrmsg;         /* Memory error message */
+  lua_WarnFunction warnf;     /* Warning function */
+  void *ud_warn;              /* Auxiliary data for warning function */
+  LX mainth;                  /* Main thread of this state */
+
+public:
+  inline lua_State* getTwups() const noexcept { return twups; }
+  inline void setTwups(lua_State* tw) noexcept { twups = tw; }
+  inline lua_State** getTwupsPtr() noexcept { return &twups; }
+
+  inline lua_CFunction getPanic() const noexcept { return panic; }
+  inline void setPanic(lua_CFunction p) noexcept { panic = p; }
+
+  inline TString* getMemErrMsg() const noexcept { return memerrmsg; }
+  inline void setMemErrMsg(TString* msg) noexcept { memerrmsg = msg; }
+
+  inline lua_WarnFunction getWarnF() const noexcept { return warnf; }
+  inline void setWarnF(lua_WarnFunction wf) noexcept { warnf = wf; }
+
+  inline void* getUdWarn() const noexcept { return ud_warn; }
+  inline void setUdWarn(void* uw) noexcept { ud_warn = uw; }
+
+  inline LX* getMainThread() noexcept { return &mainth; }
+  inline const LX* getMainThread() const noexcept { return &mainth; }
+};
+
+
+/*
 ** 'global state', shared by all threads of this state
 */
 class global_State {
 private:
-  // Group 1: Memory allocator fields
-  lua_Alloc frealloc;  /* function to reallocate memory */
-  void *ud;         /* auxiliary data to 'frealloc' */
-
-  // Group 2: GC memory accounting fields
-  l_mem GCtotalbytes;  /* number of bytes currently allocated + debt */
-  l_mem GCdebt;  /* bytes counted but not yet allocated */
-  l_mem GCmarked;  /* number of objects marked in a GC cycle */
-  l_mem GCmajorminor;  /* auxiliary counter to control major-minor shifts */
-
-  // Group 3: String and value storage
-  stringtable strt;  /* hash table for strings */
-  TValue l_registry;
-  TValue nilvalue;  /* a nil value */
-  unsigned int seed;  /* randomized seed for hashes */
-
-  // Group 4: GC parameters and state
-  lu_byte gcparams[LUA_GCPN];
-  lu_byte currentwhite;
-  lu_byte gcstate;  /* state of garbage collector */
-  lu_byte gckind;  /* kind of GC running */
-  lu_byte gcstopem;  /* stops emergency collections */
-  lu_byte gcstp;  /* control whether GC is running */
-  lu_byte gcemergency;  /* true if this is an emergency collection */
-
-  // Group 5: GC object lists (incremental collector)
-  GCObject *allgc;  /* list of all collectable objects */
-  GCObject **sweepgc;  /* current position of sweep in list */
-  GCObject *finobj;  /* list of collectable objects with finalizers */
-  GCObject *gray;  /* list of gray objects */
-  GCObject *grayagain;  /* list of objects to be traversed atomically */
-  GCObject *weak;  /* list of tables with weak values */
-  GCObject *ephemeron;  /* list of ephemeron tables (weak keys) */
-  GCObject *allweak;  /* list of all-weak tables */
-  GCObject *tobefnz;  /* list of userdata to be GC */
-  GCObject *fixedgc;  /* list of objects not to be collected */
-
-  // Group 6: GC object lists (generational collector)
-  GCObject *survival;  /* start of objects that survived one GC cycle */
-  GCObject *old1;  /* start of old1 objects */
-  GCObject *reallyold;  /* objects more than one cycle old ("really old") */
-  GCObject *firstold1;  /* first OLD1 object in the list (if any) */
-  GCObject *finobjsur;  /* list of survival objects with finalizers */
-  GCObject *finobjold1;  /* list of old1 objects with finalizers */
-  GCObject *finobjrold;  /* list of really old objects with finalizers */
-
-  // Group 7: Runtime state
-  struct lua_State *twups;  /* list of threads with open upvalues */
-  lua_CFunction panic;  /* to be called in unprotected errors */
-  TString *memerrmsg;  /* message for memory-allocation errors */
-  TString *tmname[TM_N];  /* array with tag-method names */
-  struct Table *mt[LUA_NUMTYPES];  /* metatables for basic types */
-  TString *strcache[STRCACHE_N][STRCACHE_M];  /* cache for strings in API */
-  lua_WarnFunction warnf;  /* warning function */
-  void *ud_warn;         /* auxiliary data to 'warnf' */
-  LX mainth;  /* main thread of this state */
+  /* Subsystems (SRP refactoring) */
+  MemoryAllocator memory;        /* Memory allocation management */
+  GCAccounting gcAccounting;     /* GC memory tracking */
+  GCParameters gcParams;         /* GC configuration & state */
+  GCObjectLists gcLists;         /* GC object linked lists */
+  StringCache strings;           /* String interning & caching */
+  TypeSystem types;              /* Type metatables & core values */
+  RuntimeServices runtime;       /* Runtime state & services */
 
 public:
-  // Group 1: Memory allocator accessors
-  lua_Alloc getFrealloc() const noexcept { return frealloc; }
-  void setFrealloc(lua_Alloc f) noexcept { frealloc = f; }
-  void* getUd() const noexcept { return ud; }
-  void setUd(void* u) noexcept { ud = u; }
+  /* Subsystem access methods (for direct subsystem manipulation) */
+  inline MemoryAllocator& getMemoryAllocator() noexcept { return memory; }
+  inline const MemoryAllocator& getMemoryAllocator() const noexcept { return memory; }
+  inline GCAccounting& getGCAccountingSubsystem() noexcept { return gcAccounting; }
+  inline const GCAccounting& getGCAccountingSubsystem() const noexcept { return gcAccounting; }
+  inline GCParameters& getGCParametersSubsystem() noexcept { return gcParams; }
+  inline const GCParameters& getGCParametersSubsystem() const noexcept { return gcParams; }
+  inline GCObjectLists& getGCObjectListsSubsystem() noexcept { return gcLists; }
+  inline const GCObjectLists& getGCObjectListsSubsystem() const noexcept { return gcLists; }
+  inline StringCache& getStringCacheSubsystem() noexcept { return strings; }
+  inline const StringCache& getStringCacheSubsystem() const noexcept { return strings; }
+  inline TypeSystem& getTypeSystemSubsystem() noexcept { return types; }
+  inline const TypeSystem& getTypeSystemSubsystem() const noexcept { return types; }
+  inline RuntimeServices& getRuntimeServicesSubsystem() noexcept { return runtime; }
+  inline const RuntimeServices& getRuntimeServicesSubsystem() const noexcept { return runtime; }
 
-  // Group 2: GC memory accounting accessors
-  l_mem getGCTotalBytes() const noexcept { return GCtotalbytes; }
-  void setGCTotalBytes(l_mem bytes) noexcept { GCtotalbytes = bytes; }
-  l_mem& getGCTotalBytesRef() noexcept { return GCtotalbytes; }
+  /* Delegating accessors for MemoryAllocator */
+  inline lua_Alloc getFrealloc() const noexcept { return memory.getFrealloc(); }
+  inline void setFrealloc(lua_Alloc f) noexcept { memory.setFrealloc(f); }
+  inline void* getUd() const noexcept { return memory.getUd(); }
+  inline void setUd(void* u) noexcept { memory.setUd(u); }
 
-  l_mem getGCDebt() const noexcept { return GCdebt; }
-  void setGCDebt(l_mem debt) noexcept { GCdebt = debt; }
-  l_mem& getGCDebtRef() noexcept { return GCdebt; }
+  /* Delegating accessors for GCAccounting */
+  inline l_mem getGCTotalBytes() const noexcept { return gcAccounting.getTotalBytes(); }
+  inline void setGCTotalBytes(l_mem bytes) noexcept { gcAccounting.setTotalBytes(bytes); }
+  inline l_mem& getGCTotalBytesRef() noexcept { return gcAccounting.getTotalBytesRef(); }
 
-  l_mem getTotalBytes() const noexcept { return GCtotalbytes - GCdebt; }
+  inline l_mem getGCDebt() const noexcept { return gcAccounting.getDebt(); }
+  inline void setGCDebt(l_mem debt) noexcept { gcAccounting.setDebt(debt); }
+  inline l_mem& getGCDebtRef() noexcept { return gcAccounting.getDebtRef(); }
 
-  l_mem getGCMarked() const noexcept { return GCmarked; }
-  void setGCMarked(l_mem marked) noexcept { GCmarked = marked; }
-  l_mem& getGCMarkedRef() noexcept { return GCmarked; }
+  inline l_mem getTotalBytes() const noexcept { return gcAccounting.getRealTotalBytes(); }
 
-  l_mem getGCMajorMinor() const noexcept { return GCmajorminor; }
-  void setGCMajorMinor(l_mem mm) noexcept { GCmajorminor = mm; }
-  l_mem& getGCMajorMinorRef() noexcept { return GCmajorminor; }
+  inline l_mem getGCMarked() const noexcept { return gcAccounting.getMarked(); }
+  inline void setGCMarked(l_mem marked) noexcept { gcAccounting.setMarked(marked); }
+  inline l_mem& getGCMarkedRef() noexcept { return gcAccounting.getMarkedRef(); }
 
-  // Group 3: String and value storage accessors
-  stringtable* getStringTable() noexcept { return &strt; }
-  const stringtable* getStringTable() const noexcept { return &strt; }
+  inline l_mem getGCMajorMinor() const noexcept { return gcAccounting.getMajorMinor(); }
+  inline void setGCMajorMinor(l_mem mm) noexcept { gcAccounting.setMajorMinor(mm); }
+  inline l_mem& getGCMajorMinorRef() noexcept { return gcAccounting.getMajorMinorRef(); }
 
-  TValue* getRegistry() noexcept { return &l_registry; }
-  const TValue* getRegistry() const noexcept { return &l_registry; }
+  /* Delegating accessors for GCParameters */
+  inline lu_byte* getGCParams() noexcept { return gcParams.getParams(); }
+  inline const lu_byte* getGCParams() const noexcept { return gcParams.getParams(); }
+  inline lu_byte getGCParam(int idx) const noexcept { return gcParams.getParam(idx); }
+  inline void setGCParam(int idx, lu_byte value) noexcept { gcParams.setParam(idx, value); }
 
-  TValue* getNilValue() noexcept { return &nilvalue; }
-  const TValue* getNilValue() const noexcept { return &nilvalue; }
-
-  bool isComplete() const noexcept { return ttisnil(&nilvalue); }
-
-  unsigned int getSeed() const noexcept { return seed; }
-  void setSeed(unsigned int s) noexcept { seed = s; }
-
-  // Group 4: GC parameters and state accessors
-  lu_byte* getGCParams() noexcept { return gcparams; }
-  const lu_byte* getGCParams() const noexcept { return gcparams; }
-  lu_byte getGCParam(int idx) const noexcept { return gcparams[idx]; }
-  void setGCParam(int idx, lu_byte value) noexcept { gcparams[idx] = value; }
-
-  lu_byte getCurrentWhite() const noexcept { return currentwhite; }
-  void setCurrentWhite(lu_byte cw) noexcept { currentwhite = cw; }
+  inline lu_byte getCurrentWhite() const noexcept { return gcParams.getCurrentWhite(); }
+  inline void setCurrentWhite(lu_byte cw) noexcept { gcParams.setCurrentWhite(cw); }
   lu_byte getWhite() const noexcept;  // Defined in lgc.h (needs WHITEBITS)
 
-  GCState getGCState() const noexcept { return static_cast<GCState>(gcstate); }
-  void setGCState(GCState state) noexcept { gcstate = static_cast<lu_byte>(state); }
+  inline GCState getGCState() const noexcept { return gcParams.getState(); }
+  inline void setGCState(GCState state) noexcept { gcParams.setState(state); }
   bool keepInvariant() const noexcept;  // Defined in lgc.h (needs GCState::Atomic)
   bool isSweepPhase() const noexcept;   // Defined in lgc.h (needs GCState::SweepAllGC/SweepEnd)
 
-  GCKind getGCKind() const noexcept { return static_cast<GCKind>(gckind); }
-  void setGCKind(GCKind kind) noexcept { gckind = static_cast<lu_byte>(kind); }
+  inline GCKind getGCKind() const noexcept { return gcParams.getKind(); }
+  inline void setGCKind(GCKind kind) noexcept { gcParams.setKind(kind); }
 
-  lu_byte getGCStopEm() const noexcept { return gcstopem; }
-  void setGCStopEm(lu_byte stop) noexcept { gcstopem = stop; }
+  inline lu_byte getGCStopEm() const noexcept { return gcParams.getStopEm(); }
+  inline void setGCStopEm(lu_byte stop) noexcept { gcParams.setStopEm(stop); }
 
-  lu_byte getGCStp() const noexcept { return gcstp; }
-  void setGCStp(lu_byte stp) noexcept { gcstp = stp; }
-  bool isGCRunning() const noexcept { return gcstp == 0; }
+  inline lu_byte getGCStp() const noexcept { return gcParams.getStp(); }
+  inline void setGCStp(lu_byte stp) noexcept { gcParams.setStp(stp); }
+  inline bool isGCRunning() const noexcept { return gcParams.isRunning(); }
 
-  lu_byte getGCEmergency() const noexcept { return gcemergency; }
-  void setGCEmergency(lu_byte em) noexcept { gcemergency = em; }
+  inline lu_byte getGCEmergency() const noexcept { return gcParams.getEmergency(); }
+  inline void setGCEmergency(lu_byte em) noexcept { gcParams.setEmergency(em); }
 
-  // Group 5: GC object lists (incremental) accessors
-  GCObject* getAllGC() const noexcept { return allgc; }
-  void setAllGC(GCObject* gc) noexcept { allgc = gc; }
-  GCObject** getAllGCPtr() noexcept { return &allgc; }
+  /* Delegating accessors for GCObjectLists (incremental) */
+  inline GCObject* getAllGC() const noexcept { return gcLists.getAllGC(); }
+  inline void setAllGC(GCObject* gc) noexcept { gcLists.setAllGC(gc); }
+  inline GCObject** getAllGCPtr() noexcept { return gcLists.getAllGCPtr(); }
 
-  GCObject** getSweepGC() const noexcept { return sweepgc; }
-  void setSweepGC(GCObject** sweep) noexcept { sweepgc = sweep; }
-  GCObject*** getSweepGCPtr() noexcept { return &sweepgc; }
+  inline GCObject** getSweepGC() const noexcept { return gcLists.getSweepGC(); }
+  inline void setSweepGC(GCObject** sweep) noexcept { gcLists.setSweepGC(sweep); }
+  inline GCObject*** getSweepGCPtr() noexcept { return gcLists.getSweepGCPtr(); }
 
-  GCObject* getFinObj() const noexcept { return finobj; }
-  void setFinObj(GCObject* fobj) noexcept { finobj = fobj; }
-  GCObject** getFinObjPtr() noexcept { return &finobj; }
+  inline GCObject* getFinObj() const noexcept { return gcLists.getFinObj(); }
+  inline void setFinObj(GCObject* fobj) noexcept { gcLists.setFinObj(fobj); }
+  inline GCObject** getFinObjPtr() noexcept { return gcLists.getFinObjPtr(); }
 
-  GCObject* getGray() const noexcept { return gray; }
-  void setGray(GCObject* g) noexcept { gray = g; }
-  GCObject** getGrayPtr() noexcept { return &gray; }
+  inline GCObject* getGray() const noexcept { return gcLists.getGray(); }
+  inline void setGray(GCObject* g) noexcept { gcLists.setGray(g); }
+  inline GCObject** getGrayPtr() noexcept { return gcLists.getGrayPtr(); }
 
-  GCObject* getGrayAgain() const noexcept { return grayagain; }
-  void setGrayAgain(GCObject* ga) noexcept { grayagain = ga; }
-  GCObject** getGrayAgainPtr() noexcept { return &grayagain; }
+  inline GCObject* getGrayAgain() const noexcept { return gcLists.getGrayAgain(); }
+  inline void setGrayAgain(GCObject* ga) noexcept { gcLists.setGrayAgain(ga); }
+  inline GCObject** getGrayAgainPtr() noexcept { return gcLists.getGrayAgainPtr(); }
 
-  GCObject* getWeak() const noexcept { return weak; }
-  void setWeak(GCObject* w) noexcept { weak = w; }
-  GCObject** getWeakPtr() noexcept { return &weak; }
+  inline GCObject* getWeak() const noexcept { return gcLists.getWeak(); }
+  inline void setWeak(GCObject* w) noexcept { gcLists.setWeak(w); }
+  inline GCObject** getWeakPtr() noexcept { return gcLists.getWeakPtr(); }
 
-  GCObject* getEphemeron() const noexcept { return ephemeron; }
-  void setEphemeron(GCObject* e) noexcept { ephemeron = e; }
-  GCObject** getEphemeronPtr() noexcept { return &ephemeron; }
+  inline GCObject* getEphemeron() const noexcept { return gcLists.getEphemeron(); }
+  inline void setEphemeron(GCObject* e) noexcept { gcLists.setEphemeron(e); }
+  inline GCObject** getEphemeronPtr() noexcept { return gcLists.getEphemeronPtr(); }
 
-  GCObject* getAllWeak() const noexcept { return allweak; }
-  void setAllWeak(GCObject* aw) noexcept { allweak = aw; }
-  GCObject** getAllWeakPtr() noexcept { return &allweak; }
+  inline GCObject* getAllWeak() const noexcept { return gcLists.getAllWeak(); }
+  inline void setAllWeak(GCObject* aw) noexcept { gcLists.setAllWeak(aw); }
+  inline GCObject** getAllWeakPtr() noexcept { return gcLists.getAllWeakPtr(); }
 
-  GCObject* getToBeFnz() const noexcept { return tobefnz; }
-  void setToBeFnz(GCObject* tbf) noexcept { tobefnz = tbf; }
-  GCObject** getToBeFnzPtr() noexcept { return &tobefnz; }
+  inline GCObject* getToBeFnz() const noexcept { return gcLists.getToBeFnz(); }
+  inline void setToBeFnz(GCObject* tbf) noexcept { gcLists.setToBeFnz(tbf); }
+  inline GCObject** getToBeFnzPtr() noexcept { return gcLists.getToBeFnzPtr(); }
 
-  GCObject* getFixedGC() const noexcept { return fixedgc; }
-  void setFixedGC(GCObject* fgc) noexcept { fixedgc = fgc; }
-  GCObject** getFixedGCPtr() noexcept { return &fixedgc; }
+  inline GCObject* getFixedGC() const noexcept { return gcLists.getFixedGC(); }
+  inline void setFixedGC(GCObject* fgc) noexcept { gcLists.setFixedGC(fgc); }
+  inline GCObject** getFixedGCPtr() noexcept { return gcLists.getFixedGCPtr(); }
 
-  // Group 6: GC object lists (generational) accessors
-  GCObject* getSurvival() const noexcept { return survival; }
-  void setSurvival(GCObject* s) noexcept { survival = s; }
-  GCObject** getSurvivalPtr() noexcept { return &survival; }
+  /* Delegating accessors for GCObjectLists (generational) */
+  inline GCObject* getSurvival() const noexcept { return gcLists.getSurvival(); }
+  inline void setSurvival(GCObject* s) noexcept { gcLists.setSurvival(s); }
+  inline GCObject** getSurvivalPtr() noexcept { return gcLists.getSurvivalPtr(); }
 
-  GCObject* getOld1() const noexcept { return old1; }
-  void setOld1(GCObject* o1) noexcept { old1 = o1; }
-  GCObject** getOld1Ptr() noexcept { return &old1; }
+  inline GCObject* getOld1() const noexcept { return gcLists.getOld1(); }
+  inline void setOld1(GCObject* o1) noexcept { gcLists.setOld1(o1); }
+  inline GCObject** getOld1Ptr() noexcept { return gcLists.getOld1Ptr(); }
 
-  GCObject* getReallyOld() const noexcept { return reallyold; }
-  void setReallyOld(GCObject* ro) noexcept { reallyold = ro; }
-  GCObject** getReallyOldPtr() noexcept { return &reallyold; }
+  inline GCObject* getReallyOld() const noexcept { return gcLists.getReallyOld(); }
+  inline void setReallyOld(GCObject* ro) noexcept { gcLists.setReallyOld(ro); }
+  inline GCObject** getReallyOldPtr() noexcept { return gcLists.getReallyOldPtr(); }
 
-  GCObject* getFirstOld1() const noexcept { return firstold1; }
-  void setFirstOld1(GCObject* fo1) noexcept { firstold1 = fo1; }
-  GCObject** getFirstOld1Ptr() noexcept { return &firstold1; }
+  inline GCObject* getFirstOld1() const noexcept { return gcLists.getFirstOld1(); }
+  inline void setFirstOld1(GCObject* fo1) noexcept { gcLists.setFirstOld1(fo1); }
+  inline GCObject** getFirstOld1Ptr() noexcept { return gcLists.getFirstOld1Ptr(); }
 
-  GCObject* getFinObjSur() const noexcept { return finobjsur; }
-  void setFinObjSur(GCObject* fos) noexcept { finobjsur = fos; }
-  GCObject** getFinObjSurPtr() noexcept { return &finobjsur; }
+  inline GCObject* getFinObjSur() const noexcept { return gcLists.getFinObjSur(); }
+  inline void setFinObjSur(GCObject* fos) noexcept { gcLists.setFinObjSur(fos); }
+  inline GCObject** getFinObjSurPtr() noexcept { return gcLists.getFinObjSurPtr(); }
 
-  GCObject* getFinObjOld1() const noexcept { return finobjold1; }
-  void setFinObjOld1(GCObject* fo1) noexcept { finobjold1 = fo1; }
-  GCObject** getFinObjOld1Ptr() noexcept { return &finobjold1; }
+  inline GCObject* getFinObjOld1() const noexcept { return gcLists.getFinObjOld1(); }
+  inline void setFinObjOld1(GCObject* fo1) noexcept { gcLists.setFinObjOld1(fo1); }
+  inline GCObject** getFinObjOld1Ptr() noexcept { return gcLists.getFinObjOld1Ptr(); }
 
-  GCObject* getFinObjROld() const noexcept { return finobjrold; }
-  void setFinObjROld(GCObject* for_) noexcept { finobjrold = for_; }
-  GCObject** getFinObjROldPtr() noexcept { return &finobjrold; }
+  inline GCObject* getFinObjROld() const noexcept { return gcLists.getFinObjROld(); }
+  inline void setFinObjROld(GCObject* for_) noexcept { gcLists.setFinObjROld(for_); }
+  inline GCObject** getFinObjROldPtr() noexcept { return gcLists.getFinObjROldPtr(); }
 
-  // Group 7: Runtime state accessors
-  lua_State* getTwups() const noexcept { return twups; }
-  void setTwups(lua_State* tw) noexcept { twups = tw; }
-  lua_State** getTwupsPtr() noexcept { return &twups; }
+  /* Delegating accessors for StringCache */
+  inline stringtable* getStringTable() noexcept { return strings.getTable(); }
+  inline const stringtable* getStringTable() const noexcept { return strings.getTable(); }
 
-  lua_CFunction getPanic() const noexcept { return panic; }
-  void setPanic(lua_CFunction p) noexcept { panic = p; }
+  inline TString* getStrCache(int n, int m) const noexcept { return strings.getCache(n, m); }
+  inline void setStrCache(int n, int m, TString* str) noexcept { strings.setCache(n, m, str); }
 
-  TString* getMemErrMsg() const noexcept { return memerrmsg; }
-  void setMemErrMsg(TString* msg) noexcept { memerrmsg = msg; }
+  /* Delegating accessors for TypeSystem */
+  inline TValue* getRegistry() noexcept { return types.getRegistry(); }
+  inline const TValue* getRegistry() const noexcept { return types.getRegistry(); }
 
-  TString* getTMName(int idx) const noexcept { return tmname[idx]; }
-  void setTMName(int idx, TString* name) noexcept { tmname[idx] = name; }
-  TString** getTMNamePtr(int idx) noexcept { return &tmname[idx]; }
+  inline TValue* getNilValue() noexcept { return types.getNilValue(); }
+  inline const TValue* getNilValue() const noexcept { return types.getNilValue(); }
+  inline bool isComplete() const noexcept { return types.isComplete(); }
 
-  Table* getMetatable(int type) const noexcept { return mt[type]; }
-  void setMetatable(int type, Table* metatable) noexcept { mt[type] = metatable; }
-  Table** getMetatablePtr(int type) noexcept { return &mt[type]; }
+  inline unsigned int getSeed() const noexcept { return types.getSeed(); }
+  inline void setSeed(unsigned int s) noexcept { types.setSeed(s); }
 
-  TString* getStrCache(int n, int m) const noexcept { return strcache[n][m]; }
-  void setStrCache(int n, int m, TString* str) noexcept { strcache[n][m] = str; }
+  inline Table* getMetatable(int type) const noexcept { return types.getMetatable(type); }
+  inline void setMetatable(int type, Table* metatable) noexcept { types.setMetatable(type, metatable); }
+  inline Table** getMetatablePtr(int type) noexcept { return types.getMetatablePtr(type); }
 
-  lua_WarnFunction getWarnF() const noexcept { return warnf; }
-  void setWarnF(lua_WarnFunction wf) noexcept { warnf = wf; }
+  inline TString* getTMName(int idx) const noexcept { return types.getTMName(idx); }
+  inline void setTMName(int idx, TString* name) noexcept { types.setTMName(idx, name); }
+  inline TString** getTMNamePtr(int idx) noexcept { return types.getTMNamePtr(idx); }
 
-  void* getUdWarn() const noexcept { return ud_warn; }
-  void setUdWarn(void* uw) noexcept { ud_warn = uw; }
+  /* Delegating accessors for RuntimeServices */
+  inline lua_State* getTwups() const noexcept { return runtime.getTwups(); }
+  inline void setTwups(lua_State* tw) noexcept { runtime.setTwups(tw); }
+  inline lua_State** getTwupsPtr() noexcept { return runtime.getTwupsPtr(); }
 
-  LX* getMainThread() noexcept { return &mainth; }
-  const LX* getMainThread() const noexcept { return &mainth; }
+  inline lua_CFunction getPanic() const noexcept { return runtime.getPanic(); }
+  inline void setPanic(lua_CFunction p) noexcept { runtime.setPanic(p); }
+
+  inline TString* getMemErrMsg() const noexcept { return runtime.getMemErrMsg(); }
+  inline void setMemErrMsg(TString* msg) noexcept { runtime.setMemErrMsg(msg); }
+
+  inline lua_WarnFunction getWarnF() const noexcept { return runtime.getWarnF(); }
+  inline void setWarnF(lua_WarnFunction wf) noexcept { runtime.setWarnF(wf); }
+
+  inline void* getUdWarn() const noexcept { return runtime.getUdWarn(); }
+  inline void setUdWarn(void* uw) noexcept { runtime.setUdWarn(uw); }
+
+  inline LX* getMainThread() noexcept { return runtime.getMainThread(); }
+  inline const LX* getMainThread() const noexcept { return runtime.getMainThread(); }
 };
 
 

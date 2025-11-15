@@ -64,7 +64,7 @@
 */
 
 inline bool global_State::keepInvariant() const noexcept {
-	return gcstate <= static_cast<lu_byte>(GCState::Atomic);
+	return static_cast<lu_byte>(getGCState()) <= static_cast<lu_byte>(GCState::Atomic);
 }
 
 // Phase 47: Check if GC is in sweep phase
@@ -232,7 +232,7 @@ inline void nw2black(GCObject* x) noexcept {
 }
 
 inline lu_byte global_State::getWhite() const noexcept {
-	return cast_byte(currentwhite & WHITEBITS);
+	return cast_byte(getCurrentWhite() & WHITEBITS);
 }
 
 /* Note: G_NEW, G_SURVIVAL, G_OLD*, G_TOUCHED*, AGEBITS moved above for inline functions */
