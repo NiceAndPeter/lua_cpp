@@ -233,99 +233,253 @@ struct ConsControl;  /* defined in lparser.c */
 struct LHS_assign;  /* defined in lparser.c */
 
 
+/*
+** FuncState Subsystems - Single Responsibility Principle refactoring
+** These classes separate FuncState's responsibilities into focused components
+*/
+
+/* 1. Code Buffer - Bytecode generation and line info tracking */
+class CodeBuffer {
+private:
+  int pc;              /* Program counter (next instruction) */
+  int lasttarget;      /* Label of last 'jump label' */
+  int previousline;    /* Last line saved in lineinfo */
+  int nabslineinfo;    /* Number of absolute line info entries */
+  lu_byte iwthabs;     /* Instructions since last absolute line info */
+
+public:
+  /* Inline accessors for reading */
+  inline int getPC() const noexcept { return pc; }
+  inline int getLastTarget() const noexcept { return lasttarget; }
+  inline int getPreviousLine() const noexcept { return previousline; }
+  inline int getNAbsLineInfo() const noexcept { return nabslineinfo; }
+  inline lu_byte getInstructionsWithAbs() const noexcept { return iwthabs; }
+
+  /* Setters */
+  inline void setPC(int pc_) noexcept { pc = pc_; }
+  inline void setLastTarget(int lasttarget_) noexcept { lasttarget = lasttarget_; }
+  inline void setPreviousLine(int previousline_) noexcept { previousline = previousline_; }
+  inline void setNAbsLineInfo(int nabslineinfo_) noexcept { nabslineinfo = nabslineinfo_; }
+  inline void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
+
+  /* Increment/decrement methods */
+  inline void incrementPC() noexcept { pc++; }
+  inline void decrementPC() noexcept { pc--; }
+  inline int postIncrementPC() noexcept { return pc++; }
+  inline void incrementNAbsLineInfo() noexcept { nabslineinfo++; }
+  inline void decrementNAbsLineInfo() noexcept { nabslineinfo--; }
+  inline int postIncrementNAbsLineInfo() noexcept { return nabslineinfo++; }
+  inline lu_byte postIncrementInstructionsWithAbs() noexcept { return iwthabs++; }
+  inline void decrementInstructionsWithAbs() noexcept { iwthabs--; }
+
+  /* Reference accessors for compound assignments */
+  inline int& getPCRef() noexcept { return pc; }
+  inline int& getLastTargetRef() noexcept { return lasttarget; }
+  inline int& getPreviousLineRef() noexcept { return previousline; }
+  inline int& getNAbsLineInfoRef() noexcept { return nabslineinfo; }
+  inline lu_byte& getInstructionsWithAbsRef() noexcept { return iwthabs; }
+};
+
+
+/* 2. Constant Pool - Constant value management and deduplication */
+class ConstantPool {
+private:
+  Table *cache;        /* Cache for constant deduplication */
+  int count;           /* Number of constants in proto */
+
+public:
+  /* Inline accessors */
+  inline Table* getCache() const noexcept { return cache; }
+  inline int getCount() const noexcept { return count; }
+
+  inline void setCache(Table* cache_) noexcept { cache = cache_; }
+  inline void setCount(int count_) noexcept { count = count_; }
+
+  /* Increment */
+  inline void incrementCount() noexcept { count++; }
+
+  /* Reference accessor */
+  inline int& getCountRef() noexcept { return count; }
+};
+
+
+/* 3. Variable Scope - Local variable and label tracking */
+class VariableScope {
+private:
+  int firstlocal;      /* Index of first local in this function (Dyndata array) */
+  int firstlabel;      /* Index of first label in this function */
+  short ndebugvars;    /* Number of variables in f->locvars (debug info) */
+  short nactvar;       /* Number of active variable declarations */
+
+public:
+  /* Inline accessors */
+  inline int getFirstLocal() const noexcept { return firstlocal; }
+  inline int getFirstLabel() const noexcept { return firstlabel; }
+  inline short getNumDebugVars() const noexcept { return ndebugvars; }
+  inline short getNumActiveVars() const noexcept { return nactvar; }
+
+  inline void setFirstLocal(int firstlocal_) noexcept { firstlocal = firstlocal_; }
+  inline void setFirstLabel(int firstlabel_) noexcept { firstlabel = firstlabel_; }
+  inline void setNumDebugVars(short ndebugvars_) noexcept { ndebugvars = ndebugvars_; }
+  inline void setNumActiveVars(short nactvar_) noexcept { nactvar = nactvar_; }
+
+  /* Increment */
+  inline short postIncrementNumDebugVars() noexcept { return ndebugvars++; }
+
+  /* Reference accessors */
+  inline short& getNumDebugVarsRef() noexcept { return ndebugvars; }
+  inline short& getNumActiveVarsRef() noexcept { return nactvar; }
+};
+
+
+/* 4. Register Allocator - Register allocation tracking */
+class RegisterAllocator {
+private:
+  lu_byte freereg;     /* First free register */
+
+public:
+  /* Inline accessors */
+  inline lu_byte getFreeReg() const noexcept { return freereg; }
+  inline void setFreeReg(lu_byte freereg_) noexcept { freereg = freereg_; }
+
+  /* Decrement */
+  inline void decrementFreeReg() noexcept { freereg--; }
+
+  /* Reference accessor */
+  inline lu_byte& getFreeRegRef() noexcept { return freereg; }
+};
+
+
+/* 5. Upvalue Tracker - Upvalue management */
+class UpvalueTracker {
+private:
+  lu_byte nups;        /* Number of upvalues */
+  lu_byte needclose;   /* Function needs to close upvalues when returning */
+
+public:
+  /* Inline accessors */
+  inline lu_byte getNumUpvalues() const noexcept { return nups; }
+  inline lu_byte getNeedClose() const noexcept { return needclose; }
+
+  inline void setNumUpvalues(lu_byte nups_) noexcept { nups = nups_; }
+  inline void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
+
+  /* Reference accessors */
+  inline lu_byte& getNumUpvaluesRef() noexcept { return nups; }
+  inline lu_byte& getNeedCloseRef() noexcept { return needclose; }
+};
+
+
 /* state needed to generate code for a given function */
 class FuncState {
 private:
+  /* Core context (unchanged) */
   Proto *f;  /* current function header */
   struct FuncState *prev;  /* enclosing function */
   struct LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
-  Table *kcache;  /* cache for reusing constants */
-  int pc;  /* next position to code (equivalent to 'ncode') */
-  int lasttarget;   /* 'label' of last 'jump label' */
-  int previousline;  /* last line that was saved in 'lineinfo' */
-  int nk;  /* number of elements in 'k' */
-  int np;  /* number of elements in 'p' */
-  int nabslineinfo;  /* number of elements in 'abslineinfo' */
-  int firstlocal;  /* index of first local var (in Dyndata array) */
-  int firstlabel;  /* index of first label (in 'dyd->label->arr') */
-  short ndebugvars;  /* number of elements in 'f->locvars' */
-  short nactvar;  /* number of active variable declarations */
-  lu_byte nups;  /* number of upvalues */
-  lu_byte freereg;  /* first free register */
-  lu_byte iwthabs;  /* instructions issued since last absolute line info */
-  lu_byte needclose;  /* function needs to close upvalues when returning */
+  int np;  /* number of elements in 'p' (nested functions) */
+
+  /* Subsystems (SRP refactoring) */
+  CodeBuffer codeBuffer;           /* Bytecode generation & line info */
+  ConstantPool constantPool;       /* Constant management */
+  VariableScope variableScope;     /* Local variables & labels */
+  RegisterAllocator registerAlloc; /* Register allocation */
+  UpvalueTracker upvalueTrack;     /* Upvalue tracking */
 
 public:
-  // Inline accessors for reading
-  Proto* getProto() const noexcept { return f; }
-  FuncState* getPrev() const noexcept { return prev; }
-  struct LexState* getLexState() const noexcept { return ls; }
-  struct BlockCnt* getBlock() const noexcept { return bl; }
-  Table* getKCache() const noexcept { return kcache; }
-  int getPC() const noexcept { return pc; }
-  int getLastTarget() const noexcept { return lasttarget; }
-  int getPreviousLine() const noexcept { return previousline; }
-  int getNK() const noexcept { return nk; }
-  int getNP() const noexcept { return np; }
-  int getNAbsLineInfo() const noexcept { return nabslineinfo; }
-  int getFirstLocal() const noexcept { return firstlocal; }
-  int getFirstLabel() const noexcept { return firstlabel; }
-  short getNumDebugVars() const noexcept { return ndebugvars; }
-  short getNumActiveVars() const noexcept { return nactvar; }
-  lu_byte getNumUpvalues() const noexcept { return nups; }
-  lu_byte getFreeReg() const noexcept { return freereg; }
-  lu_byte getInstructionsWithAbs() const noexcept { return iwthabs; }
-  lu_byte getNeedClose() const noexcept { return needclose; }
+  /* Core context accessors (unchanged) */
+  inline Proto* getProto() const noexcept { return f; }
+  inline FuncState* getPrev() const noexcept { return prev; }
+  inline struct LexState* getLexState() const noexcept { return ls; }
+  inline struct BlockCnt* getBlock() const noexcept { return bl; }
+  inline int getNP() const noexcept { return np; }
 
-  // Setters for mutable fields
-  void setProto(Proto* proto) noexcept { f = proto; }
-  void setPrev(FuncState* prev_) noexcept { prev = prev_; }
-  void setLexState(struct LexState* ls_) noexcept { ls = ls_; }
-  void setBlock(struct BlockCnt* bl_) noexcept { bl = bl_; }
-  void setKCache(Table* kcache_) noexcept { kcache = kcache_; }
-  void setPC(int pc_) noexcept { pc = pc_; }
-  void setLastTarget(int lasttarget_) noexcept { lasttarget = lasttarget_; }
-  void setPreviousLine(int previousline_) noexcept { previousline = previousline_; }
-  void setNK(int nk_) noexcept { nk = nk_; }
-  void setNP(int np_) noexcept { np = np_; }
-  void setNAbsLineInfo(int nabslineinfo_) noexcept { nabslineinfo = nabslineinfo_; }
-  void setFirstLocal(int firstlocal_) noexcept { firstlocal = firstlocal_; }
-  void setFirstLabel(int firstlabel_) noexcept { firstlabel = firstlabel_; }
-  void setNumDebugVars(short ndebugvars_) noexcept { ndebugvars = ndebugvars_; }
-  void setNumActiveVars(short nactvar_) noexcept { nactvar = nactvar_; }
-  void setNumUpvalues(lu_byte nups_) noexcept { nups = nups_; }
-  void setFreeReg(lu_byte freereg_) noexcept { freereg = freereg_; }
-  void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
-  void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
+  inline void setProto(Proto* proto) noexcept { f = proto; }
+  inline void setPrev(FuncState* prev_) noexcept { prev = prev_; }
+  inline void setLexState(struct LexState* ls_) noexcept { ls = ls_; }
+  inline void setBlock(struct BlockCnt* bl_) noexcept { bl = bl_; }
+  inline void setNP(int np_) noexcept { np = np_; }
+  inline void incrementNP() noexcept { np++; }
+  inline int& getNPRef() noexcept { return np; }
 
-  // Increment/decrement methods (replacing Ref() usage)
-  void incrementPC() noexcept { pc++; }
-  void decrementPC() noexcept { pc--; }
-  int postIncrementPC() noexcept { return pc++; }
-  void incrementNK() noexcept { nk++; }
-  void incrementNP() noexcept { np++; }
-  void incrementNAbsLineInfo() noexcept { nabslineinfo++; }
-  void decrementNAbsLineInfo() noexcept { nabslineinfo--; }
-  int postIncrementNAbsLineInfo() noexcept { return nabslineinfo++; }
-  short postIncrementNumDebugVars() noexcept { return ndebugvars++; }
-  lu_byte postIncrementInstructionsWithAbs() noexcept { return iwthabs++; }
-  void decrementInstructionsWithAbs() noexcept { iwthabs--; }
-  void decrementFreeReg() noexcept { freereg--; }
+  /* Subsystem access methods (for direct subsystem manipulation) */
+  inline CodeBuffer& getCodeBuffer() noexcept { return codeBuffer; }
+  inline const CodeBuffer& getCodeBuffer() const noexcept { return codeBuffer; }
+  inline ConstantPool& getConstantPool() noexcept { return constantPool; }
+  inline const ConstantPool& getConstantPool() const noexcept { return constantPool; }
+  inline VariableScope& getVariableScope() noexcept { return variableScope; }
+  inline const VariableScope& getVariableScope() const noexcept { return variableScope; }
+  inline RegisterAllocator& getRegisterAllocator() noexcept { return registerAlloc; }
+  inline const RegisterAllocator& getRegisterAllocator() const noexcept { return registerAlloc; }
+  inline UpvalueTracker& getUpvalueTracker() noexcept { return upvalueTrack; }
+  inline const UpvalueTracker& getUpvalueTracker() const noexcept { return upvalueTrack; }
 
-  // Reference accessors for compound assignments
-  int& getPCRef() noexcept { return pc; }
-  int& getLastTargetRef() noexcept { return lasttarget; }
-  int& getPreviousLineRef() noexcept { return previousline; }
-  int& getNKRef() noexcept { return nk; }
-  int& getNPRef() noexcept { return np; }
-  int& getNAbsLineInfoRef() noexcept { return nabslineinfo; }
-  short& getNumDebugVarsRef() noexcept { return ndebugvars; }
-  short& getNumActiveVarsRef() noexcept { return nactvar; }
-  lu_byte& getNumUpvaluesRef() noexcept { return nups; }
-  lu_byte& getFreeRegRef() noexcept { return freereg; }
-  lu_byte& getInstructionsWithAbsRef() noexcept { return iwthabs; }
-  lu_byte& getNeedCloseRef() noexcept { return needclose; }
+  /* Delegating accessors for CodeBuffer */
+  inline int getPC() const noexcept { return codeBuffer.getPC(); }
+  inline int getLastTarget() const noexcept { return codeBuffer.getLastTarget(); }
+  inline int getPreviousLine() const noexcept { return codeBuffer.getPreviousLine(); }
+  inline int getNAbsLineInfo() const noexcept { return codeBuffer.getNAbsLineInfo(); }
+  inline lu_byte getInstructionsWithAbs() const noexcept { return codeBuffer.getInstructionsWithAbs(); }
+
+  inline void setPC(int pc_) noexcept { codeBuffer.setPC(pc_); }
+  inline void setLastTarget(int lasttarget_) noexcept { codeBuffer.setLastTarget(lasttarget_); }
+  inline void setPreviousLine(int previousline_) noexcept { codeBuffer.setPreviousLine(previousline_); }
+  inline void setNAbsLineInfo(int nabslineinfo_) noexcept { codeBuffer.setNAbsLineInfo(nabslineinfo_); }
+  inline void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { codeBuffer.setInstructionsWithAbs(iwthabs_); }
+
+  inline void incrementPC() noexcept { codeBuffer.incrementPC(); }
+  inline void decrementPC() noexcept { codeBuffer.decrementPC(); }
+  inline int postIncrementPC() noexcept { return codeBuffer.postIncrementPC(); }
+  inline void incrementNAbsLineInfo() noexcept { codeBuffer.incrementNAbsLineInfo(); }
+  inline void decrementNAbsLineInfo() noexcept { codeBuffer.decrementNAbsLineInfo(); }
+  inline int postIncrementNAbsLineInfo() noexcept { return codeBuffer.postIncrementNAbsLineInfo(); }
+  inline lu_byte postIncrementInstructionsWithAbs() noexcept { return codeBuffer.postIncrementInstructionsWithAbs(); }
+  inline void decrementInstructionsWithAbs() noexcept { codeBuffer.decrementInstructionsWithAbs(); }
+
+  inline int& getPCRef() noexcept { return codeBuffer.getPCRef(); }
+  inline int& getLastTargetRef() noexcept { return codeBuffer.getLastTargetRef(); }
+  inline int& getPreviousLineRef() noexcept { return codeBuffer.getPreviousLineRef(); }
+  inline int& getNAbsLineInfoRef() noexcept { return codeBuffer.getNAbsLineInfoRef(); }
+  inline lu_byte& getInstructionsWithAbsRef() noexcept { return codeBuffer.getInstructionsWithAbsRef(); }
+
+  /* Delegating accessors for ConstantPool */
+  inline Table* getKCache() const noexcept { return constantPool.getCache(); }
+  inline int getNK() const noexcept { return constantPool.getCount(); }
+
+  inline void setKCache(Table* kcache_) noexcept { constantPool.setCache(kcache_); }
+  inline void setNK(int nk_) noexcept { constantPool.setCount(nk_); }
+  inline void incrementNK() noexcept { constantPool.incrementCount(); }
+  inline int& getNKRef() noexcept { return constantPool.getCountRef(); }
+
+  /* Delegating accessors for VariableScope */
+  inline int getFirstLocal() const noexcept { return variableScope.getFirstLocal(); }
+  inline int getFirstLabel() const noexcept { return variableScope.getFirstLabel(); }
+  inline short getNumDebugVars() const noexcept { return variableScope.getNumDebugVars(); }
+  inline short getNumActiveVars() const noexcept { return variableScope.getNumActiveVars(); }
+
+  inline void setFirstLocal(int firstlocal_) noexcept { variableScope.setFirstLocal(firstlocal_); }
+  inline void setFirstLabel(int firstlabel_) noexcept { variableScope.setFirstLabel(firstlabel_); }
+  inline void setNumDebugVars(short ndebugvars_) noexcept { variableScope.setNumDebugVars(ndebugvars_); }
+  inline void setNumActiveVars(short nactvar_) noexcept { variableScope.setNumActiveVars(nactvar_); }
+
+  inline short postIncrementNumDebugVars() noexcept { return variableScope.postIncrementNumDebugVars(); }
+  inline short& getNumDebugVarsRef() noexcept { return variableScope.getNumDebugVarsRef(); }
+  inline short& getNumActiveVarsRef() noexcept { return variableScope.getNumActiveVarsRef(); }
+
+  /* Delegating accessors for RegisterAllocator */
+  inline lu_byte getFreeReg() const noexcept { return registerAlloc.getFreeReg(); }
+  inline void setFreeReg(lu_byte freereg_) noexcept { registerAlloc.setFreeReg(freereg_); }
+  inline void decrementFreeReg() noexcept { registerAlloc.decrementFreeReg(); }
+  inline lu_byte& getFreeRegRef() noexcept { return registerAlloc.getFreeRegRef(); }
+
+  /* Delegating accessors for UpvalueTracker */
+  inline lu_byte getNumUpvalues() const noexcept { return upvalueTrack.getNumUpvalues(); }
+  inline lu_byte getNeedClose() const noexcept { return upvalueTrack.getNeedClose(); }
+  inline void setNumUpvalues(lu_byte nups_) noexcept { upvalueTrack.setNumUpvalues(nups_); }
+  inline void setNeedClose(lu_byte needclose_) noexcept { upvalueTrack.setNeedClose(needclose_); }
+  inline lu_byte& getNumUpvaluesRef() noexcept { return upvalueTrack.getNumUpvaluesRef(); }
+  inline lu_byte& getNeedCloseRef() noexcept { return upvalueTrack.getNeedCloseRef(); }
 
   // Code generation methods (from lcode.h) - Phase 27c
   // Note: OpCode is typedef'd in lopcodes.h, we use int to avoid circular deps
