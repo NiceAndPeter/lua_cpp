@@ -77,7 +77,10 @@ inline constexpr bool ispow2(T x) noexcept {
 
 
 /* number of chars of a literal string without the ending \0 */
-#define LL(x)   (sizeof(x)/sizeof(char) - 1)
+template<size_t N>
+inline constexpr size_t LL(const char (&)[N]) noexcept {
+	return N - 1;
+}
 
 
 /*
@@ -97,8 +100,6 @@ inline constexpr bool ispow2(T x) noexcept {
 #else  /* C89 option */
 #define L_P2I	size_t
 #endif
-
-#define point2uint(p)	cast_uint((L_P2I)(p) & UINT_MAX)
 
 
 
@@ -202,6 +203,12 @@ constexpr inline lua_Integer cast_Integer(auto i) noexcept {
 // These need C-style cast for compatibility (used with pointers, etc.)
 #define cast_voidp(i)	cast(void*, (i))
 #define cast_charp(i)	cast(char*, (i))
+
+/* Phase 95: Converted point2uint from macro to inline constexpr function */
+template<typename T>
+inline constexpr unsigned int point2uint(T* p) noexcept {
+	return cast_uint((L_P2I)(p) & UINT_MAX);
+}
 
 
 /* cast a signed lua_Integer to lua_Unsigned */
