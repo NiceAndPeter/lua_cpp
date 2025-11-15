@@ -27,13 +27,10 @@
 #include "ltable.h"
 #include "lzio.h"
 
-
-
 /* minimum size for string buffer */
 #if !defined(LUA_MINBUFFER)
 #define LUA_MINBUFFER   32
 #endif
-
 
 /* ORDER RESERVED */
 static const char *const luaX_tokens [] = {
@@ -46,11 +43,7 @@ static const char *const luaX_tokens [] = {
     "<number>", "<integer>", "<name>", "<string>"
 };
 
-
-
-
 static l_noret lexerror (LexState *ls, const char *msg, int token);
-
 
 static void save (LexState *ls, int c) {
   Mbuffer *b = ls->getBuffer();
@@ -66,12 +59,10 @@ static void save (LexState *ls, int c) {
   b->n++;
 }
 
-
 void LexState::saveAndNext() {
   save(this, getCurrentChar());
   next();
 }
-
 
 void luaX_init (lua_State *L) {
   int i;
@@ -83,7 +74,6 @@ void luaX_init (lua_State *L) {
     ts->setExtra(cast_byte(i+1));  /* reserved word */
   }
 }
-
 
 const char *LexState::tokenToStr(int token) {
   if (token < FIRST_RESERVED) {  /* single-byte symbols? */
@@ -101,7 +91,6 @@ const char *LexState::tokenToStr(int token) {
   }
 }
 
-
 static const char *txtToken (LexState *ls, int token) {
   switch (token) {
     case TK_NAME: case TK_STRING:
@@ -113,7 +102,6 @@ static const char *txtToken (LexState *ls, int token) {
   }
 }
 
-
 static l_noret lexerror (LexState *ls, const char *msg, int token) {
   msg = luaG_addinfo(ls->getLuaState(), msg, ls->getSource(), ls->getLineNumber());
   if (token)
@@ -121,11 +109,9 @@ static l_noret lexerror (LexState *ls, const char *msg, int token) {
   ls->getLuaState()->doThrow( LUA_ERRSYNTAX);
 }
 
-
 l_noret LexState::syntaxError(const char *msg) {
   lexerror(this, msg, getCurrentToken().token);
 }
-
 
 /*
 ** Anchors a string in scanner's table so that it will not be collected
@@ -150,14 +136,12 @@ static TString *anchorstr (LexState *ls, TString *ts) {
   }
 }
 
-
 /*
 ** Creates a new string and anchors it in scanner's table.
 */
 TString *LexState::newString(const char *str, size_t l) {
   return anchorstr(this, luaS_newlstr(getLuaState(), str, l));
 }
-
 
 /*
 ** increment line number and skips newline sequence (any of
@@ -172,7 +156,6 @@ static void inclinenumber (LexState *ls) {
   if (++ls->getLineNumberRef() >= INT_MAX)
     lexerror(ls, "chunk has too many lines", 0);
 }
-
 
 void LexState::setInput(lua_State *state, ZIO *zio, TString *src, int firstchar) {
   getCurrentTokenRef().token = 0;
@@ -196,14 +179,11 @@ void LexState::setInput(lua_State *state, ZIO *zio, TString *src, int firstchar)
   luaZ_resizebuffer(getLuaState(), getBuffer(), LUA_MINBUFFER);  /* initialize buffer */
 }
 
-
-
 /*
 ** =======================================================
 ** LEXICAL ANALYZER
 ** =======================================================
 */
-
 
 static int check_next1 (LexState *ls, int c) {
   if (ls->getCurrentChar() == c) {

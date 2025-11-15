@@ -439,6 +439,9 @@ public:
   void codeorder(BinOpr opr, expdesc *e1, expdesc *e2);
   void codeeq(BinOpr opr, expdesc *e1, expdesc *e2);
   void codeconcat(expdesc *e1, expdesc *e2, int line);
+  // Phase 82: Limit checking
+  l_noret errorlimit(int limit, const char *what);
+  void checklimit(int v, int l, const char *what);
 
 private:
   // Internal helper methods (only used within lcode.cpp)

@@ -130,6 +130,14 @@ public:
   l_noret syntaxError(const char *s);
   l_noret semerror(const char *fmt, ...);
   const char *tokenToStr(int token);
+
+  // Parser utilities (implemented in lparser.cpp)
+  l_noret error_expected(int token);
+  int testnext(int c);
+  void check(int c);
+  void checknext(int c);
+  void check_match(int what, int who, int where);
+  TString *str_checkname();
 };
 
 
