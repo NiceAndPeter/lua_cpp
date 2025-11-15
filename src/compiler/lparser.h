@@ -9,6 +9,7 @@
 
 #include "llimits.h"
 #include "lobject.h"
+#include "lopcodes.h"
 #include "lzio.h"
 
 
@@ -357,6 +358,27 @@ public:
   void settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize);
   void setlist(int base, int nelems, int tostore);
   void finish();
+  // Phase 77: Code generation primitives (moved from private to public as they're used by other methods)
+  int codeAsBx(OpCode o, int A, int Bc);
+  int codek(int reg, int k);
+  int getjump(int position);
+  void fixjump(int position, int dest);
+  Instruction *getjumpcontrol(int position);
+  int patchtestreg(int node, int reg);
+  void patchlistaux(int list, int vtarget, int reg, int dtarget);
+  // More Phase 77 methods (public for now as used by unconverted functions)
+  int condjump(OpCode o, int A, int B, int C, int k);
+  int removevalues(int list);
+  void savelineinfo(Proto *proto, int line);
+  void removelastlineinfo();
+  void removelastinstruction();
+  Instruction *previousinstruction();
+  void freeRegister(int reg);
+  void freeRegisters(int r1, int r2);
+  void freeExpression(expdesc *e);
+  void freeExpressions(expdesc *e1, expdesc *e2);
+  TValue *const2val(const expdesc *e);
+  int codeextraarg(int A);
 
 private:
   // Internal helper methods (only used within lcode.cpp)
