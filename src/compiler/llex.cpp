@@ -85,17 +85,17 @@ void luaX_init (lua_State *L) {
 }
 
 
-const char *luaX_token2str (LexState *ls, int token) {
+const char *LexState::tokenToStr(int token) {
   if (token < FIRST_RESERVED) {  /* single-byte symbols? */
     if (lisprint(token))
-      return luaO_pushfstring(ls->getLuaState(), "'%c'", token);
+      return luaO_pushfstring(getLuaState(), "'%c'", token);
     else  /* control character */
-      return luaO_pushfstring(ls->getLuaState(), "'<\\%d>'", token);
+      return luaO_pushfstring(getLuaState(), "'<\\%d>'", token);
   }
   else {
     const char *s = luaX_tokens[token - FIRST_RESERVED];
     if (token < TK_EOS)  /* fixed format (symbols and reserved words)? */
-      return luaO_pushfstring(ls->getLuaState(), "'%s'", s);
+      return luaO_pushfstring(getLuaState(), "'%s'", s);
     else  /* names, strings, and numerals */
       return s;
   }
@@ -109,7 +109,7 @@ static const char *txtToken (LexState *ls, int token) {
       save(ls, '\0');
       return luaO_pushfstring(ls->getLuaState(), "'%s'", luaZ_buffer(ls->getBuffer()));
     default:
-      return luaX_token2str(ls, token);
+      return ls->tokenToStr(token);
   }
 }
 
@@ -122,8 +122,8 @@ static l_noret lexerror (LexState *ls, const char *msg, int token) {
 }
 
 
-l_noret luaX_syntaxerror (LexState *ls, const char *msg) {
-  lexerror(ls, msg, ls->getCurrentToken().token);
+l_noret LexState::syntaxError(const char *msg) {
+  lexerror(this, msg, getCurrentToken().token);
 }
 
 
@@ -154,8 +154,8 @@ static TString *anchorstr (LexState *ls, TString *ts) {
 /*
 ** Creates a new string and anchors it in scanner's table.
 */
-TString *luaX_newstring (LexState *ls, const char *str, size_t l) {
-  return anchorstr(ls, luaS_newlstr(ls->getLuaState(), str, l));
+TString *LexState::newString(const char *str, size_t l) {
+  return anchorstr(this, luaS_newlstr(getLuaState(), str, l));
 }
 
 
@@ -174,27 +174,26 @@ static void inclinenumber (LexState *ls) {
 }
 
 
-void luaX_setinput (lua_State *L, LexState *ls, ZIO *z, TString *source,
-                    int firstchar) {
-  ls->getCurrentTokenRef().token = 0;
-  ls->setLuaState(L);
-  ls->setCurrent(firstchar);
-  ls->getLookaheadRef().token = TK_EOS;  /* no look-ahead token */
-  ls->setZIO(z);
-  ls->setFuncState(NULL);
-  ls->setLineNumber(1);
-  ls->setLastLine(1);
-  ls->setSource(source);
+void LexState::setInput(lua_State *state, ZIO *zio, TString *src, int firstchar) {
+  getCurrentTokenRef().token = 0;
+  setLuaState(state);
+  setCurrent(firstchar);
+  getLookaheadRef().token = TK_EOS;  /* no look-ahead token */
+  setZIO(zio);
+  setFuncState(NULL);
+  setLineNumber(1);
+  setLastLine(1);
+  setSource(src);
   /* all three strings here ("_ENV", "break", "global") were fixed,
      so they cannot be collected */
-  ls->setEnvName(luaS_newliteral(L, LUA_ENV));  /* get env string */
-  ls->setBreakName(luaS_newliteral(L, "break"));  /* get "break" string */
+  setEnvName(luaS_newliteral(state, LUA_ENV));  /* get env string */
+  setBreakName(luaS_newliteral(state, "break"));  /* get "break" string */
 #if defined(LUA_COMPAT_GLOBAL)
   /* compatibility mode: "global" is not a reserved word */
-  ls->setGlobalName(luaS_newliteral(L, "global"));  /* get "global" string */
-  ls->getGlobalName()->setExtra(0);  /* mark it as not reserved */
+  setGlobalName(luaS_newliteral(state, "global"));  /* get "global" string */
+  getGlobalName()->setExtra(0);  /* mark it as not reserved */
 #endif
-  luaZ_resizebuffer(ls->getLuaState(), ls->getBuffer(), LUA_MINBUFFER);  /* initialize buffer */
+  luaZ_resizebuffer(getLuaState(), getBuffer(), LUA_MINBUFFER);  /* initialize buffer */
 }
 
 
@@ -329,8 +328,8 @@ static void read_long_string (LexState *ls, SemInfo *seminfo, size_t sep) {
     }
   } endloop:
   if (seminfo)
-    seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->getBuffer()) + sep,
-                                     luaZ_bufflen(ls->getBuffer()) - 2 * sep);
+    seminfo->ts = ls->newString(luaZ_buffer(ls->getBuffer()) + sep,
+                                luaZ_bufflen(ls->getBuffer()) - 2 * sep);
 }
 
 
@@ -460,8 +459,8 @@ static void read_string (LexState *ls, int del, SemInfo *seminfo) {
     }
   }
   ls->saveAndNext();  /* skip delimiter */
-  seminfo->ts = luaX_newstring(ls, luaZ_buffer(ls->getBuffer()) + 1,
-                                   luaZ_bufflen(ls->getBuffer()) - 2);
+  seminfo->ts = ls->newString(luaZ_buffer(ls->getBuffer()) + 1,
+                              luaZ_bufflen(ls->getBuffer()) - 2);
 }
 
 
@@ -586,20 +585,20 @@ static int llex (LexState *ls, SemInfo *seminfo) {
 }
 
 
-void luaX_next (LexState *ls) {
-  ls->setLastLine(ls->getLineNumber());
-  if (ls->getLookahead().token != TK_EOS) {  /* is there a look-ahead token? */
-    ls->getCurrentTokenRef() = ls->getLookahead();  /* use this one */
-    ls->getLookaheadRef().token = TK_EOS;  /* and discharge it */
+void LexState::nextToken() {
+  setLastLine(getLineNumber());
+  if (getLookahead().token != TK_EOS) {  /* is there a look-ahead token? */
+    getCurrentTokenRef() = getLookahead();  /* use this one */
+    getLookaheadRef().token = TK_EOS;  /* and discharge it */
   }
   else
-    ls->getCurrentTokenRef().token = llex(ls, &ls->getCurrentTokenRef().seminfo);  /* read next token */
+    getCurrentTokenRef().token = llex(this, &getCurrentTokenRef().seminfo);  /* read next token */
 }
 
 
-int luaX_lookahead (LexState *ls) {
-  lua_assert(ls->getLookahead().token == TK_EOS);
-  ls->getLookaheadRef().token = llex(ls, &ls->getLookaheadRef().seminfo);
-  return ls->getLookahead().token;
+int LexState::lookaheadToken() {
+  lua_assert(getLookahead().token == TK_EOS);
+  getLookaheadRef().token = llex(this, &getLookaheadRef().seminfo);
+  return getLookahead().token;
 }
 

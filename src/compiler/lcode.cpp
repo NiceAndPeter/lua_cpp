@@ -47,7 +47,7 @@ l_noret luaK_semerror (LexState *ls, const char *fmt, ...) {
   va_list argp;
   pushvfstring(ls->getLuaState(), argp, fmt, msg);
   ls->getCurrentTokenRef().token = 0;  /* remove "near <token>" from final message */
-  luaX_syntaxerror(ls, msg);
+  ls->syntaxError(msg);
 }
 
 
@@ -120,7 +120,7 @@ static void fixjump (FuncState *fs, int pc, int dest) {
   int offset = dest - (pc + 1);
   lua_assert(dest != NO_JUMP);
   if (!(-OFFSET_sJ <= offset && offset <= MAXARG_sJ - OFFSET_sJ))
-    luaX_syntaxerror(fs->getLexState(), "control structure too long");
+    fs->getLexState()->syntaxError("control structure too long");
   lua_assert(GET_OPCODE(*jmp) == OP_JMP);
   SETARG_sJ(*jmp, offset);
 }
