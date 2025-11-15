@@ -64,8 +64,10 @@ typedef struct BlockCnt {
 
 /*
 ** prototypes for recursive non-terminal functions
-** (All converted to LexState private methods)
+** TODO: Convert these to LexState private methods
 */
+static void statement (LexState *ls);
+static void expr (LexState *ls, expdesc *v);
 
 
 l_noret LexState::error_expected(int token) {
@@ -127,7 +129,7 @@ void LexState::checknext(int c) {
 }
 
 
-#define check_condition(ls,c,msg)	{ if (!(c)) syntaxError( msg); }
+#define check_condition(ls,c,msg)	{ if (!(c)) ls->syntaxError( msg); }
 
 
 /*
@@ -222,8 +224,8 @@ int LexState::new_localvar(TString *name) {
 }
 
 #define new_localvarliteral(ls,v) \
-    new_localvar(  \
-      newString( "" v, (sizeof(v)/sizeof(char)) - 1));
+    ls->new_localvar(  \
+      ls->newString( "" v, (sizeof(v)/sizeof(char)) - 1));
 
 
 
@@ -731,10 +733,10 @@ void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
 /*
 ** generates an error for an undefined 'goto'.
 */
-l_noret LexState::undefgoto(Labeldesc *gt) {
+static l_noret undefgoto(LexState *ls, Labeldesc *gt) {
   /* breaks are checked when created, cannot be undefined */
-  lua_assert(!eqstr(gt->name, getBreakName()));
-  semerror("no visible label '%s' for <goto> at line %d",
+  lua_assert(!eqstr(gt->name, ls->getBreakName()));
+  ls->semerror("no visible label '%s' for <goto> at line %d",
                getstr(gt->name), gt->line);
 }
 
@@ -753,7 +755,7 @@ void FuncState::leaveblock() {
   solvegotos(blk);
   if (blk->previous == NULL) {  /* was it the last block? */
     if (blk->firstgoto < lexstate->getDyndata()->gt.n)  /* still pending gotos? */
-      lexstate->undefgoto(&lexstate->getDyndata()->gt.arr[blk->firstgoto]);  /* error */
+      undefgoto(lexstate, &lexstate->getDyndata()->gt.arr[blk->firstgoto]);  /* error */
   }
   setBlock(blk->previous);  /* current block now is previous one */
 }
@@ -786,63 +788,63 @@ Proto *LexState::addprototype() {
 ** are in use at that time.
 
 */
-void LexState::codeclosure( expdesc *v) {
-  FuncState *funcstate = getFuncState()->getPrev();
-  v->init(VRELOC, funcstate->codeABx(OP_CLOSURE, 0, funcstate->getNP() - 1));
-  funcstate->exp2nextreg(v);  /* fix it at the last register */
+static void codeclosure (LexState *ls, expdesc *v) {
+  FuncState *fs = ls->getFuncState()->getPrev();
+  v->init(VRELOC, fs->codeABx(OP_CLOSURE, 0, fs->getNP() - 1));
+  fs->exp2nextreg(v);  /* fix it at the last register */
 }
 
 
-void LexState::open_func(FuncState *funcstate, BlockCnt *bl) {
-  lua_State *state = getLuaState();
-  Proto *f = funcstate->getProto();
-  funcstate->setPrev(getFuncState());  /* linked list of funcstates */
-  funcstate->setLexState(this);
-  setFuncState(funcstate);
-  funcstate->setPC(0);
-  funcstate->setPreviousLine(f->getLineDefined());
-  funcstate->setInstructionsWithAbs(0);
-  funcstate->setLastTarget(0);
-  funcstate->setFreeReg(0);
-  funcstate->setNK(0);
-  funcstate->setNAbsLineInfo(0);
-  funcstate->setNP(0);
-  funcstate->setNumUpvalues(0);
-  funcstate->setNumDebugVars(0);
-  funcstate->setNumActiveVars(0);
-  funcstate->setNeedClose(0);
-  funcstate->setFirstLocal(getDyndata()->actvar.n);
-  funcstate->setFirstLabel(getDyndata()->label.n);
-  funcstate->setBlock(NULL);
-  f->setSource(getSource());
-  luaC_objbarrier(state, f, f->getSource());
+static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
+  lua_State *L = ls->getLuaState();
+  Proto *f = fs->getProto();
+  fs->setPrev(ls->getFuncState());  /* linked list of funcstates */
+  fs->setLexState(ls);
+  ls->setFuncState(fs);
+  fs->setPC(0);
+  fs->setPreviousLine(f->getLineDefined());
+  fs->setInstructionsWithAbs(0);
+  fs->setLastTarget(0);
+  fs->setFreeReg(0);
+  fs->setNK(0);
+  fs->setNAbsLineInfo(0);
+  fs->setNP(0);
+  fs->setNumUpvalues(0);
+  fs->setNumDebugVars(0);
+  fs->setNumActiveVars(0);
+  fs->setNeedClose(0);
+  fs->setFirstLocal(ls->getDyndata()->actvar.n);
+  fs->setFirstLabel(ls->getDyndata()->label.n);
+  fs->setBlock(NULL);
+  f->setSource(ls->getSource());
+  luaC_objbarrier(L, f, f->getSource());
   f->setMaxStackSize(2);  /* registers 0/1 are always valid */
-  funcstate->setKCache(luaH_new(state));  /* create table for function */
-  sethvalue2s(state, state->getTop().p, funcstate->getKCache());  /* anchor it */
-  state->inctop();  /* Phase 25e */
-  funcstate->enterblock(bl, 0);
+  fs->setKCache(luaH_new(L));  /* create table for function */
+  sethvalue2s(L, L->getTop().p, fs->getKCache());  /* anchor it */
+  L->inctop();  /* Phase 25e */
+  fs->enterblock(bl, 0);
 }
 
 
-void LexState::close_func() {
-  lua_State *state = getLuaState();
-  FuncState *funcstate = getFuncState();
-  Proto *f = funcstate->getProto();
-  funcstate->ret(luaY_nvarstack(funcstate), 0);  /* final return */
-  funcstate->leaveblock();
-  lua_assert(funcstate->getBlock() == NULL);
-  funcstate->finish();
-  luaM_shrinkvector(state, f->getCodeRef(), f->getCodeSizeRef(), funcstate->getPC(), Instruction);
-  luaM_shrinkvector(state, f->getLineInfoRef(), f->getLineInfoSizeRef(), funcstate->getPC(), ls_byte);
-  luaM_shrinkvector(state, f->getAbsLineInfoRef(), f->getAbsLineInfoSizeRef(),
-                       funcstate->getNAbsLineInfo(), AbsLineInfo);
-  luaM_shrinkvector(state, f->getConstantsRef(), f->getConstantsSizeRef(), funcstate->getNK(), TValue);
-  luaM_shrinkvector(state, f->getProtosRef(), f->getProtosSizeRef(), funcstate->getNP(), Proto *);
-  luaM_shrinkvector(state, f->getLocVarsRef(), f->getLocVarsSizeRef(), funcstate->getNumDebugVars(), LocVar);
-  luaM_shrinkvector(state, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), funcstate->getNumUpvalues(), Upvaldesc);
-  setFuncState(funcstate->getPrev());
-  state->getTop().p--;  /* pop kcache table */
-  luaC_checkGC(state);
+static void close_func (LexState *ls) {
+  lua_State *L = ls->getLuaState();
+  FuncState *fs = ls->getFuncState();
+  Proto *f = fs->getProto();
+  fs->ret(luaY_nvarstack(fs), 0);  /* final return */
+  fs->leaveblock();
+  lua_assert(fs->getBlock() == NULL);
+  fs->finish();
+  luaM_shrinkvector(L, f->getCodeRef(), f->getCodeSizeRef(), fs->getPC(), Instruction);
+  luaM_shrinkvector(L, f->getLineInfoRef(), f->getLineInfoSizeRef(), fs->getPC(), ls_byte);
+  luaM_shrinkvector(L, f->getAbsLineInfoRef(), f->getAbsLineInfoSizeRef(),
+                       fs->getNAbsLineInfo(), AbsLineInfo);
+  luaM_shrinkvector(L, f->getConstantsRef(), f->getConstantsSizeRef(), fs->getNK(), TValue);
+  luaM_shrinkvector(L, f->getProtosRef(), f->getProtosSizeRef(), fs->getNP(), Proto *);
+  luaM_shrinkvector(L, f->getLocVarsRef(), f->getLocVarsSizeRef(), fs->getNumDebugVars(), LocVar);
+  luaM_shrinkvector(L, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), fs->getNumUpvalues(), Upvaldesc);
+  ls->setFuncState(fs->getPrev());
+  L->getTop().p--;  /* pop kcache table */
+  luaC_checkGC(L);
 }
 
 
@@ -858,8 +860,8 @@ void LexState::close_func() {
 ** 'until' closes syntactical blocks, but do not close scope,
 ** so it is handled in separate.
 */
-int LexState::block_follow( int withuntil) {
-  switch (getCurrentToken().token) {
+static int block_follow (LexState *ls, int withuntil) {
+  switch (ls->getCurrentToken().token) {
     case TK_ELSE: case TK_ELSEIF:
     case TK_END: case TK_EOS:
       return 1;
@@ -869,35 +871,35 @@ int LexState::block_follow( int withuntil) {
 }
 
 
-void LexState::statlist() {
+static void statlist (LexState *ls) {
   /* statlist -> { stat [';'] } */
-  while (!block_follow(1)) {
-    if (getCurrentToken().token == TK_RETURN) {
-      statement();
+  while (!block_follow(ls, 1)) {
+    if (ls->getCurrentToken().token == TK_RETURN) {
+      statement(ls);
       return;  /* 'return' must be last statement */
     }
-    statement();
+    statement(ls);
   }
 }
 
 
-void LexState::fieldsel( expdesc *v) {
+static void fieldsel (LexState *ls, expdesc *v) {
   /* fieldsel -> ['.' | ':'] NAME */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   expdesc key;
-  funcstate->exp2anyregup(v);
-  nextToken();  /* skip the dot or colon */
-  codename( &key);
-  funcstate->indexed(v, &key);
+  fs->exp2anyregup(v);
+  ls->nextToken();  /* skip the dot or colon */
+  ls->codename( &key);
+  fs->indexed(v, &key);
 }
 
 
-void LexState::yindex( expdesc *v) {
+static void yindex (LexState *ls, expdesc *v) {
   /* index -> '[' expr ']' */
-  nextToken();  /* skip the '[' */
-  expr(v);
-  getFuncState()->exp2val(v);
-  checknext( ']');
+  ls->nextToken();  /* skip the '[' */
+  expr(ls, v);
+  ls->getFuncState()->exp2val(v);
+  ls->checknext( ']');
 }
 
 
@@ -930,22 +932,22 @@ typedef struct ConsControl {
 #endif
 
 
-void LexState::recfield( ConsControl *cc) {
+static void recfield (LexState *ls, ConsControl *cc) {
   /* recfield -> (NAME | '['exp']') = exp */
-  FuncState *funcstate = getFuncState();
-  lu_byte reg = getFuncState()->getFreeReg();
+  FuncState *fs = ls->getFuncState();
+  lu_byte reg = ls->getFuncState()->getFreeReg();
   expdesc tab, key, val;
-  if (getCurrentToken().token == TK_NAME)
-    codename( &key);
-  else  /* getCurrentToken().token == '[' */
-    yindex(&key);
+  if (ls->getCurrentToken().token == TK_NAME)
+    ls->codename( &key);
+  else  /* ls->getCurrentToken().token == '[' */
+    yindex(ls, &key);
   cc->nh++;
-  checknext( '=');
+  ls->checknext( '=');
   tab = *cc->t;
-  funcstate->indexed(&tab, &key);
-  expr(&val);
-  funcstate->storevar(&tab, &val);
-  funcstate->setFreeReg(reg);  /* free registers */
+  fs->indexed(&tab, &key);
+  expr(ls, &val);
+  fs->storevar(&tab, &val);
+  fs->setFreeReg(reg);  /* free registers */
 }
 
 
@@ -977,29 +979,29 @@ void FuncState::lastlistfield(ConsControl *cc) {
 }
 
 
-void LexState::listfield( ConsControl *cc) {
+static void listfield (LexState *ls, ConsControl *cc) {
   /* listfield -> exp */
-  expr(&cc->v);
+  expr(ls, &cc->v);
   cc->tostore++;
 }
 
 
-void LexState::field( ConsControl *cc) {
+static void field (LexState *ls, ConsControl *cc) {
   /* field -> listfield | recfield */
-  switch(getCurrentToken().token) {
+  switch(ls->getCurrentToken().token) {
     case TK_NAME: {  /* may be 'listfield' or 'recfield' */
-      if (lookaheadToken() != '=')  /* expression? */
-        listfield(cc);
+      if (ls->lookaheadToken() != '=')  /* expression? */
+        listfield(ls, cc);
       else
-        recfield(cc);
+        recfield(ls, cc);
       break;
     }
     case '[': {
-      recfield(cc);
+      recfield(ls, cc);
       break;
     }
     default: {
-      listfield(cc);
+      listfield(ls, cc);
       break;
     }
   }
@@ -1022,32 +1024,32 @@ int FuncState::maxtostore() {
 }
 
 
-void LexState::constructor( expdesc *table_exp) {
+static void constructor (LexState *ls, expdesc *t) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
-  FuncState *funcstate = getFuncState();
-  int line = getLineNumber();
-  int pc = funcstate->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
+  FuncState *fs = ls->getFuncState();
+  int line = ls->getLineNumber();
+  int pc = fs->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
   ConsControl cc;
-  funcstate->code(0);  /* space for extra arg. */
+  fs->code(0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
-  cc.t = table_exp;
-  table_exp->init(VNONRELOC, funcstate->getFreeReg());  /* table will be at stack top */
-  funcstate->reserveregs(1);
+  cc.t = t;
+  t->init(VNONRELOC, fs->getFreeReg());  /* table will be at stack top */
+  fs->reserveregs(1);
   cc.v.init(VVOID, 0);  /* no value (yet) */
-  checknext( '{' /*}*/);
-  cc.maxtostore = funcstate->maxtostore();
+  ls->checknext( '{' /*}*/);
+  cc.maxtostore = fs->maxtostore();
   do {
-    if (getCurrentToken().token == /*{*/ '}') break;
+    if (ls->getCurrentToken().token == /*{*/ '}') break;
     if (cc.v.getKind() != VVOID)  /* is there a previous list item? */
-      funcstate->closelistfield(&cc);  /* close it */
-    field(&cc);
-    luaY_checklimit(funcstate, cc.tostore + cc.na + cc.nh, MAX_CNST,
+      fs->closelistfield(&cc);  /* close it */
+    field(ls, &cc);
+    luaY_checklimit(fs, cc.tostore + cc.na + cc.nh, MAX_CNST,
                     "items in a constructor");
-  } while (testnext( ',') || testnext( ';'));
-  check_match( /*{*/ '}', '{' /*}*/, line);
-  funcstate->lastlistfield(&cc);
-  funcstate->settablesize(pc, table_exp->getInfo(), cc.na, cc.nh);
+  } while (ls->testnext( ',') || ls->testnext( ';'));
+  ls->check_match( /*{*/ '}', '{' /*}*/, line);
+  fs->lastlistfield(&cc);
+  fs->settablesize(pc, t->getInfo(), cc.na, cc.nh);
 }
 
 /* }====================================================================== */
@@ -1059,101 +1061,101 @@ void FuncState::setvararg(int nparams) {
 }
 
 
-void LexState::parlist() {
+static void parlist (LexState *ls) {
   /* parlist -> [ {NAME ','} (NAME | '...') ] */
-  FuncState *funcstate = getFuncState();
-  Proto *f = funcstate->getProto();
+  FuncState *fs = ls->getFuncState();
+  Proto *f = fs->getProto();
   int nparams = 0;
   int isvararg = 0;
-  if (getCurrentToken().token != ')') {  /* is 'parlist' not empty? */
+  if (ls->getCurrentToken().token != ')') {  /* is 'parlist' not empty? */
     do {
-      switch (getCurrentToken().token) {
+      switch (ls->getCurrentToken().token) {
         case TK_NAME: {
-          new_localvar( str_checkname());
+          ls->new_localvar( ls->str_checkname());
           nparams++;
           break;
         }
         case TK_DOTS: {
-          nextToken();
+          ls->nextToken();
           isvararg = 1;
           break;
         }
-        default: syntaxError( "<name> or '...' expected");
+        default: ls->syntaxError( "<name> or '...' expected");
       }
-    } while (!isvararg && testnext( ','));
+    } while (!isvararg && ls->testnext( ','));
   }
-  adjustlocalvars(nparams);
-  f->setNumParams(cast_byte(funcstate->getNumActiveVars()));
+  ls->adjustlocalvars(nparams);
+  f->setNumParams(cast_byte(fs->getNumActiveVars()));
   if (isvararg)
-    funcstate->setvararg(f->getNumParams());  /* declared vararg */
-  funcstate->reserveregs(funcstate->getNumActiveVars());  /* reserve registers for parameters */
+    fs->setvararg(f->getNumParams());  /* declared vararg */
+  fs->reserveregs(fs->getNumActiveVars());  /* reserve registers for parameters */
 }
 
 
-void LexState::body( expdesc *e, int ismethod, int line) {
+static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   /* body ->  '(' parlist ')' block END */
   FuncState new_fs;
   BlockCnt bl;
-  new_fs.setProto(addprototype());
+  new_fs.setProto(ls->addprototype());
   new_fs.getProto()->setLineDefined(line);
-  open_func(&new_fs, &bl);
-  checknext( '(');
+  open_func(ls, &new_fs, &bl);
+  ls->checknext( '(');
   if (ismethod) {
-    new_localvarliteral(this, "self");  /* create 'self' parameter */
-    adjustlocalvars(1);
+    new_localvarliteral(ls, "self");  /* create 'self' parameter */
+    ls->adjustlocalvars(1);
   }
-  parlist();
-  checknext( ')');
-  statlist();
-  new_fs.getProto()->setLastLineDefined(getLineNumber());
-  check_match( TK_END, TK_FUNCTION, line);
-  codeclosure(e);
-  close_func();
+  parlist(ls);
+  ls->checknext( ')');
+  statlist(ls);
+  new_fs.getProto()->setLastLineDefined(ls->getLineNumber());
+  ls->check_match( TK_END, TK_FUNCTION, line);
+  codeclosure(ls, e);
+  close_func(ls);
 }
 
 
-int LexState::explist( expdesc *v) {
+static int explist (LexState *ls, expdesc *v) {
   /* explist -> expr { ',' expr } */
   int n = 1;  /* at least one expression */
-  expr(v);
-  while (testnext( ',')) {
-    getFuncState()->exp2nextreg(v);
-    expr(v);
+  expr(ls, v);
+  while (ls->testnext( ',')) {
+    ls->getFuncState()->exp2nextreg(v);
+    expr(ls, v);
     n++;
   }
   return n;
 }
 
 
-void LexState::funcargs( expdesc *f) {
-  FuncState *funcstate = getFuncState();
+static void funcargs (LexState *ls, expdesc *f) {
+  FuncState *fs = ls->getFuncState();
   expdesc args;
   int base, nparams;
-  int line = getLineNumber();
-  switch (getCurrentToken().token) {
+  int line = ls->getLineNumber();
+  switch (ls->getCurrentToken().token) {
     case '(': {  /* funcargs -> '(' [ explist ] ')' */
-      nextToken();
-      if (getCurrentToken().token == ')')  /* arg list is empty? */
+      ls->nextToken();
+      if (ls->getCurrentToken().token == ')')  /* arg list is empty? */
         args.setKind(VVOID);
       else {
-        explist(&args);
+        explist(ls, &args);
         if (hasmultret(args.getKind()))
-          luaK_setmultret(funcstate, &args);
+          luaK_setmultret(fs, &args);
       }
-      check_match( ')', '(', line);
+      ls->check_match( ')', '(', line);
       break;
     }
     case '{' /*}*/: {  /* funcargs -> constructor */
-      constructor(&args);
+      constructor(ls, &args);
       break;
     }
     case TK_STRING: {  /* funcargs -> STRING */
-      args.initString(getCurrentToken().seminfo.ts);
-      nextToken();  /* must use 'seminfo' before 'next' */
+      args.initString(ls->getCurrentToken().seminfo.ts);
+      ls->nextToken();  /* must use 'seminfo' before 'next' */
       break;
     }
     default: {
-      syntaxError( "function arguments expected");
+      ls->syntaxError( "function arguments expected");
     }
   }
   lua_assert(f->getKind() == VNONRELOC);
@@ -1162,14 +1164,14 @@ void LexState::funcargs( expdesc *f) {
     nparams = LUA_MULTRET;  /* open call */
   else {
     if (args.getKind() != VVOID)
-      funcstate->exp2nextreg(&args);  /* close last argument */
-    nparams = funcstate->getFreeReg() - (base+1);
+      fs->exp2nextreg(&args);  /* close last argument */
+    nparams = fs->getFreeReg() - (base+1);
   }
-  f->init(VCALL, funcstate->codeABC(OP_CALL, base, nparams+1, 2));
-  funcstate->fixline(line);
+  f->init(VCALL, fs->codeABC(OP_CALL, base, nparams+1, 2));
+  fs->fixline(line);
   /* call removes function and arguments and leaves one result (unless
      changed later) */
-  funcstate->setFreeReg(cast_byte(base + 1));
+  fs->setFreeReg(cast_byte(base + 1));
 }
 
 
@@ -1182,57 +1184,57 @@ void LexState::funcargs( expdesc *f) {
 */
 
 
-void LexState::primaryexp( expdesc *v) {
+static void primaryexp (LexState *ls, expdesc *v) {
   /* primaryexp -> NAME | '(' expr ')' */
-  switch (getCurrentToken().token) {
+  switch (ls->getCurrentToken().token) {
     case '(': {
-      int line = getLineNumber();
-      nextToken();
-      expr(v);
-      check_match( ')', '(', line);
-      getFuncState()->dischargevars(v);
+      int line = ls->getLineNumber();
+      ls->nextToken();
+      expr(ls, v);
+      ls->check_match( ')', '(', line);
+      ls->getFuncState()->dischargevars(v);
       return;
     }
     case TK_NAME: {
-      singlevar(v);
+      ls->singlevar(v);
       return;
     }
     default: {
-      syntaxError( "unexpected symbol");
+      ls->syntaxError( "unexpected symbol");
     }
   }
 }
 
 
-void LexState::suffixedexp( expdesc *v) {
+static void suffixedexp (LexState *ls, expdesc *v) {
   /* suffixedexp ->
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
-  FuncState *funcstate = getFuncState();
-  primaryexp(v);
+  FuncState *fs = ls->getFuncState();
+  primaryexp(ls, v);
   for (;;) {
-    switch (getCurrentToken().token) {
+    switch (ls->getCurrentToken().token) {
       case '.': {  /* fieldsel */
-        fieldsel(v);
+        fieldsel(ls, v);
         break;
       }
       case '[': {  /* '[' exp ']' */
         expdesc key;
-        funcstate->exp2anyregup(v);
-        yindex(&key);
-        funcstate->indexed(v, &key);
+        fs->exp2anyregup(v);
+        yindex(ls, &key);
+        fs->indexed(v, &key);
         break;
       }
       case ':': {  /* ':' NAME funcargs */
         expdesc key;
-        nextToken();
-        codename( &key);
-        funcstate->self(v, &key);
-        funcargs(v);
+        ls->nextToken();
+        ls->codename( &key);
+        fs->self(v, &key);
+        funcargs(ls, v);
         break;
       }
       case '(': case TK_STRING: case '{' /*}*/: {  /* funcargs */
-        funcstate->exp2nextreg(v);
-        funcargs(v);
+        fs->exp2nextreg(v);
+        funcargs(ls, v);
         break;
       }
       default: return;
@@ -1241,22 +1243,22 @@ void LexState::suffixedexp( expdesc *v) {
 }
 
 
-void LexState::simpleexp( expdesc *v) {
+static void simpleexp (LexState *ls, expdesc *v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
-  switch (getCurrentToken().token) {
+  switch (ls->getCurrentToken().token) {
     case TK_FLT: {
       v->init(VKFLT, 0);
-      v->setFloatValue(getCurrentToken().seminfo.r);
+      v->setFloatValue(ls->getCurrentToken().seminfo.r);
       break;
     }
     case TK_INT: {
       v->init(VKINT, 0);
-      v->setIntValue(getCurrentToken().seminfo.i);
+      v->setIntValue(ls->getCurrentToken().seminfo.i);
       break;
     }
     case TK_STRING: {
-      v->initString(getCurrentToken().seminfo.ts);
+      v->initString(ls->getCurrentToken().seminfo.ts);
       break;
     }
     case TK_NIL: {
@@ -1272,31 +1274,31 @@ void LexState::simpleexp( expdesc *v) {
       break;
     }
     case TK_DOTS: {  /* vararg */
-      FuncState *funcstate = getFuncState();
-      check_condition(this, funcstate->getProto()->getFlag() & PF_ISVARARG,
+      FuncState *fs = ls->getFuncState();
+      check_condition(ls, fs->getProto()->getFlag() & PF_ISVARARG,
                       "cannot use '...' outside a vararg function");
-      v->init(VVARARG, funcstate->codeABC(OP_VARARG, 0, 0, 1));
+      v->init(VVARARG, fs->codeABC(OP_VARARG, 0, 0, 1));
       break;
     }
     case '{' /*}*/: {  /* constructor */
-      constructor(v);
+      constructor(ls, v);
       return;
     }
     case TK_FUNCTION: {
-      nextToken();
-      body(v, 0, getLineNumber());
+      ls->nextToken();
+      body(ls, v, 0, ls->getLineNumber());
       return;
     }
     default: {
-      suffixedexp(v);
+      suffixedexp(ls, v);
       return;
     }
   }
-  nextToken();
+  ls->nextToken();
 }
 
 
-inline UnOpr getunopr (int op) noexcept {
+static UnOpr getunopr (int op) {
   switch (op) {
     case TK_NOT: return OPR_NOT;
     case '-': return OPR_MINUS;
@@ -1307,7 +1309,7 @@ inline UnOpr getunopr (int op) noexcept {
 }
 
 
-inline BinOpr getbinopr (int op) noexcept {
+static BinOpr getbinopr (int op) {
   switch (op) {
     case '+': return OPR_ADD;
     case '-': return OPR_SUB;
@@ -1361,38 +1363,38 @@ static const struct {
 ** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
 ** where 'binop' is any binary operator with a priority higher than 'limit'
 */
-BinOpr LexState::subexpr( expdesc *v, int limit) {
+static BinOpr subexpr (LexState *ls, expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
-  enterlevel(this);
-  uop = getunopr(getCurrentToken().token);
+  enterlevel(ls);
+  uop = getunopr(ls->getCurrentToken().token);
   if (uop != OPR_NOUNOPR) {  /* prefix (unary) operator? */
-    int line = getLineNumber();
-    nextToken();  /* skip operator */
-    subexpr(v, UNARY_PRIORITY);
-    getFuncState()->prefix(uop, v, line);
+    int line = ls->getLineNumber();
+    ls->nextToken();  /* skip operator */
+    subexpr(ls, v, UNARY_PRIORITY);
+    ls->getFuncState()->prefix(uop, v, line);
   }
-  else simpleexp(v);
+  else simpleexp(ls, v);
   /* expand while operators have priorities higher than 'limit' */
-  op = getbinopr(getCurrentToken().token);
+  op = getbinopr(ls->getCurrentToken().token);
   while (op != OPR_NOBINOPR && priority[op].left > limit) {
     expdesc v2;
     BinOpr nextop;
-    int line = getLineNumber();
-    nextToken();  /* skip operator */
-    getFuncState()->infix(op, v);
+    int line = ls->getLineNumber();
+    ls->nextToken();  /* skip operator */
+    ls->getFuncState()->infix(op, v);
     /* read sub-expression with higher priority */
-    nextop = subexpr(&v2, priority[op].right);
-    getFuncState()->posfix(op, v, &v2, line);
+    nextop = subexpr(ls, &v2, priority[op].right);
+    ls->getFuncState()->posfix(op, v, &v2, line);
     op = nextop;
   }
-  leavelevel(this);
+  leavelevel(ls);
   return op;  /* return first untreated operator */
 }
 
 
-void LexState::expr( expdesc *v) {
-  subexpr(v, 0);
+static void expr (LexState *ls, expdesc *v) {
+  subexpr(ls, v, 0);
 }
 
 /* }==================================================================== */
@@ -1406,13 +1408,13 @@ void LexState::expr( expdesc *v) {
 */
 
 
-void LexState::block() {
+static void block (LexState *ls) {
   /* block -> statlist */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   BlockCnt bl;
-  funcstate->enterblock(&bl, 0);
-  statlist();
-  funcstate->leaveblock();
+  fs->enterblock(&bl, 0);
+  statlist(ls);
+  fs->leaveblock();
 }
 
 
@@ -1432,9 +1434,9 @@ struct LHS_assign {
 ** table. If so, save original upvalue/local value in a safe place and
 ** use this safe copy in the previous assignment.
 */
-void LexState::check_conflict( struct LHS_assign *lh, expdesc *v) {
-  FuncState *funcstate = getFuncState();
-  lu_byte extra = funcstate->getFreeReg();  /* eventual position to save local variable */
+static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
+  FuncState *fs = ls->getFuncState();
+  lu_byte extra = fs->getFreeReg();  /* eventual position to save local variable */
   int conflict = 0;
   for (; lh; lh = lh->prev) {  /* check all previous assignments */
     if (expdesc::isIndexed(lh->v.getKind())) {  /* assignment to table field? */
@@ -1462,10 +1464,10 @@ void LexState::check_conflict( struct LHS_assign *lh, expdesc *v) {
   if (conflict) {
     /* copy upvalue/local value to a temporary (in position 'extra') */
     if (v->getKind() == VLOCAL)
-      funcstate->codeABC(OP_MOVE, extra, v->getLocalRegister(), 0);
+      fs->codeABC(OP_MOVE, extra, v->getLocalRegister(), 0);
     else
-      funcstate->codeABC(OP_GETUPVAL, extra, v->getInfo(), 0);
-    funcstate->reserveregs(1);
+      fs->codeABC(OP_GETUPVAL, extra, v->getInfo(), 0);
+    fs->reserveregs(1);
   }
 }
 
@@ -1485,66 +1487,66 @@ void FuncState::storevartop(expdesc *var) {
 ** assignment -> suffixedexp restassign
 ** restassign -> ',' suffixedexp restassign | '=' explist
 */
-void LexState::restassign( struct LHS_assign *lh, int nvars) {
+static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
-  check_condition(this, expdesc::isVar(lh->v.getKind()), "syntax error");
-  check_readonly(&lh->v);
-  if (testnext( ',')) {  /* restassign -> ',' suffixedexp restassign */
+  check_condition(ls, expdesc::isVar(lh->v.getKind()), "syntax error");
+  ls->check_readonly(&lh->v);
+  if (ls->testnext( ',')) {  /* restassign -> ',' suffixedexp restassign */
     struct LHS_assign nv;
     nv.prev = lh;
-    suffixedexp(&nv.v);
+    suffixedexp(ls, &nv.v);
     if (!expdesc::isIndexed(nv.v.getKind()))
-      check_conflict(lh, &nv.v);
-    enterlevel(this);  /* control recursion depth */
-    restassign(&nv, nvars+1);
-    leavelevel(this);
+      check_conflict(ls, lh, &nv.v);
+    enterlevel(ls);  /* control recursion depth */
+    restassign(ls, &nv, nvars+1);
+    leavelevel(ls);
   }
   else {  /* restassign -> '=' explist */
     int nexps;
-    checknext( '=');
-    nexps = explist(&e);
+    ls->checknext( '=');
+    nexps = explist(ls, &e);
     if (nexps != nvars)
-      adjust_assign(nvars, nexps, &e);
+      ls->adjust_assign(nvars, nexps, &e);
     else {
-      getFuncState()->setoneret(&e);  /* close last expression */
-      getFuncState()->storevar(&lh->v, &e);
+      ls->getFuncState()->setoneret(&e);  /* close last expression */
+      ls->getFuncState()->storevar(&lh->v, &e);
       return;  /* avoid default */
     }
   }
-  getFuncState()->storevartop(&lh->v);  /* default assignment */
+  ls->getFuncState()->storevartop(&lh->v);  /* default assignment */
 }
 
 
-int LexState::cond() {
+static int cond (LexState *ls) {
   /* cond -> exp */
   expdesc v;
-  expr(&v);  /* read condition */
+  expr(ls, &v);  /* read condition */
   if (v.getKind() == VNIL) v.setKind(VFALSE);  /* 'falses' are all equal here */
-  getFuncState()->goiftrue(&v);
+  ls->getFuncState()->goiftrue(&v);
   return v.getFalseList();
 }
 
 
-void LexState::gotostat( int line) {
-  TString *name = str_checkname();  /* label's name */
-  newgotoentry(name, line);
+static void gotostat (LexState *ls, int line) {
+  TString *name = ls->str_checkname();  /* label's name */
+  ls->newgotoentry(name, line);
 }
 
 
 /*
 ** Break statement. Semantically equivalent to "goto break".
 */
-void LexState::breakstat( int line) {
+static void breakstat (LexState *ls, int line) {
   BlockCnt *bl;  /* to look for an enclosing loop */
-  for (bl = getFuncState()->getBlock(); bl != NULL; bl = bl->previous) {
+  for (bl = ls->getFuncState()->getBlock(); bl != NULL; bl = bl->previous) {
     if (bl->isloop)  /* found one? */
       goto ok;
   }
-  syntaxError( "break outside loop");
+  ls->syntaxError( "break outside loop");
  ok:
   bl->isloop = 2;  /* signal that block has pending breaks */
-  nextToken();  /* skip break */
-  newgotoentry(getBreakName(), line);
+  ls->nextToken();  /* skip break */
+  ls->newgotoentry(ls->getBreakName(), line);
 }
 
 
@@ -1552,65 +1554,65 @@ void LexState::breakstat( int line) {
 ** Check whether there is already a label with the given 'name' at
 ** current function.
 */
-void LexState::checkrepeated( TString *name) {
-  Labeldesc *lb = findlabel(name, getFuncState()->getFirstLabel());
+static void checkrepeated (LexState *ls, TString *name) {
+  Labeldesc *lb = ls->findlabel(name, ls->getFuncState()->getFirstLabel());
   if (l_unlikely(lb != NULL))  /* already defined? */
-    semerror( "label '%s' already defined on line %d",
+    ls->semerror( "label '%s' already defined on line %d",
                       getstr(name), lb->line);  /* error */
 }
 
 
-void LexState::labelstat( TString *name, int line) {
+static void labelstat (LexState *ls, TString *name, int line) {
   /* label -> '::' NAME '::' */
-  checknext( TK_DBCOLON);  /* skip double colon */
-  while (getCurrentToken().token == ';' || getCurrentToken().token == TK_DBCOLON)
-    statement();  /* skip other no-op statements */
-  checkrepeated(name);  /* check for repeated labels */
-  createlabel(name, line, block_follow(0));
+  ls->checknext( TK_DBCOLON);  /* skip double colon */
+  while (ls->getCurrentToken().token == ';' || ls->getCurrentToken().token == TK_DBCOLON)
+    statement(ls);  /* skip other no-op statements */
+  checkrepeated(ls, name);  /* check for repeated labels */
+  ls->createlabel(name, line, block_follow(ls, 0));
 }
 
 
-void LexState::whilestat( int line) {
+static void whilestat (LexState *ls, int line) {
   /* whilestat -> WHILE cond DO block END */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   int whileinit;
   int condexit;
   BlockCnt bl;
-  nextToken();  /* skip WHILE */
-  whileinit = funcstate->getlabel();
-  condexit = cond();
-  funcstate->enterblock(&bl, 1);
-  checknext( TK_DO);
-  block();
-  luaK_jumpto(funcstate, whileinit);
-  check_match( TK_END, TK_WHILE, line);
-  funcstate->leaveblock();
-  funcstate->patchtohere(condexit);  /* false conditions finish the loop */
+  ls->nextToken();  /* skip WHILE */
+  whileinit = fs->getlabel();
+  condexit = cond(ls);
+  fs->enterblock(&bl, 1);
+  ls->checknext( TK_DO);
+  block(ls);
+  luaK_jumpto(fs, whileinit);
+  ls->check_match( TK_END, TK_WHILE, line);
+  fs->leaveblock();
+  fs->patchtohere(condexit);  /* false conditions finish the loop */
 }
 
 
-void LexState::repeatstat( int line) {
+static void repeatstat (LexState *ls, int line) {
   /* repeatstat -> REPEAT block UNTIL cond */
   int condexit;
-  FuncState *funcstate = getFuncState();
-  int repeat_init = funcstate->getlabel();
+  FuncState *fs = ls->getFuncState();
+  int repeat_init = fs->getlabel();
   BlockCnt bl1, bl2;
-  funcstate->enterblock(&bl1, 1);  /* loop block */
-  funcstate->enterblock(&bl2, 0);  /* scope block */
-  nextToken();  /* skip REPEAT */
-  statlist();
-  check_match( TK_UNTIL, TK_REPEAT, line);
-  condexit = cond();  /* read condition (inside scope block) */
-  funcstate->leaveblock();  /* finish scope */
+  fs->enterblock(&bl1, 1);  /* loop block */
+  fs->enterblock(&bl2, 0);  /* scope block */
+  ls->nextToken();  /* skip REPEAT */
+  statlist(ls);
+  ls->check_match( TK_UNTIL, TK_REPEAT, line);
+  condexit = cond(ls);  /* read condition (inside scope block) */
+  fs->leaveblock();  /* finish scope */
   if (bl2.upval) {  /* upvalues? */
-    int exit = funcstate->jump();  /* normal exit must jump over fix */
-    funcstate->patchtohere(condexit);  /* repetition must close upvalues */
-    funcstate->codeABC(OP_CLOSE, funcstate->reglevel(bl2.nactvar), 0, 0);
-    condexit = funcstate->jump();  /* repeat after closing upvalues */
-    funcstate->patchtohere(exit);  /* normal exit comes to here */
+    int exit = fs->jump();  /* normal exit must jump over fix */
+    fs->patchtohere(condexit);  /* repetition must close upvalues */
+    fs->codeABC(OP_CLOSE, fs->reglevel(bl2.nactvar), 0, 0);
+    condexit = fs->jump();  /* repeat after closing upvalues */
+    fs->patchtohere(exit);  /* normal exit comes to here */
   }
-  funcstate->patchlist(condexit, repeat_init);  /* close the loop */
-  funcstate->leaveblock();  /* finish loop */
+  fs->patchlist(condexit, repeat_init);  /* close the loop */
+  fs->leaveblock();  /* finish loop */
 }
 
 
@@ -1619,10 +1621,10 @@ void LexState::repeatstat( int line) {
 ** stack slot.
 **
 */
-void LexState::exp1() {
+static void exp1 (LexState *ls) {
   expdesc e;
-  expr(&e);
-  getFuncState()->exp2nextreg(&e);
+  expr(ls, &e);
+  ls->getFuncState()->exp2nextreg(&e);
   lua_assert(e.getKind() == VNONRELOC);
 }
 
@@ -1646,152 +1648,152 @@ void FuncState::fixforjump(int pcpos, int dest, int back) {
 /*
 ** Generate code for a 'for' loop.
 */
-void LexState::forbody( int base, int line, int nvars, int isgen) {
+static void forbody (LexState *ls, int base, int line, int nvars, int isgen) {
   /* forbody -> DO block */
   static const OpCode forprep[2] = {OP_FORPREP, OP_TFORPREP};
   static const OpCode forloop[2] = {OP_FORLOOP, OP_TFORLOOP};
   BlockCnt bl;
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   int prep, endfor;
-  checknext( TK_DO);
-  prep = funcstate->codeABx(forprep[isgen], base, 0);
-  funcstate->getFreeRegRef()--;  /* both 'forprep' remove one register from the stack */
-  funcstate->enterblock(&bl, 0);  /* scope for declared variables */
-  adjustlocalvars(nvars);
-  funcstate->reserveregs(nvars);
-  block();
-  funcstate->leaveblock();  /* end of scope for declared variables */
-  funcstate->fixforjump(prep, funcstate->getlabel(), 0);
+  ls->checknext( TK_DO);
+  prep = fs->codeABx(forprep[isgen], base, 0);
+  fs->getFreeRegRef()--;  /* both 'forprep' remove one register from the stack */
+  fs->enterblock(&bl, 0);  /* scope for declared variables */
+  ls->adjustlocalvars(nvars);
+  fs->reserveregs(nvars);
+  block(ls);
+  fs->leaveblock();  /* end of scope for declared variables */
+  fs->fixforjump(prep, fs->getlabel(), 0);
   if (isgen) {  /* generic for? */
-    funcstate->codeABC(OP_TFORCALL, base, 0, nvars);
-    funcstate->fixline(line);
+    fs->codeABC(OP_TFORCALL, base, 0, nvars);
+    fs->fixline(line);
   }
-  endfor = funcstate->codeABx(forloop[isgen], base, 0);
-  funcstate->fixforjump(endfor, prep + 1, 1);
-  funcstate->fixline(line);
+  endfor = fs->codeABx(forloop[isgen], base, 0);
+  fs->fixforjump(endfor, prep + 1, 1);
+  fs->fixline(line);
 }
 
 
-void LexState::fornum( TString *varname, int line) {
+static void fornum (LexState *ls, TString *varname, int line) {
   /* fornum -> NAME = exp,exp[,exp] forbody */
-  FuncState *funcstate = getFuncState();
-  int base = funcstate->getFreeReg();
-  new_localvarliteral(this, "(for state)");
-  new_localvarliteral(this, "(for state)");
-  new_varkind( varname, RDKCONST);  /* control variable */
-  checknext( '=');
-  exp1();  /* initial value */
-  checknext( ',');
-  exp1();  /* limit */
-  if (testnext( ','))
-    exp1();  /* optional step */
+  FuncState *fs = ls->getFuncState();
+  int base = fs->getFreeReg();
+  new_localvarliteral(ls, "(for state)");
+  new_localvarliteral(ls, "(for state)");
+  ls->new_varkind( varname, RDKCONST);  /* control variable */
+  ls->checknext( '=');
+  exp1(ls);  /* initial value */
+  ls->checknext( ',');
+  exp1(ls);  /* limit */
+  if (ls->testnext( ','))
+    exp1(ls);  /* optional step */
   else {  /* default step = 1 */
-    funcstate->intCode(funcstate->getFreeReg(), 1);
-    funcstate->reserveregs(1);
+    fs->intCode(fs->getFreeReg(), 1);
+    fs->reserveregs(1);
   }
-  adjustlocalvars(2);  /* start scope for internal variables */
-  forbody(base, line, 1, 0);
+  ls->adjustlocalvars(2);  /* start scope for internal variables */
+  forbody(ls, base, line, 1, 0);
 }
 
 
-void LexState::forlist( TString *indexname) {
+static void forlist (LexState *ls, TString *indexname) {
   /* forlist -> NAME {,NAME} IN explist forbody */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   expdesc e;
   int nvars = 4;  /* function, state, closing, control */
   int line;
-  int base = funcstate->getFreeReg();
+  int base = fs->getFreeReg();
   /* create internal variables */
-  new_localvarliteral(this, "(for state)");  /* iterator function */
-  new_localvarliteral(this, "(for state)");  /* state */
-  new_localvarliteral(this, "(for state)");  /* closing var. (after swap) */
-  new_varkind( indexname, RDKCONST);  /* control variable */
+  new_localvarliteral(ls, "(for state)");  /* iterator function */
+  new_localvarliteral(ls, "(for state)");  /* state */
+  new_localvarliteral(ls, "(for state)");  /* closing var. (after swap) */
+  ls->new_varkind( indexname, RDKCONST);  /* control variable */
   /* other declared variables */
-  while (testnext( ',')) {
-    new_localvar( str_checkname());
+  while (ls->testnext( ',')) {
+    ls->new_localvar( ls->str_checkname());
     nvars++;
   }
-  checknext( TK_IN);
-  line = getLineNumber();
-  adjust_assign(4, explist(&e), &e);
-  adjustlocalvars(3);  /* start scope for internal variables */
-  funcstate->marktobeclosed();  /* last internal var. must be closed */
-  funcstate->checkstack(2);  /* extra space to call iterator */
-  forbody(base, line, nvars - 3, 1);
+  ls->checknext( TK_IN);
+  line = ls->getLineNumber();
+  ls->adjust_assign(4, explist(ls, &e), &e);
+  ls->adjustlocalvars(3);  /* start scope for internal variables */
+  fs->marktobeclosed();  /* last internal var. must be closed */
+  fs->checkstack(2);  /* extra space to call iterator */
+  forbody(ls, base, line, nvars - 3, 1);
 }
 
 
-void LexState::forstat( int line) {
+static void forstat (LexState *ls, int line) {
   /* forstat -> FOR (fornum | forlist) END */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   TString *varname;
   BlockCnt bl;
-  funcstate->enterblock(&bl, 1);  /* scope for loop and control variables */
-  nextToken();  /* skip 'for' */
-  varname = str_checkname();  /* first variable name */
-  switch (getCurrentToken().token) {
-    case '=': fornum(varname, line); break;
-    case ',': case TK_IN: forlist(varname); break;
-    default: syntaxError( "'=' or 'in' expected");
+  fs->enterblock(&bl, 1);  /* scope for loop and control variables */
+  ls->nextToken();  /* skip 'for' */
+  varname = ls->str_checkname();  /* first variable name */
+  switch (ls->getCurrentToken().token) {
+    case '=': fornum(ls, varname, line); break;
+    case ',': case TK_IN: forlist(ls, varname); break;
+    default: ls->syntaxError( "'=' or 'in' expected");
   }
-  check_match( TK_END, TK_FOR, line);
-  funcstate->leaveblock();  /* loop scope ('break' jumps to this point) */
+  ls->check_match( TK_END, TK_FOR, line);
+  fs->leaveblock();  /* loop scope ('break' jumps to this point) */
 }
 
 
-void LexState::test_then_block( int *escapelist) {
+static void test_then_block (LexState *ls, int *escapelist) {
   /* test_then_block -> [IF | ELSEIF] cond THEN block */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   int condtrue;
-  nextToken();  /* skip IF or ELSEIF */
-  condtrue = cond();  /* read condition */
-  checknext( TK_THEN);
-  block();  /* 'then' part */
-  if (getCurrentToken().token == TK_ELSE ||
-      getCurrentToken().token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
-    funcstate->concat(escapelist, funcstate->jump());  /* must jump over it */
-  funcstate->patchtohere(condtrue);
+  ls->nextToken();  /* skip IF or ELSEIF */
+  condtrue = cond(ls);  /* read condition */
+  ls->checknext( TK_THEN);
+  block(ls);  /* 'then' part */
+  if (ls->getCurrentToken().token == TK_ELSE ||
+      ls->getCurrentToken().token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
+    fs->concat(escapelist, fs->jump());  /* must jump over it */
+  fs->patchtohere(condtrue);
 }
 
 
-void LexState::ifstat( int line) {
+static void ifstat (LexState *ls, int line) {
   /* ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   int escapelist = NO_JUMP;  /* exit list for finished parts */
-  test_then_block(&escapelist);  /* IF cond THEN block */
-  while (getCurrentToken().token == TK_ELSEIF)
-    test_then_block(&escapelist);  /* ELSEIF cond THEN block */
-  if (testnext( TK_ELSE))
-    block();  /* 'else' part */
-  check_match( TK_END, TK_IF, line);
-  funcstate->patchtohere(escapelist);  /* patch escape list to 'if' end */
+  test_then_block(ls, &escapelist);  /* IF cond THEN block */
+  while (ls->getCurrentToken().token == TK_ELSEIF)
+    test_then_block(ls, &escapelist);  /* ELSEIF cond THEN block */
+  if (ls->testnext( TK_ELSE))
+    block(ls);  /* 'else' part */
+  ls->check_match( TK_END, TK_IF, line);
+  fs->patchtohere(escapelist);  /* patch escape list to 'if' end */
 }
 
 
-void LexState::localfunc() {
+static void localfunc (LexState *ls) {
   expdesc b;
-  FuncState *funcstate = getFuncState();
-  int fvar = funcstate->getNumActiveVars();  /* function's variable index */
-  new_localvar( str_checkname());  /* new local variable */
-  adjustlocalvars(1);  /* enter its scope */
-  body(&b, 0, getLineNumber());  /* function created in next register */
+  FuncState *fs = ls->getFuncState();
+  int fvar = fs->getNumActiveVars();  /* function's variable index */
+  ls->new_localvar( ls->str_checkname());  /* new local variable */
+  ls->adjustlocalvars(1);  /* enter its scope */
+  body(ls, &b, 0, ls->getLineNumber());  /* function created in next register */
   /* debug information will only see the variable after this point! */
-  funcstate->localdebuginfo( fvar)->setStartPC(funcstate->getPC());
+  fs->localdebuginfo( fvar)->setStartPC(fs->getPC());
 }
 
 
-lu_byte LexState::getvarattribute( lu_byte df) {
+static lu_byte getvarattribute (LexState *ls, lu_byte df) {
   /* attrib -> ['<' NAME '>'] */
-  if (testnext( '<')) {
-    TString *ts = str_checkname();
+  if (ls->testnext( '<')) {
+    TString *ts = ls->str_checkname();
     const char *attr = getstr(ts);
-    checknext( '>');
+    ls->checknext( '>');
     if (strcmp(attr, "const") == 0)
       return RDKCONST;  /* read-only variable */
     else if (strcmp(attr, "close") == 0)
       return RDKTOCLOSE;  /* to-be-closed variable */
     else
-      semerror( "unknown attribute '%s'", attr);
+      ls->semerror( "unknown attribute '%s'", attr);
   }
   return df;  /* return default value */
 }
@@ -1805,9 +1807,9 @@ void FuncState::checktoclose(int level) {
 }
 
 
-void LexState::localstat() {
+static void localstat (LexState *ls) {
   /* stat -> LOCAL NAME attrib { ',' NAME attrib } ['=' explist] */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   int toclose = -1;  /* index of to-be-closed variable (if any) */
   Vardesc *var;  /* last variable */
   int vidx;  /* index of last variable */
@@ -1815,45 +1817,45 @@ void LexState::localstat() {
   int nexps;
   expdesc e;
   /* get prefixed attribute (if any); default is regular local variable */
-  lu_byte defkind = getvarattribute(VDKREG);
+  lu_byte defkind = getvarattribute(ls, VDKREG);
   do {  /* for each variable */
-    TString *vname = str_checkname();  /* get its name */
-    lu_byte kind = getvarattribute(defkind);  /* postfixed attribute */
-    vidx = new_varkind( vname, kind);  /* predeclare it */
+    TString *vname = ls->str_checkname();  /* get its name */
+    lu_byte kind = getvarattribute(ls, defkind);  /* postfixed attribute */
+    vidx = ls->new_varkind( vname, kind);  /* predeclare it */
     if (kind == RDKTOCLOSE) {  /* to-be-closed? */
       if (toclose != -1)  /* one already present? */
-        semerror( "multiple to-be-closed variables in local list");
-      toclose = funcstate->getNumActiveVars() + nvars;
+        ls->semerror( "multiple to-be-closed variables in local list");
+      toclose = fs->getNumActiveVars() + nvars;
     }
     nvars++;
-  } while (testnext( ','));
-  if (testnext( '='))  /* initialization? */
-    nexps = explist(&e);
+  } while (ls->testnext( ','));
+  if (ls->testnext( '='))  /* initialization? */
+    nexps = explist(ls, &e);
   else {
     e.setKind(VVOID);
     nexps = 0;
   }
-  var = funcstate->getlocalvardesc( vidx);  /* retrieve last variable */
+  var = fs->getlocalvardesc( vidx);  /* retrieve last variable */
   if (nvars == nexps &&  /* no adjustments? */
       var->vd.kind == RDKCONST &&  /* last variable is const? */
-      funcstate->exp2const(&e, &var->k)) {  /* compile-time constant? */
+      fs->exp2const(&e, &var->k)) {  /* compile-time constant? */
     var->vd.kind = RDKCTC;  /* variable is a compile-time constant */
-    adjustlocalvars(nvars - 1);  /* exclude last variable */
-    funcstate->getNumActiveVarsRef()++;  /* but count it */
+    ls->adjustlocalvars(nvars - 1);  /* exclude last variable */
+    fs->getNumActiveVarsRef()++;  /* but count it */
   }
   else {
-    adjust_assign(nvars, nexps, &e);
-    adjustlocalvars(nvars);
+    ls->adjust_assign(nvars, nexps, &e);
+    ls->adjustlocalvars(nvars);
   }
-  funcstate->checktoclose(toclose);
+  fs->checktoclose(toclose);
 }
 
 
-lu_byte LexState::getglobalattribute( lu_byte df) {
-  lu_byte kind = getvarattribute(df);
+static lu_byte getglobalattribute (LexState *ls, lu_byte df) {
+  lu_byte kind = getvarattribute(ls, df);
   switch (kind) {
     case RDKTOCLOSE:
-      semerror( "global variables cannot be to-be-closed");
+      ls->semerror( "global variables cannot be to-be-closed");
       return kind;  /* to avoid warnings */
     case RDKCONST:
       return GDKCONST;  /* adjust kind for global variable */
@@ -1863,224 +1865,224 @@ lu_byte LexState::getglobalattribute( lu_byte df) {
 }
 
 
-void LexState::globalnames( lu_byte defkind) {
-  FuncState *funcstate = getFuncState();
+static void globalnames (LexState *ls, lu_byte defkind) {
+  FuncState *fs = ls->getFuncState();
   int nvars = 0;
   int lastidx;  /* index of last registered variable */
   do {  /* for each name */
-    TString *vname = str_checkname();
-    lu_byte kind = getglobalattribute(defkind);
-    lastidx = new_varkind( vname, kind);
+    TString *vname = ls->str_checkname();
+    lu_byte kind = getglobalattribute(ls, defkind);
+    lastidx = ls->new_varkind( vname, kind);
     nvars++;
-  } while (testnext( ','));
-  if (testnext( '=')) {  /* initialization? */
+  } while (ls->testnext( ','));
+  if (ls->testnext( '=')) {  /* initialization? */
     expdesc e;
     int i;
-    int nexps = explist(&e);  /* read list of expressions */
-    adjust_assign(nvars, nexps, &e);
+    int nexps = explist(ls, &e);  /* read list of expressions */
+    ls->adjust_assign(nvars, nexps, &e);
     for (i = 0; i < nvars; i++) {  /* for each variable */
       expdesc var;
-      TString *varname = funcstate->getlocalvardesc(lastidx - i)->vd.name;
-      buildglobal(varname, &var);  /* create global variable in 'var' */
-      funcstate->storevartop(&var);
+      TString *varname = fs->getlocalvardesc(lastidx - i)->vd.name;
+      ls->buildglobal(varname, &var);  /* create global variable in 'var' */
+      fs->storevartop(&var);
     }
   }
-  funcstate->setNumActiveVars(cast_short(funcstate->getNumActiveVars() + nvars));  /* activate declaration */
+  fs->setNumActiveVars(cast_short(fs->getNumActiveVars() + nvars));  /* activate declaration */
 }
 
 
-void LexState::globalstat() {
+static void globalstat (LexState *ls) {
   /* globalstat -> (GLOBAL) attrib '*'
      globalstat -> (GLOBAL) attrib NAME attrib {',' NAME attrib} */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   /* get prefixed attribute (if any); default is regular global variable */
-  lu_byte defkind = getglobalattribute(GDKREG);
-  if (!testnext( '*'))
-    globalnames(defkind);
+  lu_byte defkind = getglobalattribute(ls, GDKREG);
+  if (!ls->testnext( '*'))
+    globalnames(ls, defkind);
   else {
     /* use NULL as name to represent '*' entries */
-    new_varkind( NULL, defkind);
-    funcstate->getNumActiveVarsRef()++;  /* activate declaration */
+    ls->new_varkind( NULL, defkind);
+    fs->getNumActiveVarsRef()++;  /* activate declaration */
   }
 }
 
 
-void LexState::globalfunc( int line) {
+static void globalfunc (LexState *ls, int line) {
   /* globalfunc -> (GLOBAL FUNCTION) NAME body */
   expdesc var, b;
-  FuncState *funcstate = getFuncState();
-  TString *fname = str_checkname();
-  new_varkind( fname, GDKREG);  /* declare global variable */
-  funcstate->getNumActiveVarsRef()++;  /* enter its scope */
-  buildglobal(fname, &var);
-  body(&b, 0, getLineNumber());  /* compile and return closure in 'b' */
-  funcstate->storevar(&var, &b);
-  funcstate->fixline(line);  /* definition "happens" in the first line */
+  FuncState *fs = ls->getFuncState();
+  TString *fname = ls->str_checkname();
+  ls->new_varkind( fname, GDKREG);  /* declare global variable */
+  fs->getNumActiveVarsRef()++;  /* enter its scope */
+  ls->buildglobal(fname, &var);
+  body(ls, &b, 0, ls->getLineNumber());  /* compile and return closure in 'b' */
+  fs->storevar(&var, &b);
+  fs->fixline(line);  /* definition "happens" in the first line */
 }
 
 
-void LexState::globalstatfunc( int line) {
+static void globalstatfunc (LexState *ls, int line) {
   /* stat -> GLOBAL globalfunc | GLOBAL globalstat */
-  nextToken();  /* skip 'global' */
-  if (testnext( TK_FUNCTION))
-    globalfunc(line);
+  ls->nextToken();  /* skip 'global' */
+  if (ls->testnext( TK_FUNCTION))
+    globalfunc(ls, line);
   else
-    globalstat();
+    globalstat(ls);
 }
 
 
-int LexState::funcname( expdesc *v) {
+static int funcname (LexState *ls, expdesc *v) {
   /* funcname -> NAME {fieldsel} [':' NAME] */
   int ismethod = 0;
-  singlevar(v);
-  while (getCurrentToken().token == '.')
-    fieldsel(v);
-  if (getCurrentToken().token == ':') {
+  ls->singlevar(v);
+  while (ls->getCurrentToken().token == '.')
+    fieldsel(ls, v);
+  if (ls->getCurrentToken().token == ':') {
     ismethod = 1;
-    fieldsel(v);
+    fieldsel(ls, v);
   }
   return ismethod;
 }
 
 
-void LexState::funcstat( int line) {
+static void funcstat (LexState *ls, int line) {
   /* funcstat -> FUNCTION funcname body */
   int ismethod;
   expdesc v, b;
-  nextToken();  /* skip FUNCTION */
-  ismethod = funcname(&v);
-  check_readonly(&v);
-  body(&b, ismethod, line);
-  getFuncState()->storevar(&v, &b);
-  getFuncState()->fixline(line);  /* definition "happens" in the first line */
+  ls->nextToken();  /* skip FUNCTION */
+  ismethod = funcname(ls, &v);
+  ls->check_readonly(&v);
+  body(ls, &b, ismethod, line);
+  ls->getFuncState()->storevar(&v, &b);
+  ls->getFuncState()->fixline(line);  /* definition "happens" in the first line */
 }
 
 
-void LexState::exprstat() {
+static void exprstat (LexState *ls) {
   /* stat -> func | assignment */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   struct LHS_assign v;
-  suffixedexp(&v.v);
-  if (getCurrentToken().token == '=' || getCurrentToken().token == ',') { /* stat -> assignment ? */
+  suffixedexp(ls, &v.v);
+  if (ls->getCurrentToken().token == '=' || ls->getCurrentToken().token == ',') { /* stat -> assignment ? */
     v.prev = NULL;
-    restassign(&v, 1);
+    restassign(ls, &v, 1);
   }
   else {  /* stat -> func */
     Instruction *inst;
-    check_condition(this, v.v.getKind() == VCALL, "syntax error");
-    inst = &getinstruction(funcstate, &v.v);
+    check_condition(ls, v.v.getKind() == VCALL, "syntax error");
+    inst = &getinstruction(fs, &v.v);
     SETARG_C(*inst, 1);  /* call statement uses no results */
   }
 }
 
 
-void LexState::retstat() {
+static void retstat (LexState *ls) {
   /* stat -> RETURN [explist] [';'] */
-  FuncState *funcstate = getFuncState();
+  FuncState *fs = ls->getFuncState();
   expdesc e;
   int nret;  /* number of values being returned */
-  int first = luaY_nvarstack(funcstate);  /* first slot to be returned */
-  if (block_follow(1) || getCurrentToken().token == ';')
+  int first = luaY_nvarstack(fs);  /* first slot to be returned */
+  if (block_follow(ls, 1) || ls->getCurrentToken().token == ';')
     nret = 0;  /* return no values */
   else {
-    nret = explist(&e);  /* optional return values */
+    nret = explist(ls, &e);  /* optional return values */
     if (hasmultret(e.getKind())) {
-      luaK_setmultret(funcstate, &e);
-      if (e.getKind() == VCALL && nret == 1 && !funcstate->getBlock()->insidetbc) {  /* tail call? */
-        SET_OPCODE(getinstruction(funcstate,&e), OP_TAILCALL);
-        lua_assert(GETARG_A(getinstruction(funcstate,&e)) == luaY_nvarstack(funcstate));
+      luaK_setmultret(fs, &e);
+      if (e.getKind() == VCALL && nret == 1 && !fs->getBlock()->insidetbc) {  /* tail call? */
+        SET_OPCODE(getinstruction(fs,&e), OP_TAILCALL);
+        lua_assert(GETARG_A(getinstruction(fs,&e)) == luaY_nvarstack(fs));
       }
       nret = LUA_MULTRET;  /* return all values */
     }
     else {
       if (nret == 1)  /* only one single value? */
-        first = funcstate->exp2anyreg(&e);  /* can use original slot */
+        first = fs->exp2anyreg(&e);  /* can use original slot */
       else {  /* values must go to the top of the stack */
-        funcstate->exp2nextreg(&e);
-        lua_assert(nret == funcstate->getFreeReg() - first);
+        fs->exp2nextreg(&e);
+        lua_assert(nret == fs->getFreeReg() - first);
       }
     }
   }
-  funcstate->ret(first, nret);
-  testnext( ';');  /* skip optional semicolon */
+  fs->ret(first, nret);
+  ls->testnext( ';');  /* skip optional semicolon */
 }
 
 
-void LexState::statement() {
-  int line = getLineNumber();  /* may be needed for error messages */
-  enterlevel(this);
-  switch (getCurrentToken().token) {
+static void statement (LexState *ls) {
+  int line = ls->getLineNumber();  /* may be needed for error messages */
+  enterlevel(ls);
+  switch (ls->getCurrentToken().token) {
     case ';': {  /* stat -> ';' (empty statement) */
-      nextToken();  /* skip ';' */
+      ls->nextToken();  /* skip ';' */
       break;
     }
     case TK_IF: {  /* stat -> ifstat */
-      ifstat(line);
+      ifstat(ls, line);
       break;
     }
     case TK_WHILE: {  /* stat -> whilestat */
-      whilestat(line);
+      whilestat(ls, line);
       break;
     }
     case TK_DO: {  /* stat -> DO block END */
-      nextToken();  /* skip DO */
-      block();
-      check_match( TK_END, TK_DO, line);
+      ls->nextToken();  /* skip DO */
+      block(ls);
+      ls->check_match( TK_END, TK_DO, line);
       break;
     }
     case TK_FOR: {  /* stat -> forstat */
-      forstat(line);
+      forstat(ls, line);
       break;
     }
     case TK_REPEAT: {  /* stat -> repeatstat */
-      repeatstat(line);
+      repeatstat(ls, line);
       break;
     }
     case TK_FUNCTION: {  /* stat -> funcstat */
-      funcstat(line);
+      funcstat(ls, line);
       break;
     }
     case TK_LOCAL: {  /* stat -> localstat */
-      nextToken();  /* skip LOCAL */
-      if (testnext( TK_FUNCTION))  /* local function? */
-        localfunc();
+      ls->nextToken();  /* skip LOCAL */
+      if (ls->testnext( TK_FUNCTION))  /* local function? */
+        localfunc(ls);
       else
-        localstat();
+        localstat(ls);
       break;
     }
     case TK_GLOBAL: {  /* stat -> globalstatfunc */
-      globalstatfunc(line);
+      globalstatfunc(ls, line);
       break;
     }
     case TK_DBCOLON: {  /* stat -> label */
-      nextToken();  /* skip double colon */
-      labelstat(str_checkname(), line);
+      ls->nextToken();  /* skip double colon */
+      labelstat(ls, ls->str_checkname(), line);
       break;
     }
     case TK_RETURN: {  /* stat -> retstat */
-      nextToken();  /* skip RETURN */
-      retstat();
+      ls->nextToken();  /* skip RETURN */
+      retstat(ls);
       break;
     }
     case TK_BREAK: {  /* stat -> breakstat */
-      breakstat(line);
+      breakstat(ls, line);
       break;
     }
     case TK_GOTO: {  /* stat -> 'goto' NAME */
-      nextToken();  /* skip 'goto' */
-      gotostat(line);
+      ls->nextToken();  /* skip 'goto' */
+      gotostat(ls, line);
       break;
     }
 #if defined(LUA_COMPAT_GLOBAL)
     case TK_NAME: {
       /* compatibility code to parse global keyword when "global"
          is not reserved */
-      if (getCurrentToken().seminfo.ts == getGlobalName()) {  /* current = "global"? */
-        int lk = lookaheadToken();
+      if (ls->getCurrentToken().seminfo.ts == ls->getGlobalName()) {  /* current = "global"? */
+        int lk = ls->lookaheadToken();
         if (lk == '<' || lk == TK_NAME || lk == '*' || lk == TK_FUNCTION) {
           /* 'global <attrib>' or 'global name' or 'global *' or
              'global function' */
-          globalstatfunc(line);
+          globalstatfunc(ls, line);
           break;
         }
       }  /* else... */
@@ -2088,14 +2090,14 @@ void LexState::statement() {
 #endif
     /* FALLTHROUGH */
     default: {  /* stat -> func | assignment */
-      exprstat();
+      exprstat(ls);
       break;
     }
   }
-  lua_assert(getFuncState()->getProto()->getMaxStackSize() >= getFuncState()->getFreeReg() &&
-             getFuncState()->getFreeReg() >= luaY_nvarstack(getFuncState()));
-  getFuncState()->setFreeReg(luaY_nvarstack(getFuncState()));  /* free registers */
-  leavelevel(this);
+  lua_assert(ls->getFuncState()->getProto()->getMaxStackSize() >= ls->getFuncState()->getFreeReg() &&
+             ls->getFuncState()->getFreeReg() >= luaY_nvarstack(ls->getFuncState()));
+  ls->getFuncState()->setFreeReg(luaY_nvarstack(ls->getFuncState()));  /* free registers */
+  leavelevel(ls);
 }
 
 /* }====================================================================== */
@@ -2107,21 +2109,21 @@ void LexState::statement() {
 ** compiles the main function, which is a regular vararg function with an
 ** upvalue named LUA_ENV
 */
-void LexState::mainfunc(FuncState *funcstate) {
+static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   Upvaldesc *env;
-  open_func(funcstate, &bl);
-  funcstate->setvararg(0);  /* main function is always declared vararg */
-  env = funcstate->allocupvalue();  /* ...set environment upvalue */
+  open_func(ls, fs, &bl);
+  fs->setvararg(0);  /* main function is always declared vararg */
+  env = fs->allocupvalue();  /* ...set environment upvalue */
   env->setInStack(1);
   env->setIndex(0);
   env->setKind(VDKREG);
-  env->setName(getEnvName());
-  luaC_objbarrier(getLuaState(), funcstate->getProto(), env->getName());
-  nextToken();  /* read first token */
-  statlist();  /* parse main body */
-  check( TK_EOS);
-  close_func();
+  env->setName(ls->getEnvName());
+  luaC_objbarrier(ls->getLuaState(), fs->getProto(), env->getName());
+  ls->nextToken();  /* read first token */
+  statlist(ls);  /* parse main body */
+  ls->check( TK_EOS);
+  close_func(ls);
 }
 
 
@@ -2144,7 +2146,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   lexstate.setDyndata(dyd);
   dyd->actvar.n = dyd->gt.n = dyd->label.n = 0;
   lexstate.setInput(L, z, funcstate.getProto()->getSource(), firstchar);
-  lexstate.mainfunc(&funcstate);
+  mainfunc(&lexstate, &funcstate);
   lua_assert(!funcstate.getPrev() && funcstate.getNumUpvalues() == 1 && !lexstate.getFuncState());
   /* all scopes should be correctly finished */
   lua_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
