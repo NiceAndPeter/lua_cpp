@@ -13,7 +13,7 @@
 #include "lmem.h"
 
 
-#define EOZ	(-1)			/* end of stream */
+inline constexpr int EOZ = -1;			/* end of stream */
 
 typedef struct Zio ZIO;
 

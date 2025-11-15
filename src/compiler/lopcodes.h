@@ -87,8 +87,7 @@ inline constexpr int MAXARG_Bx = ((1<<SIZE_Bx)-1);
 inline constexpr int MAXARG_Bx = INT_MAX;
 #endif
 
-/* OFFSET_sBx must remain macro (used in SETARG_sBx macro) */
-#define OFFSET_sBx	(MAXARG_Bx>>1)         /* 'sBx' is signed */
+inline constexpr int OFFSET_sBx = (MAXARG_Bx>>1);         /* 'sBx' is signed */
 
 
 /* MAXARG_Ax must remain macro (used in preprocessor conditionals) */
@@ -111,9 +110,9 @@ inline constexpr int MAXARG_A = ((1<<SIZE_A)-1);
 inline constexpr int MAXARG_B = ((1<<SIZE_B)-1);
 inline constexpr int MAXARG_vB = ((1<<SIZE_vB)-1);
 inline constexpr int MAXARG_C = ((1<<SIZE_C)-1);
-/* MAXARG_vC and OFFSET_sC must remain macros (used in preprocessor conditionals and macros) */
+/* MAXARG_vC must remain macro (used in preprocessor conditionals) */
 #define MAXARG_vC	((1<<SIZE_vC)-1)
-#define OFFSET_sC	(MAXARG_C >> 1)
+inline constexpr int OFFSET_sC = (MAXARG_C >> 1);
 
 inline constexpr int int2sC(int i) noexcept {
 	return i + OFFSET_sC;

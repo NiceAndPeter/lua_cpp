@@ -425,9 +425,9 @@ inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 
 
 /* Kinds of long strings (stored in 'shrlen') */
-#define LSTRREG		-1  /* regular long string */
-#define LSTRFIX		-2  /* fixed external long string */
-#define LSTRMEM		-3  /* external long string with deallocation */
+inline constexpr int LSTRREG = -1;  /* regular long string */
+inline constexpr int LSTRFIX = -2;  /* fixed external long string */
+inline constexpr int LSTRMEM = -3;  /* external long string with deallocation */
 
 
 /*
@@ -872,8 +872,8 @@ public:
 /*
 ** Flags in Prototypes
 */
-#define PF_ISVARARG	1
-#define PF_FIXED	2  /* prototype has parts in fixed memory */
+inline constexpr lu_byte PF_ISVARARG = 1;
+inline constexpr lu_byte PF_FIXED = 2;  /* prototype has parts in fixed memory */
 
 
 /*

@@ -215,7 +215,7 @@ constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t;
 constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
 
 /* Bit mark for collectable types */
-#define BIT_ISCOLLECTABLE	(1 << 6)
+inline constexpr int BIT_ISCOLLECTABLE = (1 << 6);
 
 /* mark a tag as collectable */
 constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCOLLECTABLE); }

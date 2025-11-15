@@ -72,7 +72,7 @@ enum RESERVED {
 };
 
 /* number of reserved words */
-#define NUM_RESERVED	(cast_int(TK_WHILE-FIRST_RESERVED + 1))
+inline constexpr int NUM_RESERVED = (cast_int(TK_WHILE-FIRST_RESERVED + 1));
 
 
 typedef union {
