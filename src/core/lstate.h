@@ -880,6 +880,16 @@ inline global_State* G(const lua_State* L) noexcept { return const_cast<global_S
 inline lua_State* mainthread(global_State* g) noexcept { return &g->getMainThread()->l; }
 inline const lua_State* mainthread(const global_State* g) noexcept { return &g->getMainThread()->l; }
 
+// Phase 88: Define gfasttm() and fasttm() inline functions (declared in ltm.h)
+// Must be defined here after global_State is fully defined
+inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept {
+	return checknoTM(mt, e) ? nullptr : luaT_gettm(const_cast<Table*>(mt), e, g->getTMName(e));
+}
+
+inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept {
+	return gfasttm(G(l), mt, e);
+}
+
 /*
 ** GCUnion and cast_u removed (no longer needed)
 ** All GC object conversions now use type-safe reinterpret_cast via gco2* functions.

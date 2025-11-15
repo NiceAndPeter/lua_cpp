@@ -39,12 +39,15 @@
 
 /*
 ** If a call returns too many multiple returns, the callee may not have
-** stack space to accommodate all results. In this case, this macro
+** stack space to accommodate all results. In this case, this function
 ** increases its stack space ('L->getCI()->getTop().p').
+** Phase 88: Converted from macro to inline function
 */
-#define adjustresults(L,nres) \
-    { if ((nres) <= LUA_MULTRET && L->getCI()->topRef().p < L->getTop().p) \
-	L->getCI()->topRef().p = L->getTop().p; }
+inline void adjustresults(lua_State* L, int nres) noexcept {
+	if (nres <= LUA_MULTRET && L->getCI()->topRef().p < L->getTop().p) {
+		L->getCI()->topRef().p = L->getTop().p;
+	}
+}
 
 
 /* Ensure the stack has at least 'n' elements */

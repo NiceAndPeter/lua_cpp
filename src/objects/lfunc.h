@@ -11,11 +11,15 @@
 #include "lobject.h"
 
 
-// Phase 29: offsetof on non-standard-layout types (classes with GCBase inheritance)
-// This triggers -Winvalid-offsetof but is safe because we control the memory layout
-#define sizeCclosure(n)  CClosure::sizeForUpvalues(n)
+// Phase 88: Convert sizeCclosure and sizeLclosure macros to inline constexpr functions
+// These are simple forwarding calls to static methods
+inline constexpr lu_mem sizeCclosure(int n) noexcept {
+	return CClosure::sizeForUpvalues(n);
+}
 
-#define sizeLclosure(n)  LClosure::sizeForUpvalues(n)
+inline constexpr lu_mem sizeLclosure(int n) noexcept {
+	return LClosure::sizeForUpvalues(n);
+}
 
 /* Phase 44.4: isintwups macro replaced with lua_State method:
 ** - isintwups(L) → L->isInTwups()
