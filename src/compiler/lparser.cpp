@@ -1296,7 +1296,7 @@ void LexState::simpleexp( expdesc *v) {
 }
 
 
-static UnOpr getunopr (int op) {
+inline UnOpr getunopr (int op) noexcept {
   switch (op) {
     case TK_NOT: return OPR_NOT;
     case '-': return OPR_MINUS;
@@ -1307,7 +1307,7 @@ static UnOpr getunopr (int op) {
 }
 
 
-static BinOpr getbinopr (int op) {
+inline BinOpr getbinopr (int op) noexcept {
   switch (op) {
     case '+': return OPR_ADD;
     case '-': return OPR_SUB;
