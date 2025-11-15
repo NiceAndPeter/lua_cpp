@@ -168,6 +168,10 @@ public:
   static bool isIndexed(expkind kind) noexcept {
     return VINDEXED <= kind && kind <= VINDEXSTR;
   }
+
+  // Phase 84: Expression initialization methods
+  void init(expkind kind, int i);
+  void initString(TString *s);
 };
 
 
@@ -449,6 +453,8 @@ public:
   LocVar *localdebuginfo(int vidx);
   void init_var(expdesc *e, int vidx);
   short registerlocalvar(TString *varname);
+  // Phase 84: Variable scope
+  void removevars(int tolevel);
 
 private:
   // Internal helper methods (only used within lcode.cpp)

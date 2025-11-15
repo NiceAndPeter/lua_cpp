@@ -144,6 +144,9 @@ public:
   void codename(expdesc *e);
   int new_varkind(TString *name, lu_byte kind);
   int new_localvar(TString *name);
+  // Phase 84: Variable checking and scope
+  void check_readonly(expdesc *e);
+  void adjustlocalvars(int nvars);
 };
 
 

@@ -158,24 +158,24 @@ TString *LexState::str_checkname() {
 }
 
 
-static void init_exp (expdesc *e, expkind k, int i) {
-  e->setFalseList(NO_JUMP);
-  e->setTrueList(NO_JUMP);
-  e->setKind(k);
-  e->setInfo(i);
+void expdesc::init(expkind kind, int i) {
+  setFalseList(NO_JUMP);
+  setTrueList(NO_JUMP);
+  setKind(kind);
+  setInfo(i);
 }
 
 
-static void codestring (expdesc *e, TString *s) {
-  e->setFalseList(NO_JUMP);
-  e->setTrueList(NO_JUMP);
-  e->setKind(VKSTR);
-  e->setStringValue(s);
+void expdesc::initString(TString *s) {
+  setFalseList(NO_JUMP);
+  setTrueList(NO_JUMP);
+  setKind(VKSTR);
+  setStringValue(s);
 }
 
 
 void LexState::codename(expdesc *e) {
-  codestring(e, str_checkname());
+  e->initString(str_checkname());
 }
 
 
@@ -297,29 +297,29 @@ void FuncState::init_var(expdesc *e, int vidx) {
 /*
 ** Raises an error if variable described by 'e' is read only
 */
-static void check_readonly (LexState *ls, expdesc *e) {
-  FuncState *fs = ls->getFuncState();
+void LexState::check_readonly(expdesc *e) {
+  FuncState *funcState = getFuncState();
   TString *varname = NULL;  /* to be set if variable is const */
   switch (e->getKind()) {
     case VCONST: {
-      varname = ls->getDyndata()->actvar.arr[e->getInfo()].vd.name;
+      varname = getDyndata()->actvar.arr[e->getInfo()].vd.name;
       break;
     }
     case VLOCAL: {
-      Vardesc *vardesc = fs->getlocalvardesc( e->getLocalVarIndex());
+      Vardesc *vardesc = funcState->getlocalvardesc(e->getLocalVarIndex());
       if (vardesc->vd.kind != VDKREG)  /* not a regular variable? */
         varname = vardesc->vd.name;
       break;
     }
     case VUPVAL: {
-      Upvaldesc *up = &fs->getProto()->getUpvalues()[e->getInfo()];
+      Upvaldesc *up = &funcState->getProto()->getUpvalues()[e->getInfo()];
       if (up->getKind() != VDKREG)
         varname = up->getName();
       break;
     }
     case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
       if (e->isIndexedReadOnly())  /* read-only? */
-        varname = tsvalue(&fs->getProto()->getConstants()[e->getIndexedStringKeyIndex()]);
+        varname = tsvalue(&funcState->getProto()->getConstants()[e->getIndexedStringKeyIndex()]);
       break;
     }
     default:
@@ -327,24 +327,23 @@ static void check_readonly (LexState *ls, expdesc *e) {
       return;  /* integer index cannot be read-only */
   }
   if (varname)
-    ls->semerror( "attempt to assign to const variable '%s'",
-                      getstr(varname));
+    semerror("attempt to assign to const variable '%s'", getstr(varname));
 }
 
 
 /*
 ** Start the scope for the last 'nvars' created variables.
 */
-static void adjustlocalvars (LexState *ls, int nvars) {
-  FuncState *fs = ls->getFuncState();
-  int reglevel = luaY_nvarstack(fs);
+void LexState::adjustlocalvars(int nvars) {
+  FuncState *funcState = getFuncState();
+  int regLevel = funcState->nvarstack();
   int i;
   for (i = 0; i < nvars; i++) {
-    int vidx = fs->getNumActiveVarsRef()++;
-    Vardesc *var = fs->getlocalvardesc( vidx);
-    var->vd.ridx = cast_byte(reglevel++);
-    var->vd.pidx = fs->registerlocalvar( var->vd.name);
-    luaY_checklimit(fs, reglevel, MAXVARS, "local variables");
+    int vidx = funcState->getNumActiveVarsRef()++;
+    Vardesc *var = funcState->getlocalvardesc(vidx);
+    var->vd.ridx = cast_byte(regLevel++);
+    var->vd.pidx = funcState->registerlocalvar(var->vd.name);
+    funcState->checklimit(regLevel, MAXVARS, "local variables");
   }
 }
 
@@ -353,12 +352,12 @@ static void adjustlocalvars (LexState *ls, int nvars) {
 ** Close the scope for all variables up to level 'tolevel'.
 ** (debug info.)
 */
-static void removevars (FuncState *fs, int tolevel) {
-  fs->getLexState()->getDyndata()->actvar.n -= (fs->getNumActiveVars() - tolevel);
-  while (fs->getNumActiveVars() > tolevel) {
-    LocVar *var = fs->localdebuginfo( --fs->getNumActiveVarsRef());
+void FuncState::removevars(int tolevel) {
+  getLexState()->getDyndata()->actvar.n -= (getNumActiveVars() - tolevel);
+  while (getNumActiveVars() > tolevel) {
+    LocVar *var = localdebuginfo(--getNumActiveVarsRef());
     if (var)  /* does it have debug information? */
-      var->setEndPC(fs->getPC());
+      var->setEndPC(getPC());
   }
 }
 
@@ -432,7 +431,7 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
       }
       else {  /* global name */
         if (eqstr(n, vd->vd.name)) {  /* found? */
-          init_exp(var, VGLOBAL, fs->getFirstLocal() + i);
+          var->init(VGLOBAL, fs->getFirstLocal() + i);
           return VGLOBAL;
         }
         else if (var->getInfo() == -1)  /* active preambular declaration? */
@@ -441,7 +440,7 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
     }
     else if (eqstr(n, vd->vd.name)) {  /* found? */
       if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
-        init_exp(var, VCONST, fs->getFirstLocal() + i);
+        var->init(VCONST, fs->getFirstLocal() + i);
       else  /* local variable */
         fs->init_var( var, i);
       return cast_int(var->getKind());
@@ -496,7 +495,7 @@ static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
       else  /* it is a global or a constant */
         return;  /* don't need to do anything at this level */
     }
-    init_exp(var, VUPVAL, idx);  /* new or old upvalue */
+    var->init(VUPVAL, idx);  /* new or old upvalue */
   }
 }
 
@@ -504,13 +503,13 @@ static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
 static void buildglobal (LexState *ls, TString *varname, expdesc *var) {
   FuncState *fs = ls->getFuncState();
   expdesc key;
-  init_exp(var, VGLOBAL, -1);  /* global by default */
+  var->init(VGLOBAL, -1);  /* global by default */
   singlevaraux(fs, ls->getEnvName(), var, 1);  /* get environment variable */
   if (var->getKind() == VGLOBAL)
     ls->semerror( "_ENV is global when accessing variable '%s'",
                       getstr(varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
-  codestring(&key, varname);  /* key is variable name */
+  key.initString(varname);  /* key is variable name */
   fs->indexed(var, &key);  /* 'var' represents _ENV[varname] */
 }
 
@@ -521,7 +520,7 @@ static void buildglobal (LexState *ls, TString *varname, expdesc *var) {
 */
 static void buildvar (LexState *ls, TString *varname, expdesc *var) {
   FuncState *fs = ls->getFuncState();
-  init_exp(var, VGLOBAL, -1);  /* global by default */
+  var->init(VGLOBAL, -1);  /* global by default */
   singlevaraux(fs, varname, var, 1);
   if (var->getKind() == VGLOBAL) {  /* global name? */
     int info = var->getInfo();
@@ -753,7 +752,7 @@ static void leaveblock (FuncState *fs) {
   if (bl->previous && bl->upval)  /* need a 'close'? */
     fs->codeABC(OP_CLOSE, stklevel, 0, 0);
   fs->setFreeReg(stklevel);  /* free registers */
-  removevars(fs, bl->nactvar);  /* remove block locals */
+  fs->removevars(bl->nactvar);  /* remove block locals */
   lua_assert(bl->nactvar == fs->getNumActiveVars());  /* back to level on entry */
   if (bl->isloop == 2)  /* has to fix pending breaks? */
     createlabel(ls, ls->getBreakName(), 0, 0);
@@ -795,7 +794,7 @@ static Proto *addprototype (LexState *ls) {
 */
 static void codeclosure (LexState *ls, expdesc *v) {
   FuncState *fs = ls->getFuncState()->getPrev();
-  init_exp(v, VRELOC, fs->codeABx(OP_CLOSURE, 0, fs->getNP() - 1));
+  v->init(VRELOC, fs->codeABx(OP_CLOSURE, 0, fs->getNP() - 1));
   fs->exp2nextreg(v);  /* fix it at the last register */
 }
 
@@ -1039,9 +1038,9 @@ static void constructor (LexState *ls, expdesc *t) {
   fs->code(0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = t;
-  init_exp(t, VNONRELOC, fs->getFreeReg());  /* table will be at stack top */
+  t->init(VNONRELOC, fs->getFreeReg());  /* table will be at stack top */
   fs->reserveregs(1);
-  init_exp(&cc.v, VVOID, 0);  /* no value (yet) */
+  cc.v.init(VVOID, 0);  /* no value (yet) */
   ls->checknext( '{' /*}*/);
   cc.maxtostore = maxtostore(fs);
   do {
@@ -1089,7 +1088,7 @@ static void parlist (LexState *ls) {
       }
     } while (!isvararg && ls->testnext( ','));
   }
-  adjustlocalvars(ls, nparams);
+  ls->adjustlocalvars(nparams);
   f->setNumParams(cast_byte(fs->getNumActiveVars()));
   if (isvararg)
     setvararg(fs, f->getNumParams());  /* declared vararg */
@@ -1107,7 +1106,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   ls->checknext( '(');
   if (ismethod) {
     new_localvarliteral(ls, "self");  /* create 'self' parameter */
-    adjustlocalvars(ls, 1);
+    ls->adjustlocalvars(1);
   }
   parlist(ls);
   ls->checknext( ')');
@@ -1155,7 +1154,7 @@ static void funcargs (LexState *ls, expdesc *f) {
       break;
     }
     case TK_STRING: {  /* funcargs -> STRING */
-      codestring(&args, ls->getCurrentToken().seminfo.ts);
+      args.initString(ls->getCurrentToken().seminfo.ts);
       ls->nextToken();  /* must use 'seminfo' before 'next' */
       break;
     }
@@ -1172,7 +1171,7 @@ static void funcargs (LexState *ls, expdesc *f) {
       fs->exp2nextreg(&args);  /* close last argument */
     nparams = fs->getFreeReg() - (base+1);
   }
-  init_exp(f, VCALL, fs->codeABC(OP_CALL, base, nparams+1, 2));
+  f->init(VCALL, fs->codeABC(OP_CALL, base, nparams+1, 2));
   fs->fixline(line);
   /* call removes function and arguments and leaves one result (unless
      changed later) */
@@ -1253,36 +1252,36 @@ static void simpleexp (LexState *ls, expdesc *v) {
                   constructor | FUNCTION body | suffixedexp */
   switch (ls->getCurrentToken().token) {
     case TK_FLT: {
-      init_exp(v, VKFLT, 0);
+      v->init(VKFLT, 0);
       v->setFloatValue(ls->getCurrentToken().seminfo.r);
       break;
     }
     case TK_INT: {
-      init_exp(v, VKINT, 0);
+      v->init(VKINT, 0);
       v->setIntValue(ls->getCurrentToken().seminfo.i);
       break;
     }
     case TK_STRING: {
-      codestring(v, ls->getCurrentToken().seminfo.ts);
+      v->initString(ls->getCurrentToken().seminfo.ts);
       break;
     }
     case TK_NIL: {
-      init_exp(v, VNIL, 0);
+      v->init(VNIL, 0);
       break;
     }
     case TK_TRUE: {
-      init_exp(v, VTRUE, 0);
+      v->init(VTRUE, 0);
       break;
     }
     case TK_FALSE: {
-      init_exp(v, VFALSE, 0);
+      v->init(VFALSE, 0);
       break;
     }
     case TK_DOTS: {  /* vararg */
       FuncState *fs = ls->getFuncState();
       check_condition(ls, fs->getProto()->getFlag() & PF_ISVARARG,
                       "cannot use '...' outside a vararg function");
-      init_exp(v, VVARARG, fs->codeABC(OP_VARARG, 0, 0, 1));
+      v->init(VVARARG, fs->codeABC(OP_VARARG, 0, 0, 1));
       break;
     }
     case '{' /*}*/: {  /* constructor */
@@ -1480,7 +1479,7 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
 /* Create code to store the "top" register in 'var' */
 static void storevartop (FuncState *fs, expdesc *var) {
   expdesc e;
-  init_exp(&e, VNONRELOC, fs->getFreeReg() - 1);
+  e.init(VNONRELOC, fs->getFreeReg() - 1);
   fs->storevar(var, &e);  /* will also free the top register */
 }
 
@@ -1495,7 +1494,7 @@ static void storevartop (FuncState *fs, expdesc *var) {
 static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
   expdesc e;
   check_condition(ls, expdesc::isVar(lh->v.getKind()), "syntax error");
-  check_readonly(ls, &lh->v);
+  ls->check_readonly(&lh->v);
   if (ls->testnext( ',')) {  /* restassign -> ',' suffixedexp restassign */
     struct LHS_assign nv;
     nv.prev = lh;
@@ -1664,7 +1663,7 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isgen) {
   prep = fs->codeABx(forprep[isgen], base, 0);
   fs->getFreeRegRef()--;  /* both 'forprep' remove one register from the stack */
   enterblock(fs, &bl, 0);  /* scope for declared variables */
-  adjustlocalvars(ls, nvars);
+  ls->adjustlocalvars(nvars);
   fs->reserveregs(nvars);
   block(ls);
   leaveblock(fs);  /* end of scope for declared variables */
@@ -1696,7 +1695,7 @@ static void fornum (LexState *ls, TString *varname, int line) {
     fs->intCode(fs->getFreeReg(), 1);
     fs->reserveregs(1);
   }
-  adjustlocalvars(ls, 2);  /* start scope for internal variables */
+  ls->adjustlocalvars(2);  /* start scope for internal variables */
   forbody(ls, base, line, 1, 0);
 }
 
@@ -1721,7 +1720,7 @@ static void forlist (LexState *ls, TString *indexname) {
   ls->checknext( TK_IN);
   line = ls->getLineNumber();
   adjust_assign(ls, 4, explist(ls, &e), &e);
-  adjustlocalvars(ls, 3);  /* start scope for internal variables */
+  ls->adjustlocalvars(3);  /* start scope for internal variables */
   marktobeclosed(fs);  /* last internal var. must be closed */
   fs->checkstack(2);  /* extra space to call iterator */
   forbody(ls, base, line, nvars - 3, 1);
@@ -1780,7 +1779,7 @@ static void localfunc (LexState *ls) {
   FuncState *fs = ls->getFuncState();
   int fvar = fs->getNumActiveVars();  /* function's variable index */
   ls->new_localvar( ls->str_checkname());  /* new local variable */
-  adjustlocalvars(ls, 1);  /* enter its scope */
+  ls->adjustlocalvars(1);  /* enter its scope */
   body(ls, &b, 0, ls->getLineNumber());  /* function created in next register */
   /* debug information will only see the variable after this point! */
   fs->localdebuginfo( fvar)->setStartPC(fs->getPC());
@@ -1845,12 +1844,12 @@ static void localstat (LexState *ls) {
       var->vd.kind == RDKCONST &&  /* last variable is const? */
       fs->exp2const(&e, &var->k)) {  /* compile-time constant? */
     var->vd.kind = RDKCTC;  /* variable is a compile-time constant */
-    adjustlocalvars(ls, nvars - 1);  /* exclude last variable */
+    ls->adjustlocalvars(nvars - 1);  /* exclude last variable */
     fs->getNumActiveVarsRef()++;  /* but count it */
   }
   else {
     adjust_assign(ls, nvars, nexps, &e);
-    adjustlocalvars(ls, nvars);
+    ls->adjustlocalvars(nvars);
   }
   checktoclose(fs, toclose);
 }
@@ -1956,7 +1955,7 @@ static void funcstat (LexState *ls, int line) {
   expdesc v, b;
   ls->nextToken();  /* skip FUNCTION */
   ismethod = funcname(ls, &v);
-  check_readonly(ls, &v);
+  ls->check_readonly(&v);
   body(ls, &b, ismethod, line);
   ls->getFuncState()->storevar(&v, &b);
   ls->getFuncState()->fixline(line);  /* definition "happens" in the first line */
