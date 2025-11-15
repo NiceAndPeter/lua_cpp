@@ -16,6 +16,31 @@
 struct expdesc;
 struct Labeldesc;
 struct Labellist;
+struct ConsControl;
+struct LHS_assign;
+struct BlockCnt;
+
+/*
+** grep "ORDER OPR" if you change these enums  (ORDER OP)
+*/
+typedef enum BinOpr {
+  /* arithmetic operators */
+  OPR_ADD, OPR_SUB, OPR_MUL, OPR_MOD, OPR_POW,
+  OPR_DIV, OPR_IDIV,
+  /* bitwise operators */
+  OPR_BAND, OPR_BOR, OPR_BXOR,
+  OPR_SHL, OPR_SHR,
+  /* string operator */
+  OPR_CONCAT,
+  /* comparison operators */
+  OPR_EQ, OPR_LT, OPR_LE,
+  OPR_NE, OPR_GT, OPR_GE,
+  /* logical operators */
+  OPR_AND, OPR_OR,
+  OPR_NOBINOPR
+} BinOpr;
+
+typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
 
 /*
 ** Single-char tokens (terminal symbols) are represented by their own
@@ -161,6 +186,62 @@ public:
   int newlabelentry(Labellist *l, TString *name, int line, int pc);
   int newgotoentry(TString *name, int line);
   void createlabel(TString *name, int line, int last);
+  // Phase 88: Parser infrastructure (convert from static)
+  Proto *addprototype();
+
+private:
+  // Phase 88: Parser implementation methods (static → private)
+  void statement();
+  void expr(expdesc *v);
+  int block_follow(int withuntil);
+  void statlist();
+  void fieldsel(expdesc *v);
+  void yindex(expdesc *v);
+  void recfield(ConsControl *cc);
+  void listfield(ConsControl *cc);
+  void field(ConsControl *cc);
+  void constructor(expdesc *t);
+  void parlist();
+  void body(expdesc *e, int ismethod, int line);
+  int explist(expdesc *v);
+  void funcargs(expdesc *f);
+  void primaryexp(expdesc *v);
+  void suffixedexp(expdesc *v);
+  void simpleexp(expdesc *v);
+  BinOpr subexpr(expdesc *v, int limit);
+  void block();
+  void restassign(struct LHS_assign *lh, int nvars);
+  int cond();
+  void gotostat(int line);
+  void breakstat(int line);
+  void checkrepeated(TString *name);
+  void labelstat(TString *name, int line);
+  void whilestat(int line);
+  void repeatstat(int line);
+  void exp1();
+  void forbody(int base, int line, int nvars, int isgen);
+  void fornum(TString *varname, int line);
+  void forlist(TString *indexname);
+  void forstat(int line);
+  void test_then_block(int *escapelist);
+  void ifstat(int line);
+  void localfunc();
+  lu_byte getvarattribute(lu_byte df);
+  void localstat();
+  lu_byte getglobalattribute(lu_byte df);
+  void globalnames(lu_byte defkind);
+  void globalstat();
+  void globalfunc(int line);
+  void globalstatfunc(int line);
+  int funcname(expdesc *v);
+  void funcstat(int line);
+  void exprstat();
+  void retstat();
+  void codeclosure(expdesc *v);
+  void open_func(FuncState *fs, BlockCnt *bl);
+  void close_func();
+  void check_conflict(struct LHS_assign *lh, expdesc *v);
+  void mainfunc(FuncState *fs);
 };
 
 
