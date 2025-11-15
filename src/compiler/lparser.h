@@ -464,6 +464,8 @@ public:
   void marktobeclosed();
   // Phase 86: Variable lookup auxiliary
   void singlevaraux(TString *n, expdesc *var, int base);
+  // Phase 87: Goto resolution
+  void solvegotos(BlockCnt *blockCnt);
 
 private:
   // Internal helper methods (only used within lcode.cpp)

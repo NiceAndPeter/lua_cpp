@@ -14,6 +14,8 @@
 
 /* Forward declarations */
 struct expdesc;
+struct Labeldesc;
+struct Labellist;
 
 /*
 ** Single-char tokens (terminal symbols) are represented by their own
@@ -152,6 +154,13 @@ public:
   void buildvar(TString *varname, expdesc *var);
   void singlevar(expdesc *var);
   void adjust_assign(int nvars, int nexps, expdesc *e);
+  // Phase 87: Label and goto management
+  l_noret jumpscopeerror(Labeldesc *gt);
+  void closegoto(int g, Labeldesc *label, int bup);
+  Labeldesc *findlabel(TString *name, int ilb);
+  int newlabelentry(Labellist *l, TString *name, int line, int pc);
+  int newgotoentry(TString *name, int line);
+  void createlabel(TString *name, int line, int last);
 };
 
 
