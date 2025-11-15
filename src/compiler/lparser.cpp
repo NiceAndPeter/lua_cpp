@@ -64,6 +64,7 @@ typedef struct BlockCnt {
 
 /*
 ** prototypes for recursive non-terminal functions
+** TODO: Convert these to LexState private methods
 */
 static void statement (LexState *ls);
 static void expr (LexState *ls, expdesc *v);
@@ -715,67 +716,67 @@ void FuncState::solvegotos(BlockCnt *blockCnt) {
 }
 
 
-static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
-  bl->isloop = isloop;
-  bl->nactvar = fs->getNumActiveVars();
-  bl->firstlabel = fs->getLexState()->getDyndata()->label.n;
-  bl->firstgoto = fs->getLexState()->getDyndata()->gt.n;
-  bl->upval = 0;
+void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
+  blk->isloop = isloop;
+  blk->nactvar = getNumActiveVars();
+  blk->firstlabel = getLexState()->getDyndata()->label.n;
+  blk->firstgoto = getLexState()->getDyndata()->gt.n;
+  blk->upval = 0;
   /* inherit 'insidetbc' from enclosing block */
-  bl->insidetbc = (fs->getBlock() != NULL && fs->getBlock()->insidetbc);
-  bl->previous = fs->getBlock();  /* link block in function's block list */
-  fs->setBlock(bl);
-  lua_assert(fs->getFreeReg() == luaY_nvarstack(fs));
+  blk->insidetbc = (getBlock() != NULL && getBlock()->insidetbc);
+  blk->previous = getBlock();  /* link block in function's block list */
+  setBlock(blk);
+  lua_assert(getFreeReg() == luaY_nvarstack(this));
 }
 
 
 /*
 ** generates an error for an undefined 'goto'.
 */
-static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
+static l_noret undefgoto(LexState *ls, Labeldesc *gt) {
   /* breaks are checked when created, cannot be undefined */
   lua_assert(!eqstr(gt->name, ls->getBreakName()));
-  ls->semerror( "no visible label '%s' for <goto> at line %d",
-                    getstr(gt->name), gt->line);
+  ls->semerror("no visible label '%s' for <goto> at line %d",
+               getstr(gt->name), gt->line);
 }
 
 
-static void leaveblock (FuncState *fs) {
-  BlockCnt *bl = fs->getBlock();
-  LexState *ls = fs->getLexState();
-  lu_byte stklevel = fs->reglevel( bl->nactvar);  /* level outside block */
-  if (bl->previous && bl->upval)  /* need a 'close'? */
-    fs->codeABC(OP_CLOSE, stklevel, 0, 0);
-  fs->setFreeReg(stklevel);  /* free registers */
-  fs->removevars(bl->nactvar);  /* remove block locals */
-  lua_assert(bl->nactvar == fs->getNumActiveVars());  /* back to level on entry */
-  if (bl->isloop == 2)  /* has to fix pending breaks? */
-    ls->createlabel(ls->getBreakName(), 0, 0);
-  fs->solvegotos(bl);
-  if (bl->previous == NULL) {  /* was it the last block? */
-    if (bl->firstgoto < ls->getDyndata()->gt.n)  /* still pending gotos? */
-      undefgoto(ls, &ls->getDyndata()->gt.arr[bl->firstgoto]);  /* error */
+void FuncState::leaveblock() {
+  BlockCnt *blk = getBlock();
+  LexState *lexstate = getLexState();
+  lu_byte stklevel = reglevel(blk->nactvar);  /* level outside block */
+  if (blk->previous && blk->upval)  /* need a 'close'? */
+    codeABC(OP_CLOSE, stklevel, 0, 0);
+  setFreeReg(stklevel);  /* free registers */
+  removevars(blk->nactvar);  /* remove block locals */
+  lua_assert(blk->nactvar == getNumActiveVars());  /* back to level on entry */
+  if (blk->isloop == 2)  /* has to fix pending breaks? */
+    lexstate->createlabel(lexstate->getBreakName(), 0, 0);
+  solvegotos(blk);
+  if (blk->previous == NULL) {  /* was it the last block? */
+    if (blk->firstgoto < lexstate->getDyndata()->gt.n)  /* still pending gotos? */
+      undefgoto(lexstate, &lexstate->getDyndata()->gt.arr[blk->firstgoto]);  /* error */
   }
-  fs->setBlock(bl->previous);  /* current block now is previous one */
+  setBlock(blk->previous);  /* current block now is previous one */
 }
 
 
 /*
 ** adds a new prototype into list of prototypes
 */
-static Proto *addprototype (LexState *ls) {
+Proto *LexState::addprototype() {
   Proto *clp;
-  lua_State *L = ls->getLuaState();
-  FuncState *fs = ls->getFuncState();
-  Proto *f = fs->getProto();  /* prototype of current function */
-  if (fs->getNP() >= f->getProtosSize()) {
-    int oldsize = f->getProtosSize();
-    luaM_growvector(L, f->getProtosRef(), fs->getNP(), f->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
-    while (oldsize < f->getProtosSize())
-      f->getProtos()[oldsize++] = NULL;
+  lua_State *state = getLuaState();
+  FuncState *funcstate = getFuncState();
+  Proto *proto = funcstate->getProto();  /* prototype of current function */
+  if (funcstate->getNP() >= proto->getProtosSize()) {
+    int oldsize = proto->getProtosSize();
+    luaM_growvector(state, proto->getProtosRef(), funcstate->getNP(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
+    while (oldsize < proto->getProtosSize())
+      proto->getProtos()[oldsize++] = NULL;
   }
-  f->getProtos()[fs->getNPRef()++] = clp = luaF_newproto(L);
-  luaC_objbarrier(L, f, clp);
+  proto->getProtos()[funcstate->getNPRef()++] = clp = luaF_newproto(state);
+  luaC_objbarrier(state, proto, clp);
   return clp;
 }
 
@@ -821,7 +822,7 @@ static void open_func (LexState *ls, FuncState *fs, BlockCnt *bl) {
   fs->setKCache(luaH_new(L));  /* create table for function */
   sethvalue2s(L, L->getTop().p, fs->getKCache());  /* anchor it */
   L->inctop();  /* Phase 25e */
-  enterblock(fs, bl, 0);
+  fs->enterblock(bl, 0);
 }
 
 
@@ -830,7 +831,7 @@ static void close_func (LexState *ls) {
   FuncState *fs = ls->getFuncState();
   Proto *f = fs->getProto();
   fs->ret(luaY_nvarstack(fs), 0);  /* final return */
-  leaveblock(fs);
+  fs->leaveblock();
   lua_assert(fs->getBlock() == NULL);
   fs->finish();
   luaM_shrinkvector(L, f->getCodeRef(), f->getCodeSizeRef(), fs->getPC(), Instruction);
@@ -950,29 +951,29 @@ static void recfield (LexState *ls, ConsControl *cc) {
 }
 
 
-static void closelistfield (FuncState *fs, ConsControl *cc) {
+void FuncState::closelistfield(ConsControl *cc) {
   lua_assert(cc->tostore > 0);
-  fs->exp2nextreg(&cc->v);
+  exp2nextreg(&cc->v);
   cc->v.setKind(VVOID);
   if (cc->tostore >= cc->maxtostore) {
-    fs->setlist(cc->t->getInfo(), cc->na, cc->tostore);  /* flush */
+    setlist(cc->t->getInfo(), cc->na, cc->tostore);  /* flush */
     cc->na += cc->tostore;
     cc->tostore = 0;  /* no more items pending */
   }
 }
 
 
-static void lastlistfield (FuncState *fs, ConsControl *cc) {
+void FuncState::lastlistfield(ConsControl *cc) {
   if (cc->tostore == 0) return;
   if (hasmultret(cc->v.getKind())) {
-    luaK_setmultret(fs, &cc->v);
-    fs->setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
+    luaK_setmultret(this, &cc->v);
+    setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
     if (cc->v.getKind() != VVOID)
-      fs->exp2nextreg(&cc->v);
-    fs->setlist(cc->t->getInfo(), cc->na, cc->tostore);
+      exp2nextreg(&cc->v);
+    setlist(cc->t->getInfo(), cc->na, cc->tostore);
   }
   cc->na += cc->tostore;
 }
@@ -1012,8 +1013,8 @@ static void field (LexState *ls, ConsControl *cc) {
 ** emitting a 'SETLIST' instruction, based on how many registers are
 ** available.
 */
-static int maxtostore (FuncState *fs) {
-  int numfreeregs = MAX_FSTACK - fs->getFreeReg();
+int FuncState::maxtostore() {
+  int numfreeregs = MAX_FSTACK - getFreeReg();
   if (numfreeregs >= 160)  /* "lots" of registers? */
     return numfreeregs / 5;  /* use up to 1/5 of them */
   else if (numfreeregs >= 80)  /* still "enough" registers? */
@@ -1037,26 +1038,26 @@ static void constructor (LexState *ls, expdesc *t) {
   fs->reserveregs(1);
   cc.v.init(VVOID, 0);  /* no value (yet) */
   ls->checknext( '{' /*}*/);
-  cc.maxtostore = maxtostore(fs);
+  cc.maxtostore = fs->maxtostore();
   do {
     if (ls->getCurrentToken().token == /*{*/ '}') break;
     if (cc.v.getKind() != VVOID)  /* is there a previous list item? */
-      closelistfield(fs, &cc);  /* close it */
+      fs->closelistfield(&cc);  /* close it */
     field(ls, &cc);
     luaY_checklimit(fs, cc.tostore + cc.na + cc.nh, MAX_CNST,
                     "items in a constructor");
   } while (ls->testnext( ',') || ls->testnext( ';'));
   ls->check_match( /*{*/ '}', '{' /*}*/, line);
-  lastlistfield(fs, &cc);
+  fs->lastlistfield(&cc);
   fs->settablesize(pc, t->getInfo(), cc.na, cc.nh);
 }
 
 /* }====================================================================== */
 
 
-static void setvararg (FuncState *fs, int nparams) {
-  fs->getProto()->setFlag(fs->getProto()->getFlag() | PF_ISVARARG);
-  fs->codeABC(OP_VARARGPREP, nparams, 0, 0);
+void FuncState::setvararg(int nparams) {
+  getProto()->setFlag(getProto()->getFlag() | PF_ISVARARG);
+  codeABC(OP_VARARGPREP, nparams, 0, 0);
 }
 
 
@@ -1086,7 +1087,7 @@ static void parlist (LexState *ls) {
   ls->adjustlocalvars(nparams);
   f->setNumParams(cast_byte(fs->getNumActiveVars()));
   if (isvararg)
-    setvararg(fs, f->getNumParams());  /* declared vararg */
+    fs->setvararg(f->getNumParams());  /* declared vararg */
   fs->reserveregs(fs->getNumActiveVars());  /* reserve registers for parameters */
 }
 
@@ -1095,7 +1096,7 @@ static void body (LexState *ls, expdesc *e, int ismethod, int line) {
   /* body ->  '(' parlist ')' block END */
   FuncState new_fs;
   BlockCnt bl;
-  new_fs.setProto(addprototype(ls));
+  new_fs.setProto(ls->addprototype());
   new_fs.getProto()->setLineDefined(line);
   open_func(ls, &new_fs, &bl);
   ls->checknext( '(');
@@ -1411,9 +1412,9 @@ static void block (LexState *ls) {
   /* block -> statlist */
   FuncState *fs = ls->getFuncState();
   BlockCnt bl;
-  enterblock(fs, &bl, 0);
+  fs->enterblock(&bl, 0);
   statlist(ls);
-  leaveblock(fs);
+  fs->leaveblock();
 }
 
 
@@ -1472,10 +1473,10 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v) {
 
 
 /* Create code to store the "top" register in 'var' */
-static void storevartop (FuncState *fs, expdesc *var) {
+void FuncState::storevartop(expdesc *var) {
   expdesc e;
-  e.init(VNONRELOC, fs->getFreeReg() - 1);
-  fs->storevar(var, &e);  /* will also free the top register */
+  e.init(VNONRELOC, getFreeReg() - 1);
+  storevar(var, &e);  /* will also free the top register */
 }
 
 
@@ -1512,7 +1513,7 @@ static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
       return;  /* avoid default */
     }
   }
-  storevartop(ls->getFuncState(), &lh->v);  /* default assignment */
+  ls->getFuncState()->storevartop(&lh->v);  /* default assignment */
 }
 
 
@@ -1580,12 +1581,12 @@ static void whilestat (LexState *ls, int line) {
   ls->nextToken();  /* skip WHILE */
   whileinit = fs->getlabel();
   condexit = cond(ls);
-  enterblock(fs, &bl, 1);
+  fs->enterblock(&bl, 1);
   ls->checknext( TK_DO);
   block(ls);
   luaK_jumpto(fs, whileinit);
   ls->check_match( TK_END, TK_WHILE, line);
-  leaveblock(fs);
+  fs->leaveblock();
   fs->patchtohere(condexit);  /* false conditions finish the loop */
 }
 
@@ -1596,22 +1597,22 @@ static void repeatstat (LexState *ls, int line) {
   FuncState *fs = ls->getFuncState();
   int repeat_init = fs->getlabel();
   BlockCnt bl1, bl2;
-  enterblock(fs, &bl1, 1);  /* loop block */
-  enterblock(fs, &bl2, 0);  /* scope block */
+  fs->enterblock(&bl1, 1);  /* loop block */
+  fs->enterblock(&bl2, 0);  /* scope block */
   ls->nextToken();  /* skip REPEAT */
   statlist(ls);
   ls->check_match( TK_UNTIL, TK_REPEAT, line);
   condexit = cond(ls);  /* read condition (inside scope block) */
-  leaveblock(fs);  /* finish scope */
+  fs->leaveblock();  /* finish scope */
   if (bl2.upval) {  /* upvalues? */
     int exit = fs->jump();  /* normal exit must jump over fix */
     fs->patchtohere(condexit);  /* repetition must close upvalues */
-    fs->codeABC(OP_CLOSE, fs->reglevel( bl2.nactvar), 0, 0);
+    fs->codeABC(OP_CLOSE, fs->reglevel(bl2.nactvar), 0, 0);
     condexit = fs->jump();  /* repeat after closing upvalues */
     fs->patchtohere(exit);  /* normal exit comes to here */
   }
   fs->patchlist(condexit, repeat_init);  /* close the loop */
-  leaveblock(fs);  /* finish loop */
+  fs->leaveblock();  /* finish loop */
 }
 
 
@@ -1629,17 +1630,17 @@ static void exp1 (LexState *ls) {
 
 
 /*
-** Fix for instruction at position 'pc' to jump to 'dest'.
+** Fix for instruction at position 'pcpos' to jump to 'dest'.
 ** (Jump addresses are relative in Lua). 'back' true means
 ** a back jump.
 */
-static void fixforjump (FuncState *fs, int pc, int dest, int back) {
-  Instruction *jmp = &fs->getProto()->getCode()[pc];
-  int offset = dest - (pc + 1);
+void FuncState::fixforjump(int pcpos, int dest, int back) {
+  Instruction *jmp = &getProto()->getCode()[pcpos];
+  int offset = dest - (pcpos + 1);
   if (back)
     offset = -offset;
   if (l_unlikely(offset > MAXARG_Bx))
-    fs->getLexState()->syntaxError("control structure too long");
+    getLexState()->syntaxError("control structure too long");
   SETARG_Bx(*jmp, offset);
 }
 
@@ -1657,18 +1658,18 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isgen) {
   ls->checknext( TK_DO);
   prep = fs->codeABx(forprep[isgen], base, 0);
   fs->getFreeRegRef()--;  /* both 'forprep' remove one register from the stack */
-  enterblock(fs, &bl, 0);  /* scope for declared variables */
+  fs->enterblock(&bl, 0);  /* scope for declared variables */
   ls->adjustlocalvars(nvars);
   fs->reserveregs(nvars);
   block(ls);
-  leaveblock(fs);  /* end of scope for declared variables */
-  fixforjump(fs, prep, fs->getlabel(), 0);
+  fs->leaveblock();  /* end of scope for declared variables */
+  fs->fixforjump(prep, fs->getlabel(), 0);
   if (isgen) {  /* generic for? */
     fs->codeABC(OP_TFORCALL, base, 0, nvars);
     fs->fixline(line);
   }
   endfor = fs->codeABx(forloop[isgen], base, 0);
-  fixforjump(fs, endfor, prep + 1, 1);
+  fs->fixforjump(endfor, prep + 1, 1);
   fs->fixline(line);
 }
 
@@ -1727,7 +1728,7 @@ static void forstat (LexState *ls, int line) {
   FuncState *fs = ls->getFuncState();
   TString *varname;
   BlockCnt bl;
-  enterblock(fs, &bl, 1);  /* scope for loop and control variables */
+  fs->enterblock(&bl, 1);  /* scope for loop and control variables */
   ls->nextToken();  /* skip 'for' */
   varname = ls->str_checkname();  /* first variable name */
   switch (ls->getCurrentToken().token) {
@@ -1736,7 +1737,7 @@ static void forstat (LexState *ls, int line) {
     default: ls->syntaxError( "'=' or 'in' expected");
   }
   ls->check_match( TK_END, TK_FOR, line);
-  leaveblock(fs);  /* loop scope ('break' jumps to this point) */
+  fs->leaveblock();  /* loop scope ('break' jumps to this point) */
 }
 
 
@@ -1798,10 +1799,10 @@ static lu_byte getvarattribute (LexState *ls, lu_byte df) {
 }
 
 
-static void checktoclose (FuncState *fs, int level) {
+void FuncState::checktoclose(int level) {
   if (level != -1) {  /* is there a to-be-closed variable? */
-    fs->marktobeclosed();
-    fs->codeABC(OP_TBC, fs->reglevel( level), 0, 0);
+    marktobeclosed();
+    codeABC(OP_TBC, reglevel(level), 0, 0);
   }
 }
 
@@ -1846,7 +1847,7 @@ static void localstat (LexState *ls) {
     ls->adjust_assign(nvars, nexps, &e);
     ls->adjustlocalvars(nvars);
   }
-  checktoclose(fs, toclose);
+  fs->checktoclose(toclose);
 }
 
 
@@ -1881,9 +1882,9 @@ static void globalnames (LexState *ls, lu_byte defkind) {
     ls->adjust_assign(nvars, nexps, &e);
     for (i = 0; i < nvars; i++) {  /* for each variable */
       expdesc var;
-      TString *varname = fs->getlocalvardesc( lastidx - i)->vd.name;
+      TString *varname = fs->getlocalvardesc(lastidx - i)->vd.name;
       ls->buildglobal(varname, &var);  /* create global variable in 'var' */
-      storevartop(fs, &var);
+      fs->storevartop(&var);
     }
   }
   fs->setNumActiveVars(cast_short(fs->getNumActiveVars() + nvars));  /* activate declaration */
@@ -2112,7 +2113,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   BlockCnt bl;
   Upvaldesc *env;
   open_func(ls, fs, &bl);
-  setvararg(fs, 0);  /* main function is always declared vararg */
+  fs->setvararg(0);  /* main function is always declared vararg */
   env = fs->allocupvalue();  /* ...set environment upvalue */
   env->setInStack(1);
   env->setIndex(0);
