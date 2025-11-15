@@ -147,6 +147,11 @@ public:
   // Phase 84: Variable checking and scope
   void check_readonly(expdesc *e);
   void adjustlocalvars(int nvars);
+  // Phase 86: Variable building and assignment
+  void buildglobal(TString *varname, expdesc *var);
+  void buildvar(TString *varname, expdesc *var);
+  void singlevar(expdesc *var);
+  void adjust_assign(int nvars, int nexps, expdesc *e);
 };
 
 

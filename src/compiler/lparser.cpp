@@ -478,19 +478,19 @@ void FuncState::marktobeclosed() {
 ** this upvalue into all intermediate functions. If it is a global, set
 ** 'var' as 'void' as a flag.
 */
-static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
-  int v = fs->searchvar(n, var);  /* look up variables at current level */
+void FuncState::singlevaraux(TString *n, expdesc *var, int base) {
+  int v = searchvar(n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)
-      fs->markupval(var->getLocalVarIndex());  /* local will be used as an upval */
+      markupval(var->getLocalVarIndex());  /* local will be used as an upval */
   }
   else {  /* not found at current level; try upvalues */
-    int idx = fs->searchupvalue(n);  /* try existing upvalues */
+    int idx = searchupvalue(n);  /* try existing upvalues */
     if (idx < 0) {  /* not found? */
-      if (fs->getPrev() != NULL)  /* more levels? */
-        singlevaraux(fs->getPrev(), n, var, 0);  /* try upper levels */
+      if (getPrev() != NULL)  /* more levels? */
+        getPrev()->singlevaraux(n, var, 0);  /* try upper levels */
       if (var->getKind() == VLOCAL || var->getKind() == VUPVAL)  /* local or upvalue? */
-        idx  = fs->newupvalue(n, var);  /* will be a new upvalue */
+        idx = newupvalue(n, var);  /* will be a new upvalue */
       else  /* it is a global or a constant */
         return;  /* don't need to do anything at this level */
     }
@@ -499,44 +499,42 @@ static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
 }
 
 
-static void buildglobal (LexState *ls, TString *varname, expdesc *var) {
-  FuncState *fs = ls->getFuncState();
+void LexState::buildglobal(TString *varname, expdesc *var) {
+  FuncState *funcState = getFuncState();
   expdesc key;
   var->init(VGLOBAL, -1);  /* global by default */
-  singlevaraux(fs, ls->getEnvName(), var, 1);  /* get environment variable */
+  funcState->singlevaraux(getEnvName(), var, 1);  /* get environment variable */
   if (var->getKind() == VGLOBAL)
-    ls->semerror( "_ENV is global when accessing variable '%s'",
-                      getstr(varname));
-  fs->exp2anyregup(var);  /* _ENV could be a constant */
+    semerror("_ENV is global when accessing variable '%s'", getstr(varname));
+  funcState->exp2anyregup(var);  /* _ENV could be a constant */
   key.initString(varname);  /* key is variable name */
-  fs->indexed(var, &key);  /* 'var' represents _ENV[varname] */
+  funcState->indexed(var, &key);  /* 'var' represents _ENV[varname] */
 }
 
 
 /*
-** Find a variable with the given name 'n', handling global variables
-** too.
+** Find a variable with the given name, handling global variables too.
 */
-static void buildvar (LexState *ls, TString *varname, expdesc *var) {
-  FuncState *fs = ls->getFuncState();
+void LexState::buildvar(TString *varname, expdesc *var) {
+  FuncState *funcState = getFuncState();
   var->init(VGLOBAL, -1);  /* global by default */
-  singlevaraux(fs, varname, var, 1);
+  funcState->singlevaraux(varname, var, 1);
   if (var->getKind() == VGLOBAL) {  /* global name? */
     int info = var->getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
-      ls->semerror( "variable '%s' not declared", getstr(varname));
-    buildglobal(ls, varname, var);
-    if (info != -1 && ls->getDyndata()->actvar.arr[info].vd.kind == GDKCONST)
+      semerror("variable '%s' not declared", getstr(varname));
+    buildglobal(varname, var);
+    if (info != -1 && getDyndata()->actvar.arr[info].vd.kind == GDKCONST)
       var->setIndexedReadOnly(1);  /* mark variable as read-only */
     else  /* anyway must be a global */
-      lua_assert(info == -1 || ls->getDyndata()->actvar.arr[info].vd.kind == GDKREG);
+      lua_assert(info == -1 || getDyndata()->actvar.arr[info].vd.kind == GDKREG);
   }
 }
 
 
-static void singlevar (LexState *ls, expdesc *var) {
-  buildvar(ls, ls->str_checkname(), var);
+void LexState::singlevar(expdesc *var) {
+  buildvar(str_checkname(), var);
 }
 
 
@@ -544,25 +542,25 @@ static void singlevar (LexState *ls, expdesc *var) {
 ** Adjust the number of results from an expression list 'e' with 'nexps'
 ** expressions to 'nvars' values.
 */
-static void adjust_assign (LexState *ls, int nvars, int nexps, expdesc *e) {
-  FuncState *fs = ls->getFuncState();
+void LexState::adjust_assign(int nvars, int nexps, expdesc *e) {
+  FuncState *funcState = getFuncState();
   int needed = nvars - nexps;  /* extra values needed */
   if (hasmultret(e->getKind())) {  /* last expression has multiple returns? */
     int extra = needed + 1;  /* discount last expression itself */
     if (extra < 0)
       extra = 0;
-    fs->setreturns(e, extra);  /* last exp. provides the difference */
+    funcState->setreturns(e, extra);  /* last exp. provides the difference */
   }
   else {
     if (e->getKind() != VVOID)  /* at least one expression? */
-      fs->exp2nextreg(e);  /* close last expression */
+      funcState->exp2nextreg(e);  /* close last expression */
     if (needed > 0)  /* missing values? */
-      fs->nil(fs->getFreeReg(), needed);  /* complete with nils */
+      funcState->nil(funcState->getFreeReg(), needed);  /* complete with nils */
   }
   if (needed > 0)
-    fs->reserveregs(needed);  /* registers for extra values */
+    funcState->reserveregs(needed);  /* registers for extra values */
   else  /* adding 'needed' is actually a subtraction */
-    fs->setFreeReg(cast_byte(fs->getFreeReg() + needed));  /* remove extra values */
+    funcState->setFreeReg(cast_byte(funcState->getFreeReg() + needed));  /* remove extra values */
 }
 
 
@@ -1199,7 +1197,7 @@ static void primaryexp (LexState *ls, expdesc *v) {
       return;
     }
     case TK_NAME: {
-      singlevar(ls, v);
+      ls->singlevar(v);
       return;
     }
     default: {
@@ -1509,7 +1507,7 @@ static void restassign (LexState *ls, struct LHS_assign *lh, int nvars) {
     ls->checknext( '=');
     nexps = explist(ls, &e);
     if (nexps != nvars)
-      adjust_assign(ls, nvars, nexps, &e);
+      ls->adjust_assign(nvars, nexps, &e);
     else {
       ls->getFuncState()->setoneret(&e);  /* close last expression */
       ls->getFuncState()->storevar(&lh->v, &e);
@@ -1718,7 +1716,7 @@ static void forlist (LexState *ls, TString *indexname) {
   }
   ls->checknext( TK_IN);
   line = ls->getLineNumber();
-  adjust_assign(ls, 4, explist(ls, &e), &e);
+  ls->adjust_assign(4, explist(ls, &e), &e);
   ls->adjustlocalvars(3);  /* start scope for internal variables */
   fs->marktobeclosed();  /* last internal var. must be closed */
   fs->checkstack(2);  /* extra space to call iterator */
@@ -1847,7 +1845,7 @@ static void localstat (LexState *ls) {
     fs->getNumActiveVarsRef()++;  /* but count it */
   }
   else {
-    adjust_assign(ls, nvars, nexps, &e);
+    ls->adjust_assign(nvars, nexps, &e);
     ls->adjustlocalvars(nvars);
   }
   checktoclose(fs, toclose);
@@ -1882,11 +1880,11 @@ static void globalnames (LexState *ls, lu_byte defkind) {
     expdesc e;
     int i;
     int nexps = explist(ls, &e);  /* read list of expressions */
-    adjust_assign(ls, nvars, nexps, &e);
+    ls->adjust_assign(nvars, nexps, &e);
     for (i = 0; i < nvars; i++) {  /* for each variable */
       expdesc var;
       TString *varname = fs->getlocalvardesc( lastidx - i)->vd.name;
-      buildglobal(ls, varname, &var);  /* create global variable in 'var' */
+      ls->buildglobal(varname, &var);  /* create global variable in 'var' */
       storevartop(fs, &var);
     }
   }
@@ -1917,7 +1915,7 @@ static void globalfunc (LexState *ls, int line) {
   TString *fname = ls->str_checkname();
   ls->new_varkind( fname, GDKREG);  /* declare global variable */
   fs->getNumActiveVarsRef()++;  /* enter its scope */
-  buildglobal(ls, fname, &var);
+  ls->buildglobal(fname, &var);
   body(ls, &b, 0, ls->getLineNumber());  /* compile and return closure in 'b' */
   fs->storevar(&var, &b);
   fs->fixline(line);  /* definition "happens" in the first line */
@@ -1937,7 +1935,7 @@ static void globalstatfunc (LexState *ls, int line) {
 static int funcname (LexState *ls, expdesc *v) {
   /* funcname -> NAME {fieldsel} [':' NAME] */
   int ismethod = 0;
-  singlevar(ls, v);
+  ls->singlevar(v);
   while (ls->getCurrentToken().token == '.')
     fieldsel(ls, v);
   if (ls->getCurrentToken().token == ':') {

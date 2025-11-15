@@ -462,6 +462,8 @@ public:
   int searchvar(TString *n, expdesc *var);
   void markupval(int level);
   void marktobeclosed();
+  // Phase 86: Variable lookup auxiliary
+  void singlevaraux(TString *n, expdesc *var, int base);
 
 private:
   // Internal helper methods (only used within lcode.cpp)
