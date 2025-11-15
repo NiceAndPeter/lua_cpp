@@ -186,8 +186,10 @@ public:
   int newlabelentry(Labellist *l, TString *name, int line, int pc);
   int newgotoentry(TString *name, int line);
   void createlabel(TString *name, int line, int last);
+  l_noret undefgoto(Labeldesc *gt);
   // Phase 88: Parser infrastructure (convert from static)
   Proto *addprototype();
+  void mainfunc(FuncState *fs);
 
 private:
   // Phase 88: Parser implementation methods (static → private)
@@ -241,7 +243,6 @@ private:
   void open_func(FuncState *fs, BlockCnt *bl);
   void close_func();
   void check_conflict(struct LHS_assign *lh, expdesc *v);
-  void mainfunc(FuncState *fs);
 };
 
 
