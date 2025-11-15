@@ -51,7 +51,7 @@ typedef lu_byte TStatus;
 #define APIstatus(st)	cast_int(st)
 
 /* maximum value for size_t */
-#define MAX_SIZET	((size_t)(~(size_t)0))
+inline constexpr size_t MAX_SIZET = ((size_t)(~(size_t)0));
 
 /*
 ** Maximum size for strings and userdata visible for Lua; should be

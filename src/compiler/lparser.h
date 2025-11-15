@@ -155,12 +155,12 @@ public:
 
 
 /* kinds of variables */
-#define VDKREG		0   /* regular local */
-#define RDKCONST	1   /* local constant */
-#define RDKTOCLOSE	2   /* to-be-closed */
-#define RDKCTC		3   /* local compile-time constant */
-#define GDKREG		4   /* regular global */
-#define GDKCONST	5   /* global constant */
+inline constexpr lu_byte VDKREG = 0;   /* regular local */
+inline constexpr lu_byte RDKCONST = 1;   /* local constant */
+inline constexpr lu_byte RDKTOCLOSE = 2;   /* to-be-closed */
+inline constexpr lu_byte RDKCTC = 3;   /* local compile-time constant */
+inline constexpr lu_byte GDKREG = 4;   /* regular global */
+inline constexpr lu_byte GDKCONST = 5;   /* global constant */
 
 /* Phase 44.6: varinreg and varglobal macros replaced with Vardesc methods:
 ** - varinreg(v) → v->isInReg()

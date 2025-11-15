@@ -36,11 +36,11 @@
 #include "llimits.h"
 
 
-#define ALPHABIT	0
-#define DIGITBIT	1
-#define PRINTBIT	2
-#define SPACEBIT	3
-#define XDIGITBIT	4
+inline constexpr int ALPHABIT = 0;
+inline constexpr int DIGITBIT = 1;
+inline constexpr int PRINTBIT = 2;
+inline constexpr int SPACEBIT = 3;
+inline constexpr int XDIGITBIT = 4;
 
 /* one entry for each character and for -1 (EOZ) */
 LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
