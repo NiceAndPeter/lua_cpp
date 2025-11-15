@@ -1,16 +1,17 @@
-# Lua C++ Conversion Project - Essential Guide
+# ⚠️ DOCUMENTATION MOVED
 
-## Project Overview
+**This file is outdated. Please refer to the updated documentation:**
 
-Converting Lua 5.5 from C to modern C++23 with:
-- Zero performance regression (strict requirement)
-- C API compatibility preserved
-- CRTP for static polymorphism
-- Full encapsulation with private fields
+# → See [CLAUDE.md](CLAUDE.md) for current documentation ←
 
-**Repository**: `/home/peter/claude/lua`
-**Performance**: 2.14s ✓ (3% better than 2.17s baseline!)
-**Status**: All 19 structs converted, 13/19 fully encapsulated (68%)
+---
+
+## Quick Summary
+
+**Repository**: `/home/user/lua_cpp`
+**Status**: **100% ENCAPSULATION COMPLETE** ✅ (All 19 classes fully encapsulated)
+
+For the comprehensive, up-to-date guide for AI assistants, see **[CLAUDE.md](CLAUDE.md)**
 
 ---
 
