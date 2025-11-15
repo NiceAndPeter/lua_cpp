@@ -70,11 +70,13 @@ inline bool checknoTM(const Table* mt, TMS e) noexcept {
 	return mt == nullptr || (mt->getFlags() & (1u << e));
 }
 
-/* gfasttm and fasttm must remain macros due to forward declaration dependencies */
-#define gfasttm(g,mt,e)  \
-  (checknoTM(mt, e) ? NULL : luaT_gettm(mt, e, (g)->getTMName(e)))
+// Phase 88: Convert gfasttm and fasttm macros to inline functions
+// Forward declarations - definitions provided after full types are available
+class global_State;
+class lua_State;
 
-#define fasttm(l,mt,e)	gfasttm(G(l), mt, e)
+inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept;
+inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept;
 
 LUAI_DDEC(const char *const luaT_typenames_[LUA_TOTALTYPES];)
 

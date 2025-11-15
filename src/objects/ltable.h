@@ -44,22 +44,8 @@ inline constexpr lu_byte NOTBITDUMMY = cast_byte(~BITDUMMY);
 
 
 
-#define luaH_fastgeti(t,k,res,tag) \
-  { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
-    if ((u < h->arraySize())) { \
-      tag = *h->getArrayTag(u); \
-      if (!tagisempty(tag)) { farr2val(h, u, tag, (res)); }} \
-    else { tag = luaH_getint(h, (k), res); }}
-
-
-#define luaH_fastseti(t,k,val,hres) \
-  { Table *h = t; lua_Unsigned u = l_castS2U(k) - 1u; \
-    if ((u < h->arraySize())) { \
-      lu_byte *tag = h->getArrayTag(u); \
-      if (checknoTM(h->getMetatable(), TM_NEWINDEX) || !tagisempty(*tag)) \
-        { fval2arr(h, u, tag, (val)); hres = HOK; } \
-      else hres = ~cast_int(u); } \
-    else { hres = luaH_psetint(h, k, val); }}
+// Phase 88: luaH_fastgeti and luaH_fastseti converted to inline functions
+// Definitions moved after farr2val and fval2arr are defined (see below)
 
 
 /* results from pset */
@@ -149,7 +135,6 @@ inline void fval2arr(Table* h, lua_Unsigned k, lu_byte* tag, const TValue* val) 
   *h->getArrayVal(k) = val->getValue();
 }
 
-
 LUAI_FUNC lu_byte luaH_get (Table *t, const TValue *key, TValue *res);
 LUAI_FUNC lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res);
 LUAI_FUNC lu_byte luaH_getstr (Table *t, TString *key, TValue *res);
@@ -178,6 +163,38 @@ LUAI_FUNC lu_mem luaH_size (Table *t);
 LUAI_FUNC void luaH_free (lua_State *L, Table *t);
 LUAI_FUNC int luaH_next (lua_State *L, Table *t, StkId key);
 LUAI_FUNC lua_Unsigned luaH_getn (lua_State *L, Table *t);
+
+// Phase 88: Convert luaH_fastgeti and luaH_fastseti macros to inline functions
+// These are hot-path table access functions used throughout the VM
+// Defined here after all necessary forward declarations are available
+inline void luaH_fastgeti(Table* t, lua_Integer k, TValue* res, lu_byte& tag) noexcept {
+	Table* h = t;
+	lua_Unsigned u = l_castS2U(k) - 1u;
+	if (u < h->arraySize()) {
+		tag = *h->getArrayTag(u);
+		if (!tagisempty(tag)) {
+			farr2val(h, u, tag, res);
+		}
+	} else {
+		tag = luaH_getint(h, k, res);
+	}
+}
+
+inline void luaH_fastseti(Table* t, lua_Integer k, TValue* val, int& hres) noexcept {
+	Table* h = t;
+	lua_Unsigned u = l_castS2U(k) - 1u;
+	if (u < h->arraySize()) {
+		lu_byte* tag = h->getArrayTag(u);
+		if (checknoTM(h->getMetatable(), TM_NEWINDEX) || !tagisempty(*tag)) {
+			fval2arr(h, u, tag, val);
+			hres = HOK;
+		} else {
+			hres = ~cast_int(u);
+		}
+	} else {
+		hres = luaH_psetint(h, k, val);
+	}
+}
 
 
 #if defined(LUA_DEBUG)
