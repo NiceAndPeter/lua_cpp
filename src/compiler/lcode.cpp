@@ -381,16 +381,16 @@ void FuncState::freeExpressions(expdesc *e1, expdesc *e2) {
 /*
 ** Add constant 'v' to prototype's list of constants (field 'k').
 */
-static int addk (FuncState *fs, Proto *f, TValue *v) {
-  lua_State *L = fs->getLexState()->getLuaState();
-  int oldsize = f->getConstantsSize();
-  int k = fs->getNK();
-  luaM_growvector(L, f->getConstantsRef(), k, f->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
-  while (oldsize < f->getConstantsSize())
-    setnilvalue(&f->getConstants()[oldsize++]);
-  setobj(L, &f->getConstants()[k], v);
-  fs->incrementNK();
-  luaC_barrier(L, f, v);
+int FuncState::addk(Proto *proto, TValue *v) {
+  lua_State *L = getLexState()->getLuaState();
+  int oldsize = proto->getConstantsSize();
+  int k = getNK();
+  luaM_growvector(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
+  while (oldsize < proto->getConstantsSize())
+    setnilvalue(&proto->getConstants()[oldsize++]);
+  setobj(L, &proto->getConstants()[k], v);
+  incrementNK();
+  luaC_barrier(L, proto, v);
   return k;
 }
 
@@ -401,22 +401,22 @@ static int addk (FuncState *fs, Proto *f, TValue *v) {
 ** as keys (nil cannot be a key, integer keys can collapse with float
 ** keys), the caller must provide a useful 'key' for indexing the cache.
 */
-static int k2proto (FuncState *fs, TValue *key, TValue *v) {
+int FuncState::k2proto(TValue *key, TValue *v) {
   TValue val;
-  Proto *f = fs->getProto();
-  int tag = luaH_get(fs->getKCache(), key, &val);  /* query scanner table */
+  Proto *proto = getProto();
+  int tag = luaH_get(getKCache(), key, &val);  /* query scanner table */
   if (!tagisempty(tag)) {  /* is there an index there? */
     int k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
-    lua_assert(ttisfloat(key) || luaV_rawequalobj(&f->getConstants()[k], v));
+    lua_assert(ttisfloat(key) || luaV_rawequalobj(&proto->getConstants()[k], v));
     return k;  /* reuse index */
   }
   else {  /* constant not found; create a new entry */
-    int k = addk(fs, f, v);
+    int k = addk(proto, v);
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
     setivalue(&val, k);
-    luaH_set(fs->getLexState()->getLuaState(), fs->getKCache(), key, &val);
+    luaH_set(getLexState()->getLuaState(), getKCache(), key, &val);
     return k;
   }
 }
@@ -425,20 +425,20 @@ static int k2proto (FuncState *fs, TValue *key, TValue *v) {
 /*
 ** Add a string to list of constants and return its index.
 */
-static int stringK (FuncState *fs, TString *s) {
+int FuncState::stringK(TString *s) {
   TValue o;
-  setsvalue(fs->getLexState()->getLuaState(), &o, s);
-  return k2proto(fs, &o, &o);  /* use string itself as key */
+  setsvalue(getLexState()->getLuaState(), &o, s);
+  return k2proto(&o, &o);  /* use string itself as key */
 }
 
 
 /*
 ** Add an integer to list of constants and return its index.
 */
-static int luaK_intK (FuncState *fs, lua_Integer n) {
+int FuncState::intK(lua_Integer n) {
   TValue o;
   setivalue(&o, n);
-  return k2proto(fs, &o, &o);  /* use integer itself as key */
+  return k2proto(&o, &o);  /* use integer itself as key */
 }
 
 /*
@@ -453,12 +453,12 @@ static int luaK_intK (FuncState *fs, lua_Integer n) {
 ** cases, just generate a new entry. At worst, this only wastes an entry
 ** with a duplicate.
 */
-static int luaK_numberK (FuncState *fs, lua_Number r) {
+int FuncState::numberK(lua_Number r) {
   TValue o, kv;
   setfltvalue(&o, r);  /* value as a TValue */
   if (r == 0) {  /* handle zero as a special case */
-    setpvalue(&kv, fs);  /* use FuncState as index */
-    return k2proto(fs, &kv, &o);  /* cannot collide */
+    setpvalue(&kv, this);  /* use FuncState as index */
+    return k2proto(&kv, &o);  /* cannot collide */
   }
   else {
     const int nbm = l_floatatt(MANT_DIG);
@@ -467,13 +467,13 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
     lua_Integer ik;
     setfltvalue(&kv, k);  /* key as a TValue */
     if (!luaV_flttointeger(k, &ik, F2Ieq)) {  /* not an integer value? */
-      int n = k2proto(fs, &kv, &o);  /* use key */
-      if (luaV_rawequalobj(&fs->getProto()->getConstants()[n], &o))  /* correct value? */
+      int n = k2proto(&kv, &o);  /* use key */
+      if (luaV_rawequalobj(&getProto()->getConstants()[n], &o))  /* correct value? */
         return n;
     }
     /* else, either key is still an integer or there was a collision;
        anyway, do not try to reuse constant; instead, create a new one */
-    return addk(fs, fs->getProto(), &o);
+    return addk(getProto(), &o);
   }
 }
 
@@ -481,32 +481,32 @@ static int luaK_numberK (FuncState *fs, lua_Number r) {
 /*
 ** Add a false to list of constants and return its index.
 */
-static int boolF (FuncState *fs) {
+int FuncState::boolF() {
   TValue o;
   setbfvalue(&o);
-  return k2proto(fs, &o, &o);  /* use boolean itself as key */
+  return k2proto(&o, &o);  /* use boolean itself as key */
 }
 
 
 /*
 ** Add a true to list of constants and return its index.
 */
-static int boolT (FuncState *fs) {
+int FuncState::boolT() {
   TValue o;
   setbtvalue(&o);
-  return k2proto(fs, &o, &o);  /* use boolean itself as key */
+  return k2proto(&o, &o);  /* use boolean itself as key */
 }
 
 
 /*
 ** Add nil to list of constants and return its index.
 */
-static int nilK (FuncState *fs) {
+int FuncState::nilK() {
   TValue k, v;
   setnilvalue(&v);
   /* cannot use nil as key; instead use table itself */
-  sethvalue(fs->getLexState()->getLuaState(), &k, fs->getKCache());
-  return k2proto(fs, &k, &v);
+  sethvalue(getLexState()->getLuaState(), &k, getKCache());
+  return k2proto(&k, &v);
 }
 
 
@@ -530,12 +530,12 @@ static int fitsBx (lua_Integer i) {
 
 
 
-static void luaK_float (FuncState *fs, int reg, lua_Number f) {
+void FuncState::floatCode(int reg, lua_Number flt) {
   lua_Integer fi;
-  if (luaV_flttointeger(f, &fi, F2Ieq) && fitsBx(fi))
-    fs->codeAsBx(OP_LOADF, reg, cast_int(fi));
+  if (luaV_flttointeger(flt, &fi, F2Ieq) && fitsBx(fi))
+    codeAsBx(OP_LOADF, reg, cast_int(fi));
   else
-    fs->codek(reg, luaK_numberK(fs, f));
+    codek(reg, numberK(flt));
 }
 
 
@@ -572,9 +572,9 @@ static void const2exp (TValue *v, expdesc *e) {
 /*
 ** Convert a VKSTR to a VK
 */
-static int str2K (FuncState *fs, expdesc *e) {
+int FuncState::str2K(expdesc *e) {
   lua_assert(e->getKind() == VKSTR);
-  e->setInfo(stringK(fs, e->getStringValue()));
+  e->setInfo(stringK(e->getStringValue()));
   e->setKind(VK);
   return e->getInfo();
 }
@@ -605,14 +605,14 @@ static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
       break;
     }
     case VKSTR: {
-      str2K(fs, e);
+      fs->str2K(e);
     }  /* FALLTHROUGH */
     case VK: {
       fs->codek(reg, e->getInfo());
       break;
     }
     case VKFLT: {
-      luaK_float(fs, reg, e->getFloatValue());
+      fs->floatCode(reg, e->getFloatValue());
       break;
     }
     case VKINT: {
@@ -715,16 +715,16 @@ static void exp2reg (FuncState *fs, expdesc *e, int reg) {
 ** Try to make 'e' a K expression with an index in the range of R/K
 ** indices. Return true iff succeeded.
 */
-static int luaK_exp2K (FuncState *fs, expdesc *e) {
+int FuncState::exp2K(expdesc *e) {
   if (!hasjumps(e)) {
     int info;
     switch (e->getKind()) {  /* move constants to 'k' */
-      case VTRUE: info = boolT(fs); break;
-      case VFALSE: info = boolF(fs); break;
-      case VNIL: info = nilK(fs); break;
-      case VKINT: info = luaK_intK(fs, e->getIntValue()); break;
-      case VKFLT: info = luaK_numberK(fs, e->getFloatValue()); break;
-      case VKSTR: info = stringK(fs, e->getStringValue()); break;
+      case VTRUE: info = boolT(); break;
+      case VFALSE: info = boolF(); break;
+      case VNIL: info = nilK(); break;
+      case VKINT: info = intK(e->getIntValue()); break;
+      case VKFLT: info = numberK(e->getFloatValue()); break;
+      case VKSTR: info = stringK(e->getStringValue()); break;
       case VK: info = e->getInfo(); break;
       default: return 0;  /* not a constant */
     }
@@ -746,7 +746,7 @@ static int luaK_exp2K (FuncState *fs, expdesc *e) {
 ** Returns 1 iff expression is K.
 */
 static int exp2RK (FuncState *fs, expdesc *e) {
-  if (luaK_exp2K(fs, e))
+  if (fs->exp2K(e))
     return 1;
   else {  /* not a constant in the right range: put it in a register */
     fs->exp2anyreg(e);
@@ -1085,7 +1085,7 @@ static void codebinNoK (FuncState *fs, BinOpr opr,
 */
 static void codearith (FuncState *fs, BinOpr opr,
                        expdesc *e1, expdesc *e2, int flip, int line) {
-  if (tonumeral(e2, NULL) && luaK_exp2K(fs, e2))  /* K operand? */
+  if (tonumeral(e2, NULL) && fs->exp2K(e2))  /* K operand? */
     codebinK(fs, opr, e1, e2, flip, line);
   else  /* 'e2' is neither an immediate nor a K operand */
     codebinNoK(fs, opr, e1, e2, flip, line);
@@ -1122,7 +1122,7 @@ static void codebitwise (FuncState *fs, BinOpr opr,
     swapexps(e1, e2);  /* 'e2' will be the constant operand */
     flip = 1;
   }
-  if (e2->getKind() == VKINT && luaK_exp2K(fs, e2))  /* K operand? */
+  if (e2->getKind() == VKINT && fs->exp2K(e2))  /* K operand? */
     codebinK(fs, opr, e1, e2, flip, line);
   else  /* no constants */
     codebinNoK(fs, opr, e1, e2, flip, line);
@@ -1355,7 +1355,7 @@ void FuncState::intCode(int reg, lua_Integer i) {
   if (fitsBx(i))
     codeAsBx(OP_LOADI, reg, cast_int(i));
   else
-    codek(reg, luaK_intK(this, i));
+    codek(reg, intK(i));
 }
 
 void FuncState::dischargevars(expdesc *e) {
@@ -1453,7 +1453,7 @@ void FuncState::self(expdesc *e, expdesc *key) {
   reserveregs(2);  /* method and 'self' produced by op_self */
   lua_assert(key->getKind() == VKSTR);
   /* is method name a short string in a valid K index? */
-  if (strisshr(key->getStringValue()) && luaK_exp2K(this, key)) {
+  if (strisshr(key->getStringValue()) && exp2K(key)) {
     /* can use 'self' opcode */
     codeABCk(OP_SELF, base, ereg, key->getInfo(), 0);
   }
@@ -1468,7 +1468,7 @@ void FuncState::self(expdesc *e, expdesc *key) {
 void FuncState::indexed(expdesc *t, expdesc *k) {
   int keystr = -1;
   if (k->getKind() == VKSTR)
-    keystr = str2K(this, k);
+    keystr = str2K(k);
   lua_assert(!hasjumps(t) &&
              (t->getKind() == VLOCAL || t->getKind() == VNONRELOC || t->getKind() == VUPVAL));
   if (t->getKind() == VUPVAL && !isKstr(this, k))  /* upvalue indexed by non 'Kstr'? */

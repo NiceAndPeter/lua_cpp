@@ -379,6 +379,18 @@ public:
   void freeExpressions(expdesc *e1, expdesc *e2);
   TValue *const2val(const expdesc *e);
   int codeextraarg(int A);
+  // Phase 78: Constant management (public for now as used by unconverted functions)
+  int addk(Proto *proto, TValue *v);
+  int k2proto(TValue *key, TValue *v);
+  int stringK(TString *s);
+  int intK(lua_Integer n);
+  int numberK(lua_Number r);
+  int boolF();
+  int boolT();
+  int nilK();
+  void floatCode(int reg, lua_Number flt);
+  int str2K(expdesc *e);
+  int exp2K(expdesc *e);
 
 private:
   // Internal helper methods (only used within lcode.cpp)
