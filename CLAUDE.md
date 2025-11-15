@@ -665,6 +665,39 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
 3. ⚠️ **Test coverage metrics** - No gcov/lcov integration
 4. ⚠️ **Performance benchmarking** - Could add automated regression detection
 
+### Future Work & Architectural Opportunities
+
+**📋 Single Responsibility Principle Analysis** - See `SRP_ANALYSIS.md`
+
+**Analysis Date**: 2025-11-15
+**Status**: Analysis complete, implementation planning phase
+
+**Priority Classes for Refactoring**:
+1. ⭐⭐⭐ **FuncState** (16 fields → 5 subsystems) - LOW RISK, compile-time only
+   - Recommended starting point for SRP refactoring
+   - CodeBuffer, ConstantPool, VariableScope, RegisterAllocator, UpvalueTracker
+   - Estimated: 30-40 hours, no performance risk
+
+2. ⭐⭐ **global_State** (46+ fields → 7 components) - MEDIUM RISK, high value
+   - MemoryAllocator, GCAccounting, GCParameters, GCObjectLists, StringCache, TypeSystem, RuntimeServices
+   - Estimated: 40-60 hours, requires careful benchmarking
+
+3. ⭐ **Proto** (19 fields) - LOW RISK, medium value
+   - Potential separation of debug info from runtime data
+   - Estimated: 20-30 hours
+
+4. ⚠️ **lua_State** (27 fields) - VERY HIGH RISK, defer
+   - VM hot path - only consider after proving benefits with other classes
+   - Estimated: 60-80 hours, significant performance risk
+
+**Critical Constraints**:
+- ✅ Must maintain ≤2.21s performance (≤1% regression)
+- ✅ Must preserve C API compatibility
+- ✅ All refactoring must be zero-cost abstractions (inline accessors)
+- ✅ Benchmark after every significant change
+
+**See `SRP_ANALYSIS.md` for detailed analysis, decomposition proposals, and implementation roadmap.**
+
 ---
 
 ## Success Metrics
@@ -729,13 +762,18 @@ git push -u origin <branch-name>
 
 ## Additional Resources
 
+### Architectural Planning
+- **SRP_ANALYSIS.md** - Single Responsibility Principle analysis & refactoring roadmap (2025-11-15)
 - **ENCAPSULATION_PLAN.md** - Detailed phase-by-phase encapsulation plan (may be outdated)
 - **CONSTRUCTOR_PLAN.md** - Constructor implementation strategy
 - **PHASE_36_2_PLAN.md** - Specific phase documentation
+
+### Build & Development
 - **CMAKE_BUILD.md** - CMake build instructions
 
 ---
 
-**Last Updated**: 2025-11-15 - After repository analysis
+**Last Updated**: 2025-11-15 - After repository analysis and SRP analysis
 **Current Phase**: Encapsulation complete (100%), macro conversion in progress
 **Performance Status**: Must verify with fresh benchmark (target ≤2.21s)
+**Future Work**: See SRP_ANALYSIS.md for architectural refactoring opportunities
