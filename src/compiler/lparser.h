@@ -10,8 +10,30 @@
 #include "llimits.h"
 #include "lobject.h"
 #include "lopcodes.h"
+#include "ltm.h"
 #include "lzio.h"
 
+/*
+** grep "ORDER OPR" if you change these enums  (ORDER OP)
+*/
+typedef enum BinOpr {
+  /* arithmetic operators */
+  OPR_ADD, OPR_SUB, OPR_MUL, OPR_MOD, OPR_POW,
+  OPR_DIV, OPR_IDIV,
+  /* bitwise operators */
+  OPR_BAND, OPR_BOR, OPR_BXOR,
+  OPR_SHL, OPR_SHR,
+  /* string operator */
+  OPR_CONCAT,
+  /* comparison operators */
+  OPR_EQ, OPR_LT, OPR_LE,
+  OPR_NE, OPR_GT, OPR_GE,
+  /* logical operators */
+  OPR_AND, OPR_OR,
+  OPR_NOBINOPR
+} BinOpr;
+
+typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
 
 /*
 ** Expression and variable descriptor.
@@ -391,6 +413,32 @@ public:
   void floatCode(int reg, lua_Number flt);
   int str2K(expdesc *e);
   int exp2K(expdesc *e);
+  // Phase 79: Expression & code generation (public for now as used by unconverted functions)
+  void discharge2reg(expdesc *e, int reg);
+  void discharge2anyreg(expdesc *e);
+  int code_loadbool(int A, OpCode op);
+  int need_value(int list);
+  void exp2reg(expdesc *e, int reg);
+  int exp2RK(expdesc *e);
+  void codeABRK(OpCode o, int A, int B, expdesc *ec);
+  void negatecondition(expdesc *e);
+  int jumponcond(expdesc *e, int cond);
+  void codenot(expdesc *e);
+  int isKstr(expdesc *e);
+  int constfolding(int op, expdesc *e1, const expdesc *e2);
+  void codeunexpval(OpCode op, expdesc *e, int line);
+  void finishbinexpval(expdesc *e1, expdesc *e2, OpCode op, int v2, int flip, int line, OpCode mmop, TMS event);
+  void codebinexpval(BinOpr opr, expdesc *e1, expdesc *e2, int line);
+  void codebini(OpCode op, expdesc *e1, expdesc *e2, int flip, int line, TMS event);
+  void codebinK(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line);
+  int finishbinexpneg(expdesc *e1, expdesc *e2, OpCode op, int line, TMS event);
+  void codebinNoK(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line);
+  void codearith(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line);
+  void codecommutative(BinOpr op, expdesc *e1, expdesc *e2, int line);
+  void codebitwise(BinOpr opr, expdesc *e1, expdesc *e2, int line);
+  void codeorder(BinOpr opr, expdesc *e1, expdesc *e2);
+  void codeeq(BinOpr opr, expdesc *e1, expdesc *e2);
+  void codeconcat(expdesc *e1, expdesc *e2, int line);
 
 private:
   // Internal helper methods (only used within lcode.cpp)
