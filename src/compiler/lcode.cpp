@@ -289,15 +289,6 @@ int FuncState::codeAsBx(OpCode o, int A, int Bc) {
 }
 
 
-/*
-** Format and emit an 'isJ' instruction.
-*/
-static int codesJ (FuncState *fs, OpCode o, int sj, int k) {
-  int j = sj + OFFSET_sJ;
-  lua_assert(getOpMode(o) == isJ);
-  lua_assert(j <= MAXARG_sJ && (k & ~1) == 0);
-  return fs->code(CREATE_sJ(o, j, k));
-}
 
 
 /*
@@ -1217,14 +1208,15 @@ void FuncState::codeconcat(expdesc *e1, expdesc *e2, int line) {
 /*
 ** return the final target of a jump (skipping jumps to jumps)
 */
-static int finaltarget (Instruction *code, int i) {
+int FuncState::finaltarget(int i) {
+  Instruction *code = getProto()->getCode();
   int count;
   for (count = 0; count < 100; count++) {  /* avoid infinite loops */
-    Instruction pc = code[i];
-    if (GET_OPCODE(pc) != OP_JMP)
+    Instruction instr = code[i];
+    if (GET_OPCODE(instr) != OP_JMP)
       break;
     else
-      i += GETARG_sJ(pc) + 1;
+      i += GETARG_sJ(instr) + 1;
   }
   return i;
 }
@@ -1593,7 +1585,7 @@ void FuncState::setoneret(expdesc *e) {
 }
 
 int FuncState::jump() {
-  return ::codesJ(this, OP_JMP, NO_JUMP, 0);
+  return codesJ(OP_JMP, NO_JUMP, 0);
 }
 
 void FuncState::ret(int first, int nret) {
@@ -1825,7 +1817,7 @@ void FuncState::finish() {
         break;
       }
       case OP_JMP: {
-        int target = finaltarget(p->getCode(), i);
+        int target = finaltarget(i);
         fixjump(i, target);
         break;
       }

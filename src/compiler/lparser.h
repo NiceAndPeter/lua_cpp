@@ -443,6 +443,7 @@ public:
 private:
   // Internal helper methods (only used within lcode.cpp)
   int codesJ(int o, int sj, int k);
+  int finaltarget(int i);
   void goiffalse(expdesc *e);
 };
 
