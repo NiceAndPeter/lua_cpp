@@ -363,75 +363,74 @@ void FuncState::removevars(int tolevel) {
 
 
 /*
-** Search the upvalues of the function 'fs' for one
+** Search the upvalues of the function for one
 ** with the given 'name'.
 */
-static int searchupvalue (FuncState *fs, TString *name) {
+int FuncState::searchupvalue(TString *name) {
   int i;
-  Upvaldesc *up = fs->getProto()->getUpvalues();
-  for (i = 0; i < fs->getNumUpvalues(); i++) {
+  Upvaldesc *up = getProto()->getUpvalues();
+  for (i = 0; i < getNumUpvalues(); i++) {
     if (eqstr(up[i].getName(), name)) return i;
   }
   return -1;  /* not found */
 }
 
 
-static Upvaldesc *allocupvalue (FuncState *fs) {
-  Proto *f = fs->getProto();
-  int oldsize = f->getUpvaluesSize();
-  luaY_checklimit(fs, fs->getNumUpvalues() + 1, MAXUPVAL, "upvalues");
-  luaM_growvector(fs->getLexState()->getLuaState(), f->getUpvaluesRef(), fs->getNumUpvalues(), f->getUpvaluesSizeRef(),
+Upvaldesc *FuncState::allocupvalue() {
+  Proto *proto = getProto();
+  int oldsize = proto->getUpvaluesSize();
+  checklimit(getNumUpvalues() + 1, MAXUPVAL, "upvalues");
+  luaM_growvector(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
                   Upvaldesc, MAXUPVAL, "upvalues");
-  while (oldsize < f->getUpvaluesSize())
-    f->getUpvalues()[oldsize++].setName(NULL);
-  return &f->getUpvalues()[fs->getNumUpvaluesRef()++];
+  while (oldsize < proto->getUpvaluesSize())
+    proto->getUpvalues()[oldsize++].setName(NULL);
+  return &proto->getUpvalues()[getNumUpvaluesRef()++];
 }
 
 
-static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
-  Upvaldesc *up = allocupvalue(fs);
-  FuncState *prev = fs->getPrev();
+int FuncState::newupvalue(TString *name, expdesc *v) {
+  Upvaldesc *up = allocupvalue();
+  FuncState *prevFunc = getPrev();
   if (v->getKind() == VLOCAL) {
     up->setInStack(1);
     up->setIndex(v->getLocalRegister());
-    up->setKind(prev->getlocalvardesc(v->getLocalVarIndex())->vd.kind);
-    lua_assert(eqstr(name, prev->getlocalvardesc(v->getLocalVarIndex())->vd.name));
+    up->setKind(prevFunc->getlocalvardesc(v->getLocalVarIndex())->vd.kind);
+    lua_assert(eqstr(name, prevFunc->getlocalvardesc(v->getLocalVarIndex())->vd.name));
   }
   else {
     up->setInStack(0);
     up->setIndex(cast_byte(v->getInfo()));
-    up->setKind(prev->getProto()->getUpvalues()[v->getInfo()].getKind());
-    lua_assert(eqstr(name, prev->getProto()->getUpvalues()[v->getInfo()].getName()));
+    up->setKind(prevFunc->getProto()->getUpvalues()[v->getInfo()].getKind());
+    lua_assert(eqstr(name, prevFunc->getProto()->getUpvalues()[v->getInfo()].getName()));
   }
   up->setName(name);
-  luaC_objbarrier(fs->getLexState()->getLuaState(), fs->getProto(), name);
-  return fs->getNumUpvalues() - 1;
+  luaC_objbarrier(getLexState()->getLuaState(), getProto(), name);
+  return getNumUpvalues() - 1;
 }
 
 
 /*
-** Look for an active variable with the name 'n' in the
-** function 'fs'. If found, initialize 'var' with it and return
-** its expression kind; otherwise return -1. While searching,
-** var->u.info==-1 means that the preambular global declaration is
-** active (the default while there is no other global declaration);
-** var->u.info==-2 means there is no active collective declaration
-** (some previous global declaration but no collective declaration);
-** and var->u.info>=0 points to the inner-most (the first one found)
-** collective declaration, if there is one.
+** Look for an active variable with the name 'n' in the function.
+** If found, initialize 'var' with it and return its expression kind;
+** otherwise return -1. While searching, var->u.info==-1 means that
+** the preambular global declaration is active (the default while
+** there is no other global declaration); var->u.info==-2 means there
+** is no active collective declaration (some previous global declaration
+** but no collective declaration); and var->u.info>=0 points to the
+** inner-most (the first one found) collective declaration, if there is one.
 */
-static int searchvar (FuncState *fs, TString *n, expdesc *var) {
+int FuncState::searchvar(TString *n, expdesc *var) {
   int i;
-  for (i = cast_int(fs->getNumActiveVars()) - 1; i >= 0; i--) {
-    Vardesc *vd = fs->getlocalvardesc( i);
+  for (i = cast_int(getNumActiveVars()) - 1; i >= 0; i--) {
+    Vardesc *vd = getlocalvardesc(i);
     if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == NULL) {  /* collective declaration? */
         if (var->getInfo() < 0)  /* no previous collective declaration? */
-          var->setInfo(fs->getFirstLocal() + i);  /* this is the first one */
+          var->setInfo(getFirstLocal() + i);  /* this is the first one */
       }
       else {  /* global name */
         if (eqstr(n, vd->vd.name)) {  /* found? */
-          var->init(VGLOBAL, fs->getFirstLocal() + i);
+          var->init(VGLOBAL, getFirstLocal() + i);
           return VGLOBAL;
         }
         else if (var->getInfo() == -1)  /* active preambular declaration? */
@@ -440,9 +439,9 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
     }
     else if (eqstr(n, vd->vd.name)) {  /* found? */
       if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
-        var->init(VCONST, fs->getFirstLocal() + i);
+        var->init(VCONST, getFirstLocal() + i);
       else  /* local variable */
-        fs->init_var( var, i);
+        init_var(var, i);
       return cast_int(var->getKind());
     }
   }
@@ -454,23 +453,23 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
 ** Mark block where variable at given level was defined
 ** (to emit close instructions later).
 */
-static void markupval (FuncState *fs, int level) {
-  BlockCnt *bl = fs->getBlock();
-  while (bl->nactvar > level)
-    bl = bl->previous;
-  bl->upval = 1;
-  fs->setNeedClose(1);
+void FuncState::markupval(int level) {
+  BlockCnt *block = getBlock();
+  while (block->nactvar > level)
+    block = block->previous;
+  block->upval = 1;
+  setNeedClose(1);
 }
 
 
 /*
 ** Mark that current block has a to-be-closed variable.
 */
-static void marktobeclosed (FuncState *fs) {
-  BlockCnt *bl = fs->getBlock();
-  bl->upval = 1;
-  bl->insidetbc = 1;
-  fs->setNeedClose(1);
+void FuncState::marktobeclosed() {
+  BlockCnt *block = getBlock();
+  block->upval = 1;
+  block->insidetbc = 1;
+  setNeedClose(1);
 }
 
 
@@ -480,18 +479,18 @@ static void marktobeclosed (FuncState *fs) {
 ** 'var' as 'void' as a flag.
 */
 static void singlevaraux (FuncState *fs, TString *n, expdesc *var, int base) {
-  int v = searchvar(fs, n, var);  /* look up variables at current level */
+  int v = fs->searchvar(n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)
-      markupval(fs, var->getLocalVarIndex());  /* local will be used as an upval */
+      fs->markupval(var->getLocalVarIndex());  /* local will be used as an upval */
   }
   else {  /* not found at current level; try upvalues */
-    int idx = searchupvalue(fs, n);  /* try existing upvalues */
+    int idx = fs->searchupvalue(n);  /* try existing upvalues */
     if (idx < 0) {  /* not found? */
       if (fs->getPrev() != NULL)  /* more levels? */
         singlevaraux(fs->getPrev(), n, var, 0);  /* try upper levels */
       if (var->getKind() == VLOCAL || var->getKind() == VUPVAL)  /* local or upvalue? */
-        idx  = newupvalue(fs, n, var);  /* will be a new upvalue */
+        idx  = fs->newupvalue(n, var);  /* will be a new upvalue */
       else  /* it is a global or a constant */
         return;  /* don't need to do anything at this level */
     }
@@ -1721,7 +1720,7 @@ static void forlist (LexState *ls, TString *indexname) {
   line = ls->getLineNumber();
   adjust_assign(ls, 4, explist(ls, &e), &e);
   ls->adjustlocalvars(3);  /* start scope for internal variables */
-  marktobeclosed(fs);  /* last internal var. must be closed */
+  fs->marktobeclosed();  /* last internal var. must be closed */
   fs->checkstack(2);  /* extra space to call iterator */
   forbody(ls, base, line, nvars - 3, 1);
 }
@@ -1805,7 +1804,7 @@ static lu_byte getvarattribute (LexState *ls, lu_byte df) {
 
 static void checktoclose (FuncState *fs, int level) {
   if (level != -1) {  /* is there a to-be-closed variable? */
-    marktobeclosed(fs);
+    fs->marktobeclosed();
     fs->codeABC(OP_TBC, fs->reglevel( level), 0, 0);
   }
 }
@@ -2118,7 +2117,7 @@ static void mainfunc (LexState *ls, FuncState *fs) {
   Upvaldesc *env;
   open_func(ls, fs, &bl);
   setvararg(fs, 0);  /* main function is always declared vararg */
-  env = allocupvalue(fs);  /* ...set environment upvalue */
+  env = fs->allocupvalue();  /* ...set environment upvalue */
   env->setInStack(1);
   env->setIndex(0);
   env->setKind(VDKREG);

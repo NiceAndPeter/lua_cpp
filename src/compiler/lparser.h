@@ -455,6 +455,13 @@ public:
   short registerlocalvar(TString *varname);
   // Phase 84: Variable scope
   void removevars(int tolevel);
+  // Phase 85: Upvalue and variable search
+  int searchupvalue(TString *name);
+  Upvaldesc *allocupvalue();
+  int newupvalue(TString *name, expdesc *v);
+  int searchvar(TString *n, expdesc *var);
+  void markupval(int level);
+  void marktobeclosed();
 
 private:
   // Internal helper methods (only used within lcode.cpp)
