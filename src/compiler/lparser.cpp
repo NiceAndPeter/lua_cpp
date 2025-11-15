@@ -174,8 +174,8 @@ static void codestring (expdesc *e, TString *s) {
 }
 
 
-static void codename (LexState *ls, expdesc *e) {
-  codestring(e, ls->str_checkname());
+void LexState::codename(expdesc *e) {
+  codestring(e, str_checkname());
 }
 
 
@@ -183,18 +183,17 @@ static void codename (LexState *ls, expdesc *e) {
 ** Register a new local variable in the active 'Proto' (for debug
 ** information).
 */
-static short registerlocalvar (LexState *ls, FuncState *fs,
-                               TString *varname) {
-  Proto *f = fs->getProto();
-  int oldsize = f->getLocVarsSize();
-  luaM_growvector(ls->getLuaState(), f->getLocVarsRef(), fs->getNumDebugVars(), f->getLocVarsSizeRef(),
+short FuncState::registerlocalvar(TString *varname) {
+  Proto *proto = getProto();
+  int oldsize = proto->getLocVarsSize();
+  luaM_growvector(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
                   LocVar, SHRT_MAX, "local variables");
-  while (oldsize < f->getLocVarsSize())
-    f->getLocVars()[oldsize++].setVarName(NULL);
-  f->getLocVars()[fs->getNumDebugVars()].setVarName(varname);
-  f->getLocVars()[fs->getNumDebugVars()].setStartPC(fs->getPC());
-  luaC_objbarrier(ls->getLuaState(), f, varname);
-  return fs->postIncrementNumDebugVars();
+  while (oldsize < proto->getLocVarsSize())
+    proto->getLocVars()[oldsize++].setVarName(NULL);
+  proto->getLocVars()[getNumDebugVars()].setVarName(varname);
+  proto->getLocVars()[getNumDebugVars()].setStartPC(getPC());
+  luaC_objbarrier(getLexState()->getLuaState(), proto, varname);
+  return postIncrementNumDebugVars();
 }
 
 
@@ -202,29 +201,29 @@ static short registerlocalvar (LexState *ls, FuncState *fs,
 ** Create a new variable with the given 'name' and given 'kind'.
 ** Return its index in the function.
 */
-static int new_varkind (LexState *ls, TString *name, lu_byte kind) {
-  lua_State *L = ls->getLuaState();
-  FuncState *fs = ls->getFuncState();
-  Dyndata *dyd = ls->getDyndata();
+int LexState::new_varkind(TString *name, lu_byte kind) {
+  lua_State *state = getLuaState();
+  FuncState *funcState = getFuncState();
+  Dyndata *dynData = getDyndata();
   Vardesc *var;
-  luaM_growvector(L, dyd->actvar.arr, dyd->actvar.n + 1,
-             dyd->actvar.size, Vardesc, SHRT_MAX, "variable declarations");
-  var = &dyd->actvar.arr[dyd->actvar.n++];
+  luaM_growvector(state, dynData->actvar.arr, dynData->actvar.n + 1,
+             dynData->actvar.size, Vardesc, SHRT_MAX, "variable declarations");
+  var = &dynData->actvar.arr[dynData->actvar.n++];
   var->vd.kind = kind;  /* default */
   var->vd.name = name;
-  return dyd->actvar.n - 1 - fs->getFirstLocal();
+  return dynData->actvar.n - 1 - funcState->getFirstLocal();
 }
 
 
 /*
 ** Create a new local variable with the given 'name' and regular kind.
 */
-static int new_localvar (LexState *ls, TString *name) {
-  return new_varkind(ls, name, VDKREG);
+int LexState::new_localvar(TString *name) {
+  return new_varkind(name, VDKREG);
 }
 
 #define new_localvarliteral(ls,v) \
-    new_localvar(ls,  \
+    ls->new_localvar(  \
       ls->newString( "" v, (sizeof(v)/sizeof(char)) - 1));
 
 
@@ -234,8 +233,8 @@ static int new_localvar (LexState *ls, TString *name) {
 ** (Unless noted otherwise, all variables are referred to by their
 ** compiler indices.)
 */
-static Vardesc *getlocalvardesc (FuncState *fs, int vidx) {
-  return &fs->getLexState()->getDyndata()->actvar.arr[fs->getFirstLocal() + vidx];
+Vardesc *FuncState::getlocalvardesc(int vidx) {
+  return &getLexState()->getDyndata()->actvar.arr[getFirstLocal() + vidx];
 }
 
 
@@ -244,9 +243,9 @@ static Vardesc *getlocalvardesc (FuncState *fs, int vidx) {
 ** register. For that, search for the highest variable below that level
 ** that is in a register and uses its register index ('ridx') plus one.
 */
-static lu_byte reglevel (FuncState *fs, int nvar) {
+lu_byte FuncState::reglevel(int nvar) {
   while (nvar-- > 0) {
-    Vardesc *vd = getlocalvardesc(fs, nvar);  /* get previous variable */
+    Vardesc *vd = getlocalvardesc(nvar);  /* get previous variable */
     if (vd->isInReg())  /* is in a register? */
       return cast_byte(vd->vd.ridx + 1);
   }
@@ -258,22 +257,27 @@ static lu_byte reglevel (FuncState *fs, int nvar) {
 ** Return the number of variables in the register stack for the given
 ** function.
 */
+lu_byte FuncState::nvarstack() {
+  return reglevel(getNumActiveVars());
+}
+
+/* External API wrapper */
 lu_byte luaY_nvarstack (FuncState *fs) {
-  return reglevel(fs, fs->getNumActiveVars());
+  return fs->nvarstack();
 }
 
 
 /*
 ** Get the debug-information entry for current variable 'vidx'.
 */
-static LocVar *localdebuginfo (FuncState *fs, int vidx) {
-  Vardesc *vd = getlocalvardesc(fs,  vidx);
+LocVar *FuncState::localdebuginfo(int vidx) {
+  Vardesc *vd = getlocalvardesc(vidx);
   if (!vd->isInReg())
     return NULL;  /* no debug info. for constants */
   else {
     int idx = vd->vd.pidx;
-    lua_assert(idx < fs->getNumDebugVars());
-    return &fs->getProto()->getLocVars()[idx];
+    lua_assert(idx < getNumDebugVars());
+    return &getProto()->getLocVars()[idx];
   }
 }
 
@@ -281,12 +285,12 @@ static LocVar *localdebuginfo (FuncState *fs, int vidx) {
 /*
 ** Create an expression representing variable 'vidx'
 */
-static void init_var (FuncState *fs, expdesc *e, int vidx) {
+void FuncState::init_var(expdesc *e, int vidx) {
   e->setFalseList(NO_JUMP);
   e->setTrueList(NO_JUMP);
   e->setKind(VLOCAL);
   e->setLocalVarIndex(cast_short(vidx));
-  e->setLocalRegister(getlocalvardesc(fs, vidx)->vd.ridx);
+  e->setLocalRegister(getlocalvardesc(vidx)->vd.ridx);
 }
 
 
@@ -302,7 +306,7 @@ static void check_readonly (LexState *ls, expdesc *e) {
       break;
     }
     case VLOCAL: {
-      Vardesc *vardesc = getlocalvardesc(fs, e->getLocalVarIndex());
+      Vardesc *vardesc = fs->getlocalvardesc( e->getLocalVarIndex());
       if (vardesc->vd.kind != VDKREG)  /* not a regular variable? */
         varname = vardesc->vd.name;
       break;
@@ -337,9 +341,9 @@ static void adjustlocalvars (LexState *ls, int nvars) {
   int i;
   for (i = 0; i < nvars; i++) {
     int vidx = fs->getNumActiveVarsRef()++;
-    Vardesc *var = getlocalvardesc(fs, vidx);
+    Vardesc *var = fs->getlocalvardesc( vidx);
     var->vd.ridx = cast_byte(reglevel++);
-    var->vd.pidx = registerlocalvar(ls, fs, var->vd.name);
+    var->vd.pidx = fs->registerlocalvar( var->vd.name);
     luaY_checklimit(fs, reglevel, MAXVARS, "local variables");
   }
 }
@@ -352,7 +356,7 @@ static void adjustlocalvars (LexState *ls, int nvars) {
 static void removevars (FuncState *fs, int tolevel) {
   fs->getLexState()->getDyndata()->actvar.n -= (fs->getNumActiveVars() - tolevel);
   while (fs->getNumActiveVars() > tolevel) {
-    LocVar *var = localdebuginfo(fs, --fs->getNumActiveVarsRef());
+    LocVar *var = fs->localdebuginfo( --fs->getNumActiveVarsRef());
     if (var)  /* does it have debug information? */
       var->setEndPC(fs->getPC());
   }
@@ -391,8 +395,8 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
   if (v->getKind() == VLOCAL) {
     up->setInStack(1);
     up->setIndex(v->getLocalRegister());
-    up->setKind(getlocalvardesc(prev, v->getLocalVarIndex())->vd.kind);
-    lua_assert(eqstr(name, getlocalvardesc(prev, v->getLocalVarIndex())->vd.name));
+    up->setKind(prev->getlocalvardesc(v->getLocalVarIndex())->vd.kind);
+    lua_assert(eqstr(name, prev->getlocalvardesc(v->getLocalVarIndex())->vd.name));
   }
   else {
     up->setInStack(0);
@@ -420,7 +424,7 @@ static int newupvalue (FuncState *fs, TString *name, expdesc *v) {
 static int searchvar (FuncState *fs, TString *n, expdesc *var) {
   int i;
   for (i = cast_int(fs->getNumActiveVars()) - 1; i >= 0; i--) {
-    Vardesc *vd = getlocalvardesc(fs, i);
+    Vardesc *vd = fs->getlocalvardesc( i);
     if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == NULL) {  /* collective declaration? */
         if (var->getInfo() < 0)  /* no previous collective declaration? */
@@ -439,7 +443,7 @@ static int searchvar (FuncState *fs, TString *n, expdesc *var) {
       if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
         init_exp(var, VCONST, fs->getFirstLocal() + i);
       else  /* local variable */
-        init_var(fs, var, i);
+        fs->init_var( var, i);
       return cast_int(var->getKind());
     }
   }
@@ -578,7 +582,7 @@ inline void leavelevel(LexState* ls) noexcept {
 ** variable declaration.
 */
 static l_noret jumpscopeerror (LexState *ls, Labeldesc *gt) {
-  TString *tsname = getlocalvardesc(ls->getFuncState(), gt->nactvar)->vd.name;
+  TString *tsname = ls->getFuncState()->getlocalvardesc(gt->nactvar)->vd.name;
   const char *varname = (tsname != NULL) ? getstr(tsname) : "*";
   ls->semerror(
      "<goto %s> at line %d jumps into the scope of '%s'",
@@ -604,7 +608,7 @@ static void closegoto (LexState *ls, int g, Labeldesc *label, int bup) {
     jumpscopeerror(ls, gt);
   if (gt->close ||
       (label->nactvar < gt->nactvar && bup)) {  /* needs close? */
-    lu_byte stklevel = reglevel(fs, label->nactvar);
+    lu_byte stklevel = fs->reglevel( label->nactvar);
     /* move jump to CLOSE position */
     fs->getProto()->getCode()[gt->pc + 1] = fs->getProto()->getCode()[gt->pc];
     /* put CLOSE instruction at original position */
@@ -696,7 +700,7 @@ static void createlabel (LexState *ls, TString *name, int line, int last) {
 static void solvegotos (FuncState *fs, BlockCnt *bl) {
   LexState *ls = fs->getLexState();
   Labellist *gl = &ls->getDyndata()->gt;
-  int outlevel = reglevel(fs, bl->nactvar);  /* level outside the block */
+  int outlevel = fs->reglevel( bl->nactvar);  /* level outside the block */
   int igt = bl->firstgoto;  /* first goto in the finishing block */
   while (igt < gl->n) {   /* for each pending goto */
     Labeldesc *gt = &gl->arr[igt];
@@ -707,7 +711,7 @@ static void solvegotos (FuncState *fs, BlockCnt *bl) {
     else {  /* adjust 'goto' for outer block */
       /* block has variables to be closed and goto escapes the scope of
          some variable? */
-      if (bl->upval && reglevel(fs, gt->nactvar) > outlevel)
+      if (bl->upval && fs->reglevel( gt->nactvar) > outlevel)
         gt->close = 1;  /* jump may need a close */
       gt->nactvar = bl->nactvar;  /* correct level for outer block */
       igt++;  /* go to next goto */
@@ -745,7 +749,7 @@ static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
 static void leaveblock (FuncState *fs) {
   BlockCnt *bl = fs->getBlock();
   LexState *ls = fs->getLexState();
-  lu_byte stklevel = reglevel(fs, bl->nactvar);  /* level outside block */
+  lu_byte stklevel = fs->reglevel( bl->nactvar);  /* level outside block */
   if (bl->previous && bl->upval)  /* need a 'close'? */
     fs->codeABC(OP_CLOSE, stklevel, 0, 0);
   fs->setFreeReg(stklevel);  /* free registers */
@@ -890,7 +894,7 @@ static void fieldsel (LexState *ls, expdesc *v) {
   expdesc key;
   fs->exp2anyregup(v);
   ls->nextToken();  /* skip the dot or colon */
-  codename(ls, &key);
+  ls->codename( &key);
   fs->indexed(v, &key);
 }
 
@@ -939,7 +943,7 @@ static void recfield (LexState *ls, ConsControl *cc) {
   lu_byte reg = ls->getFuncState()->getFreeReg();
   expdesc tab, key, val;
   if (ls->getCurrentToken().token == TK_NAME)
-    codename(ls, &key);
+    ls->codename( &key);
   else  /* ls->getCurrentToken().token == '[' */
     yindex(ls, &key);
   cc->nh++;
@@ -1072,7 +1076,7 @@ static void parlist (LexState *ls) {
     do {
       switch (ls->getCurrentToken().token) {
         case TK_NAME: {
-          new_localvar(ls, ls->str_checkname());
+          ls->new_localvar( ls->str_checkname());
           nparams++;
           break;
         }
@@ -1228,7 +1232,7 @@ static void suffixedexp (LexState *ls, expdesc *v) {
       case ':': {  /* ':' NAME funcargs */
         expdesc key;
         ls->nextToken();
-        codename(ls, &key);
+        ls->codename( &key);
         fs->self(v, &key);
         funcargs(ls, v);
         break;
@@ -1608,7 +1612,7 @@ static void repeatstat (LexState *ls, int line) {
   if (bl2.upval) {  /* upvalues? */
     int exit = fs->jump();  /* normal exit must jump over fix */
     fs->patchtohere(condexit);  /* repetition must close upvalues */
-    fs->codeABC(OP_CLOSE, reglevel(fs, bl2.nactvar), 0, 0);
+    fs->codeABC(OP_CLOSE, fs->reglevel( bl2.nactvar), 0, 0);
     condexit = fs->jump();  /* repeat after closing upvalues */
     fs->patchtohere(exit);  /* normal exit comes to here */
   }
@@ -1681,7 +1685,7 @@ static void fornum (LexState *ls, TString *varname, int line) {
   int base = fs->getFreeReg();
   new_localvarliteral(ls, "(for state)");
   new_localvarliteral(ls, "(for state)");
-  new_varkind(ls, varname, RDKCONST);  /* control variable */
+  ls->new_varkind( varname, RDKCONST);  /* control variable */
   ls->checknext( '=');
   exp1(ls);  /* initial value */
   ls->checknext( ',');
@@ -1708,10 +1712,10 @@ static void forlist (LexState *ls, TString *indexname) {
   new_localvarliteral(ls, "(for state)");  /* iterator function */
   new_localvarliteral(ls, "(for state)");  /* state */
   new_localvarliteral(ls, "(for state)");  /* closing var. (after swap) */
-  new_varkind(ls, indexname, RDKCONST);  /* control variable */
+  ls->new_varkind( indexname, RDKCONST);  /* control variable */
   /* other declared variables */
   while (ls->testnext( ',')) {
-    new_localvar(ls, ls->str_checkname());
+    ls->new_localvar( ls->str_checkname());
     nvars++;
   }
   ls->checknext( TK_IN);
@@ -1775,11 +1779,11 @@ static void localfunc (LexState *ls) {
   expdesc b;
   FuncState *fs = ls->getFuncState();
   int fvar = fs->getNumActiveVars();  /* function's variable index */
-  new_localvar(ls, ls->str_checkname());  /* new local variable */
+  ls->new_localvar( ls->str_checkname());  /* new local variable */
   adjustlocalvars(ls, 1);  /* enter its scope */
   body(ls, &b, 0, ls->getLineNumber());  /* function created in next register */
   /* debug information will only see the variable after this point! */
-  localdebuginfo(fs, fvar)->setStartPC(fs->getPC());
+  fs->localdebuginfo( fvar)->setStartPC(fs->getPC());
 }
 
 
@@ -1803,7 +1807,7 @@ static lu_byte getvarattribute (LexState *ls, lu_byte df) {
 static void checktoclose (FuncState *fs, int level) {
   if (level != -1) {  /* is there a to-be-closed variable? */
     marktobeclosed(fs);
-    fs->codeABC(OP_TBC, reglevel(fs, level), 0, 0);
+    fs->codeABC(OP_TBC, fs->reglevel( level), 0, 0);
   }
 }
 
@@ -1822,7 +1826,7 @@ static void localstat (LexState *ls) {
   do {  /* for each variable */
     TString *vname = ls->str_checkname();  /* get its name */
     lu_byte kind = getvarattribute(ls, defkind);  /* postfixed attribute */
-    vidx = new_varkind(ls, vname, kind);  /* predeclare it */
+    vidx = ls->new_varkind( vname, kind);  /* predeclare it */
     if (kind == RDKTOCLOSE) {  /* to-be-closed? */
       if (toclose != -1)  /* one already present? */
         ls->semerror( "multiple to-be-closed variables in local list");
@@ -1836,7 +1840,7 @@ static void localstat (LexState *ls) {
     e.setKind(VVOID);
     nexps = 0;
   }
-  var = getlocalvardesc(fs, vidx);  /* retrieve last variable */
+  var = fs->getlocalvardesc( vidx);  /* retrieve last variable */
   if (nvars == nexps &&  /* no adjustments? */
       var->vd.kind == RDKCONST &&  /* last variable is const? */
       fs->exp2const(&e, &var->k)) {  /* compile-time constant? */
@@ -1873,7 +1877,7 @@ static void globalnames (LexState *ls, lu_byte defkind) {
   do {  /* for each name */
     TString *vname = ls->str_checkname();
     lu_byte kind = getglobalattribute(ls, defkind);
-    lastidx = new_varkind(ls, vname, kind);
+    lastidx = ls->new_varkind( vname, kind);
     nvars++;
   } while (ls->testnext( ','));
   if (ls->testnext( '=')) {  /* initialization? */
@@ -1883,7 +1887,7 @@ static void globalnames (LexState *ls, lu_byte defkind) {
     adjust_assign(ls, nvars, nexps, &e);
     for (i = 0; i < nvars; i++) {  /* for each variable */
       expdesc var;
-      TString *varname = getlocalvardesc(fs, lastidx - i)->vd.name;
+      TString *varname = fs->getlocalvardesc( lastidx - i)->vd.name;
       buildglobal(ls, varname, &var);  /* create global variable in 'var' */
       storevartop(fs, &var);
     }
@@ -1902,7 +1906,7 @@ static void globalstat (LexState *ls) {
     globalnames(ls, defkind);
   else {
     /* use NULL as name to represent '*' entries */
-    new_varkind(ls, NULL, defkind);
+    ls->new_varkind( NULL, defkind);
     fs->getNumActiveVarsRef()++;  /* activate declaration */
   }
 }
@@ -1913,7 +1917,7 @@ static void globalfunc (LexState *ls, int line) {
   expdesc var, b;
   FuncState *fs = ls->getFuncState();
   TString *fname = ls->str_checkname();
-  new_varkind(ls, fname, GDKREG);  /* declare global variable */
+  ls->new_varkind( fname, GDKREG);  /* declare global variable */
   fs->getNumActiveVarsRef()++;  /* enter its scope */
   buildglobal(ls, fname, &var);
   body(ls, &b, 0, ls->getLineNumber());  /* compile and return closure in 'b' */

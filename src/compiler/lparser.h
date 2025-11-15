@@ -442,6 +442,13 @@ public:
   // Phase 82: Limit checking
   l_noret errorlimit(int limit, const char *what);
   void checklimit(int v, int l, const char *what);
+  // Phase 83: Variable utilities
+  Vardesc *getlocalvardesc(int vidx);
+  lu_byte reglevel(int nvar);
+  lu_byte nvarstack();
+  LocVar *localdebuginfo(int vidx);
+  void init_var(expdesc *e, int vidx);
+  short registerlocalvar(TString *varname);
 
 private:
   // Internal helper methods (only used within lcode.cpp)

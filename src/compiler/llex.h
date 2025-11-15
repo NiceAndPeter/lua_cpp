@@ -12,6 +12,8 @@
 #include "lobject.h"
 #include "lzio.h"
 
+/* Forward declarations */
+struct expdesc;
 
 /*
 ** Single-char tokens (terminal symbols) are represented by their own
@@ -138,6 +140,10 @@ public:
   void checknext(int c);
   void check_match(int what, int who, int where);
   TString *str_checkname();
+  // Phase 83: Variable utilities
+  void codename(expdesc *e);
+  int new_varkind(TString *name, lu_byte kind);
+  int new_localvar(TString *name);
 };
 
 
