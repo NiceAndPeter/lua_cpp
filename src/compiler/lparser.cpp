@@ -318,7 +318,7 @@ static void check_readonly (LexState *ls, expdesc *e) {
       return;  /* integer index cannot be read-only */
   }
   if (varname)
-    luaK_semerror(ls, "attempt to assign to const variable '%s'",
+    ls->semerror( "attempt to assign to const variable '%s'",
                       getstr(varname));
 }
 
@@ -498,7 +498,7 @@ static void buildglobal (LexState *ls, TString *varname, expdesc *var) {
   init_exp(var, VGLOBAL, -1);  /* global by default */
   singlevaraux(fs, ls->getEnvName(), var, 1);  /* get environment variable */
   if (var->getKind() == VGLOBAL)
-    luaK_semerror(ls, "_ENV is global when accessing variable '%s'",
+    ls->semerror( "_ENV is global when accessing variable '%s'",
                       getstr(varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
   codestring(&key, varname);  /* key is variable name */
@@ -518,7 +518,7 @@ static void buildvar (LexState *ls, TString *varname, expdesc *var) {
     int info = var->getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
-      luaK_semerror(ls, "variable '%s' not declared", getstr(varname));
+      ls->semerror( "variable '%s' not declared", getstr(varname));
     buildglobal(ls, varname, var);
     if (info != -1 && ls->getDyndata()->actvar.arr[info].vd.kind == GDKCONST)
       var->setIndexedReadOnly(1);  /* mark variable as read-only */
@@ -575,7 +575,7 @@ inline void leavelevel(LexState* ls) noexcept {
 static l_noret jumpscopeerror (LexState *ls, Labeldesc *gt) {
   TString *tsname = getlocalvardesc(ls->getFuncState(), gt->nactvar)->vd.name;
   const char *varname = (tsname != NULL) ? getstr(tsname) : "*";
-  luaK_semerror(ls,
+  ls->semerror(
      "<goto %s> at line %d jumps into the scope of '%s'",
       getstr(gt->name), gt->line, varname);  /* raise the error */
 }
@@ -732,7 +732,7 @@ static void enterblock (FuncState *fs, BlockCnt *bl, lu_byte isloop) {
 static l_noret undefgoto (LexState *ls, Labeldesc *gt) {
   /* breaks are checked when created, cannot be undefined */
   lua_assert(!eqstr(gt->name, ls->getBreakName()));
-  luaK_semerror(ls, "no visible label '%s' for <goto> at line %d",
+  ls->semerror( "no visible label '%s' for <goto> at line %d",
                     getstr(gt->name), gt->line);
 }
 
@@ -1553,7 +1553,7 @@ static void breakstat (LexState *ls, int line) {
 static void checkrepeated (LexState *ls, TString *name) {
   Labeldesc *lb = findlabel(ls, name, ls->getFuncState()->getFirstLabel());
   if (l_unlikely(lb != NULL))  /* already defined? */
-    luaK_semerror(ls, "label '%s' already defined on line %d",
+    ls->semerror( "label '%s' already defined on line %d",
                       getstr(name), lb->line);  /* error */
 }
 
@@ -1789,7 +1789,7 @@ static lu_byte getvarattribute (LexState *ls, lu_byte df) {
     else if (strcmp(attr, "close") == 0)
       return RDKTOCLOSE;  /* to-be-closed variable */
     else
-      luaK_semerror(ls, "unknown attribute '%s'", attr);
+      ls->semerror( "unknown attribute '%s'", attr);
   }
   return df;  /* return default value */
 }
@@ -1820,7 +1820,7 @@ static void localstat (LexState *ls) {
     vidx = new_varkind(ls, vname, kind);  /* predeclare it */
     if (kind == RDKTOCLOSE) {  /* to-be-closed? */
       if (toclose != -1)  /* one already present? */
-        luaK_semerror(ls, "multiple to-be-closed variables in local list");
+        ls->semerror( "multiple to-be-closed variables in local list");
       toclose = fs->getNumActiveVars() + nvars;
     }
     nvars++;
@@ -1851,7 +1851,7 @@ static lu_byte getglobalattribute (LexState *ls, lu_byte df) {
   lu_byte kind = getvarattribute(ls, df);
   switch (kind) {
     case RDKTOCLOSE:
-      luaK_semerror(ls, "global variables cannot be to-be-closed");
+      ls->semerror( "global variables cannot be to-be-closed");
       return kind;  /* to avoid warnings */
     case RDKCONST:
       return GDKCONST;  /* adjust kind for global variable */

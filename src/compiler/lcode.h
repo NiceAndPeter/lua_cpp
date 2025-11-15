@@ -31,7 +31,6 @@ inline Instruction& getinstruction(FuncState* fs, expdesc* e) noexcept {
 	return fs->getProto()->getCode()[e->getInfo()];
 }
 
-LUAI_FUNC l_noret luaK_semerror (LexState *ls, const char *fmt, ...);
 
 /* Inline function definitions (after forward declarations) */
 

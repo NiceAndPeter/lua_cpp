@@ -41,12 +41,12 @@ inline bool hasjumps(const expdesc* e) noexcept {
 
 
 /* semantic error */
-l_noret luaK_semerror (LexState *ls, const char *fmt, ...) {
+l_noret LexState::semerror(const char *fmt, ...) {
   const char *msg;
   va_list argp;
-  pushvfstring(ls->getLuaState(), argp, fmt, msg);
-  ls->getCurrentTokenRef().token = 0;  /* remove "near <token>" from final message */
-  ls->syntaxError(msg);
+  pushvfstring(getLuaState(), argp, fmt, msg);
+  getCurrentTokenRef().token = 0;  /* remove "near <token>" from final message */
+  syntaxError(msg);
 }
 
 

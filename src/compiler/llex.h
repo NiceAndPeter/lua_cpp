@@ -128,6 +128,7 @@ public:
   void nextToken();
   int lookaheadToken();
   l_noret syntaxError(const char *s);
+  l_noret semerror(const char *fmt, ...);
   const char *tokenToStr(int token);
 };
 
