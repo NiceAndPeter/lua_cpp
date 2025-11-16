@@ -800,4 +800,23 @@ LUAI_FUNC LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
                                  Dyndata *dyd, const char *name, int firstchar);
 
 
+/*
+** Marks the end of a patch list. It is an invalid value both as an absolute
+** address, and as a list link (would link an element to itself).
+*/
+inline constexpr int NO_JUMP = -1;
+
+
+/* true if operation is foldable (that is, it is arithmetic or bitwise) */
+inline constexpr bool foldbinop(BinOpr op) noexcept {
+	return op <= OPR_SHR;
+}
+
+
+/* get (pointer to) instruction of given 'expdesc' */
+inline Instruction& getinstruction(FuncState* fs, expdesc* e) noexcept {
+	return fs->getProto()->getCode()[e->getInfo()];
+}
+
+
 #endif
