@@ -428,6 +428,50 @@ private:
   int nci;  /* number of items in 'ci' list */
 
 public:
+  // Initialize lua_State fields (GC base fields must already be set by caller)
+  // This is called instead of a constructor to avoid C++ object initialization
+  // that might interfere with GC fields (next, tt, marked)
+  void init(global_State* g) noexcept {
+    // Link to global state
+    l_G = g;
+
+    // Stack fields - initialize to NULL, will be allocated by stack_init
+    stack.p = nullptr;
+    stack_last.p = nullptr;
+    tbclist.p = nullptr;
+    top.p = nullptr;
+
+    // CallInfo fields
+    ci = nullptr;
+    nci = 0;
+    // base_ci initialized via placement new to call its constructor
+    new (&base_ci) CallInfo();
+
+    // GC tracking
+    openupval = nullptr;
+    gclist = nullptr;
+    twups = this;  // thread has no upvalues
+
+    // Error handling
+    status = LUA_OK;
+    errorJmp = nullptr;
+    errfunc = 0;
+
+    // Debug hooks
+    hook = nullptr;
+    hookmask = 0;
+    allowhook = 1;
+    basehookcount = 0;
+    oldpc = 0;
+    hookcount = 0;  // Will be reset by resetHookCount() if needed
+
+    // Transfer info
+    transferinfo.ftransfer = 0;
+    transferinfo.ntransfer = 0;
+
+    // Call depth
+    nCcalls = 0;
+  }
 
   // Step 1: Stack field accessors - return references to allow .p access
   StkIdRel& getTop() noexcept { return top; }
