@@ -80,11 +80,13 @@ void luaE_setdebt (global_State *g, l_mem debt) {
 CallInfo *luaE_extendCI (lua_State *L) {
   CallInfo *ci;
   lua_assert(L->getCI()->getNext() == NULL);
-  ci = luaM_new(L, CallInfo);
+  // Use placement new to call constructor (initializes all 9 fields)
+  ci = new (luaM_malloc_(L, sizeof(CallInfo), 0)) CallInfo();
   lua_assert(L->getCI()->getNext() == NULL);
   L->getCI()->setNext(ci);
   ci->setPrevious(L->getCI());
   ci->setNext(NULL);
+  // trap already initialized to 0 in constructor, but keep this for clarity
   ci->getTrap() = 0;
   L->getNCIRef()++;
   return ci;
@@ -230,24 +232,13 @@ static void f_luaopen (lua_State *L, void *ud) {
 /*
 ** preinitialize a thread with consistent values without allocating
 ** any memory (to avoid errors)
+**
+** IMPORTANT: GC fields (next, tt, marked) must be set by caller BEFORE
+** calling this function. The init() method preserves them.
 */
 static void preinit_thread (lua_State *L, global_State *g) {
-  G(L) = g;
-  L->getStack().p = NULL;
-  L->setCI(NULL);
-  L->setNCI(0);
-  L->setTwups(L);  /* thread has no upvalues */
-  L->setNCcalls(0);
-  L->setErrorJmp(NULL);
-  L->setHook(NULL);
-  L->setHookMask(0);
-  L->setBaseHookCount(0);
-  L->setAllowHook(1);
-  L->resetHookCount();
-  L->setOpenUpval(NULL);
-  L->setStatus(LUA_OK);
-  L->setErrFunc(0);
-  L->setOldPC(0);
+  L->init(g);  // Initialize lua_State fields (preserves GC fields)
+  L->resetHookCount();   // Initialize hookcount = basehookcount
   L->getBaseCI()->setPrevious(NULL);
   L->getBaseCI()->setNext(NULL);
 }

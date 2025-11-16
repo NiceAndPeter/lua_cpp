@@ -275,6 +275,23 @@ private:
   l_uint32 callstatus;
 
 public:
+  // Constructor: Initialize ALL fields to safe defaults
+  CallInfo() noexcept {
+    func.p = nullptr;
+    top.p = nullptr;
+    previous = nullptr;
+    next = nullptr;
+
+    // Initialize union members to safe defaults
+    u.l.savedpc = nullptr;
+    u.l.trap = 0;
+    u.l.nextraargs = 0;
+
+    u2.funcidx = 0;  // All union members are int-sized, 0 is safe
+
+    callstatus = 0;
+  }
+
   // Inline accessors for func and top (StkIdRel)
   StkIdRel& funcRef() noexcept { return func; }
   const StkIdRel& funcRef() const noexcept { return func; }
@@ -411,6 +428,50 @@ private:
   int nci;  /* number of items in 'ci' list */
 
 public:
+  // Initialize lua_State fields (GC base fields must already be set by caller)
+  // This is called instead of a constructor to avoid C++ object initialization
+  // that might interfere with GC fields (next, tt, marked)
+  void init(global_State* g) noexcept {
+    // Link to global state
+    l_G = g;
+
+    // Stack fields - initialize to NULL, will be allocated by stack_init
+    stack.p = nullptr;
+    stack_last.p = nullptr;
+    tbclist.p = nullptr;
+    top.p = nullptr;
+
+    // CallInfo fields
+    ci = nullptr;
+    nci = 0;
+    // base_ci initialized via placement new to call its constructor
+    new (&base_ci) CallInfo();
+
+    // GC tracking
+    openupval = nullptr;
+    gclist = nullptr;
+    twups = this;  // thread has no upvalues
+
+    // Error handling
+    status = LUA_OK;
+    errorJmp = nullptr;
+    errfunc = 0;
+
+    // Debug hooks
+    hook = nullptr;
+    hookmask = 0;
+    allowhook = 1;
+    basehookcount = 0;
+    oldpc = 0;
+    hookcount = 0;  // Will be reset by resetHookCount() if needed
+
+    // Transfer info
+    transferinfo.ftransfer = 0;
+    transferinfo.ntransfer = 0;
+
+    // Call depth
+    nCcalls = 0;
+  }
 
   // Step 1: Stack field accessors - return references to allow .p access
   StkIdRel& getTop() noexcept { return top; }
