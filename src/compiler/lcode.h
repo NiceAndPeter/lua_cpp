@@ -32,19 +32,4 @@ inline Instruction& getinstruction(FuncState* fs, expdesc* e) noexcept {
 }
 
 
-/* Inline function definitions (after forward declarations) */
-
-inline int luaK_codeABC(FuncState* fs, OpCode o, int a, int b, int c) noexcept {
-	return fs->codeABCk(o, a, b, c, 0);
-}
-
-inline void luaK_setmultret(FuncState* fs, expdesc* e) noexcept {
-	fs->setreturns(e, LUA_MULTRET);
-}
-
-inline void luaK_jumpto(FuncState* fs, int t) noexcept {
-	fs->patchlist(fs->jump(), t);
-}
-
-
 #endif

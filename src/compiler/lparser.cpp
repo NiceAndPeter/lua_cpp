@@ -960,7 +960,7 @@ void FuncState::closelistfield(ConsControl *cc) {
 void FuncState::lastlistfield(ConsControl *cc) {
   if (cc->tostore == 0) return;
   if (hasmultret(cc->v.getKind())) {
-    luaK_setmultret(this, &cc->v);
+    setreturns(&cc->v, LUA_MULTRET);
     setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
@@ -1134,7 +1134,7 @@ void LexState::funcargs( expdesc *f) {
       else {
         explist(&args);
         if (hasmultret(args.getKind()))
-          luaK_setmultret(funcstate, &args);
+          funcstate->setreturns(&args, LUA_MULTRET);
       }
       check_match( ')', '(', line);
       break;
@@ -1578,7 +1578,7 @@ void LexState::whilestat( int line) {
   funcstate->enterblock(&bl, 1);
   checknext( TK_DO);
   block();
-  luaK_jumpto(funcstate, whileinit);
+  funcstate->patchlist(funcstate->jump(), whileinit);
   check_match( TK_END, TK_WHILE, line);
   funcstate->leaveblock();
   funcstate->patchtohere(condexit);  /* false conditions finish the loop */
@@ -1981,7 +1981,7 @@ void LexState::retstat() {
   else {
     nret = explist(&e);  /* optional return values */
     if (hasmultret(e.getKind())) {
-      luaK_setmultret(funcstate, &e);
+      funcstate->setreturns(&e, LUA_MULTRET);
       if (e.getKind() == VCALL && nret == 1 && !funcstate->getBlock()->insidetbc) {  /* tail call? */
         SET_OPCODE(getinstruction(funcstate,&e), OP_TAILCALL);
         lua_assert(GETARG_A(getinstruction(funcstate,&e)) == luaY_nvarstack(funcstate));
