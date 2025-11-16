@@ -40,6 +40,7 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "lualib.h"
+#include "LuaVector.h"
 
 
 
@@ -2156,6 +2157,52 @@ static int nonblock (lua_State *L) {
 /* }====================================================== */
 
 
+/*
+** Test LuaVector - demonstrates std::vector with LuaAllocator
+** Usage: testvector(n)
+** Creates a vector with n integers, verifies correctness,
+** and returns total memory allocated
+*/
+static int testvector (lua_State *L) {
+  int n = cast_int(luaL_checkinteger(L, 1));
+  luaL_argcheck(L, n >= 0 && n <= 1000000, 1, "value out of range");
+
+  global_State *g = G(L);
+
+  /* Get memory before allocation */
+  lua_Integer membefore = cast(lua_Integer, g->getTotalBytes());
+
+  /* Create and populate a LuaVector */
+  {
+    LuaVector<int> vec(L);
+
+    /* Reserve to avoid multiple reallocations */
+    vec.reserve(static_cast<size_t>(n));
+
+    /* Fill with values */
+    for (int i = 0; i < n; i++) {
+      vec.push_back(i * 2);
+    }
+
+    /* Verify contents */
+    for (int i = 0; i < n; i++) {
+      luaL_argcheck(L, vec[static_cast<size_t>(i)] == i * 2, 1, "vector content mismatch");
+    }
+
+    /* Check size */
+    luaL_argcheck(L, vec.size() == static_cast<size_t>(n), 1, "vector size mismatch");
+
+    /* Get memory during allocation */
+    lua_Integer memduring = cast(lua_Integer, g->getTotalBytes());
+
+    /* Push allocated bytes */
+    lua_pushinteger(L, memduring - membefore);
+  }
+
+  /* Vector is now destroyed, memory should be freed */
+  return 1;
+}
+
 
 static const struct luaL_Reg tests_funcs[] = {
   {"checkmemory", lua_checkmemory},
@@ -2207,6 +2254,7 @@ static const struct luaL_Reg tests_funcs[] = {
   {"upvalue", upvalue},
   {"externKstr", externKstr},
   {"externstr", externstr},
+  {"testvector", testvector},
   {"nonblock", nonblock},
   {NULL, NULL}
 };
