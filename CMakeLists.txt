@@ -107,7 +107,10 @@ set(LUA_CORE_SOURCES
 set(LUA_COMPILER_SOURCES
     src/compiler/lcode.cpp
     src/compiler/llex.cpp
-    src/compiler/lparser.cpp
+    src/compiler/parser.cpp
+    src/compiler/funcstate.cpp
+    src/compiler/parselabels.cpp
+    src/compiler/parseutils.cpp
     src/compiler/lopcodes.cpp
 )
 
