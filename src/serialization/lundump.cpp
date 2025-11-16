@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <algorithm>
 #include <climits>
 #include <cstring>
 
@@ -213,8 +214,9 @@ static void loadConstants (LoadState *S, Proto *f) {
   int n = loadInt(S);
   f->setConstants(luaM_newvectorchecked(S->L, n, TValue));
   f->setConstantsSize(n);
-  for (i = 0; i < n; i++)
-    setnilvalue(&f->getConstants()[i]);
+  std::for_each_n(f->getConstants(), n, [](TValue& v) {
+    setnilvalue(&v);
+  });
   for (i = 0; i < n; i++) {
     TValue *o = &f->getConstants()[i];
     int t = loadByte(S);
@@ -255,8 +257,7 @@ static void loadProtos (LoadState *S, Proto *f) {
   int n = loadInt(S);
   f->setProtos(luaM_newvectorchecked(S->L, n, Proto *));
   f->setProtosSize(n);
-  for (i = 0; i < n; i++)
-    f->getProtos()[i] = NULL;
+  std::fill_n(f->getProtos(), n, nullptr);
   for (i = 0; i < n; i++) {
     f->getProtos()[i] = luaF_newproto(S->L);
     luaC_objbarrier(S->L, f, f->getProtos()[i]);
@@ -276,8 +277,10 @@ static void loadUpvalues (LoadState *S, Proto *f) {
   int n = loadInt(S);
   f->setUpvalues(luaM_newvectorchecked(S->L, n, Upvaldesc));
   f->setUpvaluesSize(n);
-  for (i = 0; i < n; i++)  /* make array valid for GC */
-    f->getUpvalues()[i].setName(NULL);
+  /* make array valid for GC */
+  std::for_each_n(f->getUpvalues(), n, [](Upvaldesc& uv) {
+    uv.setName(nullptr);
+  });
   for (i = 0; i < n; i++) {  /* following calls can raise errors */
     f->getUpvalues()[i].setInStack(loadByte(S));
     f->getUpvalues()[i].setIndex(loadByte(S));
@@ -314,8 +317,9 @@ static void loadDebug (LoadState *S, Proto *f) {
   n = loadInt(S);
   f->setLocVars(luaM_newvectorchecked(S->L, n, LocVar));
   f->setLocVarsSize(n);
-  for (i = 0; i < n; i++)
-    f->getLocVars()[i].setVarName(NULL);
+  std::for_each_n(f->getLocVars(), n, [](LocVar& lv) {
+    lv.setVarName(nullptr);
+  });
   for (i = 0; i < n; i++) {
     loadString(S, f, f->getLocVars()[i].getVarNamePtr());
     f->getLocVars()[i].setStartPC(loadInt(S));
