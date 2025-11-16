@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <algorithm>
 #include <cstring>
 
 #include "lua.h"
@@ -271,7 +272,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   ts = createstrobj(L, allocsize, LUA_VSHRSTR, h);
   ts->setShrlen(cast(ls_byte, l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
-  memcpy(getshrstr(ts), str, l * sizeof(char));
+  std::copy_n(str, l, getshrstr(ts));
   ts->setNext(*list);
   *list = ts;
   tb->incrementNumElements();
@@ -290,7 +291,7 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
     if (l_unlikely(l * sizeof(char) >= (MAX_SIZE - sizeof(TString))))
       luaM_toobig(L);
     ts = luaS_createlngstrobj(L, l);
-    memcpy(getlngstr(ts), str, l * sizeof(char));
+    std::copy_n(str, l, getlngstr(ts));
     return ts;
   }
 }

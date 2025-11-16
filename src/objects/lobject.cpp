@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <algorithm>
 #include <cfloat>
 #include <clocale>
 #include <cmath>
@@ -678,7 +679,7 @@ const char *luaO_pushfstring (lua_State *L, const char *fmt, ...) {
 #define POS	"\"]"
 
 inline void addstr(char*& a, const char* b, size_t l) noexcept {
-	memcpy(a, b, l * sizeof(char));
+	std::copy_n(b, l, a);
 	a += l;
 }
 
@@ -686,7 +687,7 @@ void luaO_chunkid (char *out, const char *source, size_t srclen) {
   size_t bufflen = LUA_IDSIZE;  /* free space in buffer */
   if (*source == '=') {  /* 'literal' source */
     if (srclen <= bufflen)  /* small enough? */
-      memcpy(out, source + 1, srclen * sizeof(char));
+      std::copy_n(source + 1, srclen, out);
     else {  /* truncate it */
       addstr(out, source + 1, bufflen - 1);
       *out = '\0';
@@ -694,11 +695,11 @@ void luaO_chunkid (char *out, const char *source, size_t srclen) {
   }
   else if (*source == '@') {  /* file name */
     if (srclen <= bufflen)  /* small enough? */
-      memcpy(out, source + 1, srclen * sizeof(char));
+      std::copy_n(source + 1, srclen, out);
     else {  /* add '...' before rest of name */
       addstr(out, RETS, LL(RETS));
       bufflen -= LL(RETS);
-      memcpy(out, source + 1 + srclen - bufflen, bufflen * sizeof(char));
+      std::copy_n(source + 1 + srclen - bufflen, bufflen, out);
     }
   }
   else {  /* string; format as [string "source"] */
@@ -715,7 +716,7 @@ void luaO_chunkid (char *out, const char *source, size_t srclen) {
       addstr(out, source, srclen);
       addstr(out, RETS, LL(RETS));
     }
-    memcpy(out, POS, (LL(POS) + 1) * sizeof(char));
+    std::copy_n(POS, LL(POS) + 1, out);
   }
 }
 
