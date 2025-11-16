@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <algorithm>
 #include <cstddef>
 
 #include "lua.h"
@@ -46,9 +47,7 @@ LClosure::LClosure(int nupvals) {
   gclist = NULL;
   p = NULL;
   // Initialize upvals array to NULL
-  for (int i = 0; i < nupvals; i++) {
-    upvals[i] = NULL;
-  }
+  std::fill_n(upvals, nupvals, nullptr);
 }
 
 // Factory method

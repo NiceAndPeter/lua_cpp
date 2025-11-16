@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
 
@@ -167,12 +168,13 @@ static void resetCI (lua_State *L) {
 
 
 static void stack_init (lua_State *L1, lua_State *L) {
-  int i;
   /* initialize stack array */
   L1->getStack().p = luaM_newvector(L, BASIC_STACK_SIZE + EXTRA_STACK, StackValue);
   L1->getTbclist().p = L1->getStack().p;
-  for (i = 0; i < BASIC_STACK_SIZE + EXTRA_STACK; i++)
-    setnilvalue(s2v(L1->getStack().p + i));  /* erase new stack */
+  /* erase new stack */
+  std::for_each_n(L1->getStack().p, BASIC_STACK_SIZE + EXTRA_STACK, [](StackValue& sv) {
+    setnilvalue(s2v(&sv));
+  });
   L1->getStackLast().p = L1->getStack().p + BASIC_STACK_SIZE;
   /* initialize first ci */
   resetCI(L1);
@@ -380,7 +382,9 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   setgcparam(g, MINORMUL, LUAI_GENMINORMUL);
   setgcparam(g, MINORMAJOR, LUAI_MINORMAJOR);
   setgcparam(g, MAJORMINOR, LUAI_MAJORMINOR);
-  for (i=0; i < LUA_NUMTYPES; i++) g->setMetatable(i, NULL);
+  for (i = 0; i < LUA_NUMTYPES; i++) {
+    g->setMetatable(i, nullptr);
+  }
   if (L->rawRunProtected( f_luaopen, NULL) != LUA_OK) {
     /* memory allocation error: free partial state */
     close_state(L);
