@@ -1412,11 +1412,16 @@ static const union {
 /*
 ** information to pack/unpack stuff
 */
-typedef struct Header {
+class Header {
+public:
   lua_State *L;
   int islittle;
   unsigned maxalign;
-} Header;
+
+  /* Constructor */
+  explicit Header(lua_State *L_arg) noexcept
+    : L(L_arg), islittle(nativeendian.little), maxalign(1) {}
+};
 
 
 /*
@@ -1469,14 +1474,7 @@ static unsigned getnumlimit (Header *h, const char **fmt, size_t df) {
 }
 
 
-/*
-** Initialize Header
-*/
-static void initheader (lua_State *L, Header *h) {
-  h->L = L;
-  h->islittle = nativeendian.little;
-  h->maxalign = 1;
-}
+/* initheader removed - Header now has constructor */
 
 
 /*
@@ -1603,11 +1601,10 @@ static void copywithendian (char *dest, const char *src,
 
 static int str_pack (lua_State *L) {
   luaL_Buffer b;
-  Header h;
   const char *fmt = luaL_checkstring(L, 1);  /* format string */
   int arg = 1;  /* current argument to pack */
   size_t totalsize = 0;  /* accumulate total size of result */
-  initheader(L, &h);
+  Header h(L);
   lua_pushnil(L);  /* mark to separate arguments from string buffer */
   luaL_buffinit(L, &b);
   while (*fmt != '\0') {
@@ -1708,10 +1705,9 @@ static int str_pack (lua_State *L) {
 
 
 static int str_packsize (lua_State *L) {
-  Header h;
   const char *fmt = luaL_checkstring(L, 1);  /* format string */
   size_t totalsize = 0;  /* accumulate total size of result */
-  initheader(L, &h);
+  Header h(L);
   while (*fmt != '\0') {
     unsigned ntoalign;
     size_t size;
@@ -1763,14 +1759,13 @@ static lua_Integer unpackint (lua_State *L, const char *str,
 
 
 static int str_unpack (lua_State *L) {
-  Header h;
   const char *fmt = luaL_checkstring(L, 1);
   size_t ld;
   const char *data = luaL_checklstring(L, 2, &ld);
   size_t pos = posrelatI(luaL_optinteger(L, 3, 1), ld) - 1;
   int n = 0;  /* number of results */
   luaL_argcheck(L, pos <= ld, 3, "initial position out of string");
-  initheader(L, &h);
+  Header h(L);
   while (*fmt != '\0') {
     unsigned ntoalign;
     size_t size;

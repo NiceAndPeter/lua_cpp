@@ -1130,7 +1130,7 @@ struct SParser {  /* data to 'f_parser' */
 
   /* Constructor to properly initialize Dyndata */
   explicit SParser(lua_State* L)
-    : z(nullptr), buff{nullptr, 0, 0}, dyd(L), mode(nullptr), name(nullptr) {}
+    : z(nullptr), buff(), dyd(L), mode(nullptr), name(nullptr) {}
 };
 
 
