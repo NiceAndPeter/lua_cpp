@@ -204,13 +204,13 @@ int TValue::toIntegerNoString(lua_Integer* p, F2Imod mode) const {
 ** correct; even a limit of LUA_MININTEGER would run the loop once for
 ** an initial value equal to LUA_MININTEGER.)
 */
-static int forlimit (lua_State *L, lua_Integer init, const TValue *lim,
-                                   lua_Integer *p, lua_Integer step) {
+int lua_State::forLimit(lua_Integer init, const TValue *lim,
+                        lua_Integer *p, lua_Integer step) {
   if (!luaV_tointeger(lim, p, (step < 0 ? F2Iceil : F2Ifloor))) {
     /* not coercible to in integer */
     lua_Number flim;  /* try to convert to float */
     if (!tonumber(lim, &flim)) /* cannot convert to float? */
-      luaG_forerror(L, lim, "limit");
+      luaG_forerror(this, lim, "limit");
     /* else 'flim' is a float out of integer bounds */
     if (luai_numlt(0, flim)) {  /* if it is positive, it is too large */
       if (step < 0) return 1;  /* initial value must be less than it */
@@ -237,7 +237,7 @@ static int forlimit (lua_State *L, lua_Integer init, const TValue *lim,
 **   ra + 1 : step
 **   ra + 2 : control variable
 */
-static int forprep (lua_State *L, StkId ra) {
+int lua_State::forPrep(StkId ra) {
   TValue *pinit = s2v(ra);
   TValue *plimit = s2v(ra + 1);
   TValue *pstep = s2v(ra + 2);
@@ -246,8 +246,8 @@ static int forprep (lua_State *L, StkId ra) {
     lua_Integer step = ivalue(pstep);
     lua_Integer limit;
     if (step == 0)
-      luaG_runerror(L, "'for' step is zero");
-    if (forlimit(L, init, plimit, &limit, step))
+      luaG_runerror(this, "'for' step is zero");
+    if (this->forLimit(init, plimit, &limit, step))
       return 1;  /* skip the loop */
     else {  /* prepare loop counter */
       lua_Unsigned count;
@@ -270,13 +270,13 @@ static int forprep (lua_State *L, StkId ra) {
   else {  /* try making all values floats */
     lua_Number init; lua_Number limit; lua_Number step;
     if (l_unlikely(!tonumber(plimit, &limit)))
-      luaG_forerror(L, plimit, "limit");
+      luaG_forerror(this, plimit, "limit");
     if (l_unlikely(!tonumber(pstep, &step)))
-      luaG_forerror(L, pstep, "step");
+      luaG_forerror(this, pstep, "step");
     if (l_unlikely(!tonumber(pinit, &init)))
-      luaG_forerror(L, pinit, "initial value");
+      luaG_forerror(this, pinit, "initial value");
     if (step == 0)
-      luaG_runerror(L, "'for' step is zero");
+      luaG_runerror(this, "'for' step is zero");
     if (luai_numlt(0, step) ? luai_numlt(limit, init)
                             : luai_numlt(init, limit))
       return 1;  /* skip the loop */
@@ -296,11 +296,11 @@ static int forprep (lua_State *L, StkId ra) {
 ** true iff the loop must continue. (The integer case is
 ** written online with opcode OP_FORLOOP, for performance.)
 */
-static int floatforloop (lua_State *L, StkId ra) {
+int lua_State::floatForLoop(StkId ra) {
   lua_Number step = fltvalue(s2v(ra + 1));
   lua_Number limit = fltvalue(s2v(ra));
   lua_Number idx = fltvalue(s2v(ra + 2));  /* control variable */
-  idx = luai_numadd(L, idx, step);  /* increment index */
+  idx = luai_numadd(this, idx, step);  /* increment index */
   if (luai_numlt(0, step) ? luai_numle(idx, limit)
                           : luai_numle(limit, idx)) {
     chgfltvalue(s2v(ra + 2), idx);  /* update control variable */
@@ -1987,7 +1987,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
             pc -= InstructionView(i).bx();  /* jump back */
           }
         }
-        else if (floatforloop(L, ra))  /* float loop */
+        else if (L->floatForLoop(ra))  /* float loop */
           pc -= InstructionView(i).bx();  /* jump back */
         updatetrap(ci);  /* allows a signal to break the loop */
         vmbreak;
@@ -1995,7 +1995,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_FORPREP) {
         StkId ra = RA(i);
         savestate(L, ci);  /* in case of errors */
-        if (forprep(L, ra))
+        if (L->forPrep(ra))
           pc += InstructionView(i).bx() + 1;  /* skip the loop */
         vmbreak;
       }
