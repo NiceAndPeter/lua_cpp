@@ -30,7 +30,7 @@ inline constexpr size_t tstringFallocOffset() noexcept {
 /*
 ** Maximum size for string table.
 */
-#define MAXSTRTB	cast_int(luaM_limitN(INT_MAX, TString*))
+#define MAXSTRTB	cast_int(luaM_limitN(std::numeric_limits<int>::max(), TString*))
 
 /*
 ** Initial size for the string table (must be power of 2).
@@ -233,9 +233,9 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
 
 
 static void growstrtab (lua_State *L, stringtable *tb) {
-  if (l_unlikely(tb->getNumElements() == INT_MAX)) {  /* too many strings? */
+  if (l_unlikely(tb->getNumElements() == std::numeric_limits<int>::max())) {  /* too many strings? */
     luaC_fullgc(L, 1);  /* try to free some... */
-    if (tb->getNumElements() == INT_MAX)  /* still too many? */
+    if (tb->getNumElements() == std::numeric_limits<int>::max())  /* still too many? */
       luaM_error(L);  /* cannot even create a message... */
   }
   if (tb->getSize() <= MAXSTRTB / 2)  /* can grow string table? */

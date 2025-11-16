@@ -205,7 +205,7 @@ static const TValue absentkey = {ABSTKEYCONSTANT};
 */
 static Node *hashint (const Table *t, lua_Integer i) {
   lua_Unsigned ui = l_castS2U(i);
-  if (ui <= cast_uint(INT_MAX))
+  if (ui <= cast_uint(std::numeric_limits<int>::max()))
     return gnode(t, cast_int(ui) % cast_int((t->nodeSize()-1) | 1));
   else
     return hashmod(t, ui);
@@ -236,7 +236,7 @@ static unsigned l_hashfloat (lua_Number n) {
   }
   else {  /* normal case */
     unsigned int u = cast_uint(i) + cast_uint(ni);
-    return (u <= cast_uint(INT_MAX) ? u : ~u);
+    return (u <= cast_uint(std::numeric_limits<int>::max()) ? u : ~u);
   }
 }
 #endif

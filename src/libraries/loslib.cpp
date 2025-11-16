@@ -263,7 +263,7 @@ static int getfield (lua_State *L, const char *key, int d, int delta) {
     res = d;
   }
   else {
-    if (!(res >= 0 ? res - delta <= INT_MAX : INT_MIN + delta <= res))
+    if (!(res >= 0 ? res - delta <= std::numeric_limits<int>::max() : std::numeric_limits<int>::min() + delta <= res))
       return luaL_error(L, "field '%s' is out-of-bound", key);
     res -= delta;
   }

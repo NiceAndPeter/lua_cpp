@@ -11,6 +11,7 @@
 #include <climits>
 #include <cstddef>
 #include <cmath>
+#include <limits>
 
 
 #include "lua.h"
@@ -207,7 +208,7 @@ constexpr inline lua_Integer cast_Integer(auto i) noexcept {
 /* Phase 95: Converted point2uint from macro to inline constexpr function */
 template<typename T>
 inline constexpr unsigned int point2uint(T* p) noexcept {
-	return cast_uint((L_P2I)(p) & UINT_MAX);
+	return cast_uint((L_P2I)(p) & std::numeric_limits<unsigned int>::max());
 }
 
 

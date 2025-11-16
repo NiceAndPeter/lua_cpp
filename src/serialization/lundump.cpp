@@ -120,7 +120,7 @@ static size_t loadSize (LoadState *S) {
 
 
 static int loadInt (LoadState *S) {
-  return cast_int(loadVarint(S, cast_sizet(INT_MAX)));
+  return cast_int(loadVarint(S, cast_sizet(std::numeric_limits<int>::max())));
 }
 
 

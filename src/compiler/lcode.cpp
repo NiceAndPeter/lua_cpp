@@ -194,14 +194,14 @@ void FuncState::savelineinfo(Proto *proto, int line) {
   int pcval = getPC() - 1;  /* last instruction coded */
   if (abs(linedif) >= LIMLINEDIFF || postIncrementInstructionsWithAbs() >= MAXIWTHABS) {
     luaM_growvector(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNAbsLineInfo(),
-                    proto->getAbsLineInfoSizeRef(), AbsLineInfo, INT_MAX, "lines");
+                    proto->getAbsLineInfoSizeRef(), AbsLineInfo, std::numeric_limits<int>::max(), "lines");
     proto->getAbsLineInfo()[getNAbsLineInfo()].setPC(pcval);
     proto->getAbsLineInfo()[postIncrementNAbsLineInfo()].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     setInstructionsWithAbs(1);  /* restart counter */
   }
   luaM_growvector(getLexState()->getLuaState(), proto->getLineInfoRef(), pcval, proto->getLineInfoSizeRef(), ls_byte,
-                  INT_MAX, "opcodes");
+                  std::numeric_limits<int>::max(), "opcodes");
   proto->getLineInfo()[pcval] = cast(ls_byte, linedif);
   setPreviousLine(line);  /* last line saved */
 }
@@ -1093,7 +1093,7 @@ int FuncState::code(Instruction i) {
   Proto *proto = getProto();
   /* put new instruction in code array */
   luaM_growvector(getLexState()->getLuaState(), proto->getCodeRef(), getPC(), proto->getCodeSizeRef(), Instruction,
-                  INT_MAX, "opcodes");
+                  std::numeric_limits<int>::max(), "opcodes");
   proto->getCode()[postIncrementPC()] = i;
   savelineinfo(proto, getLexState()->getLastLine());
   return getPC() - 1;  /* index of new instruction */
