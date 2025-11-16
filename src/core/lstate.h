@@ -647,6 +647,14 @@ public:
   int traceExec(const Instruction *pc);
   int traceCall();
 
+  // VM operation methods (formerly luaV_* functions, implemented in lvm.cpp)
+  void execute(CallInfo *callinfo);
+  void finishOp();
+  void concat(int total);
+  void objlen(StkId ra, const TValue *rb);
+  lu_byte finishGet(const TValue *t, TValue *key, StkId val, lu_byte tag);
+  void finishSet(const TValue *t, TValue *key, TValue *val, int aux);
+
 private:
   // Private helper methods (implementation details in ldo.cpp)
 

@@ -173,6 +173,22 @@ int luaV_tointeger (const TValue *obj, lua_Integer *p, F2Imod mode) {
 
 
 /*
+** TValue conversion methods (wrappers for compatibility)
+*/
+int TValue::toNumber(lua_Number* n) const {
+  return luaV_tonumber_(this, n);
+}
+
+int TValue::toInteger(lua_Integer* p, F2Imod mode) const {
+  return luaV_tointeger(this, p, mode);
+}
+
+int TValue::toIntegerNoString(lua_Integer* p, F2Imod mode) const {
+  return luaV_tointegerns(this, p, mode);
+}
+
+
+/*
 ** Try to convert a 'for' limit to an integer, preserving the semantics
 ** of the loop. Return true if the loop must not run; otherwise, '*p'
 ** gets the integer limit.
@@ -2070,3 +2086,32 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 }
 
 /* }================================================================== */
+
+
+/*
+** lua_State VM operation methods (wrappers for compatibility)
+*/
+
+void lua_State::execute(CallInfo *callinfo) {
+  luaV_execute(this, callinfo);
+}
+
+void lua_State::finishOp() {
+  luaV_finishOp(this);
+}
+
+void lua_State::concat(int total) {
+  luaV_concat(this, total);
+}
+
+void lua_State::objlen(StkId ra, const TValue *rb) {
+  luaV_objlen(this, ra, rb);
+}
+
+lu_byte lua_State::finishGet(const TValue *t, TValue *key, StkId val, lu_byte tag) {
+  return luaV_finishget(this, t, key, val, tag);
+}
+
+void lua_State::finishSet(const TValue *t, TValue *key, TValue *val, int aux) {
+  luaV_finishset(this, t, key, val, aux);
+}

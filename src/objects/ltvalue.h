@@ -23,6 +23,19 @@ constexpr int makevariant(int t, int v) noexcept { return (t | (v << 4)); }
 
 
 /*
+** Rounding modes for float->integer coercion (needed by TValue conversion methods)
+*/
+#ifndef F2Imod_defined
+#define F2Imod_defined
+typedef enum {
+  F2Ieq,     /* no rounding; accepts only integral values */
+  F2Ifloor,  /* takes the floor of the number */
+  F2Iceil    /* takes the ceiling of the number */
+} F2Imod;
+#endif
+
+
+/*
 ** Union of all Lua values
 */
 typedef union Value {
@@ -119,6 +132,12 @@ public:
   // Change value (no type change - for optimization)
   void changeInt(lua_Integer i) noexcept { value_.i = i; }
   void changeFloat(lua_Number n) noexcept { value_.n = n; }
+
+  // Conversion methods (formerly luaV_tonumber_, luaV_tointeger, luaV_tointegerns)
+  // Return 1 on success, 0 on failure
+  int toNumber(lua_Number* n) const;
+  int toInteger(lua_Integer* p, F2Imod mode) const;
+  int toIntegerNoString(lua_Integer* p, F2Imod mode) const;
 
   // Copy from another TValue
   void copy(const TValue* other) noexcept {
