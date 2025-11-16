@@ -28,7 +28,6 @@
 
 #include "lapi.h"
 #include "lauxlib.h"
-#include "lcode.h"
 #include "lctype.h"
 #include "ldebug.h"
 #include "ldo.h"

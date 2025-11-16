@@ -17,7 +17,6 @@
 
 #include "lua.h"
 
-#include "lcode.h"
 #include "ldebug.h"
 #include "ldo.h"
 #include "lgc.h"
