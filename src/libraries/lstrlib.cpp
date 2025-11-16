@@ -10,15 +10,16 @@
 #include "lprefix.h"
 
 
-#include <ctype.h>
-#include <float.h>
-#include <limits.h>
-#include <locale.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <algorithm>
+#include <cctype>
+#include <cfloat>
+#include <climits>
+#include <clocale>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "lua.h"
 
@@ -151,12 +152,12 @@ static int str_rep (lua_State *L) {
     luaL_Buffer b;
     char *p = luaL_buffinitsize(L, &b, totallen);
     while (n-- > 1) {  /* first n-1 copies (followed by separator) */
-      memcpy(p, s, len * sizeof(char)); p += len;
-      if (lsep > 0) {  /* empty 'memcpy' is not that cheap */
-        memcpy(p, sep, lsep * sizeof(char)); p += lsep;
+      std::copy_n(s, len, p); p += len;
+      if (lsep > 0) {  /* empty 'std::copy_n' is not that cheap */
+        std::copy_n(sep, lsep, p); p += lsep;
       }
     }
-    memcpy(p, s, len * sizeof(char));  /* last copy without separator */
+    std::copy_n(s, len, p);  /* last copy without separator */
     luaL_pushresultsize(&b, totallen);
   }
   return 1;
@@ -171,7 +172,7 @@ static int str_byte (lua_State *L) {
   size_t pose = getendpos(L, 3, pi, l);
   int n, i;
   if (posi > pose) return 0;  /* empty interval; return no values */
-  if (l_unlikely(pose - posi >= (size_t)INT_MAX))  /* arithmetic overflow? */
+  if (l_unlikely(pose - posi >= (size_t)std::numeric_limits<int>::max()))  /* arithmetic overflow? */
     return luaL_error(L, "string slice too long");
   n = (int)(pose -  posi) + 1;
   luaL_checkstack(L, n, "string slice too long");
@@ -1248,7 +1249,7 @@ static const char *getformat (lua_State *L, const char *strfrmt,
   if (len >= MAX_FORMAT - 10)
     luaL_error(L, "invalid format (too long)");
   *(form++) = '%';
-  memcpy(form, strfrmt, len * sizeof(char));
+  std::copy_n(strfrmt, len, form);
   *(form + len) = '\0';
   return strfrmt + len - 1;
 }

@@ -10,7 +10,8 @@
 #include "lprefix.h"
 
 
-#include <string.h>
+#include <algorithm>
+#include <cstring>
 
 #include "lua.h"
 
@@ -30,7 +31,7 @@ inline constexpr size_t tstringFallocOffset() noexcept {
 /*
 ** Maximum size for string table.
 */
-#define MAXSTRTB	cast_int(luaM_limitN(INT_MAX, TString*))
+#define MAXSTRTB	cast_int(luaM_limitN(std::numeric_limits<int>::max(), TString*))
 
 /*
 ** Initial size for the string table (must be power of 2).
@@ -233,9 +234,9 @@ TString *luaS_createlngstrobj (lua_State *L, size_t l) {
 
 
 static void growstrtab (lua_State *L, stringtable *tb) {
-  if (l_unlikely(tb->getNumElements() == INT_MAX)) {  /* too many strings? */
+  if (l_unlikely(tb->getNumElements() == std::numeric_limits<int>::max())) {  /* too many strings? */
     luaC_fullgc(L, 1);  /* try to free some... */
-    if (tb->getNumElements() == INT_MAX)  /* still too many? */
+    if (tb->getNumElements() == std::numeric_limits<int>::max())  /* still too many? */
       luaM_error(L);  /* cannot even create a message... */
   }
   if (tb->getSize() <= MAXSTRTB / 2)  /* can grow string table? */
@@ -271,7 +272,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   ts = createstrobj(L, allocsize, LUA_VSHRSTR, h);
   ts->setShrlen(cast(ls_byte, l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
-  memcpy(getshrstr(ts), str, l * sizeof(char));
+  std::copy_n(str, l, getshrstr(ts));
   ts->setNext(*list);
   *list = ts;
   tb->incrementNumElements();
@@ -290,7 +291,7 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
     if (l_unlikely(l * sizeof(char) >= (MAX_SIZE - sizeof(TString))))
       luaM_toobig(L);
     ts = luaS_createlngstrobj(L, l);
-    memcpy(getlngstr(ts), str, l * sizeof(char));
+    std::copy_n(str, l, getlngstr(ts));
     return ts;
   }
 }

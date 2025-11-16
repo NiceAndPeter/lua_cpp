@@ -9,12 +9,13 @@
 
 #include "lprefix.h"
 
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <algorithm>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "lua.h"
 
@@ -703,7 +704,7 @@ static void copy2buff (StkId top, int n, char *buff) {
     TString *st = tsvalue(s2v(top - n));
     size_t l;  /* length of string being copied */
     const char *s = getlstr(st, l);
-    memcpy(buff + tl, s, l * sizeof(char));
+    std::copy_n(s, l, buff + tl);
     tl += l;
   } while (--n > 0);
 }

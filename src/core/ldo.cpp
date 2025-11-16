@@ -10,8 +10,8 @@
 #include "lprefix.h"
 
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "lua.h"
 
@@ -270,10 +270,10 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
 */
 
 #if !defined(LUAI_MAXSTACK)
-#if 1000000 < (INT_MAX / 2)
+#if 1000000 < (std::numeric_limits<int>::max() / 2)
 #define LUAI_MAXSTACK           1000000
 #else
-#define LUAI_MAXSTACK           (INT_MAX / 2u)
+#define LUAI_MAXSTACK           (std::numeric_limits<int>::max() / 2u)
 #endif
 #endif
 

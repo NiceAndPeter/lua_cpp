@@ -84,7 +84,7 @@ inline constexpr int POS_sJ = POS_A;
 #if L_INTHASBITS(SIZE_Bx)
 inline constexpr int MAXARG_Bx = ((1<<SIZE_Bx)-1);
 #else
-inline constexpr int MAXARG_Bx = INT_MAX;
+inline constexpr int MAXARG_Bx = std::numeric_limits<int>::max();
 #endif
 
 inline constexpr int OFFSET_sBx = (MAXARG_Bx>>1);         /* 'sBx' is signed */
@@ -100,7 +100,7 @@ inline constexpr int OFFSET_sBx = (MAXARG_Bx>>1);         /* 'sBx' is signed */
 #if L_INTHASBITS(SIZE_sJ)
 inline constexpr int MAXARG_sJ = ((1 << SIZE_sJ) - 1);
 #else
-inline constexpr int MAXARG_sJ = INT_MAX;
+inline constexpr int MAXARG_sJ = std::numeric_limits<int>::max();
 #endif
 
 inline constexpr int OFFSET_sJ = (MAXARG_sJ >> 1);

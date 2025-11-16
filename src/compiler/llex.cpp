@@ -10,8 +10,8 @@
 #include "lprefix.h"
 
 
-#include <locale.h>
-#include <string.h>
+#include <clocale>
+#include <cstring>
 
 #include "lua.h"
 
@@ -153,7 +153,7 @@ static void inclinenumber (LexState *ls) {
   ls->next();  /* skip '\n' or '\r' */
   if (ls->currIsNewline() && ls->getCurrentChar() != old)
     ls->next();  /* skip '\n\r' or '\r\n' */
-  if (++ls->getLineNumberRef() >= INT_MAX)
+  if (++ls->getLineNumberRef() >= std::numeric_limits<int>::max())
     lexerror(ls, "chunk has too many lines", 0);
 }
 

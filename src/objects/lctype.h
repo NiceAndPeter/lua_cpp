@@ -31,7 +31,7 @@
 
 #if !LUA_USE_CTYPE	/* { */
 
-#include <limits.h>
+#include <climits>
 
 #include "llimits.h"
 

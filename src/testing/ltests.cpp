@@ -10,11 +10,11 @@
 #include "lprefix.h"
 
 
-#include <limits.h>
-#include <setjmp.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <climits>
+#include <csetjmp>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "lua.h"
 

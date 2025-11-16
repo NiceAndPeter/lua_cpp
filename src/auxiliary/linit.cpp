@@ -12,7 +12,7 @@
 #include "lprefix.h"
 
 
-#include <stddef.h>
+#include <cstddef>
 
 #include "lua.h"
 

@@ -8,9 +8,10 @@
 #define llimits_h
 
 
-#include <limits.h>
-#include <stddef.h>
+#include <climits>
+#include <cstddef>
 #include <cmath>
+#include <limits>
 
 
 #include "lua.h"
@@ -91,7 +92,7 @@ inline constexpr size_t LL(const char (&)[N]) noexcept {
 */
 #if !defined(LUA_USE_C89) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 199901L
-#include <stdint.h>
+#include <cstdint>
 #if defined(UINTPTR_MAX)  /* even in C99 this type is optional */
 #define L_P2I	uintptr_t
 #else  /* no 'intptr'? */
@@ -207,7 +208,7 @@ constexpr inline lua_Integer cast_Integer(auto i) noexcept {
 /* Phase 95: Converted point2uint from macro to inline constexpr function */
 template<typename T>
 inline constexpr unsigned int point2uint(T* p) noexcept {
-	return cast_uint((L_P2I)(p) & UINT_MAX);
+	return cast_uint((L_P2I)(p) & std::numeric_limits<unsigned int>::max());
 }
 
 

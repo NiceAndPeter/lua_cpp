@@ -10,9 +10,9 @@
 #include "lprefix.h"
 
 
-#include <limits.h>
-#include <stddef.h>
-#include <string.h>
+#include <climits>
+#include <cstddef>
+#include <cstring>
 
 #include "lua.h"
 
@@ -62,8 +62,8 @@ static void checktab (lua_State *L, int arg, int what) {
 static int tcreate (lua_State *L) {
   lua_Unsigned sizeseq = (lua_Unsigned)luaL_checkinteger(L, 1);
   lua_Unsigned sizerest = (lua_Unsigned)luaL_optinteger(L, 2, 0);
-  luaL_argcheck(L, sizeseq <= cast_uint(INT_MAX), 1, "out of range");
-  luaL_argcheck(L, sizerest <= cast_uint(INT_MAX), 2, "out of range");
+  luaL_argcheck(L, sizeseq <= cast_uint(std::numeric_limits<int>::max()), 1, "out of range");
+  luaL_argcheck(L, sizerest <= cast_uint(std::numeric_limits<int>::max()), 2, "out of range");
   lua_createtable(L, cast_int(sizeseq), cast_int(sizerest));
   return 1;
 }
@@ -208,7 +208,7 @@ static int tunpack (lua_State *L) {
   lua_Integer e = luaL_opt(L, luaL_checkinteger, 3, luaL_len(L, 1));
   if (i > e) return 0;  /* empty range */
   n = l_castS2U(e) - l_castS2U(i);  /* number of elements minus 1 */
-  if (l_unlikely(n >= (unsigned int)INT_MAX  ||
+  if (l_unlikely(n >= (unsigned int)std::numeric_limits<int>::max()  ||
                  !lua_checkstack(L, (int)(++n))))
     return luaL_error(L, "too many results to unpack");
   for (; i < e; i++) {  /* push arg[i..e - 1] (to avoid overflows) */
@@ -394,7 +394,7 @@ static void auxsort (lua_State *L, IdxT lo, IdxT up, unsigned rnd) {
 static int sort (lua_State *L) {
   lua_Integer n = aux_getn(L, 1, TAB_RW);
   if (n > 1) {  /* non-trivial interval? */
-    luaL_argcheck(L, n < INT_MAX, 1, "array too big");
+    luaL_argcheck(L, n < std::numeric_limits<int>::max(), 1, "array too big");
     if (!lua_isnoneornil(L, 2))  /* is there a 2nd argument? */
       luaL_checktype(L, 2, LUA_TFUNCTION);  /* must be a function */
     lua_settop(L, 2);  /* make sure there are two arguments */
