@@ -192,6 +192,33 @@ public:
   void mainfunc(FuncState *fs);
 
 private:
+  // Phase 93: Lexer helper methods (converted from static functions)
+  // Batch 1: Trivial functions
+  void save(int c);
+  void incLineNumber();
+  int checkNext1(int c);
+  int checkNext2(const char *set);
+  void escCheck(int c, const char *msg);
+
+  // Batch 2: Simple functions
+  int getHexa();
+  int readHexaEsc();
+  int readDecEsc();
+  const char* txtToken(int token);
+  size_t skipSep();
+  TString* anchorStr(TString *ts);
+
+  // Batch 3: Medium functions
+  l_noret lexError(const char *msg, int token);
+  l_uint32 readUtf8Esc();
+  void utf8Esc();
+  int readNumeral(SemInfo *seminfo);
+
+  // Batch 4: Complex functions
+  void readLongString(SemInfo *seminfo, size_t sep);
+  void readString(int del, SemInfo *seminfo);
+  int lex(SemInfo *seminfo);
+
   // Phase 88: Parser implementation methods (static → private)
   void statement();
   void expr(expdesc *v);
