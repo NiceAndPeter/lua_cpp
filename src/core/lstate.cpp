@@ -80,11 +80,13 @@ void luaE_setdebt (global_State *g, l_mem debt) {
 CallInfo *luaE_extendCI (lua_State *L) {
   CallInfo *ci;
   lua_assert(L->getCI()->getNext() == NULL);
-  ci = luaM_new(L, CallInfo);
+  // Use placement new to call constructor (initializes all 9 fields)
+  ci = new (luaM_malloc_(L, sizeof(CallInfo), 0)) CallInfo();
   lua_assert(L->getCI()->getNext() == NULL);
   L->getCI()->setNext(ci);
   ci->setPrevious(L->getCI());
   ci->setNext(NULL);
+  // trap already initialized to 0 in constructor, but keep this for clarity
   ci->getTrap() = 0;
   L->getNCIRef()++;
   return ci;

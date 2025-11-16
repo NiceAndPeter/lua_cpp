@@ -275,6 +275,23 @@ private:
   l_uint32 callstatus;
 
 public:
+  // Constructor: Initialize ALL fields to safe defaults
+  CallInfo() noexcept {
+    func.p = nullptr;
+    top.p = nullptr;
+    previous = nullptr;
+    next = nullptr;
+
+    // Initialize union members to safe defaults
+    u.l.savedpc = nullptr;
+    u.l.trap = 0;
+    u.l.nextraargs = 0;
+
+    u2.funcidx = 0;  // All union members are int-sized, 0 is safe
+
+    callstatus = 0;
+  }
+
   // Inline accessors for func and top (StkIdRel)
   StkIdRel& funcRef() noexcept { return func; }
   const StkIdRel& funcRef() const noexcept { return func; }
