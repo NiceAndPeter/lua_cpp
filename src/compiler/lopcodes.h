@@ -253,6 +253,94 @@ inline void SETARG_sJ(Instruction& i, int j) noexcept {
 }
 
 
+/*
+** InstructionView class - Modern C++ interface for instruction field access
+** Provides clean, object-oriented access to instruction fields
+** Zero-cost: all methods are inline constexpr
+*/
+class InstructionView {
+private:
+	Instruction inst_;
+
+public:
+	/* Constructor from raw instruction */
+	constexpr InstructionView(Instruction i) noexcept : inst_(i) {}
+
+	/* Get raw instruction value */
+	constexpr Instruction raw() const noexcept { return inst_; }
+
+	/* Opcode accessor */
+	constexpr int opcode() const noexcept {
+		return GET_OPCODE(inst_);
+	}
+
+	/* Field A accessor (8 bits) */
+	constexpr int a() const noexcept {
+		return GETARG_A(inst_);
+	}
+
+	/* Field B accessor (8 bits, iABC mode) */
+	constexpr int b() const noexcept {
+		return GETARG_B(inst_);
+	}
+
+	/* Field vB accessor (6 bits, ivABC mode) */
+	constexpr int vb() const noexcept {
+		return GETARG_vB(inst_);
+	}
+
+	/* Signed field B accessor */
+	constexpr int sb() const noexcept {
+		return GETARG_sB(inst_);
+	}
+
+	/* Field C accessor (8 bits, iABC mode) */
+	constexpr int c() const noexcept {
+		return GETARG_C(inst_);
+	}
+
+	/* Field vC accessor (10 bits, ivABC mode) */
+	constexpr int vc() const noexcept {
+		return GETARG_vC(inst_);
+	}
+
+	/* Signed field C accessor */
+	constexpr int sc() const noexcept {
+		return GETARG_sC(inst_);
+	}
+
+	/* Field k accessor (1 bit) */
+	constexpr int k() const noexcept {
+		return GETARG_k(inst_);
+	}
+
+	/* Test field k (non-zero if set) */
+	constexpr int testk() const noexcept {
+		return TESTARG_k(inst_);
+	}
+
+	/* Field Bx accessor (17 bits) */
+	constexpr int bx() const noexcept {
+		return GETARG_Bx(inst_);
+	}
+
+	/* Signed field Bx accessor */
+	constexpr int sbx() const noexcept {
+		return GETARG_sBx(inst_);
+	}
+
+	/* Field Ax accessor (25 bits) */
+	constexpr int ax() const noexcept {
+		return GETARG_Ax(inst_);
+	}
+
+	/* Signed field sJ accessor (25 bits) */
+	constexpr int sj() const noexcept {
+		return GETARG_sJ(inst_);
+	}
+};
+
+
 inline constexpr Instruction CREATE_ABCk(int o, int a, int b, int c, int k) noexcept {
 	return (cast_Inst(o) << POS_OP)
 		| (cast_Inst(a) << POS_A)
