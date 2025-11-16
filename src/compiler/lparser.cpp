@@ -101,7 +101,7 @@ void luaY_checklimit (FuncState *fs, int v, int l, const char *what) {
 ** Test whether next token is 'c'; if so, skip it.
 */
 int Parser::testnext(int c) {
-  if (ls->getCurrentToken().token == c) {
+  if (ls->getToken() == c) {
     ls->nextToken();
     return 1;
   }
@@ -113,7 +113,7 @@ int Parser::testnext(int c) {
 ** Check that next token is 'c'.
 */
 void Parser::check(int c) {
-  if (ls->getCurrentToken().token != c)
+  if (ls->getToken() != c)
     error_expected(c);
 }
 
@@ -151,7 +151,7 @@ void Parser::check_match(int what, int who, int where) {
 TString *Parser::str_checkname() {
   TString *ts;
   check(TK_NAME);
-  ts = ls->getCurrentToken().seminfo.ts;
+  ts = ls->getSemInfo().ts;
   ls->nextToken();
   return ts;
 }
@@ -853,7 +853,7 @@ void Parser::close_func() {
 ** so it is handled in separate.
 */
 int Parser::block_follow( int withuntil) {
-  switch (ls->getCurrentToken().token) {
+  switch (ls->getToken()) {
     case TK_ELSE: case TK_ELSEIF:
     case TK_END: case TK_EOS:
       return 1;
@@ -866,7 +866,7 @@ int Parser::block_follow( int withuntil) {
 void Parser::statlist() {
   /* statlist -> { stat [';'] } */
   while (!block_follow(1)) {
-    if (ls->getCurrentToken().token == TK_RETURN) {
+    if (ls->getToken() == TK_RETURN) {
       statement();
       return;  /* 'return' must be last statement */
     }
@@ -929,9 +929,9 @@ void Parser::recfield( ConsControl *cc) {
   FuncState *funcstate = fs;
   lu_byte reg = fs->getFreeReg();
   expdesc tab, key, val;
-  if (ls->getCurrentToken().token == TK_NAME)
+  if (ls->getToken() == TK_NAME)
     codename( &key);
-  else  /* ls->getCurrentToken().token == '[' */
+  else  /* ls->getToken() == '[' */
     yindex(&key);
   cc->nh++;
   checknext( '=');
@@ -980,7 +980,7 @@ void Parser::listfield( ConsControl *cc) {
 
 void Parser::field( ConsControl *cc) {
   /* field -> listfield | recfield */
-  switch(ls->getCurrentToken().token) {
+  switch(ls->getToken()) {
     case TK_NAME: {  /* may be 'listfield' or 'recfield' */
       if (ls->lookaheadToken() != '=')  /* expression? */
         listfield(cc);
@@ -1032,7 +1032,7 @@ void Parser::constructor( expdesc *table_exp) {
   checknext( '{' /*}*/);
   cc.maxtostore = funcstate->maxtostore();
   do {
-    if (ls->getCurrentToken().token == /*{*/ '}') break;
+    if (ls->getToken() == /*{*/ '}') break;
     if (cc.v.getKind() != VVOID)  /* is there a previous list item? */
       funcstate->closelistfield(&cc);  /* close it */
     field(&cc);
@@ -1059,9 +1059,9 @@ void Parser::parlist() {
   Proto *f = funcstate->getProto();
   int nparams = 0;
   int isvararg = 0;
-  if (ls->getCurrentToken().token != ')') {  /* is 'parlist' not empty? */
+  if (ls->getToken() != ')') {  /* is 'parlist' not empty? */
     do {
-      switch (ls->getCurrentToken().token) {
+      switch (ls->getToken()) {
         case TK_NAME: {
           new_localvar( str_checkname());
           nparams++;
@@ -1124,10 +1124,10 @@ void Parser::funcargs( expdesc *f) {
   expdesc args;
   int base, nparams;
   int line = ls->getLineNumber();
-  switch (ls->getCurrentToken().token) {
+  switch (ls->getToken()) {
     case '(': {  /* funcargs -> '(' [ explist ] ')' */
       ls->nextToken();
-      if (ls->getCurrentToken().token == ')')  /* arg list is empty? */
+      if (ls->getToken() == ')')  /* arg list is empty? */
         args.setKind(VVOID);
       else {
         explist(&args);
@@ -1142,7 +1142,7 @@ void Parser::funcargs( expdesc *f) {
       break;
     }
     case TK_STRING: {  /* funcargs -> STRING */
-      args.initString(ls->getCurrentToken().seminfo.ts);
+      args.initString(ls->getSemInfo().ts);
       ls->nextToken();  /* must use 'seminfo' before 'next' */
       break;
     }
@@ -1178,7 +1178,7 @@ void Parser::funcargs( expdesc *f) {
 
 void Parser::primaryexp( expdesc *v) {
   /* primaryexp -> NAME | '(' expr ')' */
-  switch (ls->getCurrentToken().token) {
+  switch (ls->getToken()) {
     case '(': {
       int line = ls->getLineNumber();
       ls->nextToken();
@@ -1204,7 +1204,7 @@ void Parser::suffixedexp( expdesc *v) {
   FuncState *funcstate = fs;
   primaryexp(v);
   for (;;) {
-    switch (ls->getCurrentToken().token) {
+    switch (ls->getToken()) {
       case '.': {  /* fieldsel */
         fieldsel(v);
         break;
@@ -1238,19 +1238,19 @@ void Parser::suffixedexp( expdesc *v) {
 void Parser::simpleexp( expdesc *v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
-  switch (ls->getCurrentToken().token) {
+  switch (ls->getToken()) {
     case TK_FLT: {
       v->init(VKFLT, 0);
-      v->setFloatValue(ls->getCurrentToken().seminfo.r);
+      v->setFloatValue(ls->getSemInfo().r);
       break;
     }
     case TK_INT: {
       v->init(VKINT, 0);
-      v->setIntValue(ls->getCurrentToken().seminfo.i);
+      v->setIntValue(ls->getSemInfo().i);
       break;
     }
     case TK_STRING: {
-      v->initString(ls->getCurrentToken().seminfo.ts);
+      v->initString(ls->getSemInfo().ts);
       break;
     }
     case TK_NIL: {
@@ -1359,7 +1359,7 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
   enterlevel(ls);
-  uop = getunopr(ls->getCurrentToken().token);
+  uop = getunopr(ls->getToken());
   if (uop != OPR_NOUNOPR) {  /* prefix (unary) operator? */
     int line = ls->getLineNumber();
     ls->nextToken();  /* skip operator */
@@ -1368,7 +1368,7 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
   }
   else simpleexp(v);
   /* expand while operators have priorities higher than 'limit' */
-  op = getbinopr(ls->getCurrentToken().token);
+  op = getbinopr(ls->getToken());
   while (op != OPR_NOBINOPR && priority[op].left > limit) {
     expdesc v2;
     BinOpr nextop;
@@ -1557,7 +1557,7 @@ void Parser::checkrepeated( TString *name) {
 void Parser::labelstat( TString *name, int line) {
   /* label -> '::' NAME '::' */
   checknext( TK_DBCOLON);  /* skip double colon */
-  while (ls->getCurrentToken().token == ';' || ls->getCurrentToken().token == TK_DBCOLON)
+  while (ls->getToken() == ';' || ls->getToken() == TK_DBCOLON)
     statement();  /* skip other no-op statements */
   checkrepeated(name);  /* check for repeated labels */
   ls->createlabel(fs, name, line, block_follow(0));
@@ -1723,7 +1723,7 @@ void Parser::forstat( int line) {
   funcstate->enterblock(&bl, 1);  /* scope for loop and control variables */
   ls->nextToken();  /* skip 'for' */
   varname = str_checkname();  /* first variable name */
-  switch (ls->getCurrentToken().token) {
+  switch (ls->getToken()) {
     case '=': fornum(varname, line); break;
     case ',': case TK_IN: forlist(varname); break;
     default: ls->syntaxError( "'=' or 'in' expected");
@@ -1741,8 +1741,8 @@ void Parser::test_then_block( int *escapelist) {
   condtrue = cond();  /* read condition */
   checknext( TK_THEN);
   block();  /* 'then' part */
-  if (ls->getCurrentToken().token == TK_ELSE ||
-      ls->getCurrentToken().token == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
+  if (ls->getToken() == TK_ELSE ||
+      ls->getToken() == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
     funcstate->concat(escapelist, funcstate->jump());  /* must jump over it */
   funcstate->patchtohere(condtrue);
 }
@@ -1753,7 +1753,7 @@ void Parser::ifstat( int line) {
   FuncState *funcstate = fs;
   int escapelist = NO_JUMP;  /* exit list for finished parts */
   test_then_block(&escapelist);  /* IF cond THEN block */
-  while (ls->getCurrentToken().token == TK_ELSEIF)
+  while (ls->getToken() == TK_ELSEIF)
     test_then_block(&escapelist);  /* ELSEIF cond THEN block */
   if (testnext( TK_ELSE))
     block();  /* 'else' part */
@@ -1927,9 +1927,9 @@ int Parser::funcname( expdesc *v) {
   /* funcname -> NAME {fieldsel} [':' NAME] */
   int ismethod = 0;
   singlevar(v);
-  while (ls->getCurrentToken().token == '.')
+  while (ls->getToken() == '.')
     fieldsel(v);
-  if (ls->getCurrentToken().token == ':') {
+  if (ls->getToken() == ':') {
     ismethod = 1;
     fieldsel(v);
   }
@@ -1955,7 +1955,7 @@ void Parser::exprstat() {
   FuncState *funcstate = fs;
   struct LHS_assign v;
   suffixedexp(&v.v);
-  if (ls->getCurrentToken().token == '=' || ls->getCurrentToken().token == ',') { /* stat -> assignment ? */
+  if (ls->getToken() == '=' || ls->getToken() == ',') { /* stat -> assignment ? */
     v.prev = NULL;
     restassign(&v, 1);
   }
@@ -1974,7 +1974,7 @@ void Parser::retstat() {
   expdesc e;
   int nret;  /* number of values being returned */
   int first = luaY_nvarstack(funcstate);  /* first slot to be returned */
-  if (block_follow(1) || ls->getCurrentToken().token == ';')
+  if (block_follow(1) || ls->getToken() == ';')
     nret = 0;  /* return no values */
   else {
     nret = explist(&e);  /* optional return values */
@@ -2003,7 +2003,7 @@ void Parser::retstat() {
 void Parser::statement() {
   int line = ls->getLineNumber();  /* may be needed for error messages */
   enterlevel(ls);
-  switch (ls->getCurrentToken().token) {
+  switch (ls->getToken()) {
     case ';': {  /* stat -> ';' (empty statement) */
       ls->nextToken();  /* skip ';' */
       break;
@@ -2069,7 +2069,7 @@ void Parser::statement() {
     case TK_NAME: {
       /* compatibility code to parse global keyword when "global"
          is not reserved */
-      if (ls->getCurrentToken().seminfo.ts == ls->getGlobalName()) {  /* current = "global"? */
+      if (ls->getSemInfo().ts == ls->getGlobalName()) {  /* current = "global"? */
         int lk = ls->lookaheadToken();
         if (lk == '<' || lk == TK_NAME || lk == '*' || lk == TK_FUNCTION) {
           /* 'global <attrib>' or 'global name' or 'global *' or

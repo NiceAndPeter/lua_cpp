@@ -159,12 +159,15 @@ public:
 /* Phase 95: Lexical state - focused on tokenization only
 ** Parser-specific fields and methods moved to Parser class */
 class LexState {
-private:
-  // Phase 94: SRP decomposition - organized subsystems
+public:
+  // Phase 96: Direct subsystem access for performance
+  // These subsystems are frequently accessed in hot paths, so we make them
+  // public to eliminate indirection overhead from delegating accessor methods
   InputScanner scanner;
   TokenState tokens;
   StringInterner strings;
 
+private:
   // Shared state (lexer + parser)
   struct lua_State *L;
   struct Dyndata *dyd;  /* dynamic structures shared by lexer and parser */
@@ -194,6 +197,13 @@ public:
   Token& getCurrentTokenRef() noexcept { return tokens.getCurrentRef(); }
   const Token& getLookahead() const noexcept { return tokens.getLookahead(); }
   Token& getLookaheadRef() noexcept { return tokens.getLookaheadRef(); }
+
+  // Phase 96: Hot-path token accessors - frequently used in parser
+  // Direct access to token value without going through full getCurrentToken() call
+  inline int getToken() const noexcept { return tokens.getCurrent().token; }
+  inline void setToken(int tok) noexcept { tokens.getCurrentRef().token = tok; }
+  inline SemInfo& getSemInfo() noexcept { return tokens.getCurrentRef().seminfo; }
+  inline const SemInfo& getSemInfo() const noexcept { return tokens.getCurrent().seminfo; }
 
   // StringInterner accessors
   Mbuffer* getBuffer() const noexcept { return strings.getBuffer(); }
