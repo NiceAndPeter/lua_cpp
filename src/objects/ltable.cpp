@@ -48,9 +48,9 @@
 ** - Resize: Amortized O(1) per insertion over many operations
 */
 
-#include <math.h>
-#include <limits.h>
-#include <string.h>
+#include <cmath>
+#include <climits>
+#include <cstring>
 
 #include "lua.h"
 

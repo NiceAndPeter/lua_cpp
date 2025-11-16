@@ -9,11 +9,11 @@
 #include "lprefix.h"
 
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
-#include <signal.h>
+#include <csignal>
 
 #include "lua.h"
 

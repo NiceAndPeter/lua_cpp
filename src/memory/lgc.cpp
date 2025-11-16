@@ -9,7 +9,7 @@
 
 #include "lprefix.h"
 
-#include <string.h>
+#include <cstring>
 
 
 #include "lua.h"

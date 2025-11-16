@@ -10,11 +10,11 @@
 #include "lprefix.h"
 
 
-#include <errno.h>
-#include <locale.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cerrno>
+#include <clocale>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #include "lua.h"
 

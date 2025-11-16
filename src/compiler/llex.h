@@ -7,7 +7,7 @@
 #ifndef llex_h
 #define llex_h
 
-#include <limits.h>
+#include <climits>
 
 #include "lobject.h"
 #include "lzio.h"

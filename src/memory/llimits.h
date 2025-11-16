@@ -8,8 +8,8 @@
 #define llimits_h
 
 
-#include <limits.h>
-#include <stddef.h>
+#include <climits>
+#include <cstddef>
 #include <cmath>
 
 
@@ -91,7 +91,7 @@ inline constexpr size_t LL(const char (&)[N]) noexcept {
 */
 #if !defined(LUA_USE_C89) && defined(__STDC_VERSION__) && \
     __STDC_VERSION__ >= 199901L
-#include <stdint.h>
+#include <cstdint>
 #if defined(UINTPTR_MAX)  /* even in C99 this type is optional */
 #define L_P2I	uintptr_t
 #else  /* no 'intptr'? */

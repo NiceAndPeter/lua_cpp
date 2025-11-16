@@ -10,10 +10,10 @@
 #include "lprefix.h"
 
 
-#include <float.h>
-#include <limits.h>
-#include <math.h>
-#include <stdlib.h>
+#include <cfloat>
+#include <climits>
+#include <cmath>
+#include <cstdlib>
 
 #include "lua.h"
 

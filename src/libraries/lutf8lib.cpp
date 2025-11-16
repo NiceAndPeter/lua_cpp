@@ -10,10 +10,10 @@
 #include "lprefix.h"
 
 
-#include <assert.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cassert>
+#include <climits>
+#include <cstdlib>
+#include <cstring>
 
 #include "lua.h"
 
