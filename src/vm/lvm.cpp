@@ -1385,14 +1385,6 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   for (;;) {
     Instruction i;  /* instruction being executed */
     vmfetch();
-    #if 0
-    { /* low-level line tracing for debugging Lua */
-      #include "lopnames.h"
-      int pcrel = cl->p->getPCRelative(pc);
-      printf("line: %d; %s (%d)\n", luaG_getfuncline(cl->p, pcrel),
-             opnames[GET_OPCODE(i)], pcrel);
-    }
-    #endif
     lua_assert(base == ci->funcRef().p + 1);
     lua_assert(base <= L->getTop().p && L->getTop().p <= L->getStackLast().p);
     /* for tests, invalidate top for instructions not expecting it */

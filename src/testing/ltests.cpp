@@ -772,24 +772,6 @@ static char *buildop (Proto *p, int pc, char *buff) {
 }
 
 
-#if 0
-void luaI_printcode (Proto *pt, int size) {
-  int pc;
-  for (pc=0; pc<size; pc++) {
-    char buff[100];
-    printf("%s\n", buildop(pt, pc, buff));
-  }
-  printf("-------\n");
-}
-
-
-void luaI_printinst (Proto *pt, int pc) {
-  char buff[100];
-  printf("%s\n", buildop(pt, pc, buff));
-}
-#endif
-
-
 static int listcode (lua_State *L) {
   int pc;
   Proto *p;
