@@ -1770,7 +1770,7 @@ LUAI_FUNC int LEintfloat (lua_Integer i, lua_Number f);
 LUAI_FUNC int LTfloatint (lua_Number f, lua_Integer i);
 LUAI_FUNC int LEfloatint (lua_Number f, lua_Integer i);
 LUAI_FUNC int l_strcmp (const TString* ts1, const TString* ts2);
-LUAI_FUNC int luaS_eqstr (const TString* a, const TString* b);
+/* luaS_eqstr declared in lstring.h */
 
 /* String comparison helpers (defined in lstring.h) */
 bool eqshrstr(const TString* a, const TString* b) noexcept;  /* forward decl */
@@ -1858,7 +1858,7 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 			}
 			case LUA_VSHRSTR: case LUA_VLNGSTR: {
 				/* Compare strings with different variants */
-				return luaS_eqstr(tsvalue(&l), tsvalue(&r));
+				return const_cast<TString*>(tsvalue(&l))->equals(const_cast<TString*>(tsvalue(&r)));
 			}
 			default:
 				return false;
@@ -1877,7 +1877,7 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 			case LUA_VSHRSTR:
 				return eqshrstr(tsvalue(&l), tsvalue(&r));
 			case LUA_VLNGSTR:
-				return luaS_eqstr(tsvalue(&l), tsvalue(&r));
+				return const_cast<TString*>(tsvalue(&l))->equals(const_cast<TString*>(tsvalue(&r)));
 			case LUA_VUSERDATA:
 				return uvalue(&l) == uvalue(&r);
 			case LUA_VLCF:

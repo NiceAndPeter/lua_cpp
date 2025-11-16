@@ -523,48 +523,7 @@ int LEfloatint (lua_Number f, lua_Integer i) {
 }
 
 
-/*
-** Return 'l < r', for numbers.
-*/
-static inline int LTnum (const TValue *l, const TValue *r) {
-  lua_assert(ttisnumber(l) && ttisnumber(r));
-  if (ttisinteger(l)) {
-    lua_Integer li = ivalue(l);
-    if (ttisinteger(r))
-      return li < ivalue(r);  /* both are integers */
-    else  /* 'l' is int and 'r' is float */
-      return LTintfloat(li, fltvalue(r));  /* l < r ? */
-  }
-  else {
-    lua_Number lf = fltvalue(l);  /* 'l' must be float */
-    if (ttisfloat(r))
-      return luai_numlt(lf, fltvalue(r));  /* both are float */
-    else  /* 'l' is float and 'r' is int */
-      return LTfloatint(lf, ivalue(r));
-  }
-}
-
-
-/*
-** Return 'l <= r', for numbers.
-*/
-static inline int LEnum (const TValue *l, const TValue *r) {
-  lua_assert(ttisnumber(l) && ttisnumber(r));
-  if (ttisinteger(l)) {
-    lua_Integer li = ivalue(l);
-    if (ttisinteger(r))
-      return li <= ivalue(r);  /* both are integers */
-    else  /* 'l' is int and 'r' is float */
-      return LEintfloat(li, fltvalue(r));  /* l <= r ? */
-  }
-  else {
-    lua_Number lf = fltvalue(l);  /* 'l' must be float */
-    if (ttisfloat(r))
-      return luai_numle(lf, fltvalue(r));  /* both are float */
-    else  /* 'l' is float and 'r' is int */
-      return LEfloatint(lf, ivalue(r));
-  }
-}
+/* LTnum and LEnum functions removed - now using operator< and operator<= directly */
 
 
 /*
@@ -1088,21 +1047,15 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 
 
 /*
-** Order operations with register operands. 'opn' actually works
-** for all numbers, but the fast track improves performance for
-** integers.
+** Order operations with register operands. Uses operator overloads
+** for cleaner syntax. 'op' is the operator to use (<, <=, etc.)
 */
-#define op_order(L,opi,opn,other) {  \
+#define op_order(L,op,other) {  \
   TValue *ra = vRA(i); \
   int cond;  \
   TValue *rb = vRB(i);  \
-  if (ttisinteger(ra) && ttisinteger(rb)) {  \
-    lua_Integer ia = ivalue(ra);  \
-    lua_Integer ib = ivalue(rb);  \
-    cond = opi(ia, ib);  \
-  }  \
-  else if (ttisnumber(ra) && ttisnumber(rb))  \
-    cond = opn(ra, rb);  \
+  if (ttisnumber(ra) && ttisnumber(rb))  \
+    cond = (*ra op *rb);  /* Use operator for numeric comparisons */ \
   else  \
     Protect(cond = other(L, ra, rb));  \
   docondjump(); }
@@ -1816,18 +1769,18 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LT) {
-        op_order(L, l_lti, LTnum, lessthanothers);
+        op_order(L, <, lessthanothers);
         vmbreak;
       }
       vmcase(OP_LE) {
-        op_order(L, l_lei, LEnum, lessequalothers);
+        op_order(L, <=, lessequalothers);
         vmbreak;
       }
       vmcase(OP_EQK) {
         StkId ra = RA(i);
         TValue *rb = KB(i);
         /* basic types do not use '__eq'; we can use raw equality */
-        int cond = luaV_rawequalobj(s2v(ra), rb);
+        int cond = (*s2v(ra) == *rb);  /* Use operator== for cleaner syntax */
         docondjump();
         vmbreak;
       }

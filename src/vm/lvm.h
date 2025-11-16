@@ -115,7 +115,7 @@ inline bool tointegerns(const TValue* o, lua_Integer* i) noexcept {
 LUAI_FUNC int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2);
 
 inline int luaV_rawequalobj(const TValue* t1, const TValue* t2) noexcept {
-	return luaV_equalobj(NULL, t1, t2);
+	return *t1 == *t2;  /* Use operator== for raw equality */
 }
 
 
