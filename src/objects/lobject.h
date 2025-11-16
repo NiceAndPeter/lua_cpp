@@ -552,6 +552,12 @@ public:
 
   // Static factory-like functions (still use luaS_* for now)
   // static TString* create(lua_State* L, const char* str, size_t len);
+
+  // Comparison operator overloads (defined after l_strcmp declaration)
+  friend bool operator<(const TString& l, const TString& r) noexcept;
+  friend bool operator<=(const TString& l, const TString& r) noexcept;
+  friend bool operator==(const TString& l, const TString& r) noexcept;
+  friend bool operator!=(const TString& l, const TString& r) noexcept;
 };
 
 
@@ -1805,7 +1811,7 @@ inline bool operator<(const TValue& l, const TValue& r) noexcept {
 	}
 	// Both strings? (no metamethods - raw comparison)
 	else if (ttisstring(&l) && ttisstring(&r)) {
-		return l_strcmp(tsvalue(&l), tsvalue(&r)) < 0;
+		return *tsvalue(&l) < *tsvalue(&r);  /* Use TString operator< */
 	}
 	// Different types or non-comparable types
 	return false;
@@ -1835,7 +1841,7 @@ inline bool operator<=(const TValue& l, const TValue& r) noexcept {
 	}
 	// Both strings? (no metamethods - raw comparison)
 	else if (ttisstring(&l) && ttisstring(&r)) {
-		return l_strcmp(tsvalue(&l), tsvalue(&r)) <= 0;
+		return *tsvalue(&l) <= *tsvalue(&r);  /* Use TString operator<= */
 	}
 	// Different types or non-comparable types
 	return false;
@@ -1898,6 +1904,33 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 ** Operator!= for TValue
 */
 inline bool operator!=(const TValue& l, const TValue& r) noexcept {
+	return !(l == r);
+}
+
+
+/*
+** TString comparison operators
+** Provide idiomatic C++ comparison syntax for TString objects
+*/
+
+/* operator< for TString - lexicographic ordering */
+inline bool operator<(const TString& l, const TString& r) noexcept {
+	return l_strcmp(&l, &r) < 0;
+}
+
+/* operator<= for TString - lexicographic ordering */
+inline bool operator<=(const TString& l, const TString& r) noexcept {
+	return l_strcmp(&l, &r) <= 0;
+}
+
+/* operator== for TString - equality check using existing equals() method */
+inline bool operator==(const TString& l, const TString& r) noexcept {
+	// Use equals() method which handles short vs long string optimization
+	return const_cast<TString&>(l).equals(const_cast<TString*>(&r));
+}
+
+/* operator!= for TString - inequality check */
+inline bool operator!=(const TString& l, const TString& r) noexcept {
 	return !(l == r);
 }
 
