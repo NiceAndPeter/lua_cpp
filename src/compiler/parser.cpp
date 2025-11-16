@@ -1,6 +1,6 @@
 /*
 ** $Id: lparser.c $
-** Lua Parser
+** Lua Parser - Parser Class Methods
 ** See Copyright Notice in lua.h
 */
 
@@ -28,7 +28,6 @@
 #include "ltable.h"
 
 
-
 /* maximum number of variable declarations per function (must be
    smaller than 250, due to the bytecode format) */
 #define MAXVARS		200
@@ -46,6 +45,22 @@ inline bool eqstr(const TString* a, const TString* b) noexcept {
 }
 
 
+#define check_condition(parser,c,msg)	{ if (!(c)) parser->getLexState()->syntaxError( msg); }
+
+#define new_localvarliteral(parser,v) \
+    new_localvar(  \
+      parser->getLexState()->newString( "" v, (sizeof(v)/sizeof(char)) - 1));
+
+
+inline void enterlevel(LexState* ls) {
+	luaE_incCstack(ls->getLuaState());
+}
+
+inline void leavelevel(LexState* ls) noexcept {
+	ls->getLuaState()->getNCcallsRef()--;
+}
+
+
 /*
 ** nodes for block list (list of active blocks)
 */
@@ -60,11 +75,98 @@ typedef struct BlockCnt {
 } BlockCnt;
 
 
+typedef struct ConsControl {
+  expdesc v;  /* last list item read */
+  expdesc *t;  /* table descriptor */
+  int nh;  /* total number of 'record' elements */
+  int na;  /* number of array elements already stored */
+  int tostore;  /* number of array elements pending to be stored */
+  int maxtostore;  /* maximum number of pending elements */
+} ConsControl;
+
 
 /*
-** prototypes for recursive non-terminal functions
-** (All converted to LexState private methods)
+** Maximum number of elements in a constructor, to control the following:
+** * counter overflows;
+** * overflows in 'extra' for OP_NEWTABLE and OP_SETLIST;
+** * overflows when adding multiple returns in OP_SETLIST.
 */
+#define MAX_CNST	(INT_MAX/2)
+#if MAX_CNST/(MAXARG_vC + 1) > MAXARG_Ax
+#undef MAX_CNST
+#define MAX_CNST	(MAXARG_Ax * (MAXARG_vC + 1))
+#endif
+
+
+inline UnOpr getunopr (int op) noexcept {
+  switch (op) {
+    case TK_NOT: return OPR_NOT;
+    case '-': return OPR_MINUS;
+    case '~': return OPR_BNOT;
+    case '#': return OPR_LEN;
+    default: return OPR_NOUNOPR;
+  }
+}
+
+
+inline BinOpr getbinopr (int op) noexcept {
+  switch (op) {
+    case '+': return OPR_ADD;
+    case '-': return OPR_SUB;
+    case '*': return OPR_MUL;
+    case '%': return OPR_MOD;
+    case '^': return OPR_POW;
+    case '/': return OPR_DIV;
+    case TK_IDIV: return OPR_IDIV;
+    case '&': return OPR_BAND;
+    case '|': return OPR_BOR;
+    case '~': return OPR_BXOR;
+    case TK_SHL: return OPR_SHL;
+    case TK_SHR: return OPR_SHR;
+    case TK_CONCAT: return OPR_CONCAT;
+    case TK_NE: return OPR_NE;
+    case TK_EQ: return OPR_EQ;
+    case '<': return OPR_LT;
+    case TK_LE: return OPR_LE;
+    case '>': return OPR_GT;
+    case TK_GE: return OPR_GE;
+    case TK_AND: return OPR_AND;
+    case TK_OR: return OPR_OR;
+    default: return OPR_NOBINOPR;
+  }
+}
+
+
+/*
+** Priority table for binary operators.
+*/
+static const struct {
+  lu_byte left;  /* left priority for each binary operator */
+  lu_byte right; /* right priority */
+} priority[] = {  /* ORDER OPR */
+   {10, 10}, {10, 10},           /* '+' '-' */
+   {11, 11}, {11, 11},           /* '*' '%' */
+   {14, 13},                  /* '^' (right associative) */
+   {11, 11}, {11, 11},           /* '/' '//' */
+   {6, 6}, {4, 4}, {5, 5},   /* '&' '|' '~' */
+   {7, 7}, {7, 7},           /* '<<' '>>' */
+   {9, 8},                   /* '..' (right associative) */
+   {3, 3}, {3, 3}, {3, 3},   /* ==, <, <= */
+   {3, 3}, {3, 3}, {3, 3},   /* ~=, >, >= */
+   {2, 2}, {1, 1}            /* and, or */
+};
+
+#define UNARY_PRIORITY	12  /* priority for unary operators */
+
+
+/*
+** structure to chain all variables in the left-hand side of an
+** assignment
+*/
+struct LHS_assign {
+  struct LHS_assign *prev;
+  expdesc v;  /* variable (global, local, upvalue, or indexed) */
+};
 
 
 l_noret Parser::error_expected(int token) {
@@ -73,32 +175,6 @@ l_noret Parser::error_expected(int token) {
 }
 
 
-l_noret FuncState::errorlimit(int limit, const char *what) {
-  lua_State *L = getLexState()->getLuaState();
-  const char *msg;
-  int line = getProto()->getLineDefined();
-  const char *where = (line == 0)
-                      ? "main function"
-                      : luaO_pushfstring(L, "function at line %d", line);
-  msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
-                             what, limit, where);
-  getLexState()->syntaxError(msg);
-}
-
-
-void FuncState::checklimit(int v, int l, const char *what) {
-  if (l_unlikely(v > l)) errorlimit(l, what);
-}
-
-/* External API wrapper */
-void luaY_checklimit (FuncState *fs, int v, int l, const char *what) {
-  fs->checklimit(v, l, what);
-}
-
-
-/*
-** Test whether next token is 'c'; if so, skip it.
-*/
 int Parser::testnext(int c) {
   if (ls->getToken() == c) {
     ls->nextToken();
@@ -156,22 +232,6 @@ TString *Parser::str_checkname() {
 }
 
 
-void expdesc::init(expkind kind, int i) {
-  setFalseList(NO_JUMP);
-  setTrueList(NO_JUMP);
-  setKind(kind);
-  setInfo(i);
-}
-
-
-void expdesc::initString(TString *s) {
-  setFalseList(NO_JUMP);
-  setTrueList(NO_JUMP);
-  setKind(VKSTR);
-  setStringValue(s);
-}
-
-
 void Parser::codename(expdesc *e) {
   e->initString(str_checkname());
 }
@@ -180,24 +240,6 @@ void Parser::codename(expdesc *e) {
 /*
 ** Register a new local variable in the active 'Proto' (for debug
 ** information).
-*/
-short FuncState::registerlocalvar(TString *varname) {
-  Proto *proto = getProto();
-  int oldsize = proto->getLocVarsSize();
-  luaM_growvector(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
-                  LocVar, SHRT_MAX, "local variables");
-  while (oldsize < proto->getLocVarsSize())
-    proto->getLocVars()[oldsize++].setVarName(NULL);
-  proto->getLocVars()[getNumDebugVars()].setVarName(varname);
-  proto->getLocVars()[getNumDebugVars()].setStartPC(getPC());
-  luaC_objbarrier(getLexState()->getLuaState(), proto, varname);
-  return postIncrementNumDebugVars();
-}
-
-
-/*
-** Create a new variable with the given 'name' and given 'kind'.
-** Return its index in the function.
 */
 int Parser::new_varkind(TString *name, lu_byte kind) {
   Dyndata *dynData = ls->getDyndata();
@@ -226,70 +268,6 @@ int Parser::new_localvar(TString *name) {
 ** Return the "variable description" (Vardesc) of a given variable.
 ** (Unless noted otherwise, all variables are referred to by their
 ** compiler indices.)
-*/
-Vardesc *FuncState::getlocalvardesc(int vidx) {
-  return &getLexState()->getDyndata()->actvar()[getFirstLocal() + vidx];
-}
-
-
-/*
-** Convert 'nvar', a compiler index level, to its corresponding
-** register. For that, search for the highest variable below that level
-** that is in a register and uses its register index ('ridx') plus one.
-*/
-lu_byte FuncState::reglevel(int nvar) {
-  while (nvar-- > 0) {
-    Vardesc *vd = getlocalvardesc(nvar);  /* get previous variable */
-    if (vd->isInReg())  /* is in a register? */
-      return cast_byte(vd->vd.ridx + 1);
-  }
-  return 0;  /* no variables in registers */
-}
-
-
-/*
-** Return the number of variables in the register stack for the given
-** function.
-*/
-lu_byte FuncState::nvarstack() {
-  return reglevel(getNumActiveVars());
-}
-
-/* External API wrapper */
-lu_byte luaY_nvarstack (FuncState *fs) {
-  return fs->nvarstack();
-}
-
-
-/*
-** Get the debug-information entry for current variable 'vidx'.
-*/
-LocVar *FuncState::localdebuginfo(int vidx) {
-  Vardesc *vd = getlocalvardesc(vidx);
-  if (!vd->isInReg())
-    return NULL;  /* no debug info. for constants */
-  else {
-    int idx = vd->vd.pidx;
-    lua_assert(idx < getNumDebugVars());
-    return &getProto()->getLocVars()[idx];
-  }
-}
-
-
-/*
-** Create an expression representing variable 'vidx'
-*/
-void FuncState::init_var(expdesc *e, int vidx) {
-  e->setFalseList(NO_JUMP);
-  e->setTrueList(NO_JUMP);
-  e->setKind(VLOCAL);
-  e->setLocalVarIndex(cast_short(vidx));
-  e->setLocalRegister(getlocalvardesc(vidx)->vd.ridx);
-}
-
-
-/*
-** Raises an error if variable described by 'e' is read only
 */
 void Parser::check_readonly(expdesc *e) {
   // FuncState passed as parameter
@@ -346,154 +324,6 @@ void Parser::adjustlocalvars(int nvars) {
 ** Close the scope for all variables up to level 'tolevel'.
 ** (debug info.)
 */
-void FuncState::removevars(int tolevel) {
-  int current_n = getLexState()->getDyndata()->actvar().getN();
-  getLexState()->getDyndata()->actvar().setN(current_n - (getNumActiveVars() - tolevel));
-  while (getNumActiveVars() > tolevel) {
-    LocVar *var = localdebuginfo(--getNumActiveVarsRef());
-    if (var)  /* does it have debug information? */
-      var->setEndPC(getPC());
-  }
-}
-
-
-/*
-** Search the upvalues of the function for one
-** with the given 'name'.
-*/
-int FuncState::searchupvalue(TString *name) {
-  int i;
-  Upvaldesc *up = getProto()->getUpvalues();
-  for (i = 0; i < getNumUpvalues(); i++) {
-    if (eqstr(up[i].getName(), name)) return i;
-  }
-  return -1;  /* not found */
-}
-
-
-Upvaldesc *FuncState::allocupvalue() {
-  Proto *proto = getProto();
-  int oldsize = proto->getUpvaluesSize();
-  checklimit(getNumUpvalues() + 1, MAXUPVAL, "upvalues");
-  luaM_growvector(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
-                  Upvaldesc, MAXUPVAL, "upvalues");
-  while (oldsize < proto->getUpvaluesSize())
-    proto->getUpvalues()[oldsize++].setName(NULL);
-  return &proto->getUpvalues()[getNumUpvaluesRef()++];
-}
-
-
-int FuncState::newupvalue(TString *name, expdesc *v) {
-  Upvaldesc *up = allocupvalue();
-  FuncState *prevFunc = getPrev();
-  if (v->getKind() == VLOCAL) {
-    up->setInStack(1);
-    up->setIndex(v->getLocalRegister());
-    up->setKind(prevFunc->getlocalvardesc(v->getLocalVarIndex())->vd.kind);
-    lua_assert(eqstr(name, prevFunc->getlocalvardesc(v->getLocalVarIndex())->vd.name));
-  }
-  else {
-    up->setInStack(0);
-    up->setIndex(cast_byte(v->getInfo()));
-    up->setKind(prevFunc->getProto()->getUpvalues()[v->getInfo()].getKind());
-    lua_assert(eqstr(name, prevFunc->getProto()->getUpvalues()[v->getInfo()].getName()));
-  }
-  up->setName(name);
-  luaC_objbarrier(getLexState()->getLuaState(), getProto(), name);
-  return getNumUpvalues() - 1;
-}
-
-
-/*
-** Look for an active variable with the name 'n' in the function.
-** If found, initialize 'var' with it and return its expression kind;
-** otherwise return -1. While searching, var->u.info==-1 means that
-** the preambular global declaration is active (the default while
-** there is no other global declaration); var->u.info==-2 means there
-** is no active collective declaration (some previous global declaration
-** but no collective declaration); and var->u.info>=0 points to the
-** inner-most (the first one found) collective declaration, if there is one.
-*/
-int FuncState::searchvar(TString *n, expdesc *var) {
-  int i;
-  for (i = cast_int(getNumActiveVars()) - 1; i >= 0; i--) {
-    Vardesc *vd = getlocalvardesc(i);
-    if (vd->isGlobal()) {  /* global declaration? */
-      if (vd->vd.name == NULL) {  /* collective declaration? */
-        if (var->getInfo() < 0)  /* no previous collective declaration? */
-          var->setInfo(getFirstLocal() + i);  /* this is the first one */
-      }
-      else {  /* global name */
-        if (eqstr(n, vd->vd.name)) {  /* found? */
-          var->init(VGLOBAL, getFirstLocal() + i);
-          return VGLOBAL;
-        }
-        else if (var->getInfo() == -1)  /* active preambular declaration? */
-          var->setInfo(-2);  /* invalidate preambular declaration */
-      }
-    }
-    else if (eqstr(n, vd->vd.name)) {  /* found? */
-      if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
-        var->init(VCONST, getFirstLocal() + i);
-      else  /* local variable */
-        init_var(var, i);
-      return cast_int(var->getKind());
-    }
-  }
-  return -1;  /* not found */
-}
-
-
-/*
-** Mark block where variable at given level was defined
-** (to emit close instructions later).
-*/
-void FuncState::markupval(int level) {
-  BlockCnt *block = getBlock();
-  while (block->nactvar > level)
-    block = block->previous;
-  block->upval = 1;
-  setNeedClose(1);
-}
-
-
-/*
-** Mark that current block has a to-be-closed variable.
-*/
-void FuncState::marktobeclosed() {
-  BlockCnt *block = getBlock();
-  block->upval = 1;
-  block->insidetbc = 1;
-  setNeedClose(1);
-}
-
-
-/*
-** Find a variable with the given name 'n'. If it is an upvalue, add
-** this upvalue into all intermediate functions. If it is a global, set
-** 'var' as 'void' as a flag.
-*/
-void FuncState::singlevaraux(TString *n, expdesc *var, int base) {
-  int v = searchvar(n, var);  /* look up variables at current level */
-  if (v >= 0) {  /* found? */
-    if (v == VLOCAL && !base)
-      markupval(var->getLocalVarIndex());  /* local will be used as an upval */
-  }
-  else {  /* not found at current level; try upvalues */
-    int idx = searchupvalue(n);  /* try existing upvalues */
-    if (idx < 0) {  /* not found? */
-      if (getPrev() != NULL)  /* more levels? */
-        getPrev()->singlevaraux(n, var, 0);  /* try upper levels */
-      if (var->getKind() == VLOCAL || var->getKind() == VUPVAL)  /* local or upvalue? */
-        idx = newupvalue(n, var);  /* will be a new upvalue */
-      else  /* it is a global or a constant */
-        return;  /* don't need to do anything at this level */
-    }
-    var->init(VUPVAL, idx);  /* new or old upvalue */
-  }
-}
-
-
 void Parser::buildglobal(TString *varname, expdesc *var) {
   // FuncState passed as parameter
   expdesc key;
@@ -559,97 +389,6 @@ void Parser::adjust_assign(int nvars, int nexps, expdesc *e) {
 }
 
 
-inline void enterlevel(LexState* ls) {
-	luaE_incCstack(ls->getLuaState());
-}
-
-inline void leavelevel(LexState* ls) noexcept {
-	ls->getLuaState()->getNCcallsRef()--;
-}
-
-
-/*
-** Generates an error that a goto jumps into the scope of some
-** variable declaration.
-*/
-l_noret LexState::jumpscopeerror(FuncState *funcState, Labeldesc *gt) {
-  TString *tsname = funcState->getlocalvardesc(gt->nactvar)->vd.name;
-  const char *varname = (tsname != NULL) ? getstr(tsname) : "*";
-  semerror("<goto %s> at line %d jumps into the scope of '%s'",
-           getstr(gt->name), gt->line, varname);  /* raise the error */
-}
-
-
-/*
-** Closes the goto at index 'g' to given 'label' and removes it
-** from the list of pending gotos.
-** If it jumps into the scope of some variable, raises an error.
-** The goto needs a CLOSE if it jumps out of a block with upvalues,
-** or out of the scope of some variable and the block has upvalues
-** (signaled by parameter 'bup').
-*/
-void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup) {
-  int i;
-  Labellist *gl = &getDyndata()->gt;  /* list of gotos */
-  Labeldesc *gt = &(*gl)[g];  /* goto to be resolved */
-  lua_assert(eqstr(gt->name, label->name));
-  if (l_unlikely(gt->nactvar < label->nactvar))  /* enter some scope? */
-    jumpscopeerror(funcState, gt);
-  if (gt->close ||
-      (label->nactvar < gt->nactvar && bup)) {  /* needs close? */
-    lu_byte stklevel = funcState->reglevel(label->nactvar);
-    /* move jump to CLOSE position */
-    funcState->getProto()->getCode()[gt->pc + 1] = funcState->getProto()->getCode()[gt->pc];
-    /* put CLOSE instruction at original position */
-    funcState->getProto()->getCode()[gt->pc] = CREATE_ABCk(OP_CLOSE, stklevel, 0, 0, 0);
-    gt->pc++;  /* must point to jump instruction */
-  }
-  funcState->patchlist(gt->pc, label->pc);  /* goto jumps to label */
-  for (i = g; i < gl->getN() - 1; i++)  /* remove goto from pending list */
-    (*gl)[i] = (*gl)[i + 1];
-  gl->setN(gl->getN() - 1);
-}
-
-
-/*
-** Search for an active label with the given name, starting at
-** index 'ilb' (so that it can search for all labels in current block
-** or all labels in current function).
-*/
-Labeldesc *LexState::findlabel(TString *name, int ilb) {
-  Dyndata *dynData = getDyndata();
-  for (; ilb < dynData->label.getN(); ilb++) {
-    Labeldesc *lb = &dynData->label[ilb];
-    if (eqstr(lb->name, name))  /* correct label? */
-      return lb;
-  }
-  return NULL;  /* label not found */
-}
-
-
-/*
-** Adds a new label/goto in the corresponding list.
-*/
-int LexState::newlabelentry(FuncState *funcState, Labellist *l, TString *name, int line, int pc) {
-  int n = l->getN();
-  Labeldesc* desc = l->allocateNew();  /* LuaVector automatically grows */
-  desc->name = name;
-  desc->line = line;
-  desc->nactvar = funcState->getNumActiveVars();
-  desc->close = 0;
-  desc->pc = pc;
-  return n;
-}
-
-
-/*
-** Create an entry for the goto and the code for it. As it is not known
-** at this point whether the goto may need a CLOSE, the code has a jump
-** followed by an CLOSE. (As the CLOSE comes after the jump, it is a
-** dead instruction; it works as a placeholder.) When the goto is closed
-** against a label, if it needs a CLOSE, the two instructions swap
-** positions, so that the CLOSE comes before the jump.
-*/
 int Parser::newgotoentry(TString *name, int line) {
   // FuncState passed as parameter
   int pc = fs->jump();  /* create jump */
@@ -664,96 +403,6 @@ int Parser::newgotoentry(TString *name, int line) {
 ** block. Solves all pending gotos to this new label and adds
 ** a close instruction if necessary.
 ** Returns true iff it added a close instruction.
-*/
-void LexState::createlabel(FuncState *funcState, TString *name, int line, int last) {
-  // FuncState passed as parameter
-  Labellist *ll = &getDyndata()->label;
-  int l = newlabelentry(funcState, ll, name, line, funcState->getlabel());
-  if (last) {  /* label is last no-op statement in the block? */
-    /* assume that locals are already out of scope */
-    (*ll)[l].nactvar = funcState->getBlock()->nactvar;
-  }
-}
-
-
-/*
-** Traverse the pending gotos of the finishing block checking whether
-** each match some label of that block. Those that do not match are
-** "exported" to the outer block, to be solved there. In particular,
-** its 'nactvar' is updated with the level of the inner block,
-** as the variables of the inner block are now out of scope.
-*/
-void FuncState::solvegotos(BlockCnt *blockCnt) {
-  LexState *lexState = getLexState();
-  Labellist *gl = &lexState->getDyndata()->gt;
-  int outlevel = reglevel(blockCnt->nactvar);  /* level outside the block */
-  int igt = blockCnt->firstgoto;  /* first goto in the finishing block */
-  while (igt < gl->getN()) {   /* for each pending goto */
-    Labeldesc *gt = &(*gl)[igt];
-    /* search for a matching label in the current block */
-    Labeldesc *lb = lexState->findlabel(gt->name, blockCnt->firstlabel);
-    if (lb != NULL)  /* found a match? */
-      lexState->closegoto(this, igt, lb, blockCnt->upval);  /* close and remove goto */
-    else {  /* adjust 'goto' for outer block */
-      /* block has variables to be closed and goto escapes the scope of
-         some variable? */
-      if (blockCnt->upval && reglevel(gt->nactvar) > outlevel)
-        gt->close = 1;  /* jump may need a close */
-      gt->nactvar = blockCnt->nactvar;  /* correct level for outer block */
-      igt++;  /* go to next goto */
-    }
-  }
-  lexState->getDyndata()->label.setN(blockCnt->firstlabel);  /* remove local labels */
-}
-
-
-void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
-  blk->isloop = isloop;
-  blk->nactvar = getNumActiveVars();
-  blk->firstlabel = getLexState()->getDyndata()->label.getN();
-  blk->firstgoto = getLexState()->getDyndata()->gt.getN();
-  blk->upval = 0;
-  /* inherit 'insidetbc' from enclosing block */
-  blk->insidetbc = (getBlock() != NULL && getBlock()->insidetbc);
-  blk->previous = getBlock();  /* link block in function's block list */
-  setBlock(blk);
-  lua_assert(getFreeReg() == luaY_nvarstack(this));
-}
-
-
-/*
-** generates an error for an undefined 'goto'.
-*/
-l_noret LexState::undefgoto([[maybe_unused]] FuncState *funcState, Labeldesc *gt) {
-  /* breaks are checked when created, cannot be undefined */
-  lua_assert(!eqstr(gt->name, getBreakName()));
-  semerror("no visible label '%s' for <goto> at line %d",
-           getstr(gt->name), gt->line);
-}
-
-
-void FuncState::leaveblock() {
-  BlockCnt *blk = getBlock();
-  LexState *lexstate = getLexState();
-  lu_byte stklevel = reglevel(blk->nactvar);  /* level outside block */
-  if (blk->previous && blk->upval)  /* need a 'close'? */
-    codeABC(OP_CLOSE, stklevel, 0, 0);
-  setFreeReg(stklevel);  /* free registers */
-  removevars(blk->nactvar);  /* remove block locals */
-  lua_assert(blk->nactvar == getNumActiveVars());  /* back to level on entry */
-  if (blk->isloop == 2)  /* has to fix pending breaks? */
-    lexstate->createlabel(this, lexstate->getBreakName(), 0, 0);
-  solvegotos(blk);
-  if (blk->previous == NULL) {  /* was it the last block? */
-    if (blk->firstgoto < lexstate->getDyndata()->gt.getN())  /* still pending gotos? */
-      lexstate->undefgoto(this, &lexstate->getDyndata()->gt[blk->firstgoto]);  /* error */
-  }
-  setBlock(blk->previous);  /* current block now is previous one */
-}
-
-
-/*
-** adds a new prototype into list of prototypes
 */
 Proto *Parser::addprototype() {
   Proto *clp;
@@ -900,29 +549,6 @@ void Parser::yindex( expdesc *v) {
 ** =======================================================================
 */
 
-typedef struct ConsControl {
-  expdesc v;  /* last list item read */
-  expdesc *t;  /* table descriptor */
-  int nh;  /* total number of 'record' elements */
-  int na;  /* number of array elements already stored */
-  int tostore;  /* number of array elements pending to be stored */
-  int maxtostore;  /* maximum number of pending elements */
-} ConsControl;
-
-
-/*
-** Maximum number of elements in a constructor, to control the following:
-** * counter overflows;
-** * overflows in 'extra' for OP_NEWTABLE and OP_SETLIST;
-** * overflows when adding multiple returns in OP_SETLIST.
-*/
-#define MAX_CNST	(INT_MAX/2)
-#if MAX_CNST/(MAXARG_vC + 1) > MAXARG_Ax
-#undef MAX_CNST
-#define MAX_CNST	(MAXARG_Ax * (MAXARG_vC + 1))
-#endif
-
-
 void Parser::recfield( ConsControl *cc) {
   /* recfield -> (NAME | '['exp']') = exp */
   FuncState *funcstate = fs;
@@ -939,34 +565,6 @@ void Parser::recfield( ConsControl *cc) {
   expr(&val);
   funcstate->storevar(&tab, &val);
   funcstate->setFreeReg(reg);  /* free registers */
-}
-
-
-void FuncState::closelistfield(ConsControl *cc) {
-  lua_assert(cc->tostore > 0);
-  exp2nextreg(&cc->v);
-  cc->v.setKind(VVOID);
-  if (cc->tostore >= cc->maxtostore) {
-    setlist(cc->t->getInfo(), cc->na, cc->tostore);  /* flush */
-    cc->na += cc->tostore;
-    cc->tostore = 0;  /* no more items pending */
-  }
-}
-
-
-void FuncState::lastlistfield(ConsControl *cc) {
-  if (cc->tostore == 0) return;
-  if (hasmultret(cc->v.getKind())) {
-    setreturns(&cc->v, LUA_MULTRET);
-    setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
-    cc->na--;  /* do not count last expression (unknown number of elements) */
-  }
-  else {
-    if (cc->v.getKind() != VVOID)
-      exp2nextreg(&cc->v);
-    setlist(cc->t->getInfo(), cc->na, cc->tostore);
-  }
-  cc->na += cc->tostore;
 }
 
 
@@ -1004,17 +602,6 @@ void Parser::field( ConsControl *cc) {
 ** emitting a 'SETLIST' instruction, based on how many registers are
 ** available.
 */
-int FuncState::maxtostore() {
-  int numfreeregs = MAX_FSTACK - getFreeReg();
-  if (numfreeregs >= 160)  /* "lots" of registers? */
-    return numfreeregs / 5;  /* use up to 1/5 of them */
-  else if (numfreeregs >= 80)  /* still "enough" registers? */
-    return 10;  /* one 'SETLIST' instruction for each 10 values */
-  else  /* save registers for potential more nesting */
-    return 1;
-}
-
-
 void Parser::constructor( expdesc *table_exp) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
@@ -1044,12 +631,6 @@ void Parser::constructor( expdesc *table_exp) {
 }
 
 /* }====================================================================== */
-
-
-void FuncState::setvararg(int nparams) {
-  getProto()->setFlag(getProto()->getFlag() | PF_ISVARARG);
-  codeABC(OP_VARARGPREP, nparams, 0, 0);
-}
 
 
 void Parser::parlist() {
@@ -1289,71 +870,6 @@ void Parser::simpleexp( expdesc *v) {
 }
 
 
-inline UnOpr getunopr (int op) noexcept {
-  switch (op) {
-    case TK_NOT: return OPR_NOT;
-    case '-': return OPR_MINUS;
-    case '~': return OPR_BNOT;
-    case '#': return OPR_LEN;
-    default: return OPR_NOUNOPR;
-  }
-}
-
-
-inline BinOpr getbinopr (int op) noexcept {
-  switch (op) {
-    case '+': return OPR_ADD;
-    case '-': return OPR_SUB;
-    case '*': return OPR_MUL;
-    case '%': return OPR_MOD;
-    case '^': return OPR_POW;
-    case '/': return OPR_DIV;
-    case TK_IDIV: return OPR_IDIV;
-    case '&': return OPR_BAND;
-    case '|': return OPR_BOR;
-    case '~': return OPR_BXOR;
-    case TK_SHL: return OPR_SHL;
-    case TK_SHR: return OPR_SHR;
-    case TK_CONCAT: return OPR_CONCAT;
-    case TK_NE: return OPR_NE;
-    case TK_EQ: return OPR_EQ;
-    case '<': return OPR_LT;
-    case TK_LE: return OPR_LE;
-    case '>': return OPR_GT;
-    case TK_GE: return OPR_GE;
-    case TK_AND: return OPR_AND;
-    case TK_OR: return OPR_OR;
-    default: return OPR_NOBINOPR;
-  }
-}
-
-
-/*
-** Priority table for binary operators.
-*/
-static const struct {
-  lu_byte left;  /* left priority for each binary operator */
-  lu_byte right; /* right priority */
-} priority[] = {  /* ORDER OPR */
-   {10, 10}, {10, 10},           /* '+' '-' */
-   {11, 11}, {11, 11},           /* '*' '%' */
-   {14, 13},                  /* '^' (right associative) */
-   {11, 11}, {11, 11},           /* '/' '//' */
-   {6, 6}, {4, 4}, {5, 5},   /* '&' '|' '~' */
-   {7, 7}, {7, 7},           /* '<<' '>>' */
-   {9, 8},                   /* '..' (right associative) */
-   {3, 3}, {3, 3}, {3, 3},   /* ==, <, <= */
-   {3, 3}, {3, 3}, {3, 3},   /* ~=, >, >= */
-   {2, 2}, {1, 1}            /* and, or */
-};
-
-#define UNARY_PRIORITY	12  /* priority for unary operators */
-
-
-/*
-** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
-** where 'binop' is any binary operator with a priority higher than 'limit'
-*/
 BinOpr Parser::subexpr( expdesc *v, int limit) {
   BinOpr op;
   UnOpr uop;
@@ -1410,16 +926,6 @@ void Parser::block() {
 
 
 /*
-** structure to chain all variables in the left-hand side of an
-** assignment
-*/
-struct LHS_assign {
-  struct LHS_assign *prev;
-  expdesc v;  /* variable (global, local, upvalue, or indexed) */
-};
-
-
-/*
 ** check whether, in an assignment to an upvalue/local variable, the
 ** upvalue/local variable is begin used in a previous assignment to a
 ** table. If so, save original upvalue/local value in a safe place and
@@ -1464,20 +970,6 @@ void Parser::check_conflict( struct LHS_assign *lh, expdesc *v) {
 
 
 /* Create code to store the "top" register in 'var' */
-void FuncState::storevartop(expdesc *var) {
-  expdesc e;
-  e.init(VNONRELOC, getFreeReg() - 1);
-  storevar(var, &e);  /* will also free the top register */
-}
-
-
-/*
-** Parse and compile a multiple assignment. The first "variable"
-** (a 'suffixedexp') was already read by the caller.
-**
-** assignment -> suffixedexp restassign
-** restassign -> ',' suffixedexp restassign | '=' explist
-*/
 void Parser::restassign( struct LHS_assign *lh, int nvars) {
   expdesc e;
   check_condition(this, expdesc::isVar(lh->v.getKind()), "syntax error");
@@ -1624,20 +1116,6 @@ void Parser::exp1() {
 ** Fix for instruction at position 'pcpos' to jump to 'dest'.
 ** (Jump addresses are relative in Lua). 'back' true means
 ** a back jump.
-*/
-void FuncState::fixforjump(int pcpos, int dest, int back) {
-  Instruction *jmp = &getProto()->getCode()[pcpos];
-  int offset = dest - (pcpos + 1);
-  if (back)
-    offset = -offset;
-  if (l_unlikely(offset > MAXARG_Bx))
-    getLexState()->syntaxError("control structure too long");
-  SETARG_Bx(*jmp, offset);
-}
-
-
-/*
-** Generate code for a 'for' loop.
 */
 void Parser::forbody( int base, int line, int nvars, int isgen) {
   /* forbody -> DO block */
@@ -1787,14 +1265,6 @@ lu_byte Parser::getvarattribute( lu_byte df) {
       ls->semerror( "unknown attribute '%s'", attr);
   }
   return df;  /* return default value */
-}
-
-
-void FuncState::checktoclose(int level) {
-  if (level != -1) {  /* is there a to-be-closed variable? */
-    marktobeclosed();
-    codeABC(OP_TBC, reglevel(level), 0, 0);
-  }
 }
 
 
@@ -2117,34 +1587,4 @@ void Parser::mainfunc(FuncState *funcstate) {
   close_func();
 }
 
-
-LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
-                       Dyndata *dyd, const char *name, int firstchar) {
-  LexState lexstate;
-  FuncState funcstate;
-  LClosure *cl = LClosure::create(L, 1);  /* create main closure */
-  setclLvalue2s(L, L->getTop().p, cl);  /* anchor it (to avoid being collected) */
-  L->inctop();  /* Phase 25e */
-  lexstate.setTable(luaH_new(L));  /* create table for scanner */
-  sethvalue2s(L, L->getTop().p, lexstate.getTable());  /* anchor it */
-  L->inctop();  /* Phase 25e */
-  funcstate.setProto(luaF_newproto(L));
-  cl->setProto(funcstate.getProto());
-  luaC_objbarrier(L, cl, cl->getProto());
-  funcstate.getProto()->setSource(luaS_new(L, name));  /* create and anchor TString */
-  luaC_objbarrier(L, funcstate.getProto(), funcstate.getProto()->getSource());
-  lexstate.setBuffer(buff);
-  lexstate.setDyndata(dyd);
-  dyd->actvar().setN(0);
-  dyd->gt.setN(0);
-  dyd->label.setN(0);
-  lexstate.setInput(L, z, funcstate.getProto()->getSource(), firstchar);
-  Parser parser(&lexstate, nullptr);
-  parser.mainfunc(&funcstate);
-  lua_assert(!funcstate.getPrev() && funcstate.getNumUpvalues() == 1);
-  /* all scopes should be correctly finished */
-  lua_assert(dyd->actvar().getN() == 0 && dyd->gt.getN() == 0 && dyd->label.getN() == 0);
-  L->getTop().p--;  /* remove scanner's table */
-  return cl;  /* closure is on the stack, too */
-}
 
