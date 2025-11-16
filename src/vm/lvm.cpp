@@ -57,7 +57,7 @@
 ** When __index or __newindex metamethods redirect to other tables/objects,
 ** this limit ensures we don't loop forever if there's a cycle in the chain.
 */
-#define MAXTAGLOOP	2000
+inline constexpr int MAXTAGLOOP = 2000;
 
 
 /*
@@ -932,12 +932,29 @@ void luaV_finishOp (lua_State *L) {
 ** ===================================================================
 */
 
-#define l_addi(L,a,b)	intop(+, a, b)
-#define l_subi(L,a,b)	intop(-, a, b)
-#define l_muli(L,a,b)	intop(*, a, b)
-#define l_band(a,b)	intop(&, a, b)
-#define l_bor(a,b)	intop(|, a, b)
-#define l_bxor(a,b)	intop(^, a, b)
+inline constexpr lua_Integer l_addi(lua_State*, lua_Integer a, lua_Integer b) noexcept {
+	return intop(+, a, b);
+}
+
+inline constexpr lua_Integer l_subi(lua_State*, lua_Integer a, lua_Integer b) noexcept {
+	return intop(-, a, b);
+}
+
+inline constexpr lua_Integer l_muli(lua_State*, lua_Integer a, lua_Integer b) noexcept {
+	return intop(*, a, b);
+}
+
+inline constexpr lua_Integer l_band(lua_Integer a, lua_Integer b) noexcept {
+	return intop(&, a, b);
+}
+
+inline constexpr lua_Integer l_bor(lua_Integer a, lua_Integer b) noexcept {
+	return intop(|, a, b);
+}
+
+inline constexpr lua_Integer l_bxor(lua_Integer a, lua_Integer b) noexcept {
+	return intop(^, a, b);
+}
 
 inline constexpr bool l_lti(lua_Integer a, lua_Integer b) noexcept {
 	return a < b;
