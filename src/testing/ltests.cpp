@@ -735,7 +735,7 @@ int lua_checkmemory (lua_State *L) {
 static char *buildop (Proto *p, int pc, char *buff) {
   char *obuff = buff;
   Instruction i = p->getCode()[pc];
-  OpCode o = static_cast<OpCode>(GET_OPCODE(i));
+  OpCode o = static_cast<OpCode>(InstructionView(i).opcode());
   const char *name = opnames[o];
   int line = luaG_getfuncline(p, pc);
   int lineinfo = (p->getLineInfo() != NULL) ? p->getLineInfo()[pc] : 0;
@@ -747,25 +747,25 @@ static char *buildop (Proto *p, int pc, char *buff) {
   switch (getOpMode(o)) {
     case iABC:
       sprintf(buff, "%-12s%4d %4d %4d%s", name,
-              GETARG_A(i), GETARG_B(i), GETARG_C(i),
-              GETARG_k(i) ? " (k)" : "");
+              InstructionView(i).a(), InstructionView(i).b(), InstructionView(i).c(),
+              InstructionView(i).k() ? " (k)" : "");
       break;
     case ivABC:
       sprintf(buff, "%-12s%4d %4d %4d%s", name,
-              GETARG_A(i), GETARG_vB(i), GETARG_vC(i),
-              GETARG_k(i) ? " (k)" : "");
+              InstructionView(i).a(), InstructionView(i).vb(), InstructionView(i).vc(),
+              InstructionView(i).k() ? " (k)" : "");
       break;
     case iABx:
-      sprintf(buff, "%-12s%4d %4d", name, GETARG_A(i), GETARG_Bx(i));
+      sprintf(buff, "%-12s%4d %4d", name, InstructionView(i).a(), InstructionView(i).bx());
       break;
     case iAsBx:
-      sprintf(buff, "%-12s%4d %4d", name, GETARG_A(i), GETARG_sBx(i));
+      sprintf(buff, "%-12s%4d %4d", name, InstructionView(i).a(), InstructionView(i).sbx());
       break;
     case iAx:
-      sprintf(buff, "%-12s%4d", name, GETARG_Ax(i));
+      sprintf(buff, "%-12s%4d", name, InstructionView(i).ax());
       break;
     case isJ:
-      sprintf(buff, "%-12s%4d", name, GETARG_sJ(i));
+      sprintf(buff, "%-12s%4d", name, InstructionView(i).sj());
       break;
   }
   return obuff;

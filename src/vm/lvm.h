@@ -47,11 +47,14 @@ inline constexpr bool cvt2num(const TValue* o) noexcept {
 /*
 ** Rounding modes for float->integer coercion
  */
+#ifndef F2Imod_defined
+#define F2Imod_defined
 typedef enum {
   F2Ieq,     /* no rounding; accepts only integral values */
   F2Ifloor,  /* takes the floor of the number */
   F2Iceil    /* takes the ceiling of the number */
 } F2Imod;
+#endif
 
 
 /* Forward declarations for conversion functions (defined in lvm.cpp) */
@@ -112,7 +115,7 @@ inline bool tointegerns(const TValue* o, lua_Integer* i) noexcept {
 LUAI_FUNC int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2);
 
 inline int luaV_rawequalobj(const TValue* t1, const TValue* t2) noexcept {
-	return luaV_equalobj(NULL, t1, t2);
+	return *t1 == *t2;  /* Use operator== for raw equality */
 }
 
 
@@ -192,7 +195,10 @@ inline lua_Integer luaV_shiftr(lua_Integer x, lua_Integer y) noexcept {
 
 LUAI_FUNC int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r);
 LUAI_FUNC int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r);
+#ifndef luaV_flttointeger_declared
+#define luaV_flttointeger_declared
 LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
+#endif
 LUAI_FUNC lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
                                                 StkId val, lu_byte tag);
 LUAI_FUNC void luaV_finishset (lua_State *L, const TValue *t, TValue *key,

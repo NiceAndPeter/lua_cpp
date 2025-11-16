@@ -454,6 +454,17 @@ inline void setobj2s(lua_State* L, StackValue* o1, const TValue* o2) noexcept {
 	setobj(L, s2v(o1), o2);
 }
 
+/*
+** TValue assignment operator (simple copy, no GC barriers)
+** Use this for stack-to-stack assignments or when you know barriers aren't needed.
+** For assignments to GC objects that may need barriers, use setobj2t/setobj2n.
+*/
+inline TValue& TValue::operator=(const TValue& other) noexcept {
+	value_ = other.value_;
+	tt_ = other.tt_;
+	return *this;
+}
+
 /* }================================================================== */
 
 

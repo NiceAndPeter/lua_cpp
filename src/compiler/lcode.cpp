@@ -89,7 +89,7 @@ Instruction *FuncState::previousinstruction() {
 ** a list of jumps.
 */
 int FuncState::getjump(int position) {
-  int offset = GETARG_sJ(getProto()->getCode()[position]);
+  int offset = InstructionView(getProto()->getCode()[position]).sj();
   if (offset == NO_JUMP)  /* point to itself represents end of list */
     return NO_JUMP;  /* end of list */
   else
@@ -106,7 +106,7 @@ void FuncState::fixjump(int position, int dest) {
   lua_assert(dest != NO_JUMP);
   if (!(-OFFSET_sJ <= offset && offset <= MAXARG_sJ - OFFSET_sJ))
     getLexState()->syntaxError("control structure too long");
-  lua_assert(GET_OPCODE(*jmp) == OP_JMP);
+  lua_assert(InstructionView(*jmp).opcode() == OP_JMP);
   SETARG_sJ(*jmp, offset);
 }
 
@@ -126,7 +126,7 @@ int FuncState::condjump(OpCode o, int A, int B, int C, int k) {
 */
 Instruction *FuncState::getjumpcontrol(int position) {
   Instruction *pi = &getProto()->getCode()[position];
-  if (position >= 1 && testTMode(GET_OPCODE(*(pi-1))))
+  if (position >= 1 && testTMode(InstructionView(*(pi-1)).opcode()))
     return pi-1;
   else
     return pi;
@@ -141,14 +141,14 @@ Instruction *FuncState::getjumpcontrol(int position) {
 */
 int FuncState::patchtestreg(int node, int reg) {
   Instruction *i = getjumpcontrol(node);
-  if (GET_OPCODE(*i) != OP_TESTSET)
+  if (InstructionView(*i).opcode() != OP_TESTSET)
     return 0;  /* cannot patch other instructions */
-  if (reg != NO_REG && reg != GETARG_B(*i))
+  if (reg != NO_REG && reg != InstructionView(*i).b())
     SETARG_A(*i, reg);
   else {
      /* no register to put value or register already has the value;
         change instruction to simple test */
-    *i = CREATE_ABCk(OP_TEST, GETARG_B(*i), 0, 0, GETARG_k(*i));
+    *i = CREATE_ABCk(OP_TEST, InstructionView(*i).b(), 0, 0, InstructionView(*i).k());
   }
   return 1;
 }
@@ -575,7 +575,7 @@ int FuncState::code_loadbool(int A, OpCode op) {
 int FuncState::need_value(int list) {
   for (; list != NO_JUMP; list = getjump(list)) {
     Instruction i = *getjumpcontrol(list);
-    if (GET_OPCODE(i) != OP_TESTSET) return 1;
+    if (InstructionView(i).opcode() != OP_TESTSET) return 1;
   }
   return 0;  /* not found */
 }
@@ -663,9 +663,9 @@ void FuncState::codeABRK(OpCode o, int A, int B, expdesc *ec) {
 */
 void FuncState::negatecondition(expdesc *e) {
   Instruction *instr = getjumpcontrol(e->getInfo());
-  lua_assert(testTMode(GET_OPCODE(*instr)) && GET_OPCODE(*instr) != OP_TESTSET &&
-                                           GET_OPCODE(*instr) != OP_TEST);
-  SETARG_k(*instr, (GETARG_k(*instr) ^ 1));
+  lua_assert(testTMode(InstructionView(*instr).opcode()) && InstructionView(*instr).opcode() != OP_TESTSET &&
+                                           InstructionView(*instr).opcode() != OP_TEST);
+  SETARG_k(*instr, (InstructionView(*instr).k() ^ 1));
 }
 
 /*
@@ -677,9 +677,9 @@ void FuncState::negatecondition(expdesc *e) {
 int FuncState::jumponcond(expdesc *e, int cond) {
   if (e->getKind() == VRELOC) {
     Instruction ie = getinstruction(this, e);
-    if (GET_OPCODE(ie) == OP_NOT) {
+    if (InstructionView(ie).opcode() == OP_NOT) {
       removelastinstruction();  /* remove previous OP_NOT */
-      return condjump(OP_TEST, GETARG_B(ie), 0, 0, !cond);
+      return condjump(OP_TEST, InstructionView(ie).b(), 0, 0, !cond);
     }
     /* else go through */
   }
@@ -1051,9 +1051,9 @@ void FuncState::codeeq(BinOpr opr, expdesc *e1, expdesc *e2) {
 */
 void FuncState::codeconcat(expdesc *e1, expdesc *e2, int line) {
   Instruction *ie2 = previousinstruction();
-  if (GET_OPCODE(*ie2) == OP_CONCAT) {  /* is 'e2' a concatenation? */
-    int n = GETARG_B(*ie2);  /* # of elements concatenated in 'e2' */
-    lua_assert(e1->getInfo() + 1 == GETARG_A(*ie2));
+  if (InstructionView(*ie2).opcode() == OP_CONCAT) {  /* is 'e2' a concatenation? */
+    int n = InstructionView(*ie2).b();  /* # of elements concatenated in 'e2' */
+    lua_assert(e1->getInfo() + 1 == InstructionView(*ie2).a());
     freeExpression(e2);
     SETARG_A(*ie2, e1->getInfo());  /* correct first element ('e1') */
     SETARG_B(*ie2, n + 1);  /* will concatenate one more element */
@@ -1073,10 +1073,10 @@ int FuncState::finaltarget(int i) {
   int count;
   for (count = 0; count < 100; count++) {  /* avoid infinite loops */
     Instruction instr = code[i];
-    if (GET_OPCODE(instr) != OP_JMP)
+    if (InstructionView(instr).opcode() != OP_JMP)
       break;
     else
-      i += GETARG_sJ(instr) + 1;
+      i += InstructionView(instr).sj() + 1;
   }
   return i;
 }
@@ -1161,9 +1161,9 @@ void FuncState::fixline(int line) {
 void FuncState::nil(int from, int n) {
   int l = from + n - 1;  /* last register to set nil */
   Instruction *previous = previousinstruction();
-  if (GET_OPCODE(*previous) == OP_LOADNIL) {  /* previous is LOADNIL? */
-    int pfrom = GETARG_A(*previous);  /* get previous range */
-    int pl = pfrom + GETARG_B(*previous);
+  if (InstructionView(*previous).opcode() == OP_LOADNIL) {  /* previous is LOADNIL? */
+    int pfrom = InstructionView(*previous).a();  /* get previous range */
+    int pl = pfrom + InstructionView(*previous).b();
     if ((pfrom <= from && from <= pl + 1) ||
         (from <= pfrom && pfrom <= l + 1)) {  /* can connect both? */
       if (pfrom < from) from = pfrom;  /* from = min(from, pfrom) */
@@ -1432,9 +1432,9 @@ void FuncState::setreturns(expdesc *e, int nresults) {
 void FuncState::setoneret(expdesc *e) {
   if (e->getKind() == VCALL) {  /* expression is an open function call? */
     /* already returns 1 value */
-    lua_assert(GETARG_C(getinstruction(this, e)) == 2);
+    lua_assert(InstructionView(getinstruction(this, e)).c() == 2);
     e->setKind(VNONRELOC);  /* result has fixed position */
-    e->setInfo(GETARG_A(getinstruction(this, e)));
+    e->setInfo(InstructionView(getinstruction(this, e)).a());
   }
   else if (e->getKind() == VVARARG) {
     SETARG_C(getinstruction(this, e), 2);
@@ -1660,7 +1660,7 @@ void FuncState::finish() {
     /* avoid "not used" warnings when assert is off (for 'onelua.c') */
     (void)luaP_isOT; (void)luaP_isIT;
     lua_assert(i == 0 || luaP_isOT(*(instr - 1)) == luaP_isIT(*instr));
-    switch (GET_OPCODE(*instr)) {
+    switch (InstructionView(*instr).opcode()) {
       case OP_RETURN0: case OP_RETURN1: {
         if (!(getNeedClose() || (p->getFlag() & PF_ISVARARG)))
           break;  /* no extra work */

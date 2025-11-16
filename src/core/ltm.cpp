@@ -130,7 +130,7 @@ lu_byte luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
   else
     L->callNoYield( func, 1);
   res = L->restoreStack(result);
-  setobjs2s(L, res, --L->getTop().p);  /* move result to its place */
+  *s2v(res) = *s2v(--L->getTop().p);  /* move result to its place - use operator= */
   return ttypetag(s2v(res));  /* return tag of the result */
 }
 
@@ -232,10 +232,10 @@ void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
   ci->setExtraArgs(nextra);
   luaD_checkstack(L, p->getMaxStackSize() + 1);
   /* copy function to the top of the stack */
-  setobjs2s(L, L->getTop().p++, ci->funcRef().p);
+  *s2v(L->getTop().p++) = *s2v(ci->funcRef().p);  /* use operator= */
   /* move fixed parameters to the top of the stack */
   for (i = 1; i <= nfixparams; i++) {
-    setobjs2s(L, L->getTop().p++, ci->funcRef().p + i);
+    *s2v(L->getTop().p++) = *s2v(ci->funcRef().p + i);  /* use operator= */
     setnilvalue(s2v(ci->funcRef().p + i));  /* erase original parameter (for GC) */
   }
   ci->funcRef().p += actual + 1;
@@ -253,7 +253,7 @@ void luaT_getvarargs (lua_State *L, CallInfo *ci, StkId where, int wanted) {
     L->getTop().p = where + nextra;  /* next instruction will need top */
   }
   for (i = 0; i < wanted && i < nextra; i++)
-    setobjs2s(L, where + i, ci->funcRef().p - nextra + i);
+    *s2v(where + i) = *s2v(ci->funcRef().p - nextra + i);  /* use operator= */
   for (; i < wanted; i++)   /* complete required results with nil */
     setnilvalue(s2v(where + i));
 }

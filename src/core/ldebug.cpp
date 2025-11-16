@@ -238,7 +238,7 @@ LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
     StkId pos = NULL;  /* to avoid warnings */
     name = luaG_findlocal(L, ar->i_ci, n, &pos);
     if (name) {
-      setobjs2s(L, L->getTop().p, pos);
+      *s2v(L->getTop().p) = *s2v(pos);  /* use operator= */
       api_incr_top(L);
     }
   }
@@ -254,7 +254,7 @@ LUA_API const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n) {
   name = luaG_findlocal(L, ar->i_ci, n, &pos);
   if (name) {
     api_checkpop(L, 1);
-    setobjs2s(L, pos, L->getTop().p - 1);
+    *s2v(pos) = *s2v(L->getTop().p - 1);  /* use operator= */
     L->getTop().p--;  /* pop value */
   }
   lua_unlock(L);
@@ -313,7 +313,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
       if (!(p->getFlag() & PF_ISVARARG))  /* regular function? */
         i = 0;  /* consider all instructions */
       else {  /* vararg function */
-        lua_assert(GET_OPCODE(p->getCode()[0]) == OP_VARARGPREP);
+        lua_assert(InstructionView(p->getCode()[0]).opcode() == OP_VARARGPREP);
         currentline = nextline(p, currentline, 0);
         i = 1;  /* skip first instruction (OP_VARARGPREP) */
       }
@@ -451,16 +451,16 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
   int pc;
   int setreg = -1;  /* keep last instruction that changed 'reg' */
   int jmptarget = 0;  /* any code before this address is conditional */
-  if (testMMMode(GET_OPCODE(p->getCode()[lastpc])))
+  if (testMMMode(InstructionView(p->getCode()[lastpc]).opcode()))
     lastpc--;  /* previous instruction was not actually executed */
   for (pc = 0; pc < lastpc; pc++) {
     Instruction i = p->getCode()[pc];
-    OpCode op = static_cast<OpCode>(GET_OPCODE(i));
-    int a = GETARG_A(i);
+    OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
+    int a = InstructionView(i).a();
     int change;  /* true if current instruction changed 'reg' */
     switch (op) {
       case OP_LOADNIL: {  /* set registers from 'a' to 'a+b' */
-        int b = GETARG_B(i);
+        int b = InstructionView(i).b();
         change = (a <= reg && reg <= a + b);
         break;
       }
@@ -474,7 +474,7 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
         break;
       }
       case OP_JMP: {  /* doesn't change registers, but changes 'jmptarget' */
-        int b = GETARG_sJ(i);
+        int b = InstructionView(i).sj();
         int dest = pc + 1 + b;
         /* jump does not skip 'lastpc' and is larger than current one? */
         if (dest <= lastpc && dest > jmptarget)
@@ -519,20 +519,20 @@ static const char *basicgetobjname (const Proto *p, int *ppc, int reg,
   *ppc = pc = findsetreg(p, pc, reg);
   if (pc != -1) {  /* could find instruction? */
     Instruction i = p->getCode()[pc];
-    OpCode op = static_cast<OpCode>(GET_OPCODE(i));
+    OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
     switch (op) {
       case OP_MOVE: {
-        int b = GETARG_B(i);  /* move from 'b' to 'a' */
-        if (b < GETARG_A(i))
+        int b = InstructionView(i).b();  /* move from 'b' to 'a' */
+        if (b < InstructionView(i).a())
           return basicgetobjname(p, ppc, b, name);  /* get name for 'b' */
         break;
       }
       case OP_GETUPVAL: {
-        *name = upvalname(p, GETARG_B(i));
+        *name = upvalname(p, InstructionView(i).b());
         return strupval;
       }
-      case OP_LOADK: return kname(p, GETARG_Bx(i), name);
-      case OP_LOADKX: return kname(p, GETARG_Ax(p->getCode()[pc + 1]), name);
+      case OP_LOADK: return kname(p, InstructionView(i).bx(), name);
+      case OP_LOADKX: return kname(p, InstructionView(p->getCode()[pc + 1]).ax(), name);
       default: break;
     }
   }
@@ -555,7 +555,7 @@ static void rname (const Proto *p, int pc, int c, const char **name) {
 ** environment '_ENV'
 */
 static const char *isEnv (const Proto *p, int pc, Instruction i, int isup) {
-  int t = GETARG_B(i);  /* table index */
+  int t = InstructionView(i).b();  /* table index */
   const char *name;  /* name of indexed variable */
   if (isup)  /* is 't' an upvalue? */
     name = upvalname(p, t);
@@ -580,15 +580,15 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
     return kind;
   else if (lastpc != -1) {  /* could find instruction? */
     Instruction i = p->getCode()[lastpc];
-    OpCode op = static_cast<OpCode>(GET_OPCODE(i));
+    OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
     switch (op) {
       case OP_GETTABUP: {
-        int k = GETARG_C(i);  /* key index */
+        int k = InstructionView(i).c();  /* key index */
         kname(p, k, name);
         return isEnv(p, lastpc, i, 1);
       }
       case OP_GETTABLE: {
-        int k = GETARG_C(i);  /* key index */
+        int k = InstructionView(i).c();  /* key index */
         rname(p, lastpc, k, name);
         return isEnv(p, lastpc, i, 0);
       }
@@ -597,12 +597,12 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
         return "field";
       }
       case OP_GETFIELD: {
-        int k = GETARG_C(i);  /* key index */
+        int k = InstructionView(i).c();  /* key index */
         kname(p, k, name);
         return isEnv(p, lastpc, i, 0);
       }
       case OP_SELF: {
-        int k = GETARG_C(i);  /* key index */
+        int k = InstructionView(i).c();  /* key index */
         kname(p, k, name);
         return "method";
       }
@@ -623,10 +623,10 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
                                      int pc, const char **name) {
   TMS tm = (TMS)0;  /* (initial value avoids warnings) */
   Instruction i = p->getCode()[pc];  /* calling instruction */
-  switch (GET_OPCODE(i)) {
+  switch (InstructionView(i).opcode()) {
     case OP_CALL:
     case OP_TAILCALL:
-      return getobjname(p, pc, GETARG_A(i), name);  /* get function name */
+      return getobjname(p, pc, InstructionView(i).a(), name);  /* get function name */
     case OP_TFORCALL: {  /* for iterator */
       *name = "for iterator";
        return "for iterator";
@@ -640,7 +640,7 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
       tm = TM_NEWINDEX;
       break;
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
-      tm = cast(TMS, GETARG_C(i));
+      tm = cast(TMS, InstructionView(i).c());
       break;
     }
     case OP_UNM: tm = TM_UNM; break;
@@ -880,8 +880,8 @@ l_noret lua_State::errorMsg() {
   if (getErrFunc() != 0) {  /* is there an error handling function? */
     StkId errfunc_ptr = this->restoreStack(getErrFunc());
     lua_assert(ttisfunction(s2v(errfunc_ptr)));
-    setobjs2s(this, top.p, top.p - 1);  /* move argument */
-    setobjs2s(this, top.p - 1, errfunc_ptr);  /* push function */
+    *s2v(top.p) = *s2v(top.p - 1);  /* move argument - use operator= */
+    *s2v(top.p - 1) = *s2v(errfunc_ptr);  /* push function - use operator= */
     top.p++;  /* assume EXTRA_STACK */
     callNoYield(top.p - 2, 1);  /* call it */
   }
@@ -906,7 +906,7 @@ l_noret lua_State::runError(const char *fmt, ...) {
   if (ci->isLua()) {  /* Lua function? */
     /* add source:line information */
     addInfo(msg, ci->getFunc()->getProto()->getSource(), getcurrentline(ci));
-    setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
+    *s2v(top.p - 2) = *s2v(top.p - 1);  /* remove 'msg' - use operator= */
     top.p--;
   }
   errorMsg();
@@ -920,7 +920,7 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
   if (L->getCI()->isLua()) {  /* Lua function? */
     /* add source:line information */
     L->addInfo(msg, L->getCI()->getFunc()->getProto()->getSource(), getcurrentline(L->getCI()));
-    setobjs2s(L, L->getTop().p - 2, L->getTop().p - 1);  /* remove 'msg' */
+    *s2v(L->getTop().p - 2) = *s2v(L->getTop().p - 1);  /* remove 'msg' - use operator= */
     L->getTop().p--;
   }
   L->errorMsg();

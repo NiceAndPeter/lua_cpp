@@ -1451,7 +1451,7 @@ void Parser::retstat() {
       funcstate->setreturns(&e, LUA_MULTRET);
       if (e.getKind() == VCALL && nret == 1 && !funcstate->getBlock()->insidetbc) {  /* tail call? */
         SET_OPCODE(getinstruction(funcstate,&e), OP_TAILCALL);
-        lua_assert(GETARG_A(getinstruction(funcstate,&e)) == luaY_nvarstack(funcstate));
+        lua_assert(InstructionView(getinstruction(funcstate,&e)).a() == luaY_nvarstack(funcstate));
       }
       nret = LUA_MULTRET;  /* return all values */
     }
