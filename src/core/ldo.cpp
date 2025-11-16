@@ -1127,6 +1127,10 @@ struct SParser {  /* data to 'f_parser' */
   Dyndata dyd;  /* dynamic structures used by the parser */
   const char *mode;
   const char *name;
+
+  /* Constructor to properly initialize Dyndata */
+  explicit SParser(lua_State* L)
+    : z(nullptr), buff{nullptr, 0, 0}, dyd(L), mode(nullptr), name(nullptr) {}
 };
 
 
@@ -1164,19 +1168,15 @@ static void f_parser (lua_State *L, void *ud) {
 // Convert to lua_State method
 TStatus lua_State::protectedParser(ZIO *z, const char *name,
                                             const char *mode) {
-  struct SParser p;
+  SParser p(this);  /* Initialize with lua_State - Dyndata uses LuaVector now */
   TStatus status_result;
   incnny(this);  /* cannot yield during parsing */
   p.z = z; p.name = name; p.mode = mode;
-  p.dyd.actvar.arr = NULL; p.dyd.actvar.size = 0;
-  p.dyd.gt.arr = NULL; p.dyd.gt.size = 0;
-  p.dyd.label.arr = NULL; p.dyd.label.size = 0;
+  /* Dyndata (gt, label, actvar) auto-initialized via LuaVector - no manual setup */
   luaZ_initbuffer(this, &p.buff);
   status_result = pCall(f_parser, &p, this->saveStack(top.p), getErrFunc());
   luaZ_freebuffer(this, &p.buff);
-  luaM_freearray(this, p.dyd.actvar.arr, cast_sizet(p.dyd.actvar.size));
-  luaM_freearray(this, p.dyd.gt.arr, cast_sizet(p.dyd.gt.size));
-  luaM_freearray(this, p.dyd.label.arr, cast_sizet(p.dyd.label.size));
+  /* Dyndata auto-cleaned via RAII - no manual free needed */
   decnny(this);
   return status_result;
 }

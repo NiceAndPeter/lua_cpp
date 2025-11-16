@@ -201,16 +201,13 @@ short FuncState::registerlocalvar(TString *varname) {
 ** Return its index in the function.
 */
 int LexState::new_varkind(TString *name, lu_byte kind) {
-  lua_State *state = getLuaState();
   FuncState *funcState = getFuncState();
   Dyndata *dynData = getDyndata();
   Vardesc *var;
-  luaM_growvector(state, dynData->actvar.arr, dynData->actvar.n + 1,
-             dynData->actvar.size, Vardesc, SHRT_MAX, "variable declarations");
-  var = &dynData->actvar.arr[dynData->actvar.n++];
+  var = dynData->actvar().allocateNew();  /* LuaVector automatically grows */
   var->vd.kind = kind;  /* default */
   var->vd.name = name;
-  return dynData->actvar.n - 1 - funcState->getFirstLocal();
+  return dynData->actvar().getN() - 1 - funcState->getFirstLocal();
 }
 
 
@@ -233,7 +230,7 @@ int LexState::new_localvar(TString *name) {
 ** compiler indices.)
 */
 Vardesc *FuncState::getlocalvardesc(int vidx) {
-  return &getLexState()->getDyndata()->actvar.arr[getFirstLocal() + vidx];
+  return &getLexState()->getDyndata()->actvar()[getFirstLocal() + vidx];
 }
 
 
@@ -301,7 +298,7 @@ void LexState::check_readonly(expdesc *e) {
   TString *varname = NULL;  /* to be set if variable is const */
   switch (e->getKind()) {
     case VCONST: {
-      varname = getDyndata()->actvar.arr[e->getInfo()].vd.name;
+      varname = getDyndata()->actvar()[e->getInfo()].vd.name;
       break;
     }
     case VLOCAL: {
@@ -352,7 +349,8 @@ void LexState::adjustlocalvars(int nvars) {
 ** (debug info.)
 */
 void FuncState::removevars(int tolevel) {
-  getLexState()->getDyndata()->actvar.n -= (getNumActiveVars() - tolevel);
+  int current_n = getLexState()->getDyndata()->actvar().getN();
+  getLexState()->getDyndata()->actvar().setN(current_n - (getNumActiveVars() - tolevel));
   while (getNumActiveVars() > tolevel) {
     LocVar *var = localdebuginfo(--getNumActiveVarsRef());
     if (var)  /* does it have debug information? */
@@ -524,10 +522,10 @@ void LexState::buildvar(TString *varname, expdesc *var) {
     if (info == -2)
       semerror("variable '%s' not declared", getstr(varname));
     buildglobal(varname, var);
-    if (info != -1 && getDyndata()->actvar.arr[info].vd.kind == GDKCONST)
+    if (info != -1 && getDyndata()->actvar()[info].vd.kind == GDKCONST)
       var->setIndexedReadOnly(1);  /* mark variable as read-only */
     else  /* anyway must be a global */
-      lua_assert(info == -1 || getDyndata()->actvar.arr[info].vd.kind == GDKREG);
+      lua_assert(info == -1 || getDyndata()->actvar()[info].vd.kind == GDKREG);
   }
 }
 
@@ -596,7 +594,7 @@ void LexState::closegoto(int g, Labeldesc *label, int bup) {
   int i;
   FuncState *funcState = getFuncState();
   Labellist *gl = &getDyndata()->gt;  /* list of gotos */
-  Labeldesc *gt = &gl->arr[g];  /* goto to be resolved */
+  Labeldesc *gt = &(*gl)[g];  /* goto to be resolved */
   lua_assert(eqstr(gt->name, label->name));
   if (l_unlikely(gt->nactvar < label->nactvar))  /* enter some scope? */
     jumpscopeerror(gt);
@@ -610,9 +608,9 @@ void LexState::closegoto(int g, Labeldesc *label, int bup) {
     gt->pc++;  /* must point to jump instruction */
   }
   getFuncState()->patchlist(gt->pc, label->pc);  /* goto jumps to label */
-  for (i = g; i < gl->n - 1; i++)  /* remove goto from pending list */
-    gl->arr[i] = gl->arr[i + 1];
-  gl->n--;
+  for (i = g; i < gl->getN() - 1; i++)  /* remove goto from pending list */
+    (*gl)[i] = (*gl)[i + 1];
+  gl->setN(gl->getN() - 1);
 }
 
 
@@ -623,8 +621,8 @@ void LexState::closegoto(int g, Labeldesc *label, int bup) {
 */
 Labeldesc *LexState::findlabel(TString *name, int ilb) {
   Dyndata *dynData = getDyndata();
-  for (; ilb < dynData->label.n; ilb++) {
-    Labeldesc *lb = &dynData->label.arr[ilb];
+  for (; ilb < dynData->label.getN(); ilb++) {
+    Labeldesc *lb = &dynData->label[ilb];
     if (eqstr(lb->name, name))  /* correct label? */
       return lb;
   }
@@ -636,15 +634,13 @@ Labeldesc *LexState::findlabel(TString *name, int ilb) {
 ** Adds a new label/goto in the corresponding list.
 */
 int LexState::newlabelentry(Labellist *l, TString *name, int line, int pc) {
-  int n = l->n;
-  luaM_growvector(getLuaState(), l->arr, n, l->size,
-                  Labeldesc, SHRT_MAX, "labels/gotos");
-  l->arr[n].name = name;
-  l->arr[n].line = line;
-  l->arr[n].nactvar = getFuncState()->getNumActiveVars();
-  l->arr[n].close = 0;
-  l->arr[n].pc = pc;
-  l->n = n + 1;
+  int n = l->getN();
+  Labeldesc* desc = l->allocateNew();  /* LuaVector automatically grows */
+  desc->name = name;
+  desc->line = line;
+  desc->nactvar = getFuncState()->getNumActiveVars();
+  desc->close = 0;
+  desc->pc = pc;
   return n;
 }
 
@@ -678,7 +674,7 @@ void LexState::createlabel(TString *name, int line, int last) {
   int l = newlabelentry(ll, name, line, funcState->getlabel());
   if (last) {  /* label is last no-op statement in the block? */
     /* assume that locals are already out of scope */
-    ll->arr[l].nactvar = funcState->getBlock()->nactvar;
+    (*ll)[l].nactvar = funcState->getBlock()->nactvar;
   }
 }
 
@@ -695,8 +691,8 @@ void FuncState::solvegotos(BlockCnt *blockCnt) {
   Labellist *gl = &lexState->getDyndata()->gt;
   int outlevel = reglevel(blockCnt->nactvar);  /* level outside the block */
   int igt = blockCnt->firstgoto;  /* first goto in the finishing block */
-  while (igt < gl->n) {   /* for each pending goto */
-    Labeldesc *gt = &gl->arr[igt];
+  while (igt < gl->getN()) {   /* for each pending goto */
+    Labeldesc *gt = &(*gl)[igt];
     /* search for a matching label in the current block */
     Labeldesc *lb = lexState->findlabel(gt->name, blockCnt->firstlabel);
     if (lb != NULL)  /* found a match? */
@@ -710,15 +706,15 @@ void FuncState::solvegotos(BlockCnt *blockCnt) {
       igt++;  /* go to next goto */
     }
   }
-  lexState->getDyndata()->label.n = blockCnt->firstlabel;  /* remove local labels */
+  lexState->getDyndata()->label.setN(blockCnt->firstlabel);  /* remove local labels */
 }
 
 
 void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
   blk->isloop = isloop;
   blk->nactvar = getNumActiveVars();
-  blk->firstlabel = getLexState()->getDyndata()->label.n;
-  blk->firstgoto = getLexState()->getDyndata()->gt.n;
+  blk->firstlabel = getLexState()->getDyndata()->label.getN();
+  blk->firstgoto = getLexState()->getDyndata()->gt.getN();
   blk->upval = 0;
   /* inherit 'insidetbc' from enclosing block */
   blk->insidetbc = (getBlock() != NULL && getBlock()->insidetbc);
@@ -752,8 +748,8 @@ void FuncState::leaveblock() {
     lexstate->createlabel(lexstate->getBreakName(), 0, 0);
   solvegotos(blk);
   if (blk->previous == NULL) {  /* was it the last block? */
-    if (blk->firstgoto < lexstate->getDyndata()->gt.n)  /* still pending gotos? */
-      lexstate->undefgoto(&lexstate->getDyndata()->gt.arr[blk->firstgoto]);  /* error */
+    if (blk->firstgoto < lexstate->getDyndata()->gt.getN())  /* still pending gotos? */
+      lexstate->undefgoto(&lexstate->getDyndata()->gt[blk->firstgoto]);  /* error */
   }
   setBlock(blk->previous);  /* current block now is previous one */
 }
@@ -811,8 +807,8 @@ void LexState::open_func(FuncState *funcstate, BlockCnt *bl) {
   funcstate->setNumDebugVars(0);
   funcstate->setNumActiveVars(0);
   funcstate->setNeedClose(0);
-  funcstate->setFirstLocal(getDyndata()->actvar.n);
-  funcstate->setFirstLabel(getDyndata()->label.n);
+  funcstate->setFirstLocal(getDyndata()->actvar().getN());
+  funcstate->setFirstLabel(getDyndata()->label.getN());
   funcstate->setBlock(NULL);
   f->setSource(getSource());
   luaC_objbarrier(state, f, f->getSource());
@@ -2142,12 +2138,14 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   luaC_objbarrier(L, funcstate.getProto(), funcstate.getProto()->getSource());
   lexstate.setBuffer(buff);
   lexstate.setDyndata(dyd);
-  dyd->actvar.n = dyd->gt.n = dyd->label.n = 0;
+  dyd->actvar().setN(0);
+  dyd->gt.setN(0);
+  dyd->label.setN(0);
   lexstate.setInput(L, z, funcstate.getProto()->getSource(), firstchar);
   lexstate.mainfunc(&funcstate);
   lua_assert(!funcstate.getPrev() && funcstate.getNumUpvalues() == 1 && !lexstate.getFuncState());
   /* all scopes should be correctly finished */
-  lua_assert(dyd->actvar.n == 0 && dyd->gt.n == 0 && dyd->label.n == 0);
+  lua_assert(dyd->actvar().getN() == 0 && dyd->gt.getN() == 0 && dyd->label.getN() == 0);
   L->getTop().p--;  /* remove scanner's table */
   return cl;  /* closure is on the stack, too */
 }

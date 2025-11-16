@@ -68,7 +68,7 @@ static int tonumeral (const expdesc *e, TValue *v) {
 */
 TValue *FuncState::const2val(const expdesc *e) {
   lua_assert(e->getKind() == VCONST);
-  return &getLexState()->getDyndata()->actvar.arr[e->getInfo()].k;
+  return &getLexState()->getDyndata()->actvar()[e->getInfo()].k;
 }
 
 /*

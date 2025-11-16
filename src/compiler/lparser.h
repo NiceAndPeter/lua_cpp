@@ -13,6 +13,7 @@
 #include "ltm.h"
 #include "lzio.h"
 #include "llex.h"
+#include "../memory/LuaVector.h"
 
 /*
 ** Expression and variable descriptor.
@@ -208,23 +209,88 @@ typedef struct Labeldesc {
 
 
 /* list of labels or gotos */
-typedef struct Labellist {
-  Labeldesc *arr;  /* array */
-  int n;  /* number of entries in use */
-  int size;  /* array size */
-} Labellist;
+class Labellist {
+private:
+  LuaVector<Labeldesc> vec;
+
+public:
+  explicit Labellist(lua_State* L) : vec(L) {
+    /* Pre-reserve capacity to avoid early reallocations */
+    vec.reserve(16);
+  }
+
+  /* Accessor methods matching old interface */
+  inline Labeldesc* getArr() noexcept { return vec.data(); }
+  inline const Labeldesc* getArr() const noexcept { return vec.data(); }
+  inline int getN() const noexcept { return static_cast<int>(vec.size()); }
+  inline int getSize() const noexcept { return static_cast<int>(vec.capacity()); }
+
+  /* Modifying size */
+  inline void setN(int new_n) { vec.resize(new_n); }
+
+  /* Direct vector access for modern operations */
+  inline void push_back(const Labeldesc& desc) { vec.push_back(desc); }
+  inline void reserve(int capacity) { vec.reserve(capacity); }
+  inline Labeldesc& operator[](int index) { return vec[index]; }
+  inline const Labeldesc& operator[](int index) const { return vec[index]; }
+
+  /* For luaM_growvector replacement */
+  inline void ensureCapacity(int needed) {
+    if (needed > getSize()) {
+      vec.reserve(needed);
+    }
+  }
+  inline Labeldesc* allocateNew() {
+    vec.resize(vec.size() + 1);
+    return &vec.back();
+  }
+};
 
 
 /* dynamic structures used by the parser */
-typedef struct Dyndata {
-  struct {  /* list of all active local variables */
-    Vardesc *arr;
-    int n;
-    int size;
-  } actvar;
-  Labellist gt;  /* list of pending gotos */
-  Labellist label;   /* list of active labels */
-} Dyndata;
+class Dyndata {
+private:
+  LuaVector<Vardesc> actvar_vec;
+
+public:
+  Labellist gt;     /* list of pending gotos */
+  Labellist label;  /* list of active labels */
+
+  explicit Dyndata(lua_State* L)
+    : actvar_vec(L), gt(L), label(L) {
+    /* Pre-reserve typical capacity to avoid early reallocations */
+    actvar_vec.reserve(32);
+  }
+
+  /* Direct actvar accessor methods - avoid temporary object creation */
+  inline Vardesc* actvarGetArr() noexcept { return actvar_vec.data(); }
+  inline const Vardesc* actvarGetArr() const noexcept { return actvar_vec.data(); }
+  inline int actvarGetN() const noexcept { return static_cast<int>(actvar_vec.size()); }
+  inline int actvarGetSize() const noexcept { return static_cast<int>(actvar_vec.capacity()); }
+
+  inline void actvarSetN(int new_n) { actvar_vec.resize(new_n); }
+  inline Vardesc& actvarAt(int index) { return actvar_vec[index]; }
+  inline const Vardesc& actvarAt(int index) const { return actvar_vec[index]; }
+
+  inline Vardesc* actvarAllocateNew() {
+    actvar_vec.resize(actvar_vec.size() + 1);
+    return &actvar_vec.back();
+  }
+
+  /* Legacy accessor interface for backward compatibility */
+  class ActvarAccessor {
+  private:
+    Dyndata* dyn;
+  public:
+    explicit ActvarAccessor(Dyndata* d) : dyn(d) {}
+    inline int getN() const noexcept { return dyn->actvarGetN(); }
+    inline void setN(int n) { dyn->actvarSetN(n); }
+    inline Vardesc& operator[](int i) { return dyn->actvarAt(i); }
+    inline Vardesc* allocateNew() { return dyn->actvarAllocateNew(); }
+  };
+
+  inline ActvarAccessor actvar() noexcept { return ActvarAccessor{this}; }
+};
 
 
 /* control of blocks */
