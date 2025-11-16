@@ -132,7 +132,7 @@ LUA_API void lua_xmove (lua_State *from, lua_State *to, int n) {
   api_check(from, to->getCI()->topRef().p - to->getTop().p >= n, "stack overflow");
   from->getTop().p -= n;
   for (i = 0; i < n; i++) {
-    setobjs2s(to, to->getTop().p, from->getTop().p + i);
+    *s2v(to->getTop().p) = *s2v(from->getTop().p + i);  /* use operator= */
     to->getTop().p++;  /* stack already checked by previous 'api_check' */
   }
   lua_unlock(to);
@@ -225,7 +225,7 @@ static void reverse (lua_State *L, StkId from, StkId to) {
   for (; from < to; from++, to--) {
     TValue temp;
     setobj(L, &temp, s2v(from));
-    setobjs2s(L, from, to);
+    *s2v(from) = *s2v(to);  /* swap - use operator= */
     setobj2s(L, to, &temp);
   }
 }
@@ -336,7 +336,7 @@ LUA_API void lua_arith (lua_State *L, int op) {
     api_checkpop(L, 2);  /* all other operations expect two operands */
   else {  /* for unary operations, add fake 2nd operand */
     api_checkpop(L, 1);
-    setobjs2s(L, L->getTop().p, L->getTop().p - 1);
+    *s2v(L->getTop().p) = *s2v(L->getTop().p - 1);  /* duplicate - use operator= */
     api_incr_top(L);
   }
   /* first operand at top - 2, second at top - 1; result go to top - 2 */

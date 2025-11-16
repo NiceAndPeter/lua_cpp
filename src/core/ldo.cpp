@@ -111,7 +111,7 @@ void lua_State::setErrorObj(TStatus errcode, StkId oldtop) {
   else {
     lua_assert(errorstatus(errcode));  /* must be a real error */
     lua_assert(!ttisnil(s2v(top.p - 1)));  /* with a non-nil object */
-    setobjs2s(this, oldtop, top.p - 1);  /* move it to 'oldtop' */
+    *s2v(oldtop) = *s2v(top.p - 1);  /* move it to 'oldtop' - use operator= */
   }
   top.p = oldtop + 1;  /* top goes back to old top plus error object */
 }
@@ -152,7 +152,7 @@ l_noret lua_State::doThrow(TStatus errcode) {
     errcode = luaE_resetthread(this, errcode);  /* close all upvalues */
     setStatus(errcode);
     if (mainth->getErrorJmp()) {  /* main thread has a handler? */
-      setobjs2s(this, mainth->getTop().p++, top.p - 1);  /* copy error obj. */
+      *s2v(mainth->getTop().p++) = *s2v(top.p - 1);  /* copy error obj. - use operator= */
       mainth->doThrow(errcode);  /* re-throw in main thread */
     }
     else {  /* no handler at all; abort */
@@ -520,7 +520,7 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
   if (l_unlikely(ttisnil(tm)))  /* no metamethod? */
     luaG_callerror(this, s2v(func));
   for (p = top.p; p > func; p--)  /* open space for metamethod */
-    setobjs2s(this, p, p-1);
+    *s2v(p) = *s2v(p-1);  /* shift stack - use operator= */
   top.p++;  /* stack space pre-allocated by the caller */
   setobj2s(this, func, tm);  /* metamethod is the new function to be called */
   if ((status_val & MAX_CCMT) == MAX_CCMT)  /* is counter full? */
@@ -538,7 +538,7 @@ void lua_State::genMoveResults(StkId res, int nres,
   if (nres > wanted)  /* extra results? */
     nres = wanted;  /* don't need them */
   for (i = 0; i < nres; i++)  /* move all results to correct place */
-    setobjs2s(this, res + i, firstresult + i);
+    *s2v(res + i) = *s2v(firstresult + i);  /* use operator= */
   for (; i < wanted; i++)  /* complete wanted number of results */
     setnilvalue(s2v(res + i));
   top.p = res + wanted;  /* top points after the last result */
@@ -563,7 +563,7 @@ void lua_State::moveResults(StkId res, int nres,
       if (nres == 0)   /* no results? */
         setnilvalue(s2v(res));  /* adjust with nil */
       else  /* at least one result */
-        setobjs2s(this, res, top.p - nres);  /* move it to proper place */
+        *s2v(res) = *s2v(top.p - nres);  /* move it to proper place - use operator= */
       top.p = res + 1;
       return;
     case LUA_MULTRET + 1:
@@ -684,7 +684,7 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
       checkstackp(this, fsize - delta, func);
       ci_arg->funcRef().p -= delta;  /* restore 'func' (if vararg) */
       for (i = 0; i < narg1; i++)  /* move down function and arguments */
-        setobjs2s(this, ci_arg->funcRef().p + i, func + i);
+        *s2v(ci_arg->funcRef().p + i) = *s2v(func + i);  /* use operator= */
       func = ci_arg->funcRef().p;  /* moved-down function */
       for (; narg1 <= nfixparams; narg1++)
         setnilvalue(s2v(func + narg1));  /* complete missing arguments */

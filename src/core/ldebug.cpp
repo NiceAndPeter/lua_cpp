@@ -238,7 +238,7 @@ LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
     StkId pos = NULL;  /* to avoid warnings */
     name = luaG_findlocal(L, ar->i_ci, n, &pos);
     if (name) {
-      setobjs2s(L, L->getTop().p, pos);
+      *s2v(L->getTop().p) = *s2v(pos);  /* use operator= */
       api_incr_top(L);
     }
   }
@@ -254,7 +254,7 @@ LUA_API const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n) {
   name = luaG_findlocal(L, ar->i_ci, n, &pos);
   if (name) {
     api_checkpop(L, 1);
-    setobjs2s(L, pos, L->getTop().p - 1);
+    *s2v(pos) = *s2v(L->getTop().p - 1);  /* use operator= */
     L->getTop().p--;  /* pop value */
   }
   lua_unlock(L);
@@ -880,8 +880,8 @@ l_noret lua_State::errorMsg() {
   if (getErrFunc() != 0) {  /* is there an error handling function? */
     StkId errfunc_ptr = this->restoreStack(getErrFunc());
     lua_assert(ttisfunction(s2v(errfunc_ptr)));
-    setobjs2s(this, top.p, top.p - 1);  /* move argument */
-    setobjs2s(this, top.p - 1, errfunc_ptr);  /* push function */
+    *s2v(top.p) = *s2v(top.p - 1);  /* move argument - use operator= */
+    *s2v(top.p - 1) = *s2v(errfunc_ptr);  /* push function - use operator= */
     top.p++;  /* assume EXTRA_STACK */
     callNoYield(top.p - 2, 1);  /* call it */
   }
@@ -906,7 +906,7 @@ l_noret lua_State::runError(const char *fmt, ...) {
   if (ci->isLua()) {  /* Lua function? */
     /* add source:line information */
     addInfo(msg, ci->getFunc()->getProto()->getSource(), getcurrentline(ci));
-    setobjs2s(this, top.p - 2, top.p - 1);  /* remove 'msg' */
+    *s2v(top.p - 2) = *s2v(top.p - 1);  /* remove 'msg' - use operator= */
     top.p--;
   }
   errorMsg();
@@ -920,7 +920,7 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
   if (L->getCI()->isLua()) {  /* Lua function? */
     /* add source:line information */
     L->addInfo(msg, L->getCI()->getFunc()->getProto()->getSource(), getcurrentline(L->getCI()));
-    setobjs2s(L, L->getTop().p - 2, L->getTop().p - 1);  /* remove 'msg' */
+    *s2v(L->getTop().p - 2) = *s2v(L->getTop().p - 1);  /* remove 'msg' - use operator= */
     L->getTop().p--;
   }
   L->errorMsg();
