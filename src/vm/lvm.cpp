@@ -2115,3 +2115,19 @@ lu_byte lua_State::finishGet(const TValue *t, TValue *key, StkId val, lu_byte ta
 void lua_State::finishSet(const TValue *t, TValue *key, TValue *val, int aux) {
   luaV_finishset(this, t, key, val, aux);
 }
+
+/*
+** lua_State arithmetic operation methods (wrappers for compatibility)
+*/
+
+lua_Integer lua_State::idiv(lua_Integer m, lua_Integer n) {
+  return luaV_idiv(this, m, n);
+}
+
+lua_Integer lua_State::mod(lua_Integer m, lua_Integer n) {
+  return luaV_mod(this, m, n);
+}
+
+lua_Number lua_State::modf(lua_Number m, lua_Number n) {
+  return luaV_modf(this, m, n);
+}
