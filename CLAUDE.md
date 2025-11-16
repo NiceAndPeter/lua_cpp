@@ -9,8 +9,9 @@ Converting Lua 5.5 from C to modern C++23 with:
 - Full encapsulation with private fields
 
 **Repository**: `/home/user/lua_cpp`
-**Performance**: Target ≤2.21s (≤1% regression from 2.17s baseline)
-**Status**: **SRP REFACTORING COMPLETE** ✅ All major classes decomposed into focused subsystems!
+**Performance**: Target ≤4.24s (≤1% regression from 4.20s baseline on current machine)
+**Note**: Historical baseline was 2.17s on different hardware - current numbers are from new machine
+**Status**: **CONSTRUCTOR INITIALIZATION COMPLETE** ✅ CallInfo and lua_State now use proper initialization!
 
 ---
 
@@ -30,11 +31,28 @@ Converting Lua 5.5 from C to modern C++23 with:
 - **Organized source tree** - 11 logical subdirectories
 - **Zero warnings** - Compiles with -Werror
 - **Comprehensive testing** - 30+ test files in testes/
-- **Recent work** - Phases 80-87 completed (method conversion in compiler/parser)
+- **Recent work** - Constructor initialization Phases 1-2 completed (CallInfo + lua_State)
 
-### Recent Major Achievements (Phases 90-92)
+### Recent Major Achievements
 
-**Single Responsibility Principle (SRP) Refactoring** - Completed Nov 15, 2025:
+**Constructor Initialization (Phases 1-2)** - Completed Nov 16, 2025:
+
+- **Phase 1 - CallInfo Constructor** ✅
+  - Fixed CRITICAL BUG: 5/9 fields were uninitialized (undefined behavior)
+  - Added CallInfo() noexcept constructor initializing all fields
+  - Updated luaE_extendCI to use placement new
+  - Performance: 4.20s avg (new baseline on current machine)
+  - Zero warnings, all tests passing
+
+- **Phase 2 - lua_State init() Method** ✅
+  - Added init(global_State*) method to consolidate initialization
+  - Replaces fragmented initialization across multiple functions
+  - Initializes all 27+ fields in single location
+  - Uses placement new for base_ci CallInfo initialization
+  - Performance: 4.20s avg (no regression)
+  - Simplified preinit_thread() implementation
+
+**Single Responsibility Principle (SRP) Refactoring** - Completed Nov 15, 2025 (historical baseline 2.17s):
 
 - **Phase 90 - FuncState SRP** (16 fields → 5 subsystems)
   - CodeBuffer, ConstantPool, VariableScope, RegisterAllocator, UpvalueTracker
@@ -60,7 +78,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 ### Critical Constraint
 
 **ZERO regression tolerance** - Strict performance enforcement:
-- Target: ≤2.21s (≤1% from baseline 2.17s)
+- **Current Machine**: Target ≤4.24s (≤1% from baseline 4.20s)
+- **Historical**: Previous baseline was 2.17s on different hardware
 - Must benchmark after EVERY significant change
 - Revert immediately if regression detected
 
@@ -73,6 +92,9 @@ cmake --build build
 # 5-run benchmark
 cd testes
 for i in 1 2 3 4 5; do ../build/lua all.lua 2>&1 | grep "total time:"; done
+
+# Current baseline (Nov 16, 2025): 4.20s avg (4.07-4.32s range)
+# Historical baseline (different hardware): 2.17s avg
 ```
 
 ---
