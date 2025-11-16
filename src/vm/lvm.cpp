@@ -532,7 +532,7 @@ int LEfloatint (lua_Number f, lua_Integer i) {
 static int lessthanothers (lua_State *L, const TValue *l, const TValue *r) {
   lua_assert(!ttisnumber(l) || !ttisnumber(r));
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
-    return l_strcmp(tsvalue(l), tsvalue(r)) < 0;
+    return *tsvalue(l) < *tsvalue(r);  /* Use TString operator< */
   else
     return luaT_callorderTM(L, l, r, TM_LT);
 }
@@ -554,7 +554,7 @@ int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
 static int lessequalothers (lua_State *L, const TValue *l, const TValue *r) {
   lua_assert(!ttisnumber(l) || !ttisnumber(r));
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
-    return l_strcmp(tsvalue(l), tsvalue(r)) <= 0;
+    return *tsvalue(l) <= *tsvalue(r);  /* Use TString operator<= */
   else
     return luaT_callorderTM(L, l, r, TM_LE);
 }
