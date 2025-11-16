@@ -182,6 +182,13 @@ public:
   constexpr lu_byte rawType() const noexcept { return tt_; }
   constexpr int baseType() const noexcept;
   constexpr lu_byte typeTag() const noexcept;
+
+  // Operator overloads (for numeric comparisons - defined after dependencies)
+  // These are declared here but implemented in lobject.h after all type helpers are available
+  friend bool operator<(const TValue& l, const TValue& r) noexcept;
+  friend bool operator<=(const TValue& l, const TValue& r) noexcept;
+  friend bool operator==(const TValue& l, const TValue& r) noexcept;
+  friend bool operator!=(const TValue& l, const TValue& r) noexcept;
 };
 
 

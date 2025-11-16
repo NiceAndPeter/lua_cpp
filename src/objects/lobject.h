@@ -1742,5 +1742,161 @@ LUAI_FUNC const char *luaO_pushfstring (lua_State *L, const char *fmt, ...);
 LUAI_FUNC void luaO_chunkid (char *out, const char *source, size_t srclen);
 
 
+/*
+** {==================================================================
+** TValue Operator Overloading
+** ===================================================================
+*/
+
+/* Forward declarations for lvm.h types/functions */
+#ifndef F2Imod_defined
+#define F2Imod_defined
+typedef enum {
+  F2Ieq,     /* no rounding; accepts only integral values */
+  F2Ifloor,  /* takes the floor of the number */
+  F2Iceil    /* takes the ceiling of the number */
+} F2Imod;
+#endif
+
+#ifndef luaV_flttointeger_declared
+#define luaV_flttointeger_declared
+LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
+#endif
+
+/* Forward declarations for comparison helpers (defined in lvm.cpp and lstring.h) */
+/* These handle mixed int/float comparisons correctly */
+LUAI_FUNC int LTintfloat (lua_Integer i, lua_Number f);
+LUAI_FUNC int LEintfloat (lua_Integer i, lua_Number f);
+LUAI_FUNC int LTfloatint (lua_Number f, lua_Integer i);
+LUAI_FUNC int LEfloatint (lua_Number f, lua_Integer i);
+LUAI_FUNC int l_strcmp (const TString* ts1, const TString* ts2);
+LUAI_FUNC int luaS_eqstr (const TString* a, const TString* b);
+
+/* String comparison helpers (defined in lstring.h) */
+bool eqshrstr(const TString* a, const TString* b) noexcept;  /* forward decl */
+
+/*
+** Operator< for TValue (numeric and string comparison only, no metamethods)
+** For general comparison with metamethods, use luaV_lessthan()
+*/
+inline bool operator<(const TValue& l, const TValue& r) noexcept {
+	// Both numbers?
+	if (ttisnumber(&l) && ttisnumber(&r)) {
+		if (ttisinteger(&l)) {
+			lua_Integer li = ivalue(&l);
+			if (ttisinteger(&r))
+				return li < ivalue(&r);  /* both integers */
+			else
+				return LTintfloat(li, fltvalue(&r));  /* int < float */
+		}
+		else {
+			lua_Number lf = fltvalue(&l);  /* l is float */
+			if (ttisfloat(&r))
+				return lf < fltvalue(&r);  /* both floats */
+			else
+				return LTfloatint(lf, ivalue(&r));  /* float < int */
+		}
+	}
+	// Both strings? (no metamethods - raw comparison)
+	else if (ttisstring(&l) && ttisstring(&r)) {
+		return l_strcmp(tsvalue(&l), tsvalue(&r)) < 0;
+	}
+	// Different types or non-comparable types
+	return false;
+}
+
+/*
+** Operator<= for TValue (numeric and string comparison only, no metamethods)
+** For general comparison with metamethods, use luaV_lessequal()
+*/
+inline bool operator<=(const TValue& l, const TValue& r) noexcept {
+	// Both numbers?
+	if (ttisnumber(&l) && ttisnumber(&r)) {
+		if (ttisinteger(&l)) {
+			lua_Integer li = ivalue(&l);
+			if (ttisinteger(&r))
+				return li <= ivalue(&r);  /* both integers */
+			else
+				return LEintfloat(li, fltvalue(&r));  /* int <= float */
+		}
+		else {
+			lua_Number lf = fltvalue(&l);  /* l is float */
+			if (ttisfloat(&r))
+				return lf <= fltvalue(&r);  /* both floats */
+			else
+				return LEfloatint(lf, ivalue(&r));  /* float <= int */
+		}
+	}
+	// Both strings? (no metamethods - raw comparison)
+	else if (ttisstring(&l) && ttisstring(&r)) {
+		return l_strcmp(tsvalue(&l), tsvalue(&r)) <= 0;
+	}
+	// Different types or non-comparable types
+	return false;
+}
+
+/*
+** Operator== for TValue (raw equality only, no metamethods)
+** For general equality with metamethods, use luaV_equalobj()
+** This is similar to luaV_rawequalobj() but as an operator
+*/
+inline bool operator==(const TValue& l, const TValue& r) noexcept {
+	if (ttype(&l) != ttype(&r))  /* different base types? */
+		return false;
+	else if (ttypetag(&l) != ttypetag(&r)) {
+		/* Different variants - only numbers and strings can be equal across variants */
+		switch (ttypetag(&l)) {
+			case LUA_VNUMINT: {  /* int == float? */
+				lua_Integer i2;
+				return (luaV_flttointeger(fltvalue(&r), &i2, F2Ieq) &&
+				        ivalue(&l) == i2);
+			}
+			case LUA_VNUMFLT: {  /* float == int? */
+				lua_Integer i1;
+				return (luaV_flttointeger(fltvalue(&l), &i1, F2Ieq) &&
+				        i1 == ivalue(&r));
+			}
+			case LUA_VSHRSTR: case LUA_VLNGSTR: {
+				/* Compare strings with different variants */
+				return luaS_eqstr(tsvalue(&l), tsvalue(&r));
+			}
+			default:
+				return false;
+		}
+	}
+	else {  /* same variant */
+		switch (ttypetag(&l)) {
+			case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE:
+				return true;
+			case LUA_VNUMINT:
+				return ivalue(&l) == ivalue(&r);
+			case LUA_VNUMFLT:
+				return fltvalue(&l) == fltvalue(&r);
+			case LUA_VLIGHTUSERDATA:
+				return pvalue(&l) == pvalue(&r);
+			case LUA_VSHRSTR:
+				return eqshrstr(tsvalue(&l), tsvalue(&r));
+			case LUA_VLNGSTR:
+				return luaS_eqstr(tsvalue(&l), tsvalue(&r));
+			case LUA_VUSERDATA:
+				return uvalue(&l) == uvalue(&r);
+			case LUA_VLCF:
+				return fvalue(&l) == fvalue(&r);
+			default:  /* other collectable types (tables, closures, threads) */
+				return gcvalue(&l) == gcvalue(&r);
+		}
+	}
+}
+
+/*
+** Operator!= for TValue
+*/
+inline bool operator!=(const TValue& l, const TValue& r) noexcept {
+	return !(l == r);
+}
+
+/* }================================================================== */
+
+
 #endif
 

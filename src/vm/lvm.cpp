@@ -415,7 +415,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
 ** of the strings. Note that segments can compare equal but still
 ** have different lengths.
 */
-static int l_strcmp (const TString *ts1, const TString *ts2) {
+int l_strcmp (const TString *ts1, const TString *ts2) {
   size_t rl1;  /* real length */
   const char *s1 = getlstr(ts1, rl1);
   size_t rl2;
@@ -459,7 +459,7 @@ static int l_strcmp (const TString *ts1, const TString *ts2) {
 ** potentially giving incorrect results. Instead, we compute ceil(f) as an
 ** integer and compare in the integer domain where no precision is lost.
 */
-static inline int LTintfloat (lua_Integer i, lua_Number f) {
+int LTintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
     return luai_numlt(cast_num(i), f);  /* compare them as floats */
   else {  /* i < f <=> i < ceil(f) */
@@ -476,7 +476,7 @@ static inline int LTintfloat (lua_Integer i, lua_Number f) {
 ** Check whether integer 'i' is less than or equal to float 'f'.
 ** See comments on previous function.
 */
-static inline int LEintfloat (lua_Integer i, lua_Number f) {
+int LEintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
     return luai_numle(cast_num(i), f);  /* compare them as floats */
   else {  /* i <= f <=> i <= floor(f) */
@@ -493,7 +493,7 @@ static inline int LEintfloat (lua_Integer i, lua_Number f) {
 ** Check whether float 'f' is less than integer 'i'.
 ** See comments on previous function.
 */
-static inline int LTfloatint (lua_Number f, lua_Integer i) {
+int LTfloatint (lua_Number f, lua_Integer i) {
   if (l_intfitsf(i))
     return luai_numlt(f, cast_num(i));  /* compare them as floats */
   else {  /* f < i <=> floor(f) < i */
@@ -510,7 +510,7 @@ static inline int LTfloatint (lua_Number f, lua_Integer i) {
 ** Check whether float 'f' is less than or equal to integer 'i'.
 ** See comments on previous function.
 */
-static inline int LEfloatint (lua_Number f, lua_Integer i) {
+int LEfloatint (lua_Number f, lua_Integer i) {
   if (l_intfitsf(i))
     return luai_numle(f, cast_num(i));  /* compare them as floats */
   else {  /* f <= i <=> ceil(f) <= i */
@@ -584,7 +584,7 @@ static int lessthanothers (lua_State *L, const TValue *l, const TValue *r) {
 */
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
-    return LTnum(l, r);
+    return *l < *r;  /* Use operator< for cleaner syntax */
   else return lessthanothers(L, l, r);
 }
 
@@ -606,7 +606,7 @@ static int lessequalothers (lua_State *L, const TValue *l, const TValue *r) {
 */
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
-    return LEnum(l, r);
+    return *l <= *r;  /* Use operator<= for cleaner syntax */
   else return lessequalothers(L, l, r);
 }
 
