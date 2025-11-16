@@ -488,23 +488,19 @@ void luaO_tostring (lua_State *L, TValue *obj) {
 ** Buffer used by 'luaO_pushvfstring'. 'err' signals an error while
 ** building result (memory error [1] or buffer overflow [2]).
 */
-typedef struct BuffFS {
+class BuffFS {
+public:
   lua_State *L;
   char *b;
   size_t buffsize;
   size_t blen;  /* length of string in 'buff' */
   int err;
   char space[BUFVFS];  /* initial buffer */
-} BuffFS;
 
-
-static void initbuff (lua_State *L, BuffFS *buff) {
-  buff->L = L;
-  buff->b = buff->space;
-  buff->buffsize = sizeof(buff->space);
-  buff->blen = 0;
-  buff->err = 0;
-}
+  /* Constructor */
+  explicit BuffFS(lua_State *L_arg) noexcept
+    : L(L_arg), b(space), buffsize(sizeof(space)), blen(0), err(0) {}
+};
 
 
 /*
@@ -595,9 +591,8 @@ static void addnum2buff (BuffFS *buff, TValue *num) {
    conventional formats, plus Lua-specific '%I' and '%U'
 */
 const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
-  BuffFS buff;  /* holds last part of the result */
   const char *e;  /* points to next '%' */
-  initbuff(L, &buff);
+  BuffFS buff(L);  /* holds last part of the result */
   while ((e = strchr(fmt, '%')) != NULL) {
     addstr2buff(&buff, fmt, ct_diff2sz(e - fmt));  /* add 'fmt' up to '%' */
     switch (*(e + 1)) {  /* conversion specifier */

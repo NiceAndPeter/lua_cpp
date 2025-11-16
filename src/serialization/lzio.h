@@ -21,15 +21,18 @@ typedef struct Zio ZIO;
 LUAI_FUNC int luaZ_fill (ZIO *z);
 
 
-typedef struct Mbuffer {
+class Mbuffer {
+public:
   char *buffer;
   size_t n;
   size_t buffsize;
-} Mbuffer;
+
+  /* Default constructor */
+  Mbuffer() noexcept : buffer(nullptr), n(0), buffsize(0) {}
+};
 
 inline void luaZ_initbuffer([[maybe_unused]] lua_State *L, Mbuffer *buff) {
-    buff->buffer = NULL;
-    buff->buffsize = 0;
+    new (buff) Mbuffer();
 }
 
 inline char* luaZ_buffer(Mbuffer *buff) {
@@ -72,12 +75,17 @@ LUAI_FUNC const void *luaZ_getaddr (ZIO* z, size_t n);
 
 /* --------- Private Part ------------------ */
 
-struct Zio {
+class Zio {
+public:
   size_t n;			/* bytes still unread */
   const char *p;		/* current position in buffer */
   lua_Reader reader;		/* reader function */
   void *data;			/* additional data */
   lua_State *L;			/* Lua state (for reader) */
+
+  /* Constructor */
+  Zio(lua_State *L_arg, lua_Reader reader_arg, void *data_arg) noexcept
+    : n(0), p(nullptr), reader(reader_arg), data(data_arg), L(L_arg) {}
 };
 
 inline int zgetc(ZIO *z) {
