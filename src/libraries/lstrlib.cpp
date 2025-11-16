@@ -96,12 +96,11 @@ static int str_sub (lua_State *L) {
 
 
 static int str_reverse (lua_State *L) {
-  size_t l, i;
+  size_t l;
   luaL_Buffer b;
   const char *s = luaL_checklstring(L, 1, &l);
   char *p = luaL_buffinitsize(L, &b, l);
-  for (i = 0; i < l; i++)
-    p[i] = s[l - i - 1];
+  std::reverse_copy(s, s + l, p);
   luaL_pushresultsize(&b, l);
   return 1;
 }
@@ -109,12 +108,12 @@ static int str_reverse (lua_State *L) {
 
 static int str_lower (lua_State *L) {
   size_t l;
-  size_t i;
   luaL_Buffer b;
   const char *s = luaL_checklstring(L, 1, &l);
   char *p = luaL_buffinitsize(L, &b, l);
-  for (i=0; i<l; i++)
-    p[i] = cast_char(tolower(cast_uchar(s[i])));
+  std::transform(s, s + l, p, [](char c) {
+    return cast_char(tolower(cast_uchar(c)));
+  });
   luaL_pushresultsize(&b, l);
   return 1;
 }
@@ -122,12 +121,12 @@ static int str_lower (lua_State *L) {
 
 static int str_upper (lua_State *L) {
   size_t l;
-  size_t i;
   luaL_Buffer b;
   const char *s = luaL_checklstring(L, 1, &l);
   char *p = luaL_buffinitsize(L, &b, l);
-  for (i=0; i<l; i++)
-    p[i] = cast_char(toupper(cast_uchar(s[i])));
+  std::transform(s, s + l, p, [](char c) {
+    return cast_char(toupper(cast_uchar(c)));
+  });
   luaL_pushresultsize(&b, l);
   return 1;
 }

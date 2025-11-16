@@ -12,6 +12,7 @@
 
 #include <climits>
 #include <cstddef>
+#include <span>
 
 #include "lua.h"
 
@@ -207,27 +208,27 @@ static void dumpConstants (DumpState *D, const Proto *f) {
 
 
 static void dumpProtos (DumpState *D, const Proto *f) {
-  int i;
   int n = f->getProtosSize();
   dumpInt(D, n);
-  for (i = 0; i < n; i++)
-    dumpFunction(D, f->getProtos()[i]);
+  for (const auto& proto : std::span(f->getProtos(), n)) {
+    dumpFunction(D, proto);
+  }
 }
 
 
 static void dumpUpvalues (DumpState *D, const Proto *f) {
-  int i, n = f->getUpvaluesSize();
+  int n = f->getUpvaluesSize();
   dumpInt(D, n);
-  for (i = 0; i < n; i++) {
-    dumpByte(D, f->getUpvalues()[i].getInStackRaw());
-    dumpByte(D, f->getUpvalues()[i].getIndex());
-    dumpByte(D, f->getUpvalues()[i].getKind());
+  for (const auto& uv : std::span(f->getUpvalues(), n)) {
+    dumpByte(D, uv.getInStackRaw());
+    dumpByte(D, uv.getIndex());
+    dumpByte(D, uv.getKind());
   }
 }
 
 
 static void dumpDebug (DumpState *D, const Proto *f) {
-  int i, n;
+  int n;
   n = (D->strip) ? 0 : f->getLineInfoSize();
   dumpInt(D, n);
   if (f->getLineInfo() != NULL)
@@ -241,15 +242,16 @@ static void dumpDebug (DumpState *D, const Proto *f) {
   }
   n = (D->strip) ? 0 : f->getLocVarsSize();
   dumpInt(D, n);
-  for (i = 0; i < n; i++) {
-    dumpString(D, f->getLocVars()[i].getVarName());
-    dumpInt(D, f->getLocVars()[i].getStartPC());
-    dumpInt(D, f->getLocVars()[i].getEndPC());
+  for (const auto& lv : std::span(f->getLocVars(), n)) {
+    dumpString(D, lv.getVarName());
+    dumpInt(D, lv.getStartPC());
+    dumpInt(D, lv.getEndPC());
   }
   n = (D->strip) ? 0 : f->getUpvaluesSize();
   dumpInt(D, n);
-  for (i = 0; i < n; i++)
-    dumpString(D, f->getUpvalues()[i].getName());
+  for (const auto& uv : std::span(f->getUpvalues(), n)) {
+    dumpString(D, uv.getName());
+  }
 }
 
 
