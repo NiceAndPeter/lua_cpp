@@ -545,12 +545,12 @@ int LEfloatint (lua_Number f, lua_Integer i) {
 /*
 ** return 'l < r' for non-numbers.
 */
-static int lessthanothers (lua_State *L, const TValue *l, const TValue *r) {
+int lua_State::lessThanOthers(const TValue *l, const TValue *r) {
   lua_assert(!ttisnumber(l) || !ttisnumber(r));
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return *tsvalue(l) < *tsvalue(r);  /* Use TString operator< */
   else
-    return luaT_callorderTM(L, l, r, TM_LT);
+    return luaT_callorderTM(this, l, r, TM_LT);
 }
 
 
@@ -560,19 +560,31 @@ static int lessthanothers (lua_State *L, const TValue *l, const TValue *r) {
 int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return *l < *r;  /* Use operator< for cleaner syntax */
-  else return lessthanothers(L, l, r);
+  else return L->lessThanOthers(l, r);
 }
 
 
 /*
 ** return 'l <= r' for non-numbers.
 */
-static int lessequalothers (lua_State *L, const TValue *l, const TValue *r) {
+int lua_State::lessEqualOthers(const TValue *l, const TValue *r) {
   lua_assert(!ttisnumber(l) || !ttisnumber(r));
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return *tsvalue(l) <= *tsvalue(r);  /* Use TString operator<= */
   else
-    return luaT_callorderTM(L, l, r, TM_LE);
+    return luaT_callorderTM(this, l, r, TM_LE);
+}
+
+
+/*
+** Wrapper functions for op_order macro compatibility
+*/
+static inline int lessthanothers(lua_State *L, const TValue *l, const TValue *r) {
+  return L->lessThanOthers(l, r);
+}
+
+static inline int lessequalothers(lua_State *L, const TValue *l, const TValue *r) {
+  return L->lessEqualOthers(l, r);
 }
 
 
@@ -582,7 +594,7 @@ static int lessequalothers (lua_State *L, const TValue *l, const TValue *r) {
 int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return *l <= *r;  /* Use operator<= for cleaner syntax */
-  else return lessequalothers(L, l, r);
+  else return L->lessEqualOthers(l, r);
 }
 
 
@@ -839,20 +851,19 @@ lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y) {
 ** create a new Lua closure, push it in the stack, and initialize
 ** its upvalues.
 */
-static void pushclosure (lua_State *L, Proto *p, UpVal **encup, StkId base,
-                         StkId ra) {
+void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
   int nup = p->getUpvaluesSize();
   Upvaldesc *uv = p->getUpvalues();
   int i;
-  LClosure *ncl = LClosure::create(L, nup);
+  LClosure *ncl = LClosure::create(this, nup);
   ncl->setProto(p);
-  setclLvalue2s(L, ra, ncl);  /* anchor new closure in stack */
+  setclLvalue2s(this, ra, ncl);  /* anchor new closure in stack */
   for (i = 0; i < nup; i++) {  /* fill in its upvalues */
     if (uv[i].isInStack())  /* upvalue refers to local variable? */
-      ncl->setUpval(i, luaF_findupval(L, base + uv[i].getIndex()));
+      ncl->setUpval(i, luaF_findupval(this, base + uv[i].getIndex()));
     else  /* get upvalue from enclosing function */
       ncl->setUpval(i, encup[uv[i].getIndex()]);
-    luaC_objbarrier(L, ncl, ncl->getUpval(i));
+    luaC_objbarrier(this, ncl, ncl->getUpval(i));
   }
 }
 
@@ -2075,7 +2086,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_CLOSURE) {
         StkId ra = RA(i);
         Proto *p = cl->getProto()->getProtos()[InstructionView(i).bx()];
-        halfProtect(pushclosure(L, p, cl->getUpvalPtr(0), base, ra));
+        halfProtect(L->pushClosure(p, cl->getUpvalPtr(0), base, ra));
         checkGC(L, ra + 1);
         vmbreak;
       }

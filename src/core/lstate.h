@@ -666,6 +666,13 @@ public:
   inline int forPrep(StkId ra);
   inline int floatForLoop(StkId ra);
 
+  // Comparison helper methods (VM-internal operations)
+  inline int lessThanOthers(const TValue *l, const TValue *r);
+  inline int lessEqualOthers(const TValue *l, const TValue *r);
+
+  // Closure creation helper (VM-internal operation)
+  inline void pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra);
+
 private:
   // Private helper methods (implementation details in ldo.cpp)
 
