@@ -152,6 +152,7 @@ inline constexpr bool checkopm(Instruction i, OpMode m) noexcept {
 }
 
 
+/* Core helper functions for instruction field manipulation */
 inline constexpr int getarg(Instruction i, int pos, int size) noexcept {
 	return cast_int((i >> pos) & MASK1(size, 0));
 }
@@ -160,26 +161,11 @@ inline void setarg(Instruction& i, unsigned int v, int pos, int size) noexcept {
 	i = ((i & MASK0(size, pos)) | ((cast_Inst(v) << pos) & MASK1(size, pos)));
 }
 
-inline constexpr int GETARG_A(Instruction i) noexcept {
-	return getarg(i, POS_A, SIZE_A);
-}
+/* SETARG functions for instruction creation/modification */
 inline void SETARG_A(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_A, SIZE_A);
 }
 
-inline constexpr int GETARG_B(Instruction i) noexcept {
-	lua_assert(checkopm(i, iABC));
-	return getarg(i, POS_B, SIZE_B);
-}
-
-inline constexpr int GETARG_vB(Instruction i) noexcept {
-	lua_assert(checkopm(i, ivABC));
-	return getarg(i, POS_vB, SIZE_vB);
-}
-
-inline constexpr int GETARG_sB(Instruction i) noexcept {
-	return sC2int(GETARG_B(i));
-}
 inline void SETARG_B(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_B, SIZE_B);
 }
@@ -188,19 +174,6 @@ inline void SETARG_vB(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_vB, SIZE_vB);
 }
 
-inline constexpr int GETARG_C(Instruction i) noexcept {
-	lua_assert(checkopm(i, iABC));
-	return getarg(i, POS_C, SIZE_C);
-}
-
-inline constexpr int GETARG_vC(Instruction i) noexcept {
-	lua_assert(checkopm(i, ivABC));
-	return getarg(i, POS_vC, SIZE_vC);
-}
-
-inline constexpr int GETARG_sC(Instruction i) noexcept {
-	return sC2int(GETARG_C(i));
-}
 inline void SETARG_C(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_C, SIZE_C);
 }
@@ -209,45 +182,22 @@ inline void SETARG_vC(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_vC, SIZE_vC);
 }
 
-inline constexpr int TESTARG_k(Instruction i) noexcept {
-	return cast_int(i & (1u << POS_k));
-}
-
-inline constexpr int GETARG_k(Instruction i) noexcept {
-	return getarg(i, POS_k, 1);
-}
 inline void SETARG_k(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_k, 1);
 }
 
-inline constexpr int GETARG_Bx(Instruction i) noexcept {
-	lua_assert(checkopm(i, iABx));
-	return getarg(i, POS_Bx, SIZE_Bx);
-}
 inline void SETARG_Bx(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_Bx, SIZE_Bx);
 }
 
-inline constexpr int GETARG_Ax(Instruction i) noexcept {
-	lua_assert(checkopm(i, iAx));
-	return getarg(i, POS_Ax, SIZE_Ax);
-}
 inline void SETARG_Ax(Instruction& i, unsigned int v) noexcept {
 	setarg(i, v, POS_Ax, SIZE_Ax);
 }
 
-inline constexpr int GETARG_sBx(Instruction i) noexcept {
-	lua_assert(checkopm(i, iAsBx));
-	return getarg(i, POS_Bx, SIZE_Bx) - OFFSET_sBx;
-}
 inline void SETARG_sBx(Instruction& i, int b) noexcept {
 	SETARG_Bx(i, cast_uint(b + OFFSET_sBx));
 }
 
-inline constexpr int GETARG_sJ(Instruction i) noexcept {
-	lua_assert(checkopm(i, isJ));
-	return getarg(i, POS_sJ, SIZE_sJ) - OFFSET_sJ;
-}
 inline void SETARG_sJ(Instruction& i, int j) noexcept {
 	setarg(i, cast_uint(j + OFFSET_sJ), POS_sJ, SIZE_sJ);
 }
@@ -271,72 +221,72 @@ public:
 
 	/* Opcode accessor */
 	constexpr int opcode() const noexcept {
-		return GET_OPCODE(inst_);
+		return cast_int((inst_ >> POS_OP) & MASK1(SIZE_OP, 0));
 	}
 
 	/* Field A accessor (8 bits) */
 	constexpr int a() const noexcept {
-		return GETARG_A(inst_);
+		return getarg(inst_, POS_A, SIZE_A);
 	}
 
 	/* Field B accessor (8 bits, iABC mode) */
 	constexpr int b() const noexcept {
-		return GETARG_B(inst_);
+		return getarg(inst_, POS_B, SIZE_B);
 	}
 
 	/* Field vB accessor (6 bits, ivABC mode) */
 	constexpr int vb() const noexcept {
-		return GETARG_vB(inst_);
+		return getarg(inst_, POS_vB, SIZE_vB);
 	}
 
 	/* Signed field B accessor */
 	constexpr int sb() const noexcept {
-		return GETARG_sB(inst_);
+		return sC2int(b());
 	}
 
 	/* Field C accessor (8 bits, iABC mode) */
 	constexpr int c() const noexcept {
-		return GETARG_C(inst_);
+		return getarg(inst_, POS_C, SIZE_C);
 	}
 
 	/* Field vC accessor (10 bits, ivABC mode) */
 	constexpr int vc() const noexcept {
-		return GETARG_vC(inst_);
+		return getarg(inst_, POS_vC, SIZE_vC);
 	}
 
 	/* Signed field C accessor */
 	constexpr int sc() const noexcept {
-		return GETARG_sC(inst_);
+		return sC2int(c());
 	}
 
 	/* Field k accessor (1 bit) */
 	constexpr int k() const noexcept {
-		return GETARG_k(inst_);
+		return getarg(inst_, POS_k, 1);
 	}
 
 	/* Test field k (non-zero if set) */
 	constexpr int testk() const noexcept {
-		return TESTARG_k(inst_);
+		return cast_int(inst_ & (1u << POS_k));
 	}
 
 	/* Field Bx accessor (17 bits) */
 	constexpr int bx() const noexcept {
-		return GETARG_Bx(inst_);
+		return getarg(inst_, POS_Bx, SIZE_Bx);
 	}
 
 	/* Signed field Bx accessor */
 	constexpr int sbx() const noexcept {
-		return GETARG_sBx(inst_);
+		return getarg(inst_, POS_Bx, SIZE_Bx) - OFFSET_sBx;
 	}
 
 	/* Field Ax accessor (25 bits) */
 	constexpr int ax() const noexcept {
-		return GETARG_Ax(inst_);
+		return getarg(inst_, POS_Ax, SIZE_Ax);
 	}
 
 	/* Signed field sJ accessor (25 bits) */
 	constexpr int sj() const noexcept {
-		return GETARG_sJ(inst_);
+		return getarg(inst_, POS_sJ, SIZE_sJ) - OFFSET_sJ;
 	}
 };
 

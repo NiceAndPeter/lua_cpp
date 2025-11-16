@@ -1524,7 +1524,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         Table *t;
         if (b > 0)
           b = 1u << (b - 1);  /* hash size is 2^(b - 1) */
-        if (TESTARG_k(i)) {  /* non-zero extra argument? */
+        if (InstructionView(i).testk()) {  /* non-zero extra argument? */
           lua_assert(InstructionView(*pc).ax() != 0);
           /* add it to array size */
           c += cast_uint(InstructionView(*pc).ax()) * (MAXARG_vC + 1);
@@ -1859,7 +1859,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         else  /* previous instruction set top */
           b = cast_int(L->getTop().p - ra);
         savepc(ci);  /* several calls here can raise errors */
-        if (TESTARG_k(i)) {
+        if (InstructionView(i).testk()) {
           luaF_closeupval(L, base);  /* close upvalues from current call */
           lua_assert(L->getTbclist().p < base);  /* no pending tbc variables */
           lua_assert(base == ci->funcRef().p + 1);
@@ -1880,7 +1880,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (n < 0)  /* not fixed? */
           n = cast_int(L->getTop().p - ra);  /* get what is available */
         savepc(ci);
-        if (TESTARG_k(i)) {  /* may there be open upvalues? */
+        if (InstructionView(i).testk()) {  /* may there be open upvalues? */
           ci->setNRes(n);  /* save number of returns */
           if (L->getTop().p < ci->topRef().p)
             L->getTop().p = ci->topRef().p;
@@ -2021,7 +2021,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         else
           L->getTop().p = ci->topRef().p;  /* correct top in case of emergency GC */
         last += n;
-        if (TESTARG_k(i)) {
+        if (InstructionView(i).testk()) {
           last += cast_uint(InstructionView(*pc).ax()) * (MAXARG_vC + 1);
           pc++;
         }
