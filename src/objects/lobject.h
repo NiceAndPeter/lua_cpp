@@ -1454,6 +1454,12 @@ public:
   constexpr Node(Value val, lu_byte val_tt, lu_byte key_tt, int next_val, Value key_val) noexcept
     : u{val, val_tt, key_tt, next_val, key_val} {}
 
+  // Copy assignment operator (needed because union contains TValue with user-declared operator=)
+  inline Node& operator=(const Node& other) noexcept {
+    u = other.u;  // Copy the union
+    return *this;
+  }
+
   // Value access
   inline TValue* getValue() noexcept { return &i_val; }
   inline const TValue* getValue() const noexcept { return &i_val; }

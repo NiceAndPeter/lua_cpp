@@ -189,6 +189,11 @@ public:
   friend bool operator<=(const TValue& l, const TValue& r) noexcept;
   friend bool operator==(const TValue& l, const TValue& r) noexcept;
   friend bool operator!=(const TValue& l, const TValue& r) noexcept;
+
+  // Assignment operator (simple copy, no GC barriers)
+  // For assignments that require GC barriers, use setobj2t/setobj2n
+  // Implementation in lgc.h after all dependencies
+  TValue& operator=(const TValue& other) noexcept;
 };
 
 

@@ -685,7 +685,7 @@ void luaV_concat (lua_State *L, int total) {
     else if (isemptystr(s2v(top - 1)))  /* second operand is empty? */
       cast_void(tostring(L, s2v(top - 2)));  /* result is first operand */
     else if (isemptystr(s2v(top - 2))) {  /* first operand is empty string? */
-      setobjs2s(L, top - 2, top - 1);  /* result is second op. */
+      *s2v(top - 2) = *s2v(top - 1);  /* result is second op. (operator=) */
     }
     else {
       /* at least two non-empty string values; get as many as possible */
@@ -851,13 +851,13 @@ void luaV_finishOp (lua_State *L) {
   OpCode op = static_cast<OpCode>(GET_OPCODE(inst));
   switch (op) {  /* finish its execution */
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
-      setobjs2s(L, base + GETARG_A(*(ci->getSavedPC() - 2)), --L->getTop().p);
+      *s2v(base + GETARG_A(*(ci->getSavedPC() - 2))) = *s2v(--L->getTop().p);
       break;
     }
     case OP_UNM: case OP_BNOT: case OP_LEN:
     case OP_GETTABUP: case OP_GETTABLE: case OP_GETI:
     case OP_GETFIELD: case OP_SELF: {
-      setobjs2s(L, base + GETARG_A(inst), --L->getTop().p);
+      *s2v(base + GETARG_A(inst)) = *s2v(--L->getTop().p);
       break;
     }
     case OP_LT: case OP_LE:
@@ -875,7 +875,7 @@ void luaV_finishOp (lua_State *L) {
       StkId top = L->getTop().p - 1;  /* top when 'luaT_tryconcatTM' was called */
       int a = GETARG_A(inst);      /* first element to concatenate */
       int total = cast_int(top - 1 - (base + a));  /* yet to concatenate */
-      setobjs2s(L, top - 2, top);  /* put TM result in proper position */
+      *s2v(top - 2) = *s2v(top);  /* put TM result in proper position (operator=) */
       L->getTop().p = top - 1;  /* top is one after last element (at top-2) */
       luaV_concat(L, total);  /* concat them (may yield again) */
       break;
@@ -1345,7 +1345,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     vmdispatch (GET_OPCODE(i)) {
       vmcase(OP_MOVE) {
         StkId ra = RA(i);
-        setobjs2s(L, ra, RB(i));
+        *s2v(ra) = *s2v(RB(i));  /* Use operator= for move */
         vmbreak;
       }
       vmcase(OP_LOADI) {
@@ -1927,7 +1927,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
             L->getTop().p = base - 1;  /* asked for no results */
           else {
             StkId ra = RA(i);
-            setobjs2s(L, base - 1, ra);  /* at least this result */
+            *s2v(base - 1) = *s2v(ra);  /* at least this result (operator=) */
             L->getTop().p = base;
             for (; l_unlikely(nres > 1); nres--)
               setnilvalue(s2v(L->getTop().p++));  /* complete missing results */
@@ -1975,9 +1975,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
        */
        StkId ra = RA(i);
        TValue temp;  /* to swap control and closing variables */
-       setobj(L, &temp, s2v(ra + 3));
-       setobjs2s(L, ra + 3, ra + 2);
-       setobj2s(L, ra + 2, &temp);
+       temp = *s2v(ra + 3);  /* Use operator= for temp assignment */
+       *s2v(ra + 3) = *s2v(ra + 2);  /* Use operator= */
+       *s2v(ra + 2) = temp;  /* Use operator= */
         /* create to-be-closed upvalue (if closing var. is not nil) */
         halfProtect(luaF_newtbcupval(L, ra + 2));
         pc += GETARG_Bx(i);  /* go to end of the loop */
@@ -1994,9 +1994,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
            return will be the new value for the control variable.
         */
         StkId ra = RA(i);
-        setobjs2s(L, ra + 5, ra + 3);  /* copy the control variable */
-        setobjs2s(L, ra + 4, ra + 1);  /* copy state */
-        setobjs2s(L, ra + 3, ra);  /* copy function */
+        *s2v(ra + 5) = *s2v(ra + 3);  /* copy the control variable (operator=) */
+        *s2v(ra + 4) = *s2v(ra + 1);  /* copy state (operator=) */
+        *s2v(ra + 3) = *s2v(ra);  /* copy function (operator=) */
         L->getTop().p = ra + 3 + 3;
         ProtectNT(L->call( ra + 3, GETARG_C(i)));  /* do the call */
         updatestack(ci);  /* stack may have changed */
