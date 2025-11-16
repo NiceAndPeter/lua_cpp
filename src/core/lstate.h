@@ -647,6 +647,19 @@ public:
   int traceExec(const Instruction *pc);
   int traceCall();
 
+  // VM operation methods (formerly luaV_* functions, implemented in lvm.cpp)
+  void execute(CallInfo *callinfo);
+  void finishOp();
+  void concat(int total);
+  void objlen(StkId ra, const TValue *rb);
+  lu_byte finishGet(const TValue *t, TValue *key, StkId val, lu_byte tag);
+  void finishSet(const TValue *t, TValue *key, TValue *val, int aux);
+
+  // Arithmetic operation methods (formerly luaV_* functions, implemented in lvm.cpp)
+  lua_Integer idiv(lua_Integer m, lua_Integer n);  // Integer division with error handling
+  lua_Integer mod(lua_Integer m, lua_Integer n);   // Integer modulus with error handling
+  lua_Number modf(lua_Number m, lua_Number n);     // Float modulus with error handling
+
 private:
   // Private helper methods (implementation details in ldo.cpp)
 
