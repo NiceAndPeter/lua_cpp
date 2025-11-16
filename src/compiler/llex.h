@@ -156,8 +156,8 @@ public:
   inline void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
 };
 
-/* state of the scanner plus state of the parser when shared by all
-   functions */
+/* Phase 95: Lexical state - focused on tokenization only
+** Parser-specific fields and methods moved to Parser class */
 class LexState {
 private:
   // Phase 94: SRP decomposition - organized subsystems
@@ -165,10 +165,9 @@ private:
   TokenState tokens;
   StringInterner strings;
 
-  // Parser context (kept as-is)
-  struct FuncState *fs;  /* current function (parser) */
+  // Shared state (lexer + parser)
   struct lua_State *L;
-  struct Dyndata *dyd;  /* dynamic structures used by the parser */
+  struct Dyndata *dyd;  /* dynamic structures shared by lexer and parser */
 
 public:
   // Phase 94: Accessors delegating to subsystems
@@ -209,16 +208,13 @@ public:
   void setBreakName(TString* brk) noexcept { strings.setBreakName(brk); }
   void setGlobalName(TString* gbl) noexcept { strings.setGlobalName(gbl); }
 
-  // Parser context accessors (kept as-is)
-  struct FuncState* getFuncState() const noexcept { return fs; }
+  // Shared state accessors
   struct lua_State* getLuaState() const noexcept { return L; }
-  struct Dyndata* getDyndata() const noexcept { return dyd; }
-
-  void setFuncState(struct FuncState* f) noexcept { fs = f; }
   void setLuaState(struct lua_State* state) noexcept { L = state; }
+  struct Dyndata* getDyndata() const noexcept { return dyd; }
   void setDyndata(struct Dyndata* d) noexcept { dyd = d; }
 
-  // Method declarations (implemented in llex.cpp)
+  // Lexer method declarations (implemented in llex.cpp)
   void saveAndNext();
   void setInput(lua_State *state, ZIO *zio, TString *src, int firstchar);
   TString *newString(const char *str, size_t l);
@@ -228,36 +224,13 @@ public:
   l_noret semerror(const char *fmt, ...);
   const char *tokenToStr(int token);
 
-  // Parser utilities (implemented in lparser.cpp)
-  l_noret error_expected(int token);
-  int testnext(int c);
-  void check(int c);
-  void checknext(int c);
-  void check_match(int what, int who, int where);
-  TString *str_checkname();
-  // Phase 83: Variable utilities
-  void codename(expdesc *e);
-  int new_varkind(TString *name, lu_byte kind);
-  int new_localvar(TString *name);
-  // Phase 84: Variable checking and scope
-  void check_readonly(expdesc *e);
-  void adjustlocalvars(int nvars);
-  // Phase 86: Variable building and assignment
-  void buildglobal(TString *varname, expdesc *var);
-  void buildvar(TString *varname, expdesc *var);
-  void singlevar(expdesc *var);
-  void adjust_assign(int nvars, int nexps, expdesc *e);
-  // Phase 87: Label and goto management
-  l_noret jumpscopeerror(Labeldesc *gt);
-  void closegoto(int g, Labeldesc *label, int bup);
+  // Parser utility methods (used by FuncState, kept in LexState for access)
   Labeldesc *findlabel(TString *name, int ilb);
-  int newlabelentry(Labellist *l, TString *name, int line, int pc);
-  int newgotoentry(TString *name, int line);
-  void createlabel(TString *name, int line, int last);
-  l_noret undefgoto(Labeldesc *gt);
-  // Phase 88: Parser infrastructure (convert from static)
-  Proto *addprototype();
-  void mainfunc(FuncState *fs);
+  int newlabelentry(struct FuncState *fs, Labellist *l, TString *name, int line, int pc);
+  void closegoto(struct FuncState *fs, int g, Labeldesc *label, int bup);
+  l_noret jumpscopeerror(struct FuncState *fs, Labeldesc *gt);
+  void createlabel(struct FuncState *fs, TString *name, int line, int last);
+  l_noret undefgoto(struct FuncState *fs, Labeldesc *gt);
 
 private:
   // Phase 93: Lexer helper methods (converted from static functions)
@@ -286,58 +259,6 @@ private:
   void readLongString(SemInfo *seminfo, size_t sep);
   void readString(int del, SemInfo *seminfo);
   int lex(SemInfo *seminfo);
-
-  // Phase 88: Parser implementation methods (static → private)
-  void statement();
-  void expr(expdesc *v);
-  int block_follow(int withuntil);
-  void statlist();
-  void fieldsel(expdesc *v);
-  void yindex(expdesc *v);
-  void recfield(ConsControl *cc);
-  void listfield(ConsControl *cc);
-  void field(ConsControl *cc);
-  void constructor(expdesc *t);
-  void parlist();
-  void body(expdesc *e, int ismethod, int line);
-  int explist(expdesc *v);
-  void funcargs(expdesc *f);
-  void primaryexp(expdesc *v);
-  void suffixedexp(expdesc *v);
-  void simpleexp(expdesc *v);
-  BinOpr subexpr(expdesc *v, int limit);
-  void block();
-  void restassign(struct LHS_assign *lh, int nvars);
-  int cond();
-  void gotostat(int line);
-  void breakstat(int line);
-  void checkrepeated(TString *name);
-  void labelstat(TString *name, int line);
-  void whilestat(int line);
-  void repeatstat(int line);
-  void exp1();
-  void forbody(int base, int line, int nvars, int isgen);
-  void fornum(TString *varname, int line);
-  void forlist(TString *indexname);
-  void forstat(int line);
-  void test_then_block(int *escapelist);
-  void ifstat(int line);
-  void localfunc();
-  lu_byte getvarattribute(lu_byte df);
-  void localstat();
-  lu_byte getglobalattribute(lu_byte df);
-  void globalnames(lu_byte defkind);
-  void globalstat();
-  void globalfunc(int line);
-  void globalstatfunc(int line);
-  int funcname(expdesc *v);
-  void funcstat(int line);
-  void exprstat();
-  void retstat();
-  void codeclosure(expdesc *v);
-  void open_func(FuncState *fs, BlockCnt *bl);
-  void close_func();
-  void check_conflict(struct LHS_assign *lh, expdesc *v);
 };
 
 

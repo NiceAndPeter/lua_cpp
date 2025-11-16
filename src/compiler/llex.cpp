@@ -161,7 +161,6 @@ void LexState::setInput(lua_State *state, ZIO *zio, TString *src, int firstchar)
   setCurrent(firstchar);
   getLookaheadRef().token = TK_EOS;  /* no look-ahead token */
   setZIO(zio);
-  setFuncState(NULL);
   setLineNumber(1);
   setLastLine(1);
   setSource(src);
