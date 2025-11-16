@@ -48,6 +48,7 @@
 ** - Resize: Amortized O(1) per insertion over many operations
 */
 
+#include <algorithm>
 #include <cmath>
 #include <climits>
 #include <cstring>
@@ -885,10 +886,9 @@ void luaH_resizearray (lua_State *L, Table *t, unsigned int nasize) {
 static void rehash (lua_State *L, Table *t, const TValue *ek) {
   unsigned asize;  /* optimal size for array part */
   Counters ct;
-  unsigned i;
   unsigned nsize;  /* size for the hash part */
   /* reset counts */
-  for (i = 0; i <= MAXABITS; i++) ct.nums[i] = 0;
+  std::fill_n(ct.nums, MAXABITS + 1, 0);
   ct.na = 0;
   ct.deleted = 0;
   ct.total = 1;  /* count extra key */
