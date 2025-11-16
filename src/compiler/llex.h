@@ -88,67 +88,135 @@ typedef struct Token {
 } Token;
 
 
-/* state of the scanner plus state of the parser when shared by all
-   functions */
-class LexState {
+/* Phase 94: Subsystem for input character stream handling */
+class InputScanner {
 private:
-  int current;  /* current character (charint) */
-  int linenumber;  /* input line counter */
-  int lastline;  /* line of last token 'consumed' */
-  Token t;  /* current token */
-  Token lookahead;  /* look ahead token */
-  struct FuncState *fs;  /* current function (parser) */
-  struct lua_State *L;
-  ZIO *z;  /* input stream */
-  Mbuffer *buff;  /* buffer for tokens */
-  Table *h;  /* to avoid collection/reuse strings */
-  struct Dyndata *dyd;  /* dynamic structures used by the parser */
+  int current;      /* current character (charint) */
+  int linenumber;   /* input line counter */
+  int lastline;     /* line of last token 'consumed' */
+  ZIO *z;           /* input stream */
   TString *source;  /* current source name */
+
+public:
+  // Accessors
+  inline int getCurrent() const noexcept { return current; }
+  inline int getLineNumber() const noexcept { return linenumber; }
+  inline int getLastLine() const noexcept { return lastline; }
+  inline ZIO* getZIO() const noexcept { return z; }
+  inline TString* getSource() const noexcept { return source; }
+
+  inline void setCurrent(int c) noexcept { current = c; }
+  inline void setLineNumber(int line) noexcept { linenumber = line; }
+  inline void setLastLine(int line) noexcept { lastline = line; }
+  inline void setZIO(ZIO* zio) noexcept { z = zio; }
+  inline void setSource(TString* src) noexcept { source = src; }
+
+  inline int& getLineNumberRef() noexcept { return linenumber; }
+
+  // Operations
+  inline void next() noexcept { current = zgetc(z); }
+  inline bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
+};
+
+/* Phase 94: Subsystem for token state management */
+class TokenState {
+private:
+  Token current;    /* current token */
+  Token lookahead;  /* look ahead token */
+
+public:
+  // Accessors
+  inline const Token& getCurrent() const noexcept { return current; }
+  inline Token& getCurrentRef() noexcept { return current; }
+  inline const Token& getLookahead() const noexcept { return lookahead; }
+  inline Token& getLookaheadRef() noexcept { return lookahead; }
+};
+
+/* Phase 94: Subsystem for string interning and buffer management */
+class StringInterner {
+private:
+  Mbuffer *buff;  /* buffer for tokens */
+  Table *h;       /* to avoid collection/reuse strings */
   TString *envn;  /* environment variable name */
   TString *brkn;  /* "break" name (used as a label) */
   TString *glbn;  /* "global" name (when not a reserved word) */
 
 public:
-  // Inline read accessors
-  int getCurrentChar() const noexcept { return current; }
-  int getLineNumber() const noexcept { return linenumber; }
-  int getLastLine() const noexcept { return lastline; }
-  const Token& getCurrentToken() const noexcept { return t; }
-  Token& getCurrentTokenRef() noexcept { return t; }
-  const Token& getLookahead() const noexcept { return lookahead; }
-  Token& getLookaheadRef() noexcept { return lookahead; }
+  // Accessors
+  inline Mbuffer* getBuffer() const noexcept { return buff; }
+  inline Table* getTable() const noexcept { return h; }
+  inline TString* getEnvName() const noexcept { return envn; }
+  inline TString* getBreakName() const noexcept { return brkn; }
+  inline TString* getGlobalName() const noexcept { return glbn; }
+
+  inline void setBuffer(Mbuffer* b) noexcept { buff = b; }
+  inline void setTable(Table* table) noexcept { h = table; }
+  inline void setEnvName(TString* env) noexcept { envn = env; }
+  inline void setBreakName(TString* brk) noexcept { brkn = brk; }
+  inline void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
+};
+
+/* state of the scanner plus state of the parser when shared by all
+   functions */
+class LexState {
+private:
+  // Phase 94: SRP decomposition - organized subsystems
+  InputScanner scanner;
+  TokenState tokens;
+  StringInterner strings;
+
+  // Parser context (kept as-is)
+  struct FuncState *fs;  /* current function (parser) */
+  struct lua_State *L;
+  struct Dyndata *dyd;  /* dynamic structures used by the parser */
+
+public:
+  // Phase 94: Accessors delegating to subsystems
+
+  // InputScanner accessors
+  int getCurrentChar() const noexcept { return scanner.getCurrent(); }
+  int getLineNumber() const noexcept { return scanner.getLineNumber(); }
+  int getLastLine() const noexcept { return scanner.getLastLine(); }
+  ZIO* getZIO() const noexcept { return scanner.getZIO(); }
+  TString* getSource() const noexcept { return scanner.getSource(); }
+
+  void setCurrent(int c) noexcept { scanner.setCurrent(c); }
+  void setLineNumber(int line) noexcept { scanner.setLineNumber(line); }
+  void setLastLine(int line) noexcept { scanner.setLastLine(line); }
+  void setZIO(ZIO* zio) noexcept { scanner.setZIO(zio); }
+  void setSource(TString* src) noexcept { scanner.setSource(src); }
+
+  int& getLineNumberRef() noexcept { return scanner.getLineNumberRef(); }
+  void next() noexcept { scanner.next(); }
+  bool currIsNewline() const noexcept { return scanner.currIsNewline(); }
+
+  // TokenState accessors
+  const Token& getCurrentToken() const noexcept { return tokens.getCurrent(); }
+  Token& getCurrentTokenRef() noexcept { return tokens.getCurrentRef(); }
+  const Token& getLookahead() const noexcept { return tokens.getLookahead(); }
+  Token& getLookaheadRef() noexcept { return tokens.getLookaheadRef(); }
+
+  // StringInterner accessors
+  Mbuffer* getBuffer() const noexcept { return strings.getBuffer(); }
+  Table* getTable() const noexcept { return strings.getTable(); }
+  TString* getEnvName() const noexcept { return strings.getEnvName(); }
+  TString* getBreakName() const noexcept { return strings.getBreakName(); }
+  TString* getGlobalName() const noexcept { return strings.getGlobalName(); }
+
+  void setBuffer(Mbuffer* b) noexcept { strings.setBuffer(b); }
+  void setTable(Table* table) noexcept { strings.setTable(table); }
+  void setEnvName(TString* env) noexcept { strings.setEnvName(env); }
+  void setBreakName(TString* brk) noexcept { strings.setBreakName(brk); }
+  void setGlobalName(TString* gbl) noexcept { strings.setGlobalName(gbl); }
+
+  // Parser context accessors (kept as-is)
   struct FuncState* getFuncState() const noexcept { return fs; }
   struct lua_State* getLuaState() const noexcept { return L; }
-  ZIO* getZIO() const noexcept { return z; }
-  Mbuffer* getBuffer() const noexcept { return buff; }
-  Table* getTable() const noexcept { return h; }
   struct Dyndata* getDyndata() const noexcept { return dyd; }
-  TString* getSource() const noexcept { return source; }
-  TString* getEnvName() const noexcept { return envn; }
-  TString* getBreakName() const noexcept { return brkn; }
-  TString* getGlobalName() const noexcept { return glbn; }
 
-  // Inline write accessors
-  void setCurrent(int c) noexcept { current = c; }
-  void setLineNumber(int line) noexcept { linenumber = line; }
-  void setLastLine(int line) noexcept { lastline = line; }
   void setFuncState(struct FuncState* f) noexcept { fs = f; }
   void setLuaState(struct lua_State* state) noexcept { L = state; }
-  void setZIO(ZIO* zio) noexcept { z = zio; }
-  void setBuffer(Mbuffer* b) noexcept { buff = b; }
-  void setTable(Table* table) noexcept { h = table; }
   void setDyndata(struct Dyndata* d) noexcept { dyd = d; }
-  void setSource(TString* src) noexcept { source = src; }
-  void setEnvName(TString* env) noexcept { envn = env; }
-  void setBreakName(TString* brk) noexcept { brkn = brk; }
-  void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
-
-  // Reference accessors for compound operations
-  int& getLineNumberRef() noexcept { return linenumber; }
-
-  // Inline helper methods (converted from macros)
-  void next() noexcept { current = zgetc(z); }
-  bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
 
   // Method declarations (implemented in llex.cpp)
   void saveAndNext();
