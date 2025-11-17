@@ -602,9 +602,11 @@ git add . && git commit -m "Phase N: Description"
 1. **ASK before benchmarks** - Never run without permission (if user has requested this)
 2. **NO automation scripts** - Use Edit/Read/Write tools only
 3. **Manual editing** - No Python/shell scripts for code changes
-4. **Incremental changes** - Test and benchmark after every phase
-5. **Immediate revert** - If performance > 2.21s
-6. **Commit after every phase** - Clean history for easy rollback
+4. **ABSOLUTELY NO BATCH PROCESSING** - NEVER use sed/awk/perl for bulk edits. Use Edit tool for EACH change individually.
+5. **Incremental changes** - Test and benchmark after every phase
+6. **Immediate revert** - If performance > 2.21s (4.24s on current machine)
+7. **Commit after every phase** - Clean history for easy rollback
+8. **Commit frequently during long phases** - Don't lose work!
 
 ### Architecture Rules
 
