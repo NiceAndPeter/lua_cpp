@@ -46,7 +46,7 @@ void luaT_init (lua_State *L) {
     "__concat", "__call", "__close"
   };
   int i;
-  for (i=0; i<TM_N; i++) {
+  for (i=0; i<static_cast<int>(TMS::TM_N); i++) {
     G(L)->setTMName(i, luaS_new(L, luaT_eventname[i]));
     obj2gco(G(L)->getTMName(i))->fix(L);  /* never collect these names */
   }
@@ -59,9 +59,9 @@ void luaT_init (lua_State *L) {
 */
 const TValue *luaT_gettm (Table *events, TMS event, TString *ename) {
   const TValue *tm = luaH_Hgetshortstr(events, ename);
-  lua_assert(event <= TM_EQ);
+  lua_assert(event <= TMS::TM_EQ);
   if (notm(tm)) {  /* no tag method? */
-    events->setFlagBits(1u<<event);  /* cache this fact */
+    events->setFlagBits(1u<<static_cast<int>(event));  /* cache this fact */
     return NULL;
   }
   else return tm;
@@ -80,7 +80,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
     default:
       mt = G(L)->getMetatable(ttype(o));
   }
-  return (mt ? luaH_Hgetshortstr(mt, G(L)->getTMName(event)) : G(L)->getNilValue());
+  return (mt ? luaH_Hgetshortstr(mt, G(L)->getTMName(static_cast<int>(event))) : G(L)->getNilValue());
 }
 
 
@@ -151,8 +151,8 @@ void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
                     StkId res, TMS event) {
   if (l_unlikely(callbinTM(L, p1, p2, res, event) < 0)) {
     switch (event) {
-      case TM_BAND: case TM_BOR: case TM_BXOR:
-      case TM_SHL: case TM_SHR: case TM_BNOT: {
+      case TMS::TM_BAND: case TMS::TM_BOR: case TMS::TM_BXOR:
+      case TMS::TM_SHL: case TMS::TM_SHR: case TMS::TM_BNOT: {
         if (ttisnumber(p1) && ttisnumber(p2))
           luaG_tointerror(L, p1, p2);
         else
@@ -172,7 +172,7 @@ void luaT_trybinTM (lua_State *L, const TValue *p1, const TValue *p2,
 */
 void luaT_tryconcatTM (lua_State *L) {
   StkId p1 = L->getTop().p - 2;  /* first argument */
-  if (l_unlikely(callbinTM(L, s2v(p1), s2v(p1 + 1), p1, TM_CONCAT) < 0))
+  if (l_unlikely(callbinTM(L, s2v(p1), s2v(p1 + 1), p1, TMS::TM_CONCAT) < 0))
     luaG_concaterror(L, s2v(p1), s2v(p1 + 1));
 }
 

@@ -103,7 +103,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
   switch (ttypetag(rb)) {
     case LUA_VTABLE: {
       Table *h = hvalue(rb);
-      tm = fasttm(L, h->getMetatable(), TM_LEN);
+      tm = fasttm(L, h->getMetatable(), TMS::TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
       setivalue(s2v(ra), l_castU2S(luaH_getn(L, h)));  /* else primitive len */
       return;
@@ -117,7 +117,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
       return;
     }
     default: {  /* try metamethod */
-      tm = luaT_gettmbyobj(L, rb, TM_LEN);
+      tm = luaT_gettmbyobj(L, rb, TMS::TM_LEN);
       if (l_unlikely(notm(tm)))  /* no metamethod? */
         luaG_typeerror(L, rb, "get length of");
       break;

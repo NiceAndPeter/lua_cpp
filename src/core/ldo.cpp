@@ -423,7 +423,7 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
 unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
   const TValue *tm;
   StkId p;
-  tm = luaT_gettmbyobj(this, s2v(func), TM_CALL);
+  tm = luaT_gettmbyobj(this, s2v(func), TMS::TM_CALL);
   if (l_unlikely(ttisnil(tm)))  /* no metamethod? */
     luaG_callerror(this, s2v(func));
   for (p = getTop().p; p > func; p--)  /* open space for metamethod */

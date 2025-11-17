@@ -185,7 +185,7 @@ inline void luaH_fastseti(Table* t, lua_Integer k, TValue* val, int& hres) noexc
 	lua_Unsigned u = l_castS2U(k) - 1u;
 	if (u < h->arraySize()) {
 		lu_byte* tag = h->getArrayTag(u);
-		if (checknoTM(h->getMetatable(), TM_NEWINDEX) || !tagisempty(*tag)) {
+		if (checknoTM(h->getMetatable(), TMS::TM_NEWINDEX) || !tagisempty(*tag)) {
 			fval2arr(h, u, tag, val);
 			hres = HOK;
 		} else {

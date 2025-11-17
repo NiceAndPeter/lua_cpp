@@ -933,7 +933,7 @@ private:
   TValue nilvalue;                    /* Canonical nil value */
   unsigned int seed;                  /* Hash seed for randomization */
   Table *metatables[LUA_NUMTYPES];   /* Metatables for basic types */
-  TString *tmname[TM_N];             /* Tag method names */
+  TString *tmname[static_cast<int>(TMS::TM_N)];             /* Tag method names */
 
 public:
   inline TValue* getRegistry() noexcept { return &registry; }
@@ -1208,7 +1208,7 @@ inline const lua_State* mainthread(const global_State* g) noexcept { return &g->
 // Phase 88: Define gfasttm() and fasttm() inline functions (declared in ltm.h)
 // Must be defined here after global_State is fully defined
 inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept {
-	return checknoTM(mt, e) ? nullptr : luaT_gettm(const_cast<Table*>(mt), e, g->getTMName(e));
+	return checknoTM(mt, e) ? nullptr : luaT_gettm(const_cast<Table*>(mt), e, g->getTMName(static_cast<int>(e)));
 }
 
 inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept {

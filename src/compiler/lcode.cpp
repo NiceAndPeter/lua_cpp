@@ -837,7 +837,7 @@ static inline OpCode unopr2op (UnOpr opr) {
 */
 static inline TMS binopr2TM (BinOpr opr) {
   lua_assert(BinOpr::OPR_ADD <= opr && opr <= BinOpr::OPR_SHR);
-  return cast(TMS, (cast_int(opr) - cast_int(BinOpr::OPR_ADD)) + cast_int(TM_ADD));
+  return cast(TMS, (cast_int(opr) - cast_int(BinOpr::OPR_ADD)) + cast_int(TMS::TM_ADD));
 }
 
 /*
@@ -961,7 +961,7 @@ void FuncState::codecommutative(BinOpr op, expdesc *e1, expdesc *e2, int line) {
     flip = 1;
   }
   if (op == BinOpr::OPR_ADD && isSCint(e2))  /* immediate operand? */
-    codebini(OP_ADDI, e1, e2, flip, line, TM_ADD);
+    codebini(OP_ADDI, e1, e2, flip, line, TMS::TM_ADD);
   else
     codearith(op, e1, e2, flip, line);
 }
@@ -1579,7 +1579,7 @@ void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
       break;
     }
     case BinOpr::OPR_SUB: {
-      if (finishbinexpneg(e1, e2, OP_ADDI, line, TM_SUB))
+      if (finishbinexpneg(e1, e2, OP_ADDI, line, TMS::TM_SUB))
         break; /* coded as (r1 + -I) */
       /* ELSE */
     }  /* FALLTHROUGH */
@@ -1594,9 +1594,9 @@ void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
     case BinOpr::OPR_SHL: {
       if (isSCint(e1)) {
         swapexps(e1, e2);
-        codebini(OP_SHLI, e1, e2, 1, line, TM_SHL);  /* I << r2 */
+        codebini(OP_SHLI, e1, e2, 1, line, TMS::TM_SHL);  /* I << r2 */
       }
-      else if (finishbinexpneg(e1, e2, OP_SHRI, line, TM_SHL)) {
+      else if (finishbinexpneg(e1, e2, OP_SHRI, line, TMS::TM_SHL)) {
         /* coded as (r1 >> -I) */;
       }
       else  /* regular case (two registers) */
@@ -1605,7 +1605,7 @@ void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
     }
     case BinOpr::OPR_SHR: {
       if (isSCint(e2))
-        codebini(OP_SHRI, e1, e2, 0, line, TM_SHR);  /* r1 >> I */
+        codebini(OP_SHRI, e1, e2, 0, line, TMS::TM_SHR);  /* r1 >> I */
       else  /* regular case (two registers) */
         codebinexpval(op, e1, e2, line);
       break;

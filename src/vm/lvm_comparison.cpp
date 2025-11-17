@@ -147,7 +147,7 @@ int lua_State::lessThanOthers(const TValue *l, const TValue *r) {
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return *tsvalue(l) < *tsvalue(r);  /* Use TString operator< */
   else
-    return luaT_callorderTM(this, l, r, TM_LT);
+    return luaT_callorderTM(this, l, r, TMS::TM_LT);
 }
 
 
@@ -169,7 +169,7 @@ int lua_State::lessEqualOthers(const TValue *l, const TValue *r) {
   if (ttisstring(l) && ttisstring(r))  /* both are strings? */
     return *tsvalue(l) <= *tsvalue(r);  /* Use TString operator<= */
   else
-    return luaT_callorderTM(this, l, r, TM_LE);
+    return luaT_callorderTM(this, l, r, TMS::TM_LE);
 }
 
 
@@ -233,17 +233,17 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
       case LUA_VUSERDATA: {
         if (uvalue(t1) == uvalue(t2)) return 1;
         else if (L == NULL) return 0;
-        tm = fasttm(L, uvalue(t1)->getMetatable(), TM_EQ);
+        tm = fasttm(L, uvalue(t1)->getMetatable(), TMS::TM_EQ);
         if (tm == NULL)
-          tm = fasttm(L, uvalue(t2)->getMetatable(), TM_EQ);
+          tm = fasttm(L, uvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
       case LUA_VTABLE: {
         if (hvalue(t1) == hvalue(t2)) return 1;
         else if (L == NULL) return 0;
-        tm = fasttm(L, hvalue(t1)->getMetatable(), TM_EQ);
+        tm = fasttm(L, hvalue(t1)->getMetatable(), TMS::TM_EQ);
         if (tm == NULL)
-          tm = fasttm(L, hvalue(t2)->getMetatable(), TM_EQ);
+          tm = fasttm(L, hvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
       case LUA_VLCF:

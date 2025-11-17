@@ -1408,7 +1408,7 @@ int Table::psetShortStr(TString* key, TValue* val) {
     *cast(TValue*, slot) = *val;  /* update it */
     return HOK;  /* done */
   }
-  else if (checknoTM(getMetatable(), TM_NEWINDEX)) {  /* no metamethod? */
+  else if (checknoTM(getMetatable(), TMS::TM_NEWINDEX)) {  /* no metamethod? */
     if (ttisnil(val))  /* new value is nil? */
       return HOK;  /* done (value is already nil/absent) */
     if (isabstkey(slot) &&  /* key is absent? */
