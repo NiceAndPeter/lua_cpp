@@ -65,7 +65,7 @@ static void setnameval (lua_State *L, const char *name, int val) {
 
 
 static void pushobject (lua_State *L, const TValue *o) {
-  setobj2s(L, L->getTop().p, o);
+  L->getStackSubsystem().setSlot(L, L->getTop().p, o);
   api_incr_top(L);
 }
 

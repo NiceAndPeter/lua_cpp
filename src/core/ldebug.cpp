@@ -420,7 +420,7 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
   cl = ttisclosure(func) ? clvalue(func) : NULL;
   status = auxgetinfo(L, what, ar, cl, ci);
   if (strchr(what, 'f')) {
-    setobj2s(L, L->getTop().p, func);
+    L->getStackSubsystem().setSlot(L, L->getTop().p, func);
     api_incr_top(L);
   }
   if (strchr(what, 'L'))

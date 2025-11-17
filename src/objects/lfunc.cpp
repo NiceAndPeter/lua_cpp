@@ -132,10 +132,10 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
   StkId top = L->getTop().p;
   StkId func = top;
   const TValue *tm = luaT_gettmbyobj(L, obj, TM_CLOSE);
-  setobj2s(L, top++, tm);  /* will call metamethod... */
-  setobj2s(L, top++, obj);  /* with 'self' as the 1st argument */
+  L->getStackSubsystem().setSlot(L, top++, tm);  /* will call metamethod... */
+  L->getStackSubsystem().setSlot(L, top++, obj);  /* with 'self' as the 1st argument */
   if (err != NULL)  /* if there was an error... */
-    setobj2s(L, top++, err);  /* then error object will be 2nd argument */
+    L->getStackSubsystem().setSlot(L, top++, err);  /* then error object will be 2nd argument */
   L->getStackSubsystem().setTopPtr(top);  /* add function and arguments */
   if (yy)
     L->call( func, 0);

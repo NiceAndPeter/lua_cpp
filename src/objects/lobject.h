@@ -349,10 +349,10 @@ inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue(
 */
 
 /*
-** NOTE: setobj(), setobjs2s(), setobj2s() are inline functions defined
-** in lgc.h (after all dependencies) because they need G() from lstate.h
-** and isdead() from lgc.h.
+** NOTE: setobj() is an inline function defined in lgc.h (after all
+** dependencies) because it needs G() from lstate.h and isdead() from lgc.h.
 **
+** Stack assignments now use LuaStack::setSlot() and copySlot().
 ** setobjt2t, setobj2n, setobj2t are simple aliases to setobj.
 */
 

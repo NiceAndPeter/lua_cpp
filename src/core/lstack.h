@@ -241,14 +241,13 @@ public:
   ** ============================================================
   ** ASSIGNMENT OPERATIONS
   ** ============================================================
-  ** Assign values to stack slots. These wrap the GC-aware setobj()
-  ** operations. Replaces setobj2s() and setobjs2s() from lgc.h.
+  ** Assign values to stack slots with GC-aware write barriers.
   */
 
-  /* Assign to stack slot from TValue (replaces setobj2s) */
+  /* Assign to stack slot from TValue */
   void setSlot(lua_State* L, StackValue* dest, const TValue* src) noexcept;
 
-  /* Copy between stack slots (replaces setobjs2s) */
+  /* Copy between stack slots */
   void copySlot(lua_State* L, StackValue* dest, StackValue* src) noexcept;
 
   /* Set slot to nil */

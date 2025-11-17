@@ -776,14 +776,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_LOADK) {
         StkId ra = RA(i);
         TValue *rb = k + InstructionView(i).bx();
-        setobj2s(L, ra, rb);
+        L->getStackSubsystem().setSlot(L, ra, rb);
         vmbreak;
       }
       vmcase(OP_LOADKX) {
         StkId ra = RA(i);
         TValue *rb;
         rb = k + InstructionView(*pc).ax(); pc++;
-        setobj2s(L, ra, rb);
+        L->getStackSubsystem().setSlot(L, ra, rb);
         vmbreak;
       }
       vmcase(OP_LOADFALSE) {
@@ -813,7 +813,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_GETUPVAL) {
         StkId ra = RA(i);
         int b = InstructionView(i).b();
-        setobj2s(L, ra, cl->getUpval(b)->getVP());
+        L->getStackSubsystem().setSlot(L, ra, cl->getUpval(b)->getVP());
         vmbreak;
       }
       vmcase(OP_SETUPVAL) {
@@ -957,7 +957,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = vRB(i);
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
-        setobj2s(L, ra + 1, rb);
+        L->getStackSubsystem().setSlot(L, ra + 1, rb);
         tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
@@ -1238,7 +1238,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (l_isfalse(rb) == InstructionView(i).k())
           pc++;
         else {
-          setobj2s(L, ra, rb);
+          L->getStackSubsystem().setSlot(L, ra, rb);
           donextjump(ci);
         }
         vmbreak;
