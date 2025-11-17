@@ -483,7 +483,7 @@ void Parser::close_func() {
   luaM_shrinkvector(state, f->getLocVarsRef(), f->getLocVarsSizeRef(), funcstate->getNumDebugVars(), LocVar);
   luaM_shrinkvector(state, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), funcstate->getNumUpvalues(), Upvaldesc);
   setFuncState(funcstate->getPrev());
-  state->getTop().p--;  /* pop kcache table */
+  state->getStackSubsystem().pop();  /* pop kcache table */
   luaC_checkGC(state);
 }
 

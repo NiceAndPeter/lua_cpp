@@ -220,6 +220,6 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   lua_assert(!funcstate.getPrev() && funcstate.getNumUpvalues() == 1);
   /* all scopes should be correctly finished */
   lua_assert(dyd->actvar().getN() == 0 && dyd->gt.getN() == 0 && dyd->label.getN() == 0);
-  L->getTop().p--;  /* remove scanner's table */
+  L->getStackSubsystem().pop();  /* remove scanner's table */
   return cl;  /* closure is on the stack, too */
 }
