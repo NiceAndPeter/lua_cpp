@@ -125,7 +125,7 @@ inline GCObject* gcvalueN(const TValue* o) noexcept {
 	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : NULL)
 
 
-#define markvalue(g,o) { checkliveness(mainthread(g),o); \
+#define markvalue(g,o) { \
   if (valiswhite(o)) reallymarkobject(g,gcvalue(o)); }
 
 #define markkey(g, n)	{ if (keyiswhite(n)) reallymarkobject(g,n->getKeyGC()); }

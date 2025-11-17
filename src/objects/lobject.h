@@ -35,8 +35,7 @@ inline constexpr int LUA_TOTALTYPES = (LUA_TPROTO + 2);
 
 
 /*
-** setobj() moved to after type check functions are defined.
-** See below after Collectable Types section.
+** TValue assignment now uses operator= defined in TValue class (ltvalue.h).
 */
 
 
@@ -349,16 +348,10 @@ inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue(
 */
 
 /*
-** NOTE: setobj() is an inline function defined in lgc.h (after all
-** dependencies) because it needs G() from lstate.h and isdead() from lgc.h.
-**
-** Stack assignments now use LuaStack::setSlot() and copySlot().
-** setobjt2t, setobj2n, setobj2t are simple aliases to setobj.
+** TValue assignment now uses operator= defined in TValue class (ltvalue.h).
+** Stack assignments use LuaStack::setSlot() and copySlot().
+** The old setobj() function and its aliases (setobjt2t, setobj2n, setobj2t) have been removed.
 */
-
-#define setobjt2t setobj
-#define setobj2n setobj
-#define setobj2t setobj
 
 /* }================================================================== */
 

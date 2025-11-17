@@ -475,10 +475,10 @@ int LuaStack::getDepthFromFunc(CallInfo* ci) const noexcept {
 
 /*
 ** Assign to stack slot from TValue.
-** Uses GC-aware setobj() to handle barriers.
 */
 void LuaStack::setSlot(lua_State* L, StackValue* dest, const TValue* src) noexcept {
-  setobj(L, s2v(dest), src);
+  (void)L;  /* unused */
+  *s2v(dest) = *src;
 }
 
 
@@ -486,7 +486,8 @@ void LuaStack::setSlot(lua_State* L, StackValue* dest, const TValue* src) noexce
 ** Copy between stack slots.
 */
 void LuaStack::copySlot(lua_State* L, StackValue* dest, StackValue* src) noexcept {
-  setobj(L, s2v(dest), s2v(src));
+  (void)L;  /* unused */
+  *s2v(dest) = *s2v(src);
 }
 
 

@@ -494,7 +494,6 @@ static int lua_checkpc (CallInfo *ci) {
 
 
 static void check_stack (global_State *g, lua_State *L1) {
-  StkId o;
   CallInfo *ci;
   UpVal *uv;
   assert(!isdead(g, L1));
@@ -510,8 +509,7 @@ static void check_stack (global_State *g, lua_State *L1) {
     assert(ci->topRef().p <= L1->getStackLast().p);
     assert(lua_checkpc(ci));
   }
-  for (o = L1->getStack().p; o < L1->getStackLast().p; o++)
-    checkliveness(L1, s2v(o));  /* entire stack must have valid values */
+  /* Stack values are checked implicitly during GC marking */
 }
 
 

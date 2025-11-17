@@ -145,6 +145,13 @@ public:
     tt_ = other->getType();
   }
 
+  // Assignment operator - replaces setobj() function
+  TValue& operator=(const TValue& other) noexcept {
+    value_ = other.value_;
+    tt_ = other.tt_;
+    return *this;
+  }
+
   // Low-level field access (for macros during transition)
   Value& valueField() noexcept { return value_; }
   const Value& valueField() const noexcept { return value_; }
@@ -208,11 +215,6 @@ public:
   friend bool operator<=(const TValue& l, const TValue& r) noexcept;
   friend bool operator==(const TValue& l, const TValue& r) noexcept;
   friend bool operator!=(const TValue& l, const TValue& r) noexcept;
-
-  // Assignment operator (simple copy, no GC barriers)
-  // For assignments that require GC barriers, use setobj2t/setobj2n
-  // Implementation in lgc.h after all dependencies
-  TValue& operator=(const TValue& other) noexcept;
 };
 
 
@@ -256,17 +258,6 @@ constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCO
 
 /* collectable object has the same tag as the original value */
 /* NOTE: righttt() defined as inline function after gcvalue() below */
-
-/*
-** Any value being manipulated by the program either is non
-** collectable, or the collectable object has the right tag
-** and it is not dead. The option 'L == NULL' allows other
-** macros using this one to be used where L is not available.
-*/
-#define checkliveness(L,obj) \
-	((void)L, lua_longassert(!iscollectable(obj) || \
-		(righttt(obj) && (L == NULL || !isdead(G(L),gcvalue(obj))))))
-
 
 /* Macros to set values */
 

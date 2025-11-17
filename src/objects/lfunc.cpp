@@ -228,7 +228,7 @@ void luaF_closeupval (lua_State *L, StkId level) {
     TValue *slot = uv->getValueSlot();  /* new position for value */
     lua_assert(uv->getLevel() < L->getTop().p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
-    setobj(L, slot, uv->getVP());  /* move value to upvalue slot */
+    *slot = *uv->getVP();  /* move value to upvalue slot */
     uv->setVP(slot);  /* now current value lives here */
     if (!iswhite(uv)) {  /* neither white nor dead? */
       nw2black(uv);  /* closed upvalues cannot be gray */

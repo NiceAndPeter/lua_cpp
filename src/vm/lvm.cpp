@@ -819,7 +819,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_SETUPVAL) {
         StkId ra = RA(i);
         UpVal *uv = cl->getUpval(InstructionView(i).b());
-        setobj(L, uv->getVP(), s2v(ra));
+        *uv->getVP() = *s2v(ra);
         luaC_barrier(L, uv, s2v(ra));
         vmbreak;
       }
