@@ -1470,7 +1470,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     if (ttisnumber(ra) && ttisnumber(rb))
       cond = cmp(ra, rb);  // Use comparator function object
     else
-      Protect(cond = other(L, ra, rb));
+      Protect([&]() { cond = other(L, ra, rb); });
     docondjump(cond, ci, i);
   };
 
@@ -1488,7 +1488,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     }
     else {
       int isf = InstructionView(i).c();
-      Protect(cond = luaT_callorderiTM(L, ra, im, inv, isf, tm));
+      Protect([&]() { cond = luaT_callorderiTM(L, ra, im, inv, isf, tm); });
     }
     docondjump(cond, ci, i);
   };
