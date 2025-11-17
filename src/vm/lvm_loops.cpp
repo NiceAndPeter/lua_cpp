@@ -1,0 +1,141 @@
+/*
+** $Id: lvm_loops.c $
+** For-loop operations for Lua VM
+** See Copyright Notice in lua.h
+*/
+
+#define lvm_c
+#define LUA_CORE
+
+#include "lprefix.h"
+
+#include "lua.h"
+
+#include "ldebug.h"
+#include "ldo.h"
+#include "lobject.h"
+#include "lstate.h"
+#include "lvm.h"
+
+
+/*
+** Try to convert a 'for' limit to an integer, preserving the semantics
+** of the loop. Return true if the loop must not run; otherwise, '*p'
+** gets the integer limit.
+** (The following explanation assumes a positive step; it is valid for
+** negative steps mutatis mutandis.)
+** If the limit is an integer or can be converted to an integer,
+** rounding down, that is the limit.
+** Otherwise, check whether the limit can be converted to a float. If
+** the float is too large, clip it to LUA_MAXINTEGER.  If the float
+** is too negative, the loop should not run, because any initial
+** integer value is greater than such limit; so, the function returns
+** true to signal that. (For this latter case, no integer limit would be
+** correct; even a limit of LUA_MININTEGER would run the loop once for
+** an initial value equal to LUA_MININTEGER.)
+*/
+int lua_State::forLimit(lua_Integer init, const TValue *lim,
+                        lua_Integer *p, lua_Integer step) {
+  if (!luaV_tointeger(lim, p, (step < 0 ? F2Iceil : F2Ifloor))) {
+    /* not coercible to in integer */
+    lua_Number flim;  /* try to convert to float */
+    if (!tonumber(lim, &flim)) /* cannot convert to float? */
+      luaG_forerror(this, lim, "limit");
+    /* else 'flim' is a float out of integer bounds */
+    if (luai_numlt(0, flim)) {  /* if it is positive, it is too large */
+      if (step < 0) return 1;  /* initial value must be less than it */
+      *p = LUA_MAXINTEGER;  /* truncate */
+    }
+    else {  /* it is less than min integer */
+      if (step > 0) return 1;  /* initial value must be greater than it */
+      *p = LUA_MININTEGER;  /* truncate */
+    }
+  }
+  return (step > 0 ? init > *p : init < *p);  /* not to run? */
+}
+
+
+/*
+** Prepare a numerical for loop (opcode OP_FORPREP).
+** Before execution, stack is as follows:
+**   ra     : initial value
+**   ra + 1 : limit
+**   ra + 2 : step
+** Return true to skip the loop. Otherwise,
+** after preparation, stack will be as follows:
+**   ra     : loop counter (integer loops) or limit (float loops)
+**   ra + 1 : step
+**   ra + 2 : control variable
+*/
+int lua_State::forPrep(StkId ra) {
+  TValue *pinit = s2v(ra);
+  TValue *plimit = s2v(ra + 1);
+  TValue *pstep = s2v(ra + 2);
+  if (ttisinteger(pinit) && ttisinteger(pstep)) { /* integer loop? */
+    lua_Integer init = ivalue(pinit);
+    lua_Integer step = ivalue(pstep);
+    lua_Integer limit;
+    if (step == 0)
+      luaG_runerror(this, "'for' step is zero");
+    if (this->forLimit(init, plimit, &limit, step))
+      return 1;  /* skip the loop */
+    else {  /* prepare loop counter */
+      lua_Unsigned count;
+      if (step > 0) {  /* ascending loop? */
+        count = l_castS2U(limit) - l_castS2U(init);
+        if (step != 1)  /* avoid division in the too common case */
+          count /= l_castS2U(step);
+      }
+      else {  /* step < 0; descending loop */
+        count = l_castS2U(init) - l_castS2U(limit);
+        /* 'step+1' avoids negating 'mininteger' */
+        count /= l_castS2U(-(step + 1)) + 1u;
+      }
+      /* use 'chgivalue' for places that for sure had integers */
+      chgivalue(s2v(ra), l_castU2S(count));  /* change init to count */
+      setivalue(s2v(ra + 1), step);  /* change limit to step */
+      chgivalue(s2v(ra + 2), init);  /* change step to init */
+    }
+  }
+  else {  /* try making all values floats */
+    lua_Number init; lua_Number limit; lua_Number step;
+    if (l_unlikely(!tonumber(plimit, &limit)))
+      luaG_forerror(this, plimit, "limit");
+    if (l_unlikely(!tonumber(pstep, &step)))
+      luaG_forerror(this, pstep, "step");
+    if (l_unlikely(!tonumber(pinit, &init)))
+      luaG_forerror(this, pinit, "initial value");
+    if (step == 0)
+      luaG_runerror(this, "'for' step is zero");
+    if (luai_numlt(0, step) ? luai_numlt(limit, init)
+                            : luai_numlt(init, limit))
+      return 1;  /* skip the loop */
+    else {
+      /* make sure all values are floats */
+      setfltvalue(s2v(ra), limit);
+      setfltvalue(s2v(ra + 1), step);
+      setfltvalue(s2v(ra + 2), init);  /* control variable */
+    }
+  }
+  return 0;
+}
+
+
+/*
+** Execute a step of a float numerical for loop, returning
+** true iff the loop must continue. (The integer case is
+** written online with opcode OP_FORLOOP, for performance.)
+*/
+int lua_State::floatForLoop(StkId ra) {
+  lua_Number step = fltvalue(s2v(ra + 1));
+  lua_Number limit = fltvalue(s2v(ra));
+  lua_Number idx = fltvalue(s2v(ra + 2));  /* control variable */
+  idx = luai_numadd(this, idx, step);  /* increment index */
+  if (luai_numlt(0, step) ? luai_numle(idx, limit)
+                          : luai_numle(limit, idx)) {
+    chgfltvalue(s2v(ra + 2), idx);  /* update control variable */
+    return 1;  /* jump back */
+  }
+  else
+    return 0;  /* finish the loop */
+}

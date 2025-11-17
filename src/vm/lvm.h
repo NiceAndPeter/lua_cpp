@@ -8,7 +8,10 @@
 #define lvm_h
 
 
+#include <cfloat>
+
 #include "ldo.h"
+#include "lgc.h"
 #include "lobject.h"
 #include "ltm.h"
 #include "ltable.h"
@@ -57,7 +60,43 @@ typedef enum {
 #endif
 
 
-/* Forward declarations for conversion functions (defined in lvm.cpp) */
+/*
+** 'l_intfitsf' checks whether a given integer is in the range that
+** can be converted to a float without rounding. Used in comparisons.
+*/
+
+/* number of bits in the mantissa of a float (kept as macro for preprocessor #if) */
+#define NBM		(l_floatatt(MANT_DIG))
+
+/*
+** Check whether some integers may not fit in a float, testing whether
+** (maxinteger >> NBM) > 0. (That implies (1 << NBM) <= maxinteger.)
+** (The shifts are done in parts, to avoid shifting by more than the size
+** of an integer. In a worst case, NBM == 113 for long double and
+** sizeof(long) == 32.)
+*/
+#if ((((LUA_MAXINTEGER >> (NBM / 4)) >> (NBM / 4)) >> (NBM / 4)) \
+	>> (NBM - (3 * (NBM / 4))))  >  0
+
+/* limit for integers that fit in a float */
+inline constexpr lua_Unsigned MAXINTFITSF = (static_cast<lua_Unsigned>(1) << NBM);
+
+/* check whether 'i' is in the interval [-MAXINTFITSF, MAXINTFITSF] */
+inline constexpr bool l_intfitsf(lua_Integer i) noexcept {
+	return (MAXINTFITSF + l_castS2U(i)) <= (2 * MAXINTFITSF);
+}
+
+#else  /* all integers fit in a float precisely */
+
+inline constexpr bool l_intfitsf(lua_Integer i) noexcept {
+	(void)i;  /* suppress unused parameter warning */
+	return true;
+}
+
+#endif
+
+
+/* Forward declarations for conversion functions (defined in lvm_conversion.cpp) */
 LUAI_FUNC int luaV_tonumber_ (const TValue *obj, lua_Number *n);
 LUAI_FUNC int luaV_tointeger (const TValue *obj, lua_Integer *p, F2Imod mode);
 LUAI_FUNC int luaV_tointegerns (const TValue *obj, lua_Integer *p, F2Imod mode);
