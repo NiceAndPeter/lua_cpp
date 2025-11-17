@@ -255,7 +255,7 @@ LUA_API const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n) {
   if (name) {
     api_checkpop(L, 1);
     *s2v(pos) = *s2v(L->getTop().p - 1);  /* use operator= */
-    L->getTop().p--;  /* pop value */
+    L->getStackSubsystem().pop();  /* pop value */
   }
   lua_unlock(L);
   return name;
@@ -410,7 +410,7 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
     func = s2v(L->getTop().p - 1);
     api_check(L, ttisfunction(func), "function expected");
     what++;  /* skip the '>' */
-    L->getTop().p--;  /* pop function */
+    L->getStackSubsystem().pop();  /* pop function */
   }
   else {
     ci = ar->i_ci;
@@ -882,7 +882,7 @@ l_noret lua_State::errorMsg() {
     lua_assert(ttisfunction(s2v(errfunc_ptr)));
     *s2v(getTop().p) = *s2v(getTop().p - 1);  /* move argument - use operator= */
     *s2v(getTop().p - 1) = *s2v(errfunc_ptr);  /* push function - use operator= */
-    getTop().p++;  /* assume EXTRA_STACK */
+    getStackSubsystem().push();  /* assume EXTRA_STACK */
     callNoYield(getTop().p - 2, 1);  /* call it */
   }
   if (ttisnil(s2v(getTop().p - 1))) {  /* error object is nil? */
@@ -907,7 +907,7 @@ l_noret lua_State::runError(const char *fmt, ...) {
     /* add source:line information */
     addInfo(msg, ci->getFunc()->getProto()->getSource(), getcurrentline(ci));
     *s2v(getTop().p - 2) = *s2v(getTop().p - 1);  /* remove 'msg' - use operator= */
-    getTop().p--;
+    getStackSubsystem().pop();
   }
   errorMsg();
 }
@@ -921,7 +921,7 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
     /* add source:line information */
     L->addInfo(msg, L->getCI()->getFunc()->getProto()->getSource(), getcurrentline(L->getCI()));
     *s2v(L->getTop().p - 2) = *s2v(L->getTop().p - 1);  /* remove 'msg' - use operator= */
-    L->getTop().p--;
+    L->getStackSubsystem().pop();
   }
   L->errorMsg();
 }
@@ -1017,7 +1017,7 @@ int lua_State::traceExec(const Instruction *pc) {
     return 1;  /* do not call hook again (VM yielded, so it did not move) */
   }
   if (!luaP_isIT(*(ci_local->getSavedPC() - 1)))  /* top not being used? */
-    getTop().p = ci_local->topRef().p;  /* correct top */
+    getStackSubsystem().setTopPtr(ci_local->topRef().p);  /* correct top */
   if (counthook)
     callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {
