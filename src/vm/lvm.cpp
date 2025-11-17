@@ -1845,7 +1845,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TMS tm = (TMS)InstructionView(i).c();
         StkId result = RA(pi);
         lua_assert(OP_ADD <= InstructionView(pi).opcode() && InstructionView(pi).opcode() <= OP_SHR);
-        Protect(luaT_trybinTM(L, s2v(ra), rb, result, tm));
+        Protect([&]() { luaT_trybinTM(L, s2v(ra), rb, result, tm); });
         vmbreak;
       }
       vmcase(OP_MMBINI) {
@@ -1855,7 +1855,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TMS tm = (TMS)InstructionView(i).c();
         int flip = InstructionView(i).k();
         StkId result = RA(pi);
-        Protect(luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm));
+        Protect([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm); });
         vmbreak;
       }
       vmcase(OP_MMBINK) {
@@ -1865,7 +1865,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TMS tm = (TMS)InstructionView(i).c();
         int flip = InstructionView(i).k();
         StkId result = RA(pi);
-        Protect(luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm));
+        Protect([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm); });
         vmbreak;
       }
       vmcase(OP_UNM) {
@@ -1880,7 +1880,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setfltvalue(s2v(ra), luai_numunm(L, nb));
         }
         else
-          Protect(luaT_trybinTM(L, rb, rb, ra, TM_UNM));
+          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TM_UNM); });
         vmbreak;
       }
       vmcase(OP_BNOT) {
@@ -1891,7 +1891,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setivalue(s2v(ra), intop(^, ~l_castS2U(0), ib));
         }
         else
-          Protect(luaT_trybinTM(L, rb, rb, ra, TM_BNOT));
+          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TM_BNOT); });
         vmbreak;
       }
       vmcase(OP_NOT) {
