@@ -162,10 +162,7 @@ inline void linkgclistThread(lua_State *th, GCObject *&p) {
 
 
 
-/* Wrapper for GCCore::clearkey - now in gc_core module */
-static void clearkey(Node* n) {
-  GCCore::clearkey(n);
-}
+/* Note: clearkey() is now in GCCore module, used by GCMarking::traversestrongtable */
 
 
 /*
@@ -366,13 +363,9 @@ static void cleargraylists(global_State* g) {
 ** 'GCmarked' is initialized to count the total number of live bytes
 ** during a cycle.
 */
-static void restartcollection (global_State *g) {
-  cleargraylists(g);
-  g->setGCMarked(0);
-  markobject(g, mainthread(g));
-  markvalue(g, g->getRegistry());
-  markmt(g);
-  markbeingfnz(g);  /* mark any finalizing object left from previous cycle */
+/* Wrapper for GCMarking::restartcollection() - now in gc_marking module */
+static void restartcollection(global_State* g) {
+  GCMarking::restartcollection(g);
 }
 
 /* }====================================================== */
@@ -385,25 +378,7 @@ static void restartcollection (global_State *g) {
 */
 
 
-/*
-** Check whether object 'o' should be kept in the 'grayagain' list for
-** post-processing by 'correctgraylist'. (It could put all old objects
-** in the list and leave all the work to 'correctgraylist', but it is
-** more efficient to avoid adding elements that will be removed.) Only
-** TOUCHED1 objects need to be in the list. TOUCHED2 doesn't need to go
-** back to a gray list, but then it must become OLD. (That is what
-** 'correctgraylist' does when it finds a TOUCHED2 object.)
-** This function is a no-op in incremental mode, as objects cannot be
-** marked as touched in that mode.
-*/
-static void genlink (global_State *g, GCObject *o) {
-  lua_assert(isblack(o));
-  if (getage(o) == GCAge::Touched1) {  /* touched in this cycle? */
-    linkobjgclist(o, *g->getGrayAgainPtr());  /* link it back in 'grayagain' */
-  }  /* everything else do not need to be linked back */
-  else if (getage(o) == GCAge::Touched2)
-    setage(o, GCAge::Old);  /* advance age */
-}
+/* Note: genlink() is now in GCMarking module, called from traverse functions */
 
 
 /*
@@ -422,175 +397,18 @@ void traverseweakvalue (global_State *g, Table *h) {
 }
 
 
-/*
-** Traverse the array part of a table.
-*/
-static int traversearray (global_State *g, Table *h) {
-  unsigned asize = h->arraySize();
-  int marked = 0;  /* true if some object is marked in this traversal */
-  unsigned i;
-  for (i = 0; i < asize; i++) {
-    GCObject *o = gcvalarr(h, i);
-    if (o != NULL && iswhite(o)) {
-      marked = 1;
-      reallymarkobject(g, o);
-    }
-  }
-  return marked;
-}
-
-
-static void traversestrongtable (global_State *g, Table *h) {
-  Node *n, *limit = gnodelast(h);
-  traversearray(g, h);
-  for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
-    if (isempty(gval(n)))  /* entry is empty? */
-      clearkey(n);  /* clear its key */
-    else {
-      lua_assert(!n->isKeyNil());
-      markkey(g, n);
-      markvalue(g, gval(n));
-    }
-  }
-  genlink(g, obj2gco(h));
-}
-
-
-/*
-** (result & 1) iff weak values; (result & 2) iff weak keys.
-*/
-static l_mem traversetable (global_State *g, Table *h) {
-  markobjectN(g, h->getMetatable());
-  switch (GCWeak::getmode(g, h)) {
-    case 0:  /* not weak */
-      traversestrongtable(g, h);
-      break;
-    case 1:  /* weak values */
-      traverseweakvalue(g, h);
-      break;
-    case 2:  /* weak keys */
-      GCWeak::traverseephemeron(g, h, 0);
-      break;
-    case 3:  /* all weak; nothing to traverse */
-      if (g->getGCState() == GCState::Propagate)
-        linkgclistTable(h, *g->getGrayAgainPtr());  /* must visit again its metatable */
-      else
-        linkgclistTable(h, *g->getAllWeakPtr());  /* must clear collected entries */
-      break;
-  }
-  return cast(l_mem, 1 + 2*h->nodeSize() + h->arraySize());
-}
-
-
-static l_mem traverseudata (global_State *g, Udata *u) {
-  int i;
-  markobjectN(g, u->getMetatable());  /* mark its metatable */
-  for (i = 0; i < u->getNumUserValues(); i++)
-    markvalue(g, &u->getUserValue(i)->uv);
-  genlink(g, obj2gco(u));
-  return 1 + u->getNumUserValues();
-}
-
-
-/*
-** Traverse a prototype. (While a prototype is being build, its
-** arrays can be larger than needed; the extra slots are filled with
-** NULL, so the use of 'markobjectN')
-*/
-static l_mem traverseproto (global_State *g, Proto *f) {
-  int i;
-  markobjectN(g, f->getSource());
-  for (i = 0; i < f->getConstantsSize(); i++)  /* mark literals */
-    markvalue(g, &f->getConstants()[i]);
-  for (i = 0; i < f->getUpvaluesSize(); i++)  /* mark upvalue names */
-    markobjectN(g, f->getUpvalues()[i].getName());
-  for (i = 0; i < f->getProtosSize(); i++)  /* mark nested protos */
-    markobjectN(g, f->getProtos()[i]);
-  for (i = 0; i < f->getLocVarsSize(); i++)  /* mark local-variable names */
-    markobjectN(g, f->getLocVars()[i].getVarName());
-  return 1 + f->getConstantsSize() + f->getUpvaluesSize() + f->getProtosSize() + f->getLocVarsSize();
-}
-
-
-static l_mem traverseCclosure (global_State *g, CClosure *cl) {
-  int i;
-  for (i = 0; i < cl->getNumUpvalues(); i++)  /* mark its upvalues */
-    markvalue(g, cl->getUpvalue(i));
-  return 1 + cl->getNumUpvalues();
-}
-
-/*
-** Traverse a Lua closure, marking its prototype and its upvalues.
-** (Both can be NULL while closure is being created.)
-*/
-static l_mem traverseLclosure (global_State *g, LClosure *cl) {
-  int i;
-  markobjectN(g, cl->getProto());  /* mark its prototype */
-  for (i = 0; i < cl->getNumUpvalues(); i++) {  /* visit its upvalues */
-    UpVal *uv = cl->getUpval(i);
-    markobjectN(g, uv);  /* mark upvalue */
-  }
-  return 1 + cl->getNumUpvalues();
-}
-
-
-/*
-** Traverse a thread, marking the elements in the stack up to its top
-** and cleaning the rest of the stack in the final traversal. That
-** ensures that the entire stack have valid (non-dead) objects.
-** Threads have no barriers. In gen. mode, old threads must be visited
-** at every cycle, because they might point to young objects.  In inc.
-** mode, the thread can still be modified before the end of the cycle,
-** and therefore it must be visited again in the atomic phase. To ensure
-** these visits, threads must return to a gray list if they are not new
-** (which can only happen in generational mode) or if the traverse is in
-** the propagate phase (which can only happen in incremental mode).
-*/
-static l_mem traversethread (global_State *g, lua_State *th) {
-  UpVal *uv;
-  StkId o = th->getStack().p;
-  if (isold(th) || g->getGCState() == GCState::Propagate)
-    linkgclistThread(th, *g->getGrayAgainPtr());  /* insert into 'grayagain' list */
-  if (o == NULL)
-    return 0;  /* stack not completely built yet */
-  lua_assert(g->getGCState() == GCState::Atomic ||
-             th->getOpenUpval() == NULL || th->isInTwups());
-  for (; o < th->getTop().p; o++)  /* mark live elements in the stack */
-    markvalue(g, s2v(o));
-  for (uv = th->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
-    markobject(g, uv);  /* open upvalues cannot be collected */
-  if (g->getGCState() == GCState::Atomic) {  /* final traversal? */
-    if (!g->getGCEmergency())
-      th->shrinkStack();  /* do not change stack in emergency cycle */
-    for (o = th->getTop().p; o < th->getStackLast().p + EXTRA_STACK; o++)
-      setnilvalue(s2v(o));  /* clear dead stack slice */
-    /* 'remarkupvals' may have removed thread from 'twups' list */
-    if (!th->isInTwups() && th->getOpenUpval() != NULL) {
-      th->setTwups(g->getTwups());  /* link it back to the list */
-      g->setTwups(th);
-    }
-  }
-  return 1 + (th->getTop().p - th->getStack().p);
-}
+/* Note: All traverse*() functions (traversearray, traversestrongtable, traversetable,
+** traverseudata, traverseproto, traverseCclosure, traverseLclosure, traversethread)
+** are now in GCMarking module and called from GCMarking::propagatemark() */
 
 
 /*
 ** traverse one gray object, turning it to black. Return an estimate
 ** of the number of slots traversed.
 */
-static l_mem propagatemark (global_State *g) {
-  GCObject *o = g->getGray();
-  nw2black(o);
-  g->setGray(*getgclist(o));  /* remove from 'gray' list */
-  switch (o->getType()) {
-    case LUA_VTABLE: return traversetable(g, gco2t(o));
-    case LUA_VUSERDATA: return traverseudata(g, gco2u(o));
-    case LUA_VLCL: return traverseLclosure(g, gco2lcl(o));
-    case LUA_VCCL: return traverseCclosure(g, gco2ccl(o));
-    case LUA_VPROTO: return traverseproto(g, gco2p(o));
-    case LUA_VTHREAD: return traversethread(g, gco2th(o));
-    default: lua_assert(0); return 0;
-  }
+/* Wrapper for GCMarking::propagatemark() - now in gc_marking module */
+static l_mem propagatemark(global_State* g) {
+  return GCMarking::propagatemark(g);
 }
 
 
@@ -921,16 +739,9 @@ static void correctgraylists(global_State* g) {
 ** Gray objects are already in some gray list, and so will be visited in
 ** the atomic step.
 */
-static void markold (global_State *g, GCObject *from, GCObject *to) {
-  GCObject *p;
-  for (p = from; p != to; p = p->getNext()) {
-    if (getage(p) == GCAge::Old1) {
-      lua_assert(!iswhite(p));
-      setage(p, GCAge::Old);  /* now they are old */
-      if (isblack(p))
-        reallymarkobject(g, p);
-    }
-  }
+/* Wrapper for GCMarking::markold() - now in gc_marking module */
+static void markold(global_State* g, GCObject* from, GCObject* to) {
+  GCMarking::markold(g, from, to);
 }
 
 

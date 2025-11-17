@@ -399,6 +399,86 @@ void GCMarking::remarkupvals(global_State* g) {
 }
 
 /*
+** Mark root set and reset all gray lists to start a new collection.
+** Initializes GCmarked to count total live bytes during cycle.
+*/
+void GCMarking::restartcollection(global_State* g) {
+    g->clearGrayLists();  /* Use the new method */
+    g->setGCMarked(0);
+    markobject(g, mainthread(g));
+    markvalue(g, g->getRegistry());
+    markmt(g);
+    markbeingfnz(g);  /* mark any finalizing object left from previous cycle */
+}
+
+/*
+** Mark black 'OLD1' objects when starting a new young collection.
+** Gray objects are already in gray lists for atomic phase.
+*/
+void GCMarking::markold(global_State* g, GCObject* from, GCObject* to) {
+    GCObject* p;
+    for (p = from; p != to; p = p->getNext()) {
+        if (getage(p) == GCAge::Old1) {
+            lua_assert(!iswhite(p));
+            setage(p, GCAge::Old);  /* now they are old */
+            if (isblack(p))
+                reallymarkobject(g, p);
+        }
+    }
+}
+
+/*
+** Link object for generational mode post-processing.
+** TOUCHED1 objects go to grayagain, TOUCHED2 advance to OLD.
+*/
+void GCMarking::genlink(global_State* g, GCObject* o) {
+    lua_assert(isblack(o));
+    if (getage(o) == GCAge::Touched1) {  /* touched in this cycle? */
+        linkobjgclist(o, *g->getGrayAgainPtr());  /* link it back in 'grayagain' */
+    }  /* everything else does not need to be linked back */
+    else if (getage(o) == GCAge::Touched2)
+        setage(o, GCAge::Old);  /* advance age */
+}
+
+/*
+** Traverse array part of a table, marking collectable values.
+** Returns 1 if any white objects were marked, 0 otherwise.
+*/
+int GCMarking::traversearray(global_State* g, Table* h) {
+    unsigned asize = h->arraySize();
+    int marked = 0;  /* true if some object is marked in this traversal */
+    unsigned i;
+    for (i = 0; i < asize; i++) {
+        GCObject* o = gcvalarr(h, i);
+        if (o != NULL && iswhite(o)) {
+            marked = 1;
+            reallymarkobject(g, o);
+        }
+    }
+    return marked;
+}
+
+/*
+** Traverse a strong (non-weak) table.
+** Marks all keys and values, then calls genlink for generational mode.
+*/
+void GCMarking::traversestrongtable(global_State* g, Table* h) {
+    Node* n;
+    Node* limit = gnodelast(h);
+    traversearray(g, h);
+    for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
+        if (isempty(gval(n)))  /* entry is empty? */
+            clearkey(n);  /* clear its key */
+        else {
+            lua_assert(!n->isKeyNil());
+            markkey(g, n);
+            markvalue(g, gval(n));
+        }
+    }
+    genlink(g, obj2gco(h));
+}
+
+/*
 ** Clear all gray lists (called when entering sweep phase)
 */
 void GCMarking::cleargraylists(global_State* g) {
