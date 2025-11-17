@@ -18,6 +18,7 @@
 #include "ldo.h"
 #include "lfunc.h"
 #include "lgc.h"
+#include "gc/gc_core.h"
 #include "gc/gc_marking.h"
 #include "gc/gc_sweeping.h"
 #include "gc/gc_finalizer.h"
@@ -71,55 +72,8 @@
 ** the program modifies the object graph during collection.
 */
 
-/* mask with all color bits */
-#define maskcolors	(bitmask(BLACKBIT) | WHITEBITS)
-
-/* mask with all GC bits */
-#define maskgcbits      (maskcolors | AGEBITS)
-
-
-/*
-** Make an object white (candidate for collection).
-** Erases color bits and sets the current white bit (which alternates each cycle).
-*/
-inline void makewhite(global_State* g, GCObject* x) noexcept {
-  x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | g->getWhite()));
-}
-
-/*
-** Make an object gray (in work queue).
-** Clears all color bits, resulting in gray (neither white nor black).
-** Gray objects are linked into gray lists for incremental processing.
-*/
-inline void set2gray(GCObject* x) noexcept {
-  x->clearMarkedBits(maskcolors);
-}
-
-/*
-** Make an object black (fully processed).
-** Sets black bit and clears white bits. Black objects have no more work to do
-** in this GC cycle unless the program creates new references to white objects.
-*/
-inline void set2black(GCObject* x) noexcept {
-  x->setMarked(cast_byte((x->getMarked() & ~WHITEBITS) | bitmask(BLACKBIT)));
-}
-
-
-inline bool valiswhite(const TValue* x) noexcept {
-	return iscollectable(x) && iswhite(gcvalue(x));
-}
-
-inline bool keyiswhite(const Node* n) noexcept {
-	return n->isKeyCollectable() && iswhite(n->getKeyGC());
-}
-
-
-/*
-** Protected access to objects in values
-*/
-inline GCObject* gcvalueN(const TValue* o) noexcept {
-	return iscollectable(o) ? gcvalue(o) : NULL;
-}
+/* Note: Color manipulation functions (makewhite, set2gray, set2black, etc.)
+** are now in lgc.h for use by all GC modules. */
 
 
 /*
@@ -167,78 +121,21 @@ inline Node* gnodelast(const Table* h) noexcept {
 }
 
 
-static l_mem objsize (GCObject *o) {
-  lu_mem res;
-  switch (o->getType()) {
-    case LUA_VTABLE: {
-      res = luaH_size(gco2t(o));
-      break;
-    }
-    case LUA_VLCL: {
-      LClosure *cl = gco2lcl(o);
-      res = sizeLclosure(cl->getNumUpvalues());
-      break;
-    }
-    case LUA_VCCL: {
-      CClosure *cl = gco2ccl(o);
-      res = sizeCclosure(cl->getNumUpvalues());
-      break;
-    }
-    case LUA_VUSERDATA: {
-      Udata *u = gco2u(o);
-      res = sizeudata(u->getNumUserValues(), u->getLen());
-      break;
-    }
-    case LUA_VPROTO: {
-      res = gco2p(o)->memorySize();  /* Phase 25b */
-      break;
-    }
-    case LUA_VTHREAD: {
-      res = luaE_threadsize(gco2th(o));
-      break;
-    }
-    case LUA_VSHRSTR: {
-      TString *ts = gco2ts(o);
-      res = sizestrshr(cast_uint(ts->getShrlen()));
-      break;
-    }
-    case LUA_VLNGSTR: {
-      TString *ts = gco2ts(o);
-      res = luaS_sizelngstr(ts->getLnglen(), ts->getShrlen());
-      break;
-    }
-    case LUA_VUPVAL: {
-      res = sizeof(UpVal);
-      break;
-    }
-    default: res = 0; lua_assert(0);
-  }
-  return cast(l_mem, res);
+/* Wrapper for GCCore::objsize - now in gc_core module */
+static l_mem objsize(GCObject* o) {
+  return GCCore::objsize(o);
 }
 
 
-static GCObject **getgclist (GCObject *o) {
-  switch (o->getType()) {
-    case LUA_VTABLE: return gco2t(o)->getGclistPtr();
-    case LUA_VLCL: return gco2lcl(o)->getGclistPtr();
-    case LUA_VCCL: return gco2ccl(o)->getGclistPtr();
-    case LUA_VTHREAD: return gco2th(o)->getGclistPtr();
-    case LUA_VPROTO: return gco2p(o)->getGclistPtr();
-    case LUA_VUSERDATA: {
-      Udata *u = gco2u(o);
-      lua_assert(u->getNumUserValues() > 0);
-      return u->getGclistPtr();
-    }
-    default: lua_assert(0); return 0;
-  }
+/* Wrapper for GCCore::getgclist - now in gc_core module */
+static GCObject** getgclist(GCObject* o) {
+  return GCCore::getgclist(o);
 }
 
 
-static void linkgclist_ (GCObject *o, GCObject **pnext, GCObject **list) {
-  lua_assert(!isgray(o));  /* cannot be in a gray list */
-  *pnext = *list;
-  *list = o;
-  set2gray(o);  /* now it is */
+/* Wrapper for GCCore::linkgclist_ - now in gc_core module */
+static void linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
+  GCCore::linkgclist_(o, pnext, list);
 }
 
 /*
@@ -265,18 +162,9 @@ inline void linkgclistThread(lua_State *th, GCObject *&p) {
 
 
 
-/*
-** Clear keys for empty entries in tables. If entry is empty, mark its
-** entry as dead. This allows the collection of the key, but keeps its
-** entry in the table: its removal could break a chain and could break
-** a table traversal.  Other places never manipulate dead keys, because
-** its associated empty value is enough to signal that the entry is
-** logically empty.
-*/
-static void clearkey (Node *n) {
-  lua_assert(isempty(gval(n)));
-  if (n->isKeyCollectable())
-    n->setKeyDead();  /* unused key; remove it */
+/* Wrapper for GCCore::clearkey - now in gc_core module */
+static void clearkey(Node* n) {
+  GCCore::clearkey(n);
 }
 
 
@@ -754,12 +642,9 @@ static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
 }
 
 
-// Phase 50: Call destructor before freeing
-static void freeupval (lua_State *L, UpVal *uv) {
-  if (uv->isOpen())
-    luaF_unlinkupval(uv);
-  uv->~UpVal();  // Call destructor
-  luaM_free(L, uv);
+/* Wrapper for GCCore::freeupval - now in gc_core module */
+static void freeupval(lua_State* L, UpVal* uv) {
+  GCCore::freeupval(L, uv);
 }
 
 

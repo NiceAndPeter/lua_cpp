@@ -41,37 +41,11 @@
 ** =======================================================
 */
 
-/* Mask with all color bits */
-#define maskcolors (bitmask(BLACKBIT) | WHITEBITS)
+/* Note: maskcolors, makewhite, set2gray, set2black are now in lgc.h */
 
-/*
-** Color manipulation functions
-*/
-
-/* Make an object white (candidate for collection) */
-static inline void makewhite(global_State* g, GCObject* x) noexcept {
-    x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | g->getWhite()));
-}
-
-/* Make an object gray (in work queue) */
-static inline void set2gray(GCObject* x) noexcept {
-    x->clearMarkedBits(maskcolors);
-}
-
-/* Make an object black (fully processed) */
-static inline void set2black(GCObject* x) noexcept {
-    x->setMarked(cast_byte((x->getMarked() & ~WHITEBITS) | bitmask(BLACKBIT)));
-}
-
-/*
-** Clear key for empty table entry
-** Allows collection of the key while keeping entry in table
-*/
-static void clearkey(Node* n) {
-    lua_assert(isempty(gval(n)));
-    if (n->isKeyCollectable())
-        n->setKeyDead();
-}
+/* Note: clearkey is now in GCCore module */
+#include "gc_core.h"
+static inline void clearkey(Node* n) { GCCore::clearkey(n); }
 
 /*
 ** Get last node in hash array (one past the end)
@@ -84,94 +58,15 @@ static inline Node* gnodelast(const Table* h) noexcept {
     return gnode(h, cast_sizet(h->nodeSize()));
 }
 
-/*
-** Calculate size of a GC object (used for GC accounting)
-*/
-static l_mem objsize(GCObject* o) {
-    lu_mem res;
-    switch (o->getType()) {
-        case LUA_VTABLE: {
-            res = luaH_size(gco2t(o));
-            break;
-        }
-        case LUA_VLCL: {
-            LClosure* cl = gco2lcl(o);
-            res = sizeLclosure(cl->getNumUpvalues());
-            break;
-        }
-        case LUA_VCCL: {
-            CClosure* cl = gco2ccl(o);
-            res = sizeCclosure(cl->getNumUpvalues());
-            break;
-        }
-        case LUA_VUSERDATA: {
-            Udata* u = gco2u(o);
-            res = sizeudata(u->getNumUserValues(), u->getLen());
-            break;
-        }
-        case LUA_VPROTO: {
-            res = gco2p(o)->memorySize();
-            break;
-        }
-        case LUA_VTHREAD: {
-            res = luaE_threadsize(gco2th(o));
-            break;
-        }
-        case LUA_VSHRSTR: {
-            TString* ts = gco2ts(o);
-            res = sizestrshr(cast_uint(ts->getShrlen()));
-            break;
-        }
-        case LUA_VLNGSTR: {
-            TString* ts = gco2ts(o);
-            res = luaS_sizelngstr(ts->getLnglen(), ts->getShrlen());
-            break;
-        }
-        case LUA_VUPVAL: {
-            res = sizeof(UpVal);
-            break;
-        }
-        default:
-            res = 0;
-            lua_assert(0);
-    }
-    return cast(l_mem, res);
-}
+/* Note: objsize is now in GCCore module */
+static inline l_mem objsize(GCObject* o) { return GCCore::objsize(o); }
 
-/*
-** Get pointer to gclist field for different object types
-*/
-static GCObject** getgclist(GCObject* o) {
-    switch (o->getType()) {
-        case LUA_VTABLE:
-            return gco2t(o)->getGclistPtr();
-        case LUA_VLCL:
-            return gco2lcl(o)->getGclistPtr();
-        case LUA_VCCL:
-            return gco2ccl(o)->getGclistPtr();
-        case LUA_VTHREAD:
-            return gco2th(o)->getGclistPtr();
-        case LUA_VPROTO:
-            return gco2p(o)->getGclistPtr();
-        case LUA_VUSERDATA: {
-            Udata* u = gco2u(o);
-            lua_assert(u->getNumUserValues() > 0);
-            return u->getGclistPtr();
-        }
-        default:
-            lua_assert(0);
-            return 0;
-    }
-}
+/* Note: getgclist is now in GCCore module */
+static inline GCObject** getgclist(GCObject* o) { return GCCore::getgclist(o); }
 
-/*
-** Link object into a gray list and mark it gray
-*/
-static void linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
-    lua_assert(!isgray(o));  /* cannot be in a gray list */
-    *pnext = *list;
-    *list = o;
-    set2gray(o);  /* now it is */
+/* Note: linkgclist_ is now in GCCore module */
+static inline void linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
+    GCCore::linkgclist_(o, pnext, list);
 }
 
 /* Link a generic object using its gclist pointer */
@@ -203,12 +98,7 @@ static void genlink(global_State* g, GCObject* o) {
     /* incremental mode: keep object in black state */
 }
 
-/*
-** Access to collectable value in TValue, or NULL if non-collectable
-*/
-static inline GCObject* gcvalueN(const TValue* o) noexcept {
-    return iscollectable(o) ? gcvalue(o) : NULL;
-}
+/* Note: gcvalueN is now in lgc.h */
 
 /*
 ** Access to collectable objects in table array part

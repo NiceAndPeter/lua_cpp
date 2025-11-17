@@ -469,4 +469,62 @@ inline TValue& TValue::operator=(const TValue& other) noexcept {
 /* }================================================================== */
 
 
+/*
+** {==================================================================
+** GC color manipulation inline functions
+** ===================================================================
+*/
+
+/* mask with all color bits */
+constexpr int maskcolors = (bitmask(BLACKBIT) | WHITEBITS);
+
+/* mask with all GC bits */
+constexpr int maskgcbits = (maskcolors | AGEBITS);
+
+/*
+** Make an object white (candidate for collection).
+** Erases color bits and sets the current white bit (which alternates each cycle).
+*/
+inline void makewhite(global_State* g, GCObject* x) noexcept {
+    x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | g->getWhite()));
+}
+
+/*
+** Make an object gray (in work queue).
+** Clears all color bits, resulting in gray (neither white nor black).
+** Gray objects are linked into gray lists for incremental processing.
+*/
+inline void set2gray(GCObject* x) noexcept {
+    x->clearMarkedBits(maskcolors);
+}
+
+/*
+** Make an object black (fully processed).
+** Sets black bit and clears white bits. Black objects have no more work to do
+** in this GC cycle unless the program creates new references to white objects.
+*/
+inline void set2black(GCObject* x) noexcept {
+    x->setMarked(cast_byte((x->getMarked() & ~WHITEBITS) | bitmask(BLACKBIT)));
+}
+
+/* Check if a TValue contains a white collectable object */
+inline bool valiswhite(const TValue* x) noexcept {
+    return iscollectable(x) && iswhite(gcvalue(x));
+}
+
+/* Check if a table node's key is white */
+inline bool keyiswhite(const Node* n) noexcept {
+    return n->isKeyCollectable() && iswhite(n->getKeyGC());
+}
+
+/*
+** Protected access to objects in values (returns NULL if not collectable)
+*/
+inline GCObject* gcvalueN(const TValue* o) noexcept {
+    return iscollectable(o) ? gcvalue(o) : NULL;
+}
+
+/* }================================================================== */
+
+
 #endif

@@ -30,15 +30,7 @@
 ** - Finalization control (separatetobefnz, callallpendingfinalizers)
 */
 
-/* Mask with all color bits */
-#define maskcolors (bitmask(BLACKBIT) | WHITEBITS)
-
-/*
-** Make an object white (candidate for collection)
-*/
-static inline void makewhite(global_State* g, GCObject* x) noexcept {
-    x->setMarked(cast_byte((x->getMarked() & ~maskcolors) | g->getWhite()));
-}
+/* Note: maskcolors and color manipulation functions are now in lgc.h */
 
 
 /*
