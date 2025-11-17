@@ -16,6 +16,7 @@
 #include "lua.h"
 
 #include "lstack.h"
+#include "lapi.h"
 #include "ldebug.h"
 #include "ldo.h"
 #include "lfunc.h"
@@ -350,4 +351,149 @@ void LuaStack::shrink(lua_State* L) {
 void LuaStack::incTop(lua_State* L) {
   top.p++;
   luaD_checkstack(L, 1);
+}
+
+
+/*
+** ==================================================================
+** INDEX CONVERSION OPERATIONS (Phase 94.1)
+** ==================================================================
+** Convert Lua API indices to internal stack pointers.
+** Moved from index2value() and index2stack() in lapi.cpp.
+*/
+
+/* test for pseudo index */
+#define ispseudo(i)		((i) <= LUA_REGISTRYINDEX)
+
+/* test for upvalue */
+#define isupvalue(i)		((i) < LUA_REGISTRYINDEX)
+
+
+/*
+** Convert an acceptable index to a pointer to its respective value.
+** Non-valid indices return the special nil value 'G(L)->getNilValue()'.
+**
+** Replaces index2value() from lapi.cpp.
+*/
+TValue* LuaStack::indexToValue(lua_State* L, int idx) {
+  CallInfo *ci = L->getCI();
+  if (idx > 0) {
+    StkId o = ci->funcRef().p + idx;
+    api_check(L, idx <= ci->topRef().p - (ci->funcRef().p + 1), "unacceptable index");
+    if (o >= top.p) return G(L)->getNilValue();
+    else return s2v(o);
+  }
+  else if (!ispseudo(idx)) {  /* negative index */
+    api_check(L, idx != 0 && -idx <= top.p - (ci->funcRef().p + 1),
+                 "invalid index");
+    return s2v(top.p + idx);
+  }
+  else if (idx == LUA_REGISTRYINDEX)
+    return G(L)->getRegistry();
+  else {  /* upvalues */
+    idx = LUA_REGISTRYINDEX - idx;
+    api_check(L, idx <= MAXUPVAL + 1, "upvalue index too large");
+    if (ttisCclosure(s2v(ci->funcRef().p))) {  /* C closure? */
+      CClosure *func = clCvalue(s2v(ci->funcRef().p));
+      return (idx <= func->getNumUpvalues()) ? func->getUpvalue(idx-1)
+                                      : G(L)->getNilValue();
+    }
+    else {  /* light C function or Lua function (through a hook)?) */
+      api_check(L, ttislcf(s2v(ci->funcRef().p)), "caller not a C function");
+      return G(L)->getNilValue();  /* no upvalues */
+    }
+  }
+}
+
+
+/*
+** Convert a valid actual index (not a pseudo-index) to its address.
+**
+** Replaces index2stack() from lapi.cpp.
+*/
+StkId LuaStack::indexToStack(lua_State* L, int idx) {
+  CallInfo *ci = L->getCI();
+  if (idx > 0) {
+    StkId o = ci->funcRef().p + idx;
+    api_check(L, o < top.p, "invalid index");
+    return o;
+  }
+  else {    /* non-positive index */
+    api_check(L, idx != 0 && -idx <= top.p - (ci->funcRef().p + 1),
+                 "invalid index");
+    api_check(L, !ispseudo(idx), "invalid index");
+    return top.p + idx;
+  }
+}
+
+
+/*
+** ==================================================================
+** API OPERATION HELPERS (Phase 94.1)
+** ==================================================================
+** Helper methods for Lua C API validation.
+*/
+
+/*
+** Check if stack has at least n elements (replaces api_checknelems).
+*/
+bool LuaStack::checkHasElements(CallInfo* ci, int n) const noexcept {
+  return (n) < (top.p - ci->funcRef().p);
+}
+
+
+/*
+** Check if n elements can be popped (replaces api_checkpop).
+** Also verifies no to-be-closed variables would be affected.
+*/
+bool LuaStack::checkCanPop(CallInfo* ci, int n) const noexcept {
+  return (n) < top.p - ci->funcRef().p &&
+         tbclist.p < top.p - n;
+}
+
+
+/*
+** ==================================================================
+** STACK QUERY HELPERS (Phase 94.1)
+** ==================================================================
+*/
+
+/*
+** Get depth relative to function base (current function's local variables).
+*/
+int LuaStack::getDepthFromFunc(CallInfo* ci) const noexcept {
+  return cast_int(top.p - (ci->funcRef().p + 1));
+}
+
+
+/*
+** ==================================================================
+** ASSIGNMENT OPERATIONS (Phase 94.1)
+** ==================================================================
+** Assign values to stack slots with GC awareness.
+** Replaces setobj2s() and setobjs2s() from lgc.h.
+*/
+
+/*
+** Assign to stack slot from TValue (replaces setobj2s).
+** Uses GC-aware setobj() to handle barriers.
+*/
+void LuaStack::setSlot(lua_State* L, StackValue* dest, const TValue* src) noexcept {
+  setobj(L, s2v(dest), src);
+}
+
+
+/*
+** Copy between stack slots (replaces setobjs2s).
+*/
+void LuaStack::copySlot(lua_State* L, StackValue* dest, StackValue* src) noexcept {
+  setobj(L, s2v(dest), s2v(src));
+}
+
+
+/*
+** Set slot to nil.
+*/
+void LuaStack::setNil(StackValue* slot) noexcept {
+  setnilvalue(s2v(slot));
 }

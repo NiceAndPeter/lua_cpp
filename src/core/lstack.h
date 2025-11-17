@@ -125,8 +125,191 @@ public:
   }
 
   /*
-  ** Stack operation methods
-  ** Implemented in lstack.cpp
+  ** ============================================================
+  ** BASIC STACK MANIPULATION
+  ** ============================================================
+  ** Simple operations on the top pointer. These assume space
+  ** has already been checked via ensureSpace().
+  */
+
+  /* Push one slot (increment top) */
+  inline void push() noexcept {
+    top.p++;
+  }
+
+  /* Pop one slot (decrement top) */
+  inline void pop() noexcept {
+    top.p--;
+  }
+
+  /* Pop n slots from stack */
+  inline void popN(int n) noexcept {
+    top.p -= n;
+  }
+
+  /* Adjust top by n (positive or negative) */
+  inline void adjust(int n) noexcept {
+    top.p += n;
+  }
+
+  /* Set top to specific pointer value */
+  inline void setTopPtr(StkId ptr) noexcept {
+    top.p = ptr;
+  }
+
+  /* Set top to offset from stack base */
+  inline void setTopOffset(int offset) noexcept {
+    top.p = stack.p + offset;
+  }
+
+  /*
+  ** ============================================================
+  ** API OPERATIONS (with bounds checking)
+  ** ============================================================
+  ** Operations used by the Lua C API with runtime assertions.
+  */
+
+  /* Push with bounds check (replaces api_incr_top macro) */
+  inline void pushChecked(StkId limit) noexcept {
+    top.p++;
+    lua_assert(top.p <= limit);
+  }
+
+  /* Check if stack has at least n elements (replaces api_checknelems) */
+  bool checkHasElements(CallInfo* ci, int n) const noexcept;
+
+  /* Check if n elements can be popped (replaces api_checkpop) */
+  bool checkCanPop(CallInfo* ci, int n) const noexcept;
+
+  /*
+  ** ============================================================
+  ** INDEX CONVERSION
+  ** ============================================================
+  ** Convert Lua API indices to internal stack pointers.
+  ** Handles positive indices, negative indices, and pseudo-indices.
+  ** Replaces index2value() and index2stack() from lapi.cpp.
+  */
+
+  /* Convert API index to TValue* (replaces index2value) */
+  TValue* indexToValue(lua_State* L, int idx);
+
+  /* Convert API index to StkId (replaces index2stack) */
+  StkId indexToStack(lua_State* L, int idx);
+
+  /*
+  ** ============================================================
+  ** SPACE CHECKING
+  ** ============================================================
+  ** Ensure the stack has enough space, growing if necessary.
+  ** Replaces luaD_checkstack() and checkstackp from ldo.h.
+  */
+
+  /* Ensure space for n elements (replaces luaD_checkstack) */
+  inline int ensureSpace(lua_State* L, int n) {
+    if (l_unlikely(stack_last.p - top.p <= n)) {
+      return grow(L, n, 1);
+    }
+#if defined(HARDSTACKTESTS)
+    else {
+      int sz = getSize();
+      realloc(L, sz, 0);
+    }
+#endif
+    return 1;
+  }
+
+  /* Ensure space preserving pointer (replaces checkstackp) */
+  template<typename T>
+  inline T* ensureSpaceP(lua_State* L, int n, T* ptr) {
+    if (l_unlikely(stack_last.p - top.p <= n)) {
+      ptrdiff_t offset = save(reinterpret_cast<StkId>(ptr));
+      grow(L, n, 1);
+      return reinterpret_cast<T*>(restore(offset));
+    }
+#if defined(HARDSTACKTESTS)
+    else {
+      ptrdiff_t offset = save(reinterpret_cast<StkId>(ptr));
+      int sz = getSize();
+      realloc(L, sz, 0);
+      return reinterpret_cast<T*>(restore(offset));
+    }
+#endif
+    return ptr;
+  }
+
+  /*
+  ** ============================================================
+  ** ASSIGNMENT OPERATIONS
+  ** ============================================================
+  ** Assign values to stack slots. These wrap the GC-aware setobj()
+  ** operations. Replaces setobj2s() and setobjs2s() from lgc.h.
+  */
+
+  /* Assign to stack slot from TValue (replaces setobj2s) */
+  void setSlot(lua_State* L, StackValue* dest, const TValue* src) noexcept;
+
+  /* Copy between stack slots (replaces setobjs2s) */
+  void copySlot(lua_State* L, StackValue* dest, StackValue* src) noexcept;
+
+  /* Set slot to nil */
+  void setNil(StackValue* slot) noexcept;
+
+  /*
+  ** ============================================================
+  ** STACK QUERIES
+  ** ============================================================
+  ** Query stack state and dimensions.
+  */
+
+  /* Available space before stack_last */
+  inline int getAvailable() const noexcept {
+    return cast_int(stack_last.p - top.p);
+  }
+
+  /* Current depth (elements from base to top) */
+  inline int getDepth() const noexcept {
+    return cast_int(top.p - stack.p);
+  }
+
+  /* Depth relative to function base */
+  int getDepthFromFunc(CallInfo* ci) const noexcept;
+
+  /* Check if can fit n elements (alias for hasSpace) */
+  inline bool canFit(int n) const noexcept {
+    return stack_last.p - top.p > n;
+  }
+
+  /*
+  ** ============================================================
+  ** ELEMENT ACCESS
+  ** ============================================================
+  ** Direct access to stack elements by index.
+  */
+
+  /* Get TValue at absolute offset from stack base (0-indexed) */
+  inline TValue* at(int offset) noexcept {
+    lua_assert(offset >= 0 && stack.p + offset < top.p);
+    return s2v(stack.p + offset);
+  }
+
+  /* Get TValue at offset from top (-1 = top element) */
+  inline TValue* fromTop(int offset) noexcept {
+    lua_assert(offset <= 0 && top.p + offset >= stack.p);
+    return s2v(top.p + offset);
+  }
+
+  /* Get top-most TValue (top - 1) */
+  inline TValue* topValue() noexcept {
+    lua_assert(top.p > stack.p);
+    return s2v(top.p - 1);
+  }
+
+  /*
+  ** ============================================================
+  ** LEGACY STACK OPERATIONS (Pre-Phase 94)
+  ** ============================================================
+  ** These methods predate the aggressive centralization.
+  ** Implemented in lstack.cpp.
   */
 
   /* Increment top with stack check */
