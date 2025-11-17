@@ -1389,7 +1389,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   #undef op_orderI
 
   // Lambda: Arithmetic with immediate operand
-  auto op_arithI = [&](auto&& iop, auto&& fop, Instruction i) {
+  auto op_arithI = [&](auto iop, auto fop, Instruction i) {
     TValue *ra = vRA(i);
     TValue *v1 = vRB(i);
     int imm = InstructionView(i).sc();
@@ -1405,7 +1405,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Auxiliary function for arithmetic operations over floats
-  auto op_arithf_aux = [&](const TValue *v1, const TValue *v2, auto&& fop, Instruction i) {
+  auto op_arithf_aux = [&](const TValue *v1, const TValue *v2, auto fop, Instruction i) {
     lua_Number n1, n2;
     if (tonumberns(v1, n1) && tonumberns(v2, n2)) {
       StkId ra = RA(i);
@@ -1414,14 +1414,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Arithmetic operations over floats with register operands
-  auto op_arithf = [&](auto&& fop, Instruction i) {
+  auto op_arithf = [&](auto fop, Instruction i) {
     TValue *v1 = vRB(i);
     TValue *v2 = vRC(i);
     op_arithf_aux(v1, v2, fop, i);
   };
 
   // Lambda: Arithmetic operations with K operands for floats
-  auto op_arithfK = [&](auto&& fop, Instruction i) {
+  auto op_arithfK = [&](auto fop, Instruction i) {
     TValue *v1 = vRB(i);
     TValue *v2 = KC(i);
     lua_assert(ttisnumber(v2));
@@ -1429,7 +1429,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Auxiliary for arithmetic operations over integers and floats
-  auto op_arith_aux = [&](const TValue *v1, const TValue *v2, auto&& iop, auto&& fop, Instruction i) {
+  auto op_arith_aux = [&](const TValue *v1, const TValue *v2, auto iop, auto fop, Instruction i) {
     if (ttisinteger(v1) && ttisinteger(v2)) {
       StkId ra = RA(i);
       lua_Integer i1 = ivalue(v1);
@@ -1442,14 +1442,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Arithmetic operations with register operands
-  auto op_arith = [&](auto&& iop, auto&& fop, Instruction i) {
+  auto op_arith = [&](auto iop, auto fop, Instruction i) {
     TValue *v1 = vRB(i);
     TValue *v2 = vRC(i);
     op_arith_aux(v1, v2, iop, fop, i);
   };
 
   // Lambda: Arithmetic operations with K operands
-  auto op_arithK = [&](auto&& iop, auto&& fop, Instruction i) {
+  auto op_arithK = [&](auto iop, auto fop, Instruction i) {
     TValue *v1 = vRB(i);
     TValue *v2 = KC(i);
     lua_assert(ttisnumber(v2));
@@ -1457,7 +1457,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Bitwise operations with constant operand
-  auto op_bitwiseK = [&](auto&& op, Instruction i) {
+  auto op_bitwiseK = [&](auto op, Instruction i) {
     TValue *v1 = vRB(i);
     TValue *v2 = KC(i);
     lua_Integer i1;
@@ -1469,7 +1469,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Bitwise operations with register operands
-  auto op_bitwise = [&](auto&& op, Instruction i) {
+  auto op_bitwise = [&](auto op, Instruction i) {
     TValue *v1 = vRB(i);
     TValue *v2 = vRC(i);
     lua_Integer i1, i2;
@@ -1481,7 +1481,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 
   // Lambda: Order operations with register operands
   // Note: Cannot use operators as template parameters, so we pass comparator function objects
-  auto op_order = [&](auto&& cmp, auto&& other, Instruction i) {
+  auto op_order = [&](auto cmp, auto other, Instruction i) {
     TValue *ra = vRA(i);
     int cond;
     TValue *rb = vRB(i);
@@ -1494,7 +1494,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
 
   // Lambda: Order operations with immediate operand
-  auto op_orderI = [&](auto&& opi, auto&& opf, int inv, TMS tm, Instruction i) {
+  auto op_orderI = [&](auto opi, auto opf, int inv, TMS tm, Instruction i) {
     TValue *ra = vRA(i);
     int cond;
     int im = InstructionView(i).sb();
