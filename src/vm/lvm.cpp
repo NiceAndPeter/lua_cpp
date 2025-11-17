@@ -1285,6 +1285,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   #undef halfProtect
   #undef checkGC
 
+  // Undefine VM dispatch macro to avoid naming conflict
+  #undef vmfetch
+
   // Register access lambdas (defined before operation lambdas that use them)
   auto RA = [&](Instruction i) -> StkId {
     return base + InstructionView(i).a();
@@ -1509,9 +1512,20 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   if (l_unlikely(trap))
     trap = luaG_tracecall(L);
   base = ci->funcRef().p + 1;
+
+  Instruction i;  /* instruction being executed (moved outside loop for lambda capture) */
+
+  // VM instruction fetch lambda
+  auto vmfetch = [&]() {
+    if (l_unlikely(trap)) {  /* stack reallocation or hooks? */
+      trap = luaG_traceexec(L, pc);  /* handle hooks */
+      updatebase(ci);  /* correct stack */
+    }
+    i = *(pc++);
+  };
+
   /* main loop of interpreter */
   for (;;) {
-    Instruction i;  /* instruction being executed */
     vmfetch();
     lua_assert(base == ci->funcRef().p + 1);
     lua_assert(base <= L->getTop().p && L->getTop().p <= L->getStackLast().p);
