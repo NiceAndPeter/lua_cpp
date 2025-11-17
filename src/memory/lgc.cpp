@@ -355,9 +355,9 @@ static void remarkupvals (global_State *g) {
 }
 
 
-static void cleargraylists (global_State *g) {
-  *g->getGrayPtr() = *g->getGrayAgainPtr() = NULL;
-  *g->getWeakPtr() = *g->getAllWeakPtr() = *g->getEphemeronPtr() = NULL;
+/* Wrapper for global_State::clearGrayLists() - now a method */
+static void cleargraylists(global_State* g) {
+  g->clearGrayLists();
 }
 
 
@@ -846,11 +846,9 @@ static void correctpointers (global_State *g, GCObject *o) {
 ** cycle will start when number of bytes in use hits the threshold of
 ** approximately (marked * pause / 100).
 */
-static void setpause (global_State *g) {
-  l_mem threshold = applygcparam(g, PAUSE, g->getGCMarked());
-  l_mem debt = threshold - g->getTotalBytes();
-  if (debt < 0) debt = 0;
-  luaE_setdebt(g, debt);
+/* Wrapper for global_State::setPause() - now a method */
+static void setpause(global_State* g) {
+  g->setPause();
 }
 
 
@@ -912,14 +910,9 @@ static GCObject **correctgraylist (GCObject **p) {
 /*
 ** Correct all gray lists, coalescing them into 'grayagain'.
 */
-static void correctgraylists (global_State *g) {
-  GCObject **list = correctgraylist(g->getGrayAgainPtr());
-  *list = g->getWeak(); g->setWeak(NULL);
-  list = correctgraylist(list);
-  *list = g->getAllWeak(); g->setAllWeak(NULL);
-  list = correctgraylist(list);
-  *list = g->getEphemeron(); g->setEphemeron(NULL);
-  correctgraylist(list);
+/* Wrapper for global_State::correctGrayLists() - now a method */
+static void correctgraylists(global_State* g) {
+  g->correctGrayLists();
 }
 
 
@@ -975,11 +968,9 @@ static void minor2inc (lua_State *L, global_State *g, GCKind kind) {
 ** 'minormajor'% of the number of lived bytes after the last major
 ** collection. (This number is kept in 'GCmajorminor'.)
 */
-static int checkminormajor (global_State *g) {
-  l_mem limit = applygcparam(g, MINORMAJOR, g->getGCMajorMinor());
-  if (limit == 0)
-    return 0;  /* special case: 'minormajor' 0 stops major collections */
-  return (g->getGCMarked() >= limit);
+/* Wrapper for global_State::checkMinorMajor() - now a method */
+static int checkminormajor(global_State* g) {
+  return g->checkMinorMajor();
 }
 
 /*
@@ -1071,8 +1062,9 @@ static void atomic2gen (lua_State *L, global_State *g) {
 ** the base, GCmajorminor, which is the number of bytes being used
 ** after the last major collection.
 */
-static void setminordebt (global_State *g) {
-  luaE_setdebt(g, applygcparam(g, MINORMUL, g->getGCMajorMinor()));
+/* Wrapper for global_State::setMinorDebt() - now a method */
+static void setminordebt(global_State* g) {
+  g->setMinorDebt();
 }
 
 
@@ -1438,6 +1430,72 @@ void luaC_fullgc (lua_State *L, int isemergency) {
       break;
   }
   g->setGCEmergency(0);
+}
+
+/* }====================================================== */
+
+
+/*
+** {======================================================
+** global_State GC control method implementations
+** =======================================================
+*/
+
+/*
+** Clear all gray lists.
+** Called when entering sweep phase or restarting collection.
+*/
+void global_State::clearGrayLists() {
+  *getGrayPtr() = *getGrayAgainPtr() = NULL;
+  *getWeakPtr() = *getAllWeakPtr() = *getEphemeronPtr() = NULL;
+}
+
+
+/*
+** Set the "time" to wait before starting a new incremental cycle.
+** Cycle will start when memory usage hits (marked * pause / 100).
+*/
+void global_State::setPause() {
+  l_mem threshold = applygcparam(this, PAUSE, getGCMarked());
+  l_mem debt = threshold - getTotalBytes();
+  if (debt < 0) debt = 0;
+  luaE_setdebt(this, debt);
+}
+
+
+/*
+** Set debt for the next minor collection in generational mode.
+** Collection triggers when memory grows genminormul% relative to base.
+*/
+void global_State::setMinorDebt() {
+  luaE_setdebt(this, applygcparam(this, MINORMUL, getGCMajorMinor()));
+}
+
+
+/*
+** Check whether to shift from minor to major collection.
+** Shifts if accumulated old bytes exceeds minormajor% of lived bytes.
+*/
+int global_State::checkMinorMajor() {
+  l_mem limit = applygcparam(this, MINORMAJOR, getGCMajorMinor());
+  if (limit == 0)
+    return 0;  /* special case: 'minormajor' 0 stops major collections */
+  return (getGCMarked() >= limit);
+}
+
+
+/*
+** Correct all gray lists for generational mode.
+** Coalesces them into 'grayagain' list.
+*/
+void global_State::correctGrayLists() {
+  GCObject **list = correctgraylist(getGrayAgainPtr());
+  *list = getWeak(); setWeak(NULL);
+  list = correctgraylist(list);
+  *list = getAllWeak(); setAllWeak(NULL);
+  list = correctgraylist(list);
+  *list = getEphemeron(); setEphemeron(NULL);
+  correctgraylist(list);
 }
 
 /* }====================================================== */
