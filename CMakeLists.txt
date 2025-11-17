@@ -116,6 +116,12 @@ set(LUA_COMPILER_SOURCES
 
 set(LUA_VM_SOURCES
     src/vm/lvm.cpp
+    src/vm/lvm_arithmetic.cpp
+    src/vm/lvm_comparison.cpp
+    src/vm/lvm_conversion.cpp
+    src/vm/lvm_loops.cpp
+    src/vm/lvm_string.cpp
+    src/vm/lvm_table.cpp
 )
 
 set(LUA_OBJECT_SOURCES
