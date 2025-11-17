@@ -386,6 +386,7 @@ LUAI_FUNC void luaC_freeallobjects (lua_State *L);
 LUAI_FUNC void luaC_step (lua_State *L);
 LUAI_FUNC void luaC_runtilstate (lua_State *L, GCState state, int fast);
 LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
+LUAI_FUNC void propagateall (global_State *g);  /* used by GCCollector */
 LUAI_FUNC GCObject *luaC_newobj (lua_State *L, lu_byte tt, size_t sz);
 LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz,
                                                  size_t offset);

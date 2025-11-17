@@ -141,6 +141,7 @@ set(LUA_MEMORY_SOURCES
     src/memory/gc/gc_sweeping.cpp
     src/memory/gc/gc_finalizer.cpp
     src/memory/gc/gc_weak.cpp
+    src/memory/gc/gc_collector.cpp
 )
 
 set(LUA_SERIALIZATION_SOURCES
