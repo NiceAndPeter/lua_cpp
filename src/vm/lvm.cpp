@@ -175,7 +175,7 @@ void luaV_finishOp (lua_State *L) {
     case OP_GTI: case OP_GEI:
     case OP_EQ: {  /* note that 'OP_EQI'/'OP_EQK' cannot yield */
       int res = !l_isfalse(s2v(L->getTop().p - 1));
-      L->getTop().p--;
+      L->getStackSubsystem().pop();
       lua_assert(InstructionView(*ci->getSavedPC()).opcode() == OP_JMP);
       if (res != InstructionView(inst).k())  /* condition failed? */
         ci->setSavedPC(ci->getSavedPC() + 1);  /* skip jump instruction */
@@ -186,7 +186,7 @@ void luaV_finishOp (lua_State *L) {
       int a = InstructionView(inst).a();      /* first element to concatenate */
       int total = cast_int(top - 1 - (base + a));  /* yet to concatenate */
       *s2v(top - 2) = *s2v(top);  /* put TM result in proper position (operator=) */
-      L->getTop().p = top - 1;  /* top is one after last element (at top-2) */
+      L->getStackSubsystem().setTopPtr(top - 1);  /* top is one after last element (at top-2) */
       luaV_concat(L, total);  /* concat them (may yield again) */
       break;
     }
@@ -198,7 +198,7 @@ void luaV_finishOp (lua_State *L) {
       StkId ra = base + InstructionView(inst).a();
       /* adjust top to signal correct number of returns, in case the
          return is "up to top" ('isIT') */
-      L->getTop().p = ra + ci->getNRes();
+      L->getStackSubsystem().setTopPtr(ra + ci->getNRes());
       /* repeat instruction to close other vars. and complete the return */
       ci->setSavedPC(ci->getSavedPC() - 1);
       break;
@@ -410,7 +410,7 @@ inline void luai_threadyield(lua_State* L) noexcept {
 ** loops could starve other threads on single-core systems.
 */
 #define checkGC(L,c)  \
-	{ luaC_condGC(L, (savepc(ci), L->getTop().p = (c)), \
+	{ luaC_condGC(L, (savepc(ci), L->getStackSubsystem().setTopPtr(c)), \
                          updatetrap(ci)); \
            luai_threadyield(L); }
 
@@ -551,7 +551,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
   auto savestate = [&](lua_State* L_arg, CallInfo* ci_arg) {
     savepc(ci_arg);
-    L_arg->getTop().p = ci_arg->topRef().p;
+    L_arg->getStackSubsystem().setTopPtr(ci_arg->topRef().p);
   };
 
   // Control flow lambdas
@@ -587,7 +587,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
   auto checkGC = [&](lua_State* L_arg, StkId c_val) {
     luaC_condGC(L_arg,
-                (savepc(ci), L_arg->getTop().p = c_val),
+                (savepc(ci), L_arg->getStackSubsystem().setTopPtr(c_val)),
                 updatetrap(ci));
     luai_threadyield(L_arg);
   };
@@ -754,7 +754,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     lua_assert(base == ci->funcRef().p + 1);
     lua_assert(base <= L->getTop().p && L->getTop().p <= L->getStackLast().p);
     /* for tests, invalidate top for instructions not expecting it */
-    lua_assert(luaP_isIT(i) || (cast_void(L->getTop().p = base), 1));
+    lua_assert(luaP_isIT(i) || (cast_void(L->getStackSubsystem().setTopPtr(base)), 1));
     vmdispatch (InstructionView(i).opcode()) {
       vmcase(OP_MOVE) {
         StkId ra = RA(i);
@@ -943,7 +943,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           c += cast_uint(InstructionView(*pc).ax()) * (MAXARG_vC + 1);
         }
         pc++;  /* skip extra argument */
-        L->getTop().p = ra + 1;  /* correct top in case of emergency GC */
+        L->getStackSubsystem().setTopPtr(ra + 1);  /* correct top in case of emergency GC */
         t = luaH_new(L);  /* memory allocation */
         sethvalue2s(L, ra, t);
         if (b != 0 || c != 0)
@@ -1152,7 +1152,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_CONCAT) {
         StkId ra = RA(i);
         int n = InstructionView(i).b();  /* number of elements to concatenate */
-        L->getTop().p = ra + n;  /* mark the end of concat operands */
+        L->getStackSubsystem().setTopPtr(ra + n);  /* mark the end of concat operands */
         ProtectNT([&]() { luaV_concat(L, n); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
         vmbreak;
@@ -1249,7 +1249,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         int b = InstructionView(i).b();
         int nresults = InstructionView(i).c() - 1;
         if (b != 0)  /* fixed number of arguments? */
-          L->getTop().p = ra + b;  /* top signals number of arguments */
+          L->getStackSubsystem().setTopPtr(ra + b);  /* top signals number of arguments */
         /* else previous instruction set top */
         savepc(ci);  /* in case of errors */
         if ((newci = L->preCall( ra, nresults)) == NULL)
@@ -1268,7 +1268,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         /* delta is virtual 'func' - real 'func' (vararg functions) */
         int delta = (nparams1) ? ci->getExtraArgs() + nparams1 : 0;
         if (b != 0)
-          L->getTop().p = ra + b;
+          L->getStackSubsystem().setTopPtr(ra + b);
         else  /* previous instruction set top */
           b = cast_int(L->getTop().p - ra);
         savepc(ci);  /* several calls here can raise errors */
@@ -1296,14 +1296,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (InstructionView(i).testk()) {  /* may there be open upvalues? */
           ci->setNRes(n);  /* save number of returns */
           if (L->getTop().p < ci->topRef().p)
-            L->getTop().p = ci->topRef().p;
+            L->getStackSubsystem().setTopPtr(ci->topRef().p);
           luaF_close(L, base, CLOSEKTOP, 1);
           updatetrap(ci);
           updatestack(ra, ci, i);
         }
         if (nparams1)  /* vararg function? */
           ci->funcRef().p -= ci->getExtraArgs() + nparams1;
-        L->getTop().p = ra + n;  /* set call for 'luaD_poscall' */
+        L->getStackSubsystem().setTopPtr(ra + n);  /* set call for 'luaD_poscall' */
         L->postCall( ci, n);
         updatetrap(ci);  /* 'luaD_poscall' can change hooks */
         goto ret;
@@ -1311,7 +1311,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_RETURN0) {
         if (l_unlikely(L->getHookMask())) {
           StkId ra = RA(i);
-          L->getTop().p = ra;
+          L->getStackSubsystem().setTopPtr(ra);
           savepc(ci);
           L->postCall( ci, 0);  /* no hurry... */
           trap = 1;
@@ -1319,16 +1319,18 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         else {  /* do the 'poscall' here */
           int nres = CallInfo::getNResults(ci->getCallStatus());
           L->setCI(ci->getPrevious());  /* back to caller */
-          L->getTop().p = base - 1;
-          for (; l_unlikely(nres > 0); nres--)
-            setnilvalue(s2v(L->getTop().p++));  /* all results are nil */
+          L->getStackSubsystem().setTopPtr(base - 1);
+          for (; l_unlikely(nres > 0); nres--) {
+            setnilvalue(s2v(L->getTop().p));
+            L->getStackSubsystem().push();  /* all results are nil */
+          }
         }
         goto ret;
       }
       vmcase(OP_RETURN1) {
         if (l_unlikely(L->getHookMask())) {
           StkId ra = RA(i);
-          L->getTop().p = ra + 1;
+          L->getStackSubsystem().setTopPtr(ra + 1);
           savepc(ci);
           L->postCall( ci, 1);  /* no hurry... */
           trap = 1;
@@ -1337,13 +1339,15 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           int nres = CallInfo::getNResults(ci->getCallStatus());
           L->setCI(ci->getPrevious());  /* back to caller */
           if (nres == 0)
-            L->getTop().p = base - 1;  /* asked for no results */
+            L->getStackSubsystem().setTopPtr(base - 1);  /* asked for no results */
           else {
             StkId ra = RA(i);
             *s2v(base - 1) = *s2v(ra);  /* at least this result (operator=) */
-            L->getTop().p = base;
-            for (; l_unlikely(nres > 1); nres--)
-              setnilvalue(s2v(L->getTop().p++));  /* complete missing results */
+            L->getStackSubsystem().setTopPtr(base);
+            for (; l_unlikely(nres > 1); nres--) {
+              setnilvalue(s2v(L->getTop().p));
+              L->getStackSubsystem().push();  /* complete missing results */
+            }
           }
         }
        ret:  /* return from a Lua function */
@@ -1410,7 +1414,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         *s2v(ra + 5) = *s2v(ra + 3);  /* copy the control variable (operator=) */
         *s2v(ra + 4) = *s2v(ra + 1);  /* copy state (operator=) */
         *s2v(ra + 3) = *s2v(ra);  /* copy function (operator=) */
-        L->getTop().p = ra + 3 + 3;
+        L->getStackSubsystem().setTopPtr(ra + 3 + 3);
         ProtectNT([&]() { L->call( ra + 3, InstructionView(i).c()); });  /* do the call */
         updatestack(ra, ci, i);  /* stack may have changed */
         i = *(pc++);  /* go to next instruction */
@@ -1432,7 +1436,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (n == 0)
           n = cast_uint(L->getTop().p - ra) - 1;  /* get up to the top */
         else
-          L->getTop().p = ci->topRef().p;  /* correct top in case of emergency GC */
+          L->getStackSubsystem().setTopPtr(ci->topRef().p);  /* correct top in case of emergency GC */
         last += n;
         if (InstructionView(i).testk()) {
           last += cast_uint(InstructionView(*pc).ax()) * (MAXARG_vC + 1);
