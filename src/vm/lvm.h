@@ -43,7 +43,7 @@ inline constexpr bool cvt2num(const TValue* o) noexcept {
 ** integral values)
 */
 #if !defined(LUA_FLOORN2I)
-#define LUA_FLOORN2I		F2Ieq
+#define LUA_FLOORN2I		F2Imod::F2Ieq
 #endif
 
 
@@ -52,11 +52,11 @@ inline constexpr bool cvt2num(const TValue* o) noexcept {
  */
 #ifndef F2Imod_defined
 #define F2Imod_defined
-typedef enum {
+enum class F2Imod {
   F2Ieq,     /* no rounding; accepts only integral values */
   F2Ifloor,  /* takes the floor of the number */
   F2Iceil    /* takes the ceiling of the number */
-} F2Imod;
+};
 #endif
 
 

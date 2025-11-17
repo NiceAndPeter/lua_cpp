@@ -80,7 +80,7 @@ int LTintfloat (lua_Integer i, lua_Number f) {
     return luai_numlt(cast_num(i), f);  /* compare them as floats */
   else {  /* i < f <=> i < ceil(f) */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Iceil))  /* fi = ceil(f) */
+    if (luaV_flttointeger(f, &fi, F2Imod::F2Iceil))  /* fi = ceil(f) */
       return i < fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f > 0;  /* greater? */
@@ -97,7 +97,7 @@ int LEintfloat (lua_Integer i, lua_Number f) {
     return luai_numle(cast_num(i), f);  /* compare them as floats */
   else {  /* i <= f <=> i <= floor(f) */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Ifloor))  /* fi = floor(f) */
+    if (luaV_flttointeger(f, &fi, F2Imod::F2Ifloor))  /* fi = floor(f) */
       return i <= fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f > 0;  /* greater? */
@@ -114,7 +114,7 @@ int LTfloatint (lua_Number f, lua_Integer i) {
     return luai_numlt(f, cast_num(i));  /* compare them as floats */
   else {  /* f < i <=> floor(f) < i */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Ifloor))  /* fi = floor(f) */
+    if (luaV_flttointeger(f, &fi, F2Imod::F2Ifloor))  /* fi = floor(f) */
       return fi < i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f < 0;  /* less? */
@@ -131,7 +131,7 @@ int LEfloatint (lua_Number f, lua_Integer i) {
     return luai_numle(f, cast_num(i));  /* compare them as floats */
   else {  /* f <= i <=> ceil(f) <= i */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Iceil))  /* fi = ceil(f) */
+    if (luaV_flttointeger(f, &fi, F2Imod::F2Iceil))  /* fi = ceil(f) */
       return fi <= i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f < 0;  /* less? */
@@ -197,12 +197,12 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
         /* integer and float can only be equal if float has an integer
            value equal to the integer */
         lua_Integer i2;
-        return (luaV_flttointeger(fltvalue(t2), &i2, F2Ieq) &&
+        return (luaV_flttointeger(fltvalue(t2), &i2, F2Imod::F2Ieq) &&
                 ivalue(t1) == i2);
       }
       case LUA_VNUMFLT: {  /* float == integer? */
         lua_Integer i1;  /* see comment in previous case */
-        return (luaV_flttointeger(fltvalue(t1), &i1, F2Ieq) &&
+        return (luaV_flttointeger(fltvalue(t1), &i1, F2Imod::F2Ieq) &&
                 i1 == ivalue(t2));
       }
       case LUA_VSHRSTR: case LUA_VLNGSTR: {

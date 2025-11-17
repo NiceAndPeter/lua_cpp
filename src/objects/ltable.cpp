@@ -1328,7 +1328,7 @@ lu_byte Table::get(const TValue* key, TValue* res) {
       break;
     case LUA_VNUMFLT: {
       lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
+      if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) /* integral index? */
         return getInt(k, res);  /* use specialized version */
       /* else... */
     }  /* FALLTHROUGH */
@@ -1385,7 +1385,7 @@ int Table::pset(const TValue* key, TValue* val) {
     case LUA_VNIL: return HNOTFOUND;
     case LUA_VNUMFLT: {
       lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) { /* integral index? */
+      if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) { /* integral index? */
         int hres;
         luaH_fastseti(this, k, val, hres);
         return hres;
@@ -1463,7 +1463,7 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
     else if (ttisfloat(key)) {
       lua_Number f = fltvalue(key);
       lua_Integer k;
-      if (luaV_flttointeger(f, &k, F2Ieq)) {
+      if (luaV_flttointeger(f, &k, F2Imod::F2Ieq)) {
         setivalue(&aux, k);  /* key is equal to an integer */
         key = &aux;  /* insert it as an integer */
       }

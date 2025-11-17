@@ -396,7 +396,7 @@ int FuncState::numberK(lua_Number r) {
     const lua_Number k =  r * (1 + q);  /* key */
     lua_Integer ik;
     setfltvalue(&kv, k);  /* key as a TValue */
-    if (!luaV_flttointeger(k, &ik, F2Ieq)) {  /* not an integer value? */
+    if (!luaV_flttointeger(k, &ik, F2Imod::F2Ieq)) {  /* not an integer value? */
       int n = k2proto(&kv, &o);  /* use key */
       if (luaV_rawequalobj(&getProto()->getConstants()[n], &o))  /* correct value? */
         return n;
@@ -454,7 +454,7 @@ static int fitsBx (lua_Integer i) {
 
 void FuncState::floatCode(int reg, lua_Number flt) {
   lua_Integer fi;
-  if (luaV_flttointeger(flt, &fi, F2Ieq) && fitsBx(fi))
+  if (luaV_flttointeger(flt, &fi, F2Imod::F2Ieq) && fitsBx(fi))
     codeAsBx(OP_LOADF, reg, cast_int(fi));
   else
     codek(reg, numberK(flt));
@@ -760,7 +760,7 @@ static int isSCnumber (expdesc *e, int *pi, int *isfloat) {
   lua_Integer i;
   if (e->getKind() == VKINT)
     i = e->getIntValue();
-  else if (e->getKind() == VKFLT && luaV_flttointeger(e->getFloatValue(), &i, F2Ieq))
+  else if (e->getKind() == VKFLT && luaV_flttointeger(e->getFloatValue(), &i, F2Imod::F2Ieq))
     *isfloat = 1;
   else
     return 0;  /* not a number */
