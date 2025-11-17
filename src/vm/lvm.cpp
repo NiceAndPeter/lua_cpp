@@ -65,7 +65,7 @@ inline constexpr int MAXTAGLOOP = 2000;
 ** can be converted to a float without rounding. Used in comparisons.
 */
 
-/* number of bits in the mantissa of a float */
+/* number of bits in the mantissa of a float (kept as macro for preprocessor #if) */
 #define NBM		(l_floatatt(MANT_DIG))
 
 /*
@@ -79,14 +79,19 @@ inline constexpr int MAXTAGLOOP = 2000;
 	>> (NBM - (3 * (NBM / 4))))  >  0
 
 /* limit for integers that fit in a float */
-#define MAXINTFITSF	((lua_Unsigned)1 << NBM)
+inline constexpr lua_Unsigned MAXINTFITSF = (static_cast<lua_Unsigned>(1) << NBM);
 
 /* check whether 'i' is in the interval [-MAXINTFITSF, MAXINTFITSF] */
-#define l_intfitsf(i)	((MAXINTFITSF + l_castS2U(i)) <= (2 * MAXINTFITSF))
+inline constexpr bool l_intfitsf(lua_Integer i) noexcept {
+	return (MAXINTFITSF + l_castS2U(i)) <= (2 * MAXINTFITSF);
+}
 
 #else  /* all integers fit in a float precisely */
 
-#define l_intfitsf(i)	1
+inline constexpr bool l_intfitsf(lua_Integer i) noexcept {
+	(void)i;  /* suppress unused parameter warning */
+	return true;
+}
 
 #endif
 
@@ -829,7 +834,7 @@ lua_Number luaV_modf (lua_State *L, lua_Number m, lua_Number n) {
 
 
 /* number of bits in an integer */
-#define NBITS	l_numbits(lua_Integer)
+inline constexpr int NBITS = l_numbits(lua_Integer);
 
 
 /*
@@ -983,148 +988,11 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 	return a >= b;
 }
 
-
 /*
-** Arithmetic operations with immediate operands. 'iop' is the integer
-** operation, 'fop' is the float operation.
+** NOTE: The VM operation macros (op_arithI, op_arith, op_arithK, op_bitwise, etc.)
+** have been converted to lambdas defined inside luaV_execute() for better type safety
+** and debuggability. See lines 1378-1514 for the lambda implementations.
 */
-#define op_arithI(L,iop,fop) {  \
-  TValue *ra = vRA(i); \
-  TValue *v1 = vRB(i);  \
-  int imm = InstructionView(i).sc();  \
-  if (ttisinteger(v1)) {  \
-    lua_Integer iv1 = ivalue(v1);  \
-    pc++; setivalue(ra, iop(L, iv1, imm));  \
-  }  \
-  else if (ttisfloat(v1)) {  \
-    lua_Number nb = fltvalue(v1);  \
-    lua_Number fimm = cast_num(imm);  \
-    pc++; setfltvalue(ra, fop(L, nb, fimm)); \
-  }}
-
-
-/*
-** Auxiliary function for arithmetic operations over floats and others
-** with two operands.
-*/
-#define op_arithf_aux(L,v1,v2,fop) {  \
-  lua_Number n1; lua_Number n2;  \
-  if (tonumberns(v1, n1) && tonumberns(v2, n2)) {  \
-    StkId ra = RA(i);  \
-    pc++; setfltvalue(s2v(ra), fop(L, n1, n2));  \
-  }}
-
-
-/*
-** Arithmetic operations over floats and others with register operands.
-*/
-#define op_arithf(L,fop) {  \
-  TValue *v1 = vRB(i);  \
-  TValue *v2 = vRC(i);  \
-  op_arithf_aux(L, v1, v2, fop); }
-
-
-/*
-** Arithmetic operations with K operands for floats.
-*/
-#define op_arithfK(L,fop) {  \
-  TValue *v1 = vRB(i);  \
-  TValue *v2 = KC(i); lua_assert(ttisnumber(v2));  \
-  op_arithf_aux(L, v1, v2, fop); }
-
-
-/*
-** Arithmetic operations over integers and floats.
-*/
-#define op_arith_aux(L,v1,v2,iop,fop) {  \
-  if (ttisinteger(v1) && ttisinteger(v2)) {  \
-    StkId ra = RA(i); \
-    lua_Integer i1 = ivalue(v1); lua_Integer i2 = ivalue(v2);  \
-    pc++; setivalue(s2v(ra), iop(L, i1, i2));  \
-  }  \
-  else op_arithf_aux(L, v1, v2, fop); }
-
-
-/*
-** Arithmetic operations with register operands.
-*/
-#define op_arith(L,iop,fop) {  \
-  TValue *v1 = vRB(i);  \
-  TValue *v2 = vRC(i);  \
-  op_arith_aux(L, v1, v2, iop, fop); }
-
-
-/*
-** Arithmetic operations with K operands.
-*/
-#define op_arithK(L,iop,fop) {  \
-  TValue *v1 = vRB(i);  \
-  TValue *v2 = KC(i); lua_assert(ttisnumber(v2));  \
-  op_arith_aux(L, v1, v2, iop, fop); }
-
-
-/*
-** Bitwise operations with constant operand.
-*/
-#define op_bitwiseK(L,op) {  \
-  TValue *v1 = vRB(i);  \
-  TValue *v2 = KC(i);  \
-  lua_Integer i1;  \
-  lua_Integer i2 = ivalue(v2);  \
-  if (tointegerns(v1, &i1)) {  \
-    StkId ra = RA(i); \
-    pc++; setivalue(s2v(ra), op(i1, i2));  \
-  }}
-
-
-/*
-** Bitwise operations with register operands.
-*/
-#define op_bitwise(L,op) {  \
-  TValue *v1 = vRB(i);  \
-  TValue *v2 = vRC(i);  \
-  lua_Integer i1; lua_Integer i2;  \
-  if (tointegerns(v1, &i1) && tointegerns(v2, &i2)) {  \
-    StkId ra = RA(i); \
-    pc++; setivalue(s2v(ra), op(i1, i2));  \
-  }}
-
-
-/*
-** Order operations with register operands. Uses operator overloads
-** for cleaner syntax. 'op' is the operator to use (<, <=, etc.)
-*/
-#define op_order(L,op,other) {  \
-  TValue *ra = vRA(i); \
-  int cond;  \
-  TValue *rb = vRB(i);  \
-  if (ttisnumber(ra) && ttisnumber(rb))  \
-    cond = (*ra op *rb);  /* Use operator for numeric comparisons */ \
-  else  \
-    Protect(cond = other(L, ra, rb));  \
-  docondjump(); }
-
-
-/*
-** Order operations with immediate operand. (Immediate operand is
-** always small enough to have an exact representation as a float.)
-*/
-#define op_orderI(L,opi,opf,inv,tm) {  \
-  TValue *ra = vRA(i); \
-  int cond;  \
-  int im = InstructionView(i).sb();  \
-  if (ttisinteger(ra))  \
-    cond = opi(ivalue(ra), im);  \
-  else if (ttisfloat(ra)) {  \
-    lua_Number fa = fltvalue(ra);  \
-    lua_Number fim = cast_num(im);  \
-    cond = opf(fa, fim);  \
-  }  \
-  else {  \
-    int isf = InstructionView(i).c();  \
-    Protect(cond = luaT_callorderiTM(L, ra, im, inv, isf, tm));  \
-  }  \
-  docondjump(); }
 
 /* }================================================================== */
 
