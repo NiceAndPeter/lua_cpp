@@ -1590,7 +1590,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         lu_byte tag;
         tag = luaV_fastget(upval, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
-          Protect(luaV_finishget(L, upval, rc, ra, tag));
+          Protect([&]() { luaV_finishget(L, upval, rc, ra, tag); });
         vmbreak;
       }
       vmcase(OP_GETTABLE) {
@@ -1604,7 +1604,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         else
           tag = luaV_fastget(rb, rc, s2v(ra), luaH_get);
         if (tagisempty(tag))
-          Protect(luaV_finishget(L, rb, rc, ra, tag));
+          Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
       }
       vmcase(OP_GETI) {
@@ -1616,7 +1616,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (tagisempty(tag)) {
           TValue key;
           setivalue(&key, c);
-          Protect(luaV_finishget(L, rb, &key, ra, tag));
+          Protect([&]() { luaV_finishget(L, rb, &key, ra, tag); });
         }
         vmbreak;
       }
@@ -1628,7 +1628,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         lu_byte tag;
         tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
-          Protect(luaV_finishget(L, rb, rc, ra, tag));
+          Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
       }
       vmcase(OP_SETTABUP) {
@@ -1719,7 +1719,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         setobj2s(L, ra + 1, rb);
         tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
-          Protect(luaV_finishget(L, rb, rc, ra, tag));
+          Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
       }
       vmcase(OP_ADDI) {
