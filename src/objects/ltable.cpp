@@ -1328,7 +1328,7 @@ lu_byte Table::get(const TValue* key, TValue* res) {
       break;
     case LUA_VNUMFLT: {
       lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) /* integral index? */
+      if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) /* integral index? */
         return getInt(k, res);  /* use specialized version */
       /* else... */
     }  /* FALLTHROUGH */
@@ -1385,7 +1385,7 @@ int Table::pset(const TValue* key, TValue* val) {
     case LUA_VNIL: return HNOTFOUND;
     case LUA_VNUMFLT: {
       lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Ieq)) { /* integral index? */
+      if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) { /* integral index? */
         int hres;
         luaH_fastseti(this, k, val, hres);
         return hres;
@@ -1408,7 +1408,7 @@ int Table::psetShortStr(TString* key, TValue* val) {
     *cast(TValue*, slot) = *val;  /* update it */
     return HOK;  /* done */
   }
-  else if (checknoTM(getMetatable(), TM_NEWINDEX)) {  /* no metamethod? */
+  else if (checknoTM(getMetatable(), TMS::TM_NEWINDEX)) {  /* no metamethod? */
     if (ttisnil(val))  /* new value is nil? */
       return HOK;  /* done (value is already nil/absent) */
     if (isabstkey(slot) &&  /* key is absent? */
@@ -1463,7 +1463,7 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
     else if (ttisfloat(key)) {
       lua_Number f = fltvalue(key);
       lua_Integer k;
-      if (luaV_flttointeger(f, &k, F2Ieq)) {
+      if (luaV_flttointeger(f, &k, F2Imod::F2Ieq)) {
         setivalue(&aux, k);  /* key is equal to an integer */
         key = &aux;  /* insert it as an integer */
       }

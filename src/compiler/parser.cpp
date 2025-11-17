@@ -100,39 +100,39 @@ typedef struct ConsControl {
 
 inline UnOpr getunopr (int op) noexcept {
   switch (op) {
-    case TK_NOT: return OPR_NOT;
-    case '-': return OPR_MINUS;
-    case '~': return OPR_BNOT;
-    case '#': return OPR_LEN;
-    default: return OPR_NOUNOPR;
+    case TK_NOT: return UnOpr::OPR_NOT;
+    case '-': return UnOpr::OPR_MINUS;
+    case '~': return UnOpr::OPR_BNOT;
+    case '#': return UnOpr::OPR_LEN;
+    default: return UnOpr::OPR_NOUNOPR;
   }
 }
 
 
 inline BinOpr getbinopr (int op) noexcept {
   switch (op) {
-    case '+': return OPR_ADD;
-    case '-': return OPR_SUB;
-    case '*': return OPR_MUL;
-    case '%': return OPR_MOD;
-    case '^': return OPR_POW;
-    case '/': return OPR_DIV;
-    case TK_IDIV: return OPR_IDIV;
-    case '&': return OPR_BAND;
-    case '|': return OPR_BOR;
-    case '~': return OPR_BXOR;
-    case TK_SHL: return OPR_SHL;
-    case TK_SHR: return OPR_SHR;
-    case TK_CONCAT: return OPR_CONCAT;
-    case TK_NE: return OPR_NE;
-    case TK_EQ: return OPR_EQ;
-    case '<': return OPR_LT;
-    case TK_LE: return OPR_LE;
-    case '>': return OPR_GT;
-    case TK_GE: return OPR_GE;
-    case TK_AND: return OPR_AND;
-    case TK_OR: return OPR_OR;
-    default: return OPR_NOBINOPR;
+    case '+': return BinOpr::OPR_ADD;
+    case '-': return BinOpr::OPR_SUB;
+    case '*': return BinOpr::OPR_MUL;
+    case '%': return BinOpr::OPR_MOD;
+    case '^': return BinOpr::OPR_POW;
+    case '/': return BinOpr::OPR_DIV;
+    case TK_IDIV: return BinOpr::OPR_IDIV;
+    case '&': return BinOpr::OPR_BAND;
+    case '|': return BinOpr::OPR_BOR;
+    case '~': return BinOpr::OPR_BXOR;
+    case TK_SHL: return BinOpr::OPR_SHL;
+    case TK_SHR: return BinOpr::OPR_SHR;
+    case TK_CONCAT: return BinOpr::OPR_CONCAT;
+    case TK_NE: return BinOpr::OPR_NE;
+    case TK_EQ: return BinOpr::OPR_EQ;
+    case '<': return BinOpr::OPR_LT;
+    case TK_LE: return BinOpr::OPR_LE;
+    case '>': return BinOpr::OPR_GT;
+    case TK_GE: return BinOpr::OPR_GE;
+    case TK_AND: return BinOpr::OPR_AND;
+    case TK_OR: return BinOpr::OPR_OR;
+    default: return BinOpr::OPR_NOBINOPR;
   }
 }
 
@@ -875,24 +875,24 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
   UnOpr uop;
   enterlevel(ls);
   uop = getunopr(ls->getToken());
-  if (uop != OPR_NOUNOPR) {  /* prefix (unary) operator? */
+  if (uop != UnOpr::OPR_NOUNOPR) {  /* prefix (unary) operator? */
     int line = ls->getLineNumber();
     ls->nextToken();  /* skip operator */
     subexpr(v, UNARY_PRIORITY);
-    fs->prefix(uop, v, line);
+    fs->prefix(static_cast<int>(uop), v, line);
   }
   else simpleexp(v);
   /* expand while operators have priorities higher than 'limit' */
   op = getbinopr(ls->getToken());
-  while (op != OPR_NOBINOPR && priority[op].left > limit) {
+  while (op != BinOpr::OPR_NOBINOPR && priority[static_cast<int>(op)].left > limit) {
     expdesc v2;
     BinOpr nextop;
     int line = ls->getLineNumber();
     ls->nextToken();  /* skip operator */
-    fs->infix(op, v);
+    fs->infix(static_cast<int>(op), v);
     /* read sub-expression with higher priority */
-    nextop = subexpr(&v2, priority[op].right);
-    fs->posfix(op, v, &v2, line);
+    nextop = subexpr(&v2, priority[static_cast<int>(op)].right);
+    fs->posfix(static_cast<int>(op), v, &v2, line);
     op = nextop;
   }
   leavelevel(ls);

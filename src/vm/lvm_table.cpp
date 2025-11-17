@@ -53,13 +53,13 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
     if (tag == LUA_VNOTABLE) {  /* 't' is not a table? */
       lua_assert(!ttistable(t));
-      tm = luaT_gettmbyobj(L, t, TM_INDEX);
+      tm = luaT_gettmbyobj(L, t, TMS::TM_INDEX);
       if (l_unlikely(notm(tm)))
         luaG_typeerror(L, t, "index");  /* no metamethod */
       /* else will try the metamethod */
     }
     else {  /* 't' is a table */
-      tm = fasttm(L, hvalue(t)->getMetatable(), TM_INDEX);  /* table's metamethod */
+      tm = fasttm(L, hvalue(t)->getMetatable(), TMS::TM_INDEX);  /* table's metamethod */
       if (tm == NULL) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
         return LUA_VNIL;
@@ -108,7 +108,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     const TValue *tm;  /* '__newindex' metamethod */
     if (hres != HNOTATABLE) {  /* is 't' a table? */
       Table *h = hvalue(t);  /* save 't' table */
-      tm = fasttm(L, h->getMetatable(), TM_NEWINDEX);  /* get metamethod */
+      tm = fasttm(L, h->getMetatable(), TMS::TM_NEWINDEX);  /* get metamethod */
       if (tm == NULL) {  /* no metamethod? */
         sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */
         L->getStackSubsystem().push();  /* assume EXTRA_STACK */
@@ -121,7 +121,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       /* else will try the metamethod */
     }
     else {  /* not a table; check metamethod */
-      tm = luaT_gettmbyobj(L, t, TM_NEWINDEX);
+      tm = luaT_gettmbyobj(L, t, TMS::TM_NEWINDEX);
       if (l_unlikely(notm(tm)))
         luaG_typeerror(L, t, "index");
     }

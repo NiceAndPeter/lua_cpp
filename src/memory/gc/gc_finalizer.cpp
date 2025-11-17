@@ -152,7 +152,7 @@ void GCFinalizer::GCTM(lua_State* L) {
     TValue v;
     lua_assert(!g->getGCEmergency());
     setgcovalue(L, &v, udata2finalize(g));
-    tm = luaT_gettmbyobj(L, &v, TM_GC);
+    tm = luaT_gettmbyobj(L, &v, TMS::TM_GC);
 
     if (!notm(tm)) {  /* is there a finalizer? */
         TStatus status;

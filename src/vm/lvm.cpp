@@ -1121,7 +1121,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setfltvalue(s2v(ra), luai_numunm(L, nb));
         }
         else
-          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TM_UNM); });
+          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_UNM); });
         vmbreak;
       }
       vmcase(OP_BNOT) {
@@ -1132,7 +1132,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           setivalue(s2v(ra), intop(^, ~l_castS2U(0), ib));
         }
         else
-          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TM_BNOT); });
+          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_BNOT); });
         vmbreak;
       }
       vmcase(OP_NOT) {
@@ -1211,19 +1211,19 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LTI) {
-        op_orderI(l_lti, luai_numlt, 0, TM_LT, i);
+        op_orderI(l_lti, luai_numlt, 0, TMS::TM_LT, i);
         vmbreak;
       }
       vmcase(OP_LEI) {
-        op_orderI(l_lei, luai_numle, 0, TM_LE, i);
+        op_orderI(l_lei, luai_numle, 0, TMS::TM_LE, i);
         vmbreak;
       }
       vmcase(OP_GTI) {
-        op_orderI(l_gti, luai_numgt, 1, TM_LT, i);
+        op_orderI(l_gti, luai_numgt, 1, TMS::TM_LT, i);
         vmbreak;
       }
       vmcase(OP_GEI) {
-        op_orderI(l_gei, luai_numge, 1, TM_LE, i);
+        op_orderI(l_gei, luai_numge, 1, TMS::TM_LE, i);
         vmbreak;
       }
       vmcase(OP_TEST) {

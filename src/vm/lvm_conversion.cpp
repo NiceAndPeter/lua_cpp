@@ -64,8 +64,8 @@ int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
 int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode) {
   lua_Number f = l_floor(n);
   if (n != f) {  /* not an integral value? */
-    if (mode == F2Ieq) return 0;  /* fails if mode demands integral value */
-    else if (mode == F2Iceil)  /* needs ceiling? */
+    if (mode == F2Imod::F2Ieq) return 0;  /* fails if mode demands integral value */
+    else if (mode == F2Imod::F2Iceil)  /* needs ceiling? */
       f += 1;  /* convert floor to ceiling (remember: n != f) */
   }
   return lua_numbertointeger(f, p);

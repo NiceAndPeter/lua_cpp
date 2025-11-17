@@ -33,7 +33,7 @@ isJ                           sJ (signed)(25)            |   Op(7)     |
 
 
 /* basic instruction formats */
-enum OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
+enum class OpMode {iABC, ivABC, iABx, iAsBx, iAx, isJ};
 
 
 /*
@@ -542,7 +542,7 @@ inline constexpr int NUM_OPCODES = ((int)(OP_EXTRAARG) + 1);
 LUAI_DDEC(const lu_byte luaP_opmodes[NUM_OPCODES];)
 
 inline OpMode getOpMode(int m) noexcept {
-	return cast(enum OpMode, luaP_opmodes[m] & 7);
+	return static_cast<OpMode>(luaP_opmodes[m] & 7);
 }
 
 inline bool testAMode(int m) noexcept {

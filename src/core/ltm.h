@@ -15,7 +15,7 @@
 * WARNING: if you change the order of this enumeration,
 * grep "ORDER TM" and "ORDER OP"
 */
-typedef enum {
+enum class TMS {
   TM_INDEX,
   TM_NEWINDEX,
   TM_GC,
@@ -42,7 +42,7 @@ typedef enum {
   TM_CALL,
   TM_CLOSE,
   TM_N		/* number of elements in the enum */
-} TMS;
+};
 
 
 /*
@@ -51,7 +51,7 @@ typedef enum {
 ** corresponding metamethod field. (Bit 6 of the flag indicates that
 ** the table is using the dummy node; bit 7 is used for 'isrealasize'.)
 */
-inline constexpr lu_byte maskflags = cast_byte(~(~0u << (TM_EQ + 1)));
+inline constexpr lu_byte maskflags = cast_byte(~(~0u << (static_cast<int>(TMS::TM_EQ) + 1)));
 
 // Phase 19: Convert invalidateTMcache macro to inline function
 inline void invalidateTMcache(Table* t) noexcept {
@@ -67,7 +67,7 @@ inline bool notm(const TValue* tm) noexcept {
 }
 
 inline bool checknoTM(const Table* mt, TMS e) noexcept {
-	return mt == nullptr || (mt->getFlags() & (1u << e));
+	return mt == nullptr || (mt->getFlags() & (1u << static_cast<int>(e)));
 }
 
 // Phase 88: Convert gfasttm and fasttm macros to inline functions

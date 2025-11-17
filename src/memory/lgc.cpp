@@ -912,7 +912,7 @@ void GCObject::fix(lua_State* L) {
 void GCObject::checkFinalizer(lua_State* L, Table* mt) {
   global_State *g = G(L);
   if (tofinalize(this) ||                 /* obj. is already marked... */
-      gfasttm(g, mt, TM_GC) == NULL ||    /* or has no finalizer... */
+      gfasttm(g, mt, TMS::TM_GC) == NULL ||    /* or has no finalizer... */
       (g->getGCStp() & GCSTPCLS))                   /* or closing state? */
     return;  /* nothing to be done */
   else {  /* move 'this' to 'finobj' list */

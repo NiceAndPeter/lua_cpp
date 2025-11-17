@@ -36,7 +36,7 @@
 */
 int lua_State::forLimit(lua_Integer init, const TValue *lim,
                         lua_Integer *p, lua_Integer step) {
-  if (!luaV_tointeger(lim, p, (step < 0 ? F2Iceil : F2Ifloor))) {
+  if (!luaV_tointeger(lim, p, (step < 0 ? F2Imod::F2Iceil : F2Imod::F2Ifloor))) {
     /* not coercible to in integer */
     lua_Number flim;  /* try to convert to float */
     if (!tonumber(lim, &flim)) /* cannot convert to float? */

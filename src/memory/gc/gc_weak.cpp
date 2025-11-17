@@ -137,7 +137,7 @@ void GCWeak::genlink(global_State* g, GCObject* o) {
 ** Returns: (result & 1) iff weak values; (result & 2) iff weak keys
 */
 int GCWeak::getmode(global_State* g, Table* h) {
-    const TValue* mode = gfasttm(g, h->getMetatable(), TM_MODE);
+    const TValue* mode = gfasttm(g, h->getMetatable(), TMS::TM_MODE);
     if (mode == NULL || !ttisshrstring(mode))
         return 0;  /* ignore non-(short)string modes */
     else {

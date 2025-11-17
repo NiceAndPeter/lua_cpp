@@ -1756,11 +1756,11 @@ LUAI_FUNC void luaO_chunkid (char *out, const char *source, size_t srclen);
 /* Forward declarations for lvm.h types/functions */
 #ifndef F2Imod_defined
 #define F2Imod_defined
-typedef enum {
+enum class F2Imod {
   F2Ieq,     /* no rounding; accepts only integral values */
   F2Ifloor,  /* takes the floor of the number */
   F2Iceil    /* takes the ceiling of the number */
-} F2Imod;
+};
 #endif
 
 #ifndef luaV_flttointeger_declared
@@ -1853,12 +1853,12 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 		switch (ttypetag(&l)) {
 			case LUA_VNUMINT: {  /* int == float? */
 				lua_Integer i2;
-				return (luaV_flttointeger(fltvalue(&r), &i2, F2Ieq) &&
+				return (luaV_flttointeger(fltvalue(&r), &i2, F2Imod::F2Ieq) &&
 				        ivalue(&l) == i2);
 			}
 			case LUA_VNUMFLT: {  /* float == int? */
 				lua_Integer i1;
-				return (luaV_flttointeger(fltvalue(&l), &i1, F2Ieq) &&
+				return (luaV_flttointeger(fltvalue(&l), &i1, F2Imod::F2Ieq) &&
 				        i1 == ivalue(&r));
 			}
 			case LUA_VSHRSTR: case LUA_VLNGSTR: {
