@@ -809,7 +809,7 @@ inline constexpr int NO_JUMP = -1;
 
 /* true if operation is foldable (that is, it is arithmetic or bitwise) */
 inline constexpr bool foldbinop(BinOpr op) noexcept {
-	return op <= OPR_SHR;
+	return op <= BinOpr::OPR_SHR;
 }
 
 

@@ -23,7 +23,7 @@ struct BlockCnt;
 /*
 ** grep "ORDER OPR" if you change these enums  (ORDER OP)
 */
-typedef enum BinOpr {
+enum class BinOpr {
   /* arithmetic operators */
   OPR_ADD, OPR_SUB, OPR_MUL, OPR_MOD, OPR_POW,
   OPR_DIV, OPR_IDIV,
@@ -38,9 +38,9 @@ typedef enum BinOpr {
   /* logical operators */
   OPR_AND, OPR_OR,
   OPR_NOBINOPR
-} BinOpr;
+};
 
-typedef enum UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR } UnOpr;
+enum class UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR };
 
 /*
 ** Single-char tokens (terminal symbols) are represented by their own
