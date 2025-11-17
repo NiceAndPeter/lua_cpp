@@ -2151,7 +2151,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
        *s2v(ra + 3) = *s2v(ra + 2);  /* Use operator= */
        *s2v(ra + 2) = temp;  /* Use operator= */
         /* create to-be-closed upvalue (if closing var. is not nil) */
-        halfProtect(luaF_newtbcupval(L, ra + 2));
+        halfProtect([&]() { luaF_newtbcupval(L, ra + 2); });
         pc += InstructionView(i).bx();  /* go to end of the loop */
         i = *(pc++);  /* fetch next instruction */
         lua_assert(InstructionView(i).opcode() == OP_TFORCALL && ra == RA(i));
@@ -2170,7 +2170,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         *s2v(ra + 4) = *s2v(ra + 1);  /* copy state (operator=) */
         *s2v(ra + 3) = *s2v(ra);  /* copy function (operator=) */
         L->getTop().p = ra + 3 + 3;
-        ProtectNT(L->call( ra + 3, InstructionView(i).c()));  /* do the call */
+        ProtectNT([&]() { L->call( ra + 3, InstructionView(i).c()); });  /* do the call */
         updatestack(ra, ci, i);  /* stack may have changed */
         i = *(pc++);  /* go to next instruction */
         lua_assert(InstructionView(i).opcode() == OP_TFORLOOP && ra == RA(i));
@@ -2214,18 +2214,18 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_CLOSURE) {
         StkId ra = RA(i);
         Proto *p = cl->getProto()->getProtos()[InstructionView(i).bx()];
-        halfProtect(L->pushClosure(p, cl->getUpvalPtr(0), base, ra));
+        halfProtect([&]() { L->pushClosure(p, cl->getUpvalPtr(0), base, ra); });
         checkGC(L, ra + 1);
         vmbreak;
       }
       vmcase(OP_VARARG) {
         StkId ra = RA(i);
         int n = InstructionView(i).c() - 1;  /* required results */
-        Protect(luaT_getvarargs(L, ci, ra, n));
+        Protect([&]() { luaT_getvarargs(L, ci, ra, n); });
         vmbreak;
       }
       vmcase(OP_VARARGPREP) {
-        ProtectNT(luaT_adjustvarargs(L, InstructionView(i).a(), ci, cl->getProto()));
+        ProtectNT([&]() { luaT_adjustvarargs(L, InstructionView(i).a(), ci, cl->getProto()); });
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
           L->hookCall( ci);
           L->setOldPC(1);  /* next opcode will be seen as a "new" line */
