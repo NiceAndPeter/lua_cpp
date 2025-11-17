@@ -78,6 +78,36 @@ public:
     */
     static void cleargraylists(global_State* g);
 
+    /*
+    ** Mark root set and reset all gray lists to start a new collection.
+    ** Initializes GCmarked to count total live bytes during cycle.
+    */
+    static void restartcollection(global_State* g);
+
+    /*
+    ** Mark black 'OLD1' objects when starting a new young collection.
+    ** Gray objects are already in gray lists for atomic phase.
+    */
+    static void markold(global_State* g, GCObject* from, GCObject* to);
+
+    /*
+    ** Link object for generational mode post-processing.
+    ** TOUCHED1 objects go to grayagain, TOUCHED2 advance to OLD.
+    */
+    static void genlink(global_State* g, GCObject* o);
+
+    /*
+    ** Traverse array part of a table, marking collectable values.
+    ** Returns 1 if any white objects were marked, 0 otherwise.
+    */
+    static int traversearray(global_State* g, Table* h);
+
+    /*
+    ** Traverse a strong (non-weak) table.
+    ** Marks all keys and values, then calls genlink for generational mode.
+    */
+    static void traversestrongtable(global_State* g, Table* h);
+
 private:
     /*
     ** Type-specific traversal functions.

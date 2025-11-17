@@ -136,10 +136,12 @@ set(LUA_OBJECT_SOURCES
 set(LUA_MEMORY_SOURCES
     src/memory/lgc.cpp
     src/memory/lmem.cpp
+    src/memory/gc/gc_core.cpp
     src/memory/gc/gc_marking.cpp
     src/memory/gc/gc_sweeping.cpp
     src/memory/gc/gc_finalizer.cpp
     src/memory/gc/gc_weak.cpp
+    src/memory/gc/gc_collector.cpp
 )
 
 set(LUA_SERIALIZATION_SOURCES

@@ -37,71 +37,11 @@
 /* How many objects to sweep in one step (incremental sweep limit) */
 #define GCSWEEPMAX	20
 
-/* Mask with all color bits */
-#define maskcolors (bitmask(BLACKBIT) | WHITEBITS)
+/* Note: maskcolors, maskgcbits, and color manipulation functions are now in lgc.h */
+#include "gc_core.h"  /* For utility functions */
 
-/* Mask with all GC bits */
-#define maskgcbits (maskcolors | AGEBITS)
-
-/*
-** Color manipulation functions (duplicate from lgc.cpp for module independence)
-*/
-static inline void set2gray(GCObject* x) noexcept {
-    x->clearMarkedBits(maskcolors);
-}
-
-/*
-** Calculate the size (in bytes) of a GC object.
-** Used for generational GC accounting.
-*/
-static l_mem objsize(GCObject* o) {
-    lu_mem res;
-    switch (o->getType()) {
-        case LUA_VTABLE: {
-            res = luaH_size(gco2t(o));
-            break;
-        }
-        case LUA_VLCL: {
-            LClosure* cl = gco2lcl(o);
-            res = sizeLclosure(cl->getNumUpvalues());
-            break;
-        }
-        case LUA_VCCL: {
-            CClosure* cl = gco2ccl(o);
-            res = sizeCclosure(cl->getNumUpvalues());
-            break;
-        }
-        case LUA_VUSERDATA: {
-            Udata* u = gco2u(o);
-            res = sizeudata(u->getNumUserValues(), u->getLen());
-            break;
-        }
-        case LUA_VPROTO: {
-            res = gco2p(o)->memorySize();
-            break;
-        }
-        case LUA_VTHREAD: {
-            res = luaE_threadsize(gco2th(o));
-            break;
-        }
-        case LUA_VSHRSTR: {
-            TString* ts = gco2ts(o);
-            res = sizestrshr(cast_uint(ts->getShrlen()));
-            break;
-        }
-        case LUA_VLNGSTR: {
-            TString* ts = gco2ts(o);
-            res = luaS_sizelngstr(ts->getLnglen(), ts->getShrlen());
-            break;
-        }
-        case LUA_VUPVAL: {
-            res = sizeof(UpVal);
-            break;
-        }
-        default: res = 0; lua_assert(0);
-    }
-    return cast(l_mem, res);
-}
+/* Note: objsize is now in GCCore module */
+static inline l_mem objsize(GCObject* o) { return GCCore::objsize(o); }
 
 /*
 ** Link object into a GC list and make it gray

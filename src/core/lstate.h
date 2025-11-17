@@ -1187,6 +1187,13 @@ public:
 
   inline LX* getMainThread() noexcept { return runtime.getMainThread(); }
   inline const LX* getMainThread() const noexcept { return runtime.getMainThread(); }
+
+  /* GC control methods (formerly static functions in lgc.cpp) */
+  void setPause();           /* Set debt for next GC cycle based on pause parameter */
+  void setMinorDebt();       /* Set debt for next minor collection (generational mode) */
+  int checkMinorMajor();     /* Check if should switch from minor to major collection */
+  void clearGrayLists();     /* Clear all gray lists (called when entering sweep) */
+  void correctGrayLists();   /* Correct gray lists for generational mode */
 };
 
 

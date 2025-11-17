@@ -40,21 +40,9 @@
 #define gcvalarr(t,i)  \
 	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : NULL)
 
-/*
-** Protected access to objects in values
-*/
-static inline GCObject* gcvalueN(const TValue* o) noexcept {
-	return iscollectable(o) ? gcvalue(o) : NULL;
-}
-
-/*
-** Check if value is white
-*/
-static inline bool valiswhite(const TValue* x) noexcept {
-	return iscollectable(x) && iswhite(gcvalue(x));
-}
-
+/* Note: gcvalueN and valiswhite are now in lgc.h */
 /* Note: markkey and markvalue are defined in gc_marking.h */
+#include "gc_core.h"  /* For utility functions */
 
 /*
 ** Barrier for weak tables. Strings behave as 'values', so are never removed.
@@ -70,14 +58,8 @@ static int iscleared(global_State* g, const GCObject* o) {
     else return iswhite(o);
 }
 
-/*
-** Clear key for empty table entry
-*/
-static void clearkey(Node* n) {
-    lua_assert(isempty(gval(n)));
-    if (n->isKeyCollectable())
-        n->setKeyDead();
-}
+/* Note: clearkey is now in GCCore module */
+static inline void clearkey(Node* n) { GCCore::clearkey(n); }
 
 /*
 ** Get last node in hash array (one past the end)
