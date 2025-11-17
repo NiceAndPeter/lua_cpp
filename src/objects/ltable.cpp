@@ -1473,9 +1473,10 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
     else if (isextstr(key)) {  /* external string? */
       /* If string is short, must internalize it to be used as table key */
       TString *ts = tsvalue(key)->normalize(L);  /* Phase 25a: use method */
-      setsvalue2s(L, L->getTop().p++, ts);  /* anchor 'ts' (EXTRA_STACK) */
+      setsvalue2s(L, L->getTop().p, ts);  /* anchor 'ts' (EXTRA_STACK) */
+      L->getStackSubsystem().push();
       luaH_newkey(L, this, s2v(L->getTop().p - 1), value);
-      L->getTop().p--;
+      L->getStackSubsystem().pop();
       return;
     }
     luaH_newkey(L, this, key, value);
