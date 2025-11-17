@@ -207,7 +207,7 @@ const char *lua_State::findLocal(CallInfo *ci_arg, int n, StkId *pos) {
       name = ci_arg->getFunc()->getProto()->getLocalName(n, currentpc(ci_arg));  /* Phase 25b */
   }
   if (name == NULL) {  /* no 'standard' name? */
-    StkId limit = (ci_arg == getCI()) ? top.p : ci_arg->getNext()->funcRef().p;
+    StkId limit = (ci_arg == getCI()) ? getTop().p : ci_arg->getNext()->funcRef().p;
     if (limit - base >= n && n > 0) {  /* is 'n' inside 'ci' stack? */
       /* generic name for any valid slot */
       name = ci_arg->isLua() ? "(temporary)" : "(C temporary)";
@@ -880,14 +880,14 @@ l_noret lua_State::errorMsg() {
   if (getErrFunc() != 0) {  /* is there an error handling function? */
     StkId errfunc_ptr = this->restoreStack(getErrFunc());
     lua_assert(ttisfunction(s2v(errfunc_ptr)));
-    *s2v(top.p) = *s2v(top.p - 1);  /* move argument - use operator= */
-    *s2v(top.p - 1) = *s2v(errfunc_ptr);  /* push function - use operator= */
-    top.p++;  /* assume EXTRA_STACK */
-    callNoYield(top.p - 2, 1);  /* call it */
+    *s2v(getTop().p) = *s2v(getTop().p - 1);  /* move argument - use operator= */
+    *s2v(getTop().p - 1) = *s2v(errfunc_ptr);  /* push function - use operator= */
+    getTop().p++;  /* assume EXTRA_STACK */
+    callNoYield(getTop().p - 2, 1);  /* call it */
   }
-  if (ttisnil(s2v(top.p - 1))) {  /* error object is nil? */
+  if (ttisnil(s2v(getTop().p - 1))) {  /* error object is nil? */
     /* change it to a proper message */
-    setsvalue2s(this, top.p - 1, luaS_newliteral(this, "<no error object>"));
+    setsvalue2s(this, getTop().p - 1, luaS_newliteral(this, "<no error object>"));
   }
   doThrow(LUA_ERRRUN);
 }
@@ -906,8 +906,8 @@ l_noret lua_State::runError(const char *fmt, ...) {
   if (ci->isLua()) {  /* Lua function? */
     /* add source:line information */
     addInfo(msg, ci->getFunc()->getProto()->getSource(), getcurrentline(ci));
-    *s2v(top.p - 2) = *s2v(top.p - 1);  /* remove 'msg' - use operator= */
-    top.p--;
+    *s2v(getTop().p - 2) = *s2v(getTop().p - 1);  /* remove 'msg' - use operator= */
+    getTop().p--;
   }
   errorMsg();
 }
@@ -1017,7 +1017,7 @@ int lua_State::traceExec(const Instruction *pc) {
     return 1;  /* do not call hook again (VM yielded, so it did not move) */
   }
   if (!luaP_isIT(*(ci_local->getSavedPC() - 1)))  /* top not being used? */
-    top.p = ci_local->topRef().p;  /* correct top */
+    getTop().p = ci_local->topRef().p;  /* correct top */
   if (counthook)
     callHook(LUA_HOOKCOUNT, -1, 0, 0);  /* call count hook */
   if (mask & LUA_MASKLINE) {

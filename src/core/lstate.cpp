@@ -168,14 +168,8 @@ static void resetCI (lua_State *L) {
 
 
 static void stack_init (lua_State *L1, lua_State *L) {
-  /* initialize stack array */
-  L1->getStack().p = luaM_newvector(L, BASIC_STACK_SIZE + EXTRA_STACK, StackValue);
-  L1->getTbclist().p = L1->getStack().p;
-  /* erase new stack */
-  std::for_each_n(L1->getStack().p, BASIC_STACK_SIZE + EXTRA_STACK, [](StackValue& sv) {
-    setnilvalue(s2v(&sv));
-  });
-  L1->getStackLast().p = L1->getStack().p + BASIC_STACK_SIZE;
+  /* initialize stack array via LuaStack subsystem */
+  L1->getStackSubsystem().init(L);
   /* initialize first ci */
   resetCI(L1);
   L1->getTop().p = L1->getStack().p + 1;  /* +1 for 'function' entry */
@@ -183,13 +177,11 @@ static void stack_init (lua_State *L1, lua_State *L) {
 
 
 static void freestack (lua_State *L) {
-  if (L->getStack().p == NULL)
-    return;  /* stack not completely built yet */
   L->setCI(L->getBaseCI());  /* free the entire 'ci' list */
   freeCI(L);
   lua_assert(L->getNCI() == 0);
-  /* free stack */
-  luaM_freearray(L, L->getStack().p, cast_sizet(L->getStackSize() + EXTRA_STACK));
+  /* free stack via LuaStack subsystem */
+  L->getStackSubsystem().free(L);
 }
 
 
