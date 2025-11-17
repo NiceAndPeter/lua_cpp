@@ -298,7 +298,7 @@ int LuaStack::grow(lua_State* L, int n, int raiseerror) {
        a stack error; cannot grow further than that. */
     lua_assert(getSize() == ERRORSTACKSIZE);
     if (raiseerror)
-      luaG_runerror(L, "stack overflow");
+      L->errorError();  /* stack error inside message handler */
     return 0;  /* if not 'raiseerror', just signal it */
   }
   else if (n < MAXSTACK) {  /* avoids arithmetic overflows */
