@@ -1060,13 +1060,16 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 
 
 
-#define updatetrap(ci)  (trap = ci->getTrap())
-
-#define updatebase(ci)	(base = ci->funcRef().p + 1)
-
-
-#define updatestack(ci)  \
-	{ if (l_unlikely(trap)) { updatebase(ci); ra = RA(i); } }
+/*
+** State management functions (converted from macros to lambdas)
+**
+** updatetrap(ci): Update local trap variable from CallInfo
+** updatebase(ci): Update local base pointer from CallInfo
+** updatestack(ra,ci,i): Conditionally update base and ra if trap is set
+**
+** NOTE: These have been converted to lambdas defined inside luaV_execute()
+** for better type safety. See lines ~1304-1323 for implementations.
+*/
 
 
 /*
@@ -1092,13 +1095,12 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 ** The local 'pc' variable is kept in a register for performance. Before any
 ** operation that might throw an exception, we must save it to the CallInfo
 ** so stack unwinding can report the correct error location.
-*/
-#define savepc(ci)	ci->setSavedPC(pc)
-
-
-/*
-** Whenever code can raise errors, the global 'pc' and the global
-** 'top' must be correct to report occasional errors.
+**
+** savepc(ci): Save local pc to CallInfo
+** savestate(L,ci): Save both pc and top to CallInfo and lua_State
+**
+** NOTE: These have been converted to lambdas defined inside luaV_execute()
+** for better type safety. See lines ~1317-1323 for implementations.
 **
 ** EXCEPTION HANDLING: This implementation uses C++ exceptions instead of
 ** setjmp/longjmp. When an error is thrown, the exception handler needs
@@ -1107,7 +1109,6 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 ** 2. Properly unwind the stack to the correct depth
 ** 3. Close any to-be-closed variables at the right stack level
 */
-#define savestate(L,ci)		(savepc(ci), L->getTop().p = ci->topRef().p)
 
 
 /*
@@ -1265,6 +1266,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   #undef KC
   #undef RKC
 
+  // Undefine state management macros to avoid naming conflicts
+  #undef updatetrap
+  #undef updatebase
+  #undef updatestack
+  #undef savepc
+  #undef savestate
+
   // Register access lambdas (defined before operation lambdas that use them)
   auto RA = [&](Instruction i) -> StkId {
     return base + InstructionView(i).a();
@@ -1292,6 +1300,27 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   };
   auto RKC = [&](Instruction i) -> TValue* {
     return InstructionView(i).testk() ? (k + InstructionView(i).c()) : s2v(base + InstructionView(i).c());
+  };
+
+  // State management lambdas
+  auto updatetrap = [&](CallInfo* ci_arg) {
+    trap = ci_arg->getTrap();
+  };
+  auto updatebase = [&](CallInfo* ci_arg) {
+    base = ci_arg->funcRef().p + 1;
+  };
+  auto updatestack = [&](StkId& ra_arg, CallInfo* ci_arg, Instruction inst) {
+    if (l_unlikely(trap)) {
+      updatebase(ci_arg);
+      ra_arg = RA(inst);
+    }
+  };
+  auto savepc = [&](CallInfo* ci_arg) {
+    ci_arg->setSavedPC(pc);
+  };
+  auto savestate = [&](lua_State* L_arg, CallInfo* ci_arg) {
+    savepc(ci_arg);
+    L_arg->getTop().p = ci_arg->topRef().p;
   };
 
   // Lambda: Arithmetic with immediate operand
@@ -1984,7 +2013,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
             L->getTop().p = ci->topRef().p;
           luaF_close(L, base, CLOSEKTOP, 1);
           updatetrap(ci);
-          updatestack(ci);
+          updatestack(ra, ci, i);
         }
         if (nparams1)  /* vararg function? */
           ci->funcRef().p -= ci->getExtraArgs() + nparams1;
@@ -2097,7 +2126,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         *s2v(ra + 3) = *s2v(ra);  /* copy function (operator=) */
         L->getTop().p = ra + 3 + 3;
         ProtectNT(L->call( ra + 3, InstructionView(i).c()));  /* do the call */
-        updatestack(ci);  /* stack may have changed */
+        updatestack(ra, ci, i);  /* stack may have changed */
         i = *(pc++);  /* go to next instruction */
         lua_assert(InstructionView(i).opcode() == OP_TFORLOOP && ra == RA(i));
         goto l_tforloop;
