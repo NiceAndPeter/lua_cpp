@@ -1073,21 +1073,19 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 
 
 /*
-** Execute a jump instruction. The 'updatetrap' allows signals to stop
-** tight loops. (Without it, the local copy of 'trap' could never change.)
+** Control flow functions (converted from macros to lambdas)
+**
+** dojump(ci,i,e): Execute a jump instruction. The 'updatetrap' allows signals
+**                 to stop tight loops. (Without it, the local copy of 'trap'
+**                 could never change.)
+** donextjump(ci): For test instructions, execute the jump instruction that follows it
+** docondjump(cond,ci,i): Conditional jump - skip next instruction if 'cond' is not
+**                        what was expected (parameter 'k'), else do next instruction,
+**                        which must be a jump.
+**
+** NOTE: These have been converted to lambdas defined inside luaV_execute()
+** for better type safety. See lines ~1331-1345 for implementations.
 */
-#define dojump(ci,i,e)	{ pc += InstructionView(i).sj() + e; updatetrap(ci); }
-
-
-/* for test instructions, execute the jump instruction that follows it */
-#define donextjump(ci)	{ Instruction ni = *pc; dojump(ci, ni, 1); }
-
-/*
-** do a conditional jump: skip next instruction if 'cond' is not what
-** was expected (parameter 'k'), else do next instruction, which must
-** be a jump.
-*/
-#define docondjump()	if (cond != InstructionView(i).k()) pc++; else donextjump(ci);
 
 
 /*
@@ -1273,6 +1271,11 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   #undef savepc
   #undef savestate
 
+  // Undefine control flow macros to avoid naming conflicts
+  #undef dojump
+  #undef donextjump
+  #undef docondjump
+
   // Register access lambdas (defined before operation lambdas that use them)
   auto RA = [&](Instruction i) -> StkId {
     return base + InstructionView(i).a();
@@ -1321,6 +1324,22 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   auto savestate = [&](lua_State* L_arg, CallInfo* ci_arg) {
     savepc(ci_arg);
     L_arg->getTop().p = ci_arg->topRef().p;
+  };
+
+  // Control flow lambdas
+  auto dojump = [&](CallInfo* ci_arg, Instruction inst, int e) {
+    pc += InstructionView(inst).sj() + e;
+    updatetrap(ci_arg);
+  };
+  auto donextjump = [&](CallInfo* ci_arg) {
+    Instruction ni = *pc;
+    dojump(ci_arg, ni, 1);
+  };
+  auto docondjump = [&](int cond, CallInfo* ci_arg, Instruction inst) {
+    if (cond != InstructionView(inst).k())
+      pc++;
+    else
+      donextjump(ci_arg);
   };
 
   // Lambda: Arithmetic with immediate operand
@@ -1424,8 +1443,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       cond = cmp(ra, rb);  // Use comparator function object
     else
       Protect(cond = other(L, ra, rb));
-    // docondjump() macro expansion
-    if (cond != InstructionView(i).k()) pc++; else donextjump(ci);
+    docondjump(cond, ci, i);
   };
 
   // Lambda: Order operations with immediate operand
@@ -1444,8 +1462,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       int isf = InstructionView(i).c();
       Protect(cond = luaT_callorderiTM(L, ra, im, inv, isf, tm));
     }
-    // docondjump() macro expansion
-    if (cond != InstructionView(i).k()) pc++; else donextjump(ci);
+    docondjump(cond, ci, i);
   };
 
   // Comparator function objects for op_order (operators cannot be passed as template params)
@@ -1892,7 +1909,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         int cond;
         TValue *rb = vRB(i);
         Protect(cond = luaV_equalobj(L, s2v(ra), rb));
-        docondjump();
+        docondjump(cond, ci, i);
         vmbreak;
       }
       vmcase(OP_LT) {
@@ -1908,7 +1925,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = KB(i);
         /* basic types do not use '__eq'; we can use raw equality */
         int cond = (*s2v(ra) == *rb);  /* Use operator== for cleaner syntax */
-        docondjump();
+        docondjump(cond, ci, i);
         vmbreak;
       }
       vmcase(OP_EQI) {
@@ -1921,7 +1938,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           cond = luai_numeq(fltvalue(s2v(ra)), cast_num(im));
         else
           cond = 0;  /* other types cannot be equal to a number */
-        docondjump();
+        docondjump(cond, ci, i);
         vmbreak;
       }
       vmcase(OP_LTI) {
@@ -1943,7 +1960,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_TEST) {
         StkId ra = RA(i);
         int cond = !l_isfalse(s2v(ra));
-        docondjump();
+        docondjump(cond, ci, i);
         vmbreak;
       }
       vmcase(OP_TESTSET) {
