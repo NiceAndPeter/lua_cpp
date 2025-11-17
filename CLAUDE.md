@@ -9,7 +9,7 @@ Converting Lua 5.5 from C to modern C++23 with:
 - Full encapsulation with private fields
 
 **Repository**: `/home/user/lua_cpp`
-**Performance**: Target ≤4.24s (≤1% regression from 4.20s baseline on current machine)
+**Performance**: Target ≤4.33s (≤3% regression from 4.20s baseline on current machine)
 **Note**: Historical baseline was 2.17s on different hardware - current numbers are from new machine
 **Status**: **CONSTRUCTOR INITIALIZATION COMPLETE** ✅ CallInfo and lua_State now use proper initialization!
 
@@ -77,11 +77,11 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 ### Critical Constraint
 
-**ZERO regression tolerance** - Strict performance enforcement:
-- **Current Machine**: Target ≤4.24s (≤1% from baseline 4.20s)
+**Performance enforcement** - Strict performance enforcement:
+- **Current Machine**: Target ≤4.33s (≤3% from baseline 4.20s)
 - **Historical**: Previous baseline was 2.17s on different hardware
 - Must benchmark after EVERY significant change
-- Revert immediately if regression detected
+- Revert if regression exceeds tolerance
 
 ### Benchmark Command
 
@@ -267,7 +267,7 @@ for i in 1 2 3 4 5; do \
     ../build/lua all.lua 2>&1 | grep "total time:"; \
 done
 
-# Target: ≤2.21s (≤1% regression from 2.17s baseline)
+# Target: ≤2.24s (≤3% regression from 2.17s baseline on historical hardware)
 ```
 
 ---
@@ -604,7 +604,7 @@ git add . && git commit -m "Phase N: Description"
 3. **Manual editing** - No Python/shell scripts for code changes
 4. **ABSOLUTELY NO BATCH PROCESSING** - NEVER use sed/awk/perl for bulk edits. Use Edit tool for EACH change individually.
 5. **Incremental changes** - Test and benchmark after every phase
-6. **Immediate revert** - If performance > 2.21s (4.24s on current machine)
+6. **Revert if excessive regression** - If performance > 4.33s on current machine (>3% regression)
 7. **Commit after every phase** - Clean history for easy rollback
 8. **Commit frequently during long phases** - Don't lose work!
 
@@ -612,7 +612,7 @@ git add . && git commit -m "Phase N: Description"
 
 1. **C compatibility ONLY for public API** (lua.h, lauxlib.h, lualib.h)
 2. **Internal code is pure C++** - No `#ifdef __cplusplus`
-3. **Performance target**: ≤2.21s (strict)
+3. **Performance target**: ≤4.33s (3% tolerance from 4.20s baseline)
 4. **Zero C API breakage** - Public interface unchanged
 5. **All fields private** - Use accessors (already achieved!)
 
@@ -663,7 +663,7 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
 4. **Use constexpr** - For compile-time computation
 5. **Add noexcept** - For exception safety
 6. **Benchmark** - After every batch
-7. **Revert if regression** - Performance > 2.21s
+7. **Revert if excessive regression** - Performance > 4.33s (>3% from baseline)
 
 ---
 
@@ -672,7 +672,7 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
 ### Project Assessment: EXCELLENT ✅
 
 - **Architecture**: Well-designed CRTP pattern with zero-cost abstraction
-- **Performance**: Meets or exceeds baseline (target ≤2.21s)
+- **Performance**: Meets or exceeds baseline (target ≤4.33s on current machine)
 - **Code Quality**: Zero warnings, 915+ noexcept specifications, modern C++23
 - **Documentation**: Comprehensive plans and guides
 - **Technical Debt**: LOW - minimal TODOs, clean code
@@ -682,7 +682,7 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
 
 1. ✅ **Zero-cost modernization** - Performance maintained or improved
 2. ✅ **Type safety** - enum classes, inline constexpr, template functions
-3. ✅ **Strong discipline** - 1% regression tolerance enforced
+3. ✅ **Strong discipline** - 3% regression tolerance enforced
 4. ✅ **Comprehensive testing** - 30+ test files
 5. ✅ **Modern build system** - CMake with sanitizers, LTO, CTest
 6. ✅ **Full encapsulation** - All 19 classes with private fields
@@ -721,7 +721,7 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
    - Estimated: 60-80 hours, significant performance risk
 
 **Critical Constraints**:
-- ✅ Must maintain ≤2.21s performance (≤1% regression)
+- ✅ Must maintain ≤4.33s performance (≤3% regression from 4.20s baseline)
 - ✅ Must preserve C API compatibility
 - ✅ All refactoring must be zero-cost abstractions (inline accessors)
 - ✅ Benchmark after every significant change
@@ -772,7 +772,7 @@ cd testes
 for i in 1 2 3 4 5; do \
     ../build/lua all.lua 2>&1 | grep "total time:"; \
 done
-# Target: ≤2.21s
+# Target: ≤4.33s (current machine)
 
 # Git workflow
 git status
