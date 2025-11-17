@@ -1105,8 +1105,10 @@ static void GCTM (lua_State *L) {
     lu_byte oldgcstp  = g->getGCStp();
     g->setGCStp(oldgcstp | GCSTPGC);  /* avoid GC steps */
     L->setAllowHook(0);  /* stop debug hooks during GC metamethod */
-    setobj2s(L, L->getTop().p++, tm);  /* push finalizer... */
-    setobj2s(L, L->getTop().p++, &v);  /* ... and its argument */
+    setobj2s(L, L->getTop().p, tm);  /* push finalizer... */
+    L->getStackSubsystem().push();
+    setobj2s(L, L->getTop().p, &v);  /* ... and its argument */
+    L->getStackSubsystem().push();
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
     status = L->pCall( dothecall, NULL, L->saveStack(L->getTop().p - 2), 0);
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
@@ -1114,7 +1116,7 @@ static void GCTM (lua_State *L) {
     g->setGCStp(oldgcstp);  /* restore state */
     if (l_unlikely(status != LUA_OK)) {  /* error while running __gc? */
       luaE_warnerror(L, "__gc");
-      L->getTop().p--;  /* pops error object */
+      L->getStackSubsystem().pop();  /* pops error object */
     }
   }
 }

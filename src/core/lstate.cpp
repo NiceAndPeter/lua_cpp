@@ -172,7 +172,7 @@ static void stack_init (lua_State *L1, lua_State *L) {
   L1->getStackSubsystem().init(L);
   /* initialize first ci */
   resetCI(L1);
-  L1->getTop().p = L1->getStack().p + 1;  /* +1 for 'function' entry */
+  L1->getStackSubsystem().setTopPtr(L1->getStack().p + 1);  /* +1 for 'function' entry */
 }
 
 
@@ -254,7 +254,7 @@ static void close_state (lua_State *L) {
   else {  /* closing a fully built state */
     resetCI(L);
     L->closeProtected( 1, LUA_OK);  /* close all upvalues */
-    L->getTop().p = L->getStack().p + 1;  /* empty the stack to run finalizers */
+    L->getStackSubsystem().setTopPtr(L->getStack().p + 1);  /* empty the stack to run finalizers */
     luaC_freeallobjects(L);  /* collect all objects */
     luai_userstateclose(L);
   }
@@ -310,7 +310,7 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
   if (status != LUA_OK)  /* errors? */
     L->setErrorObj( status, L->getStack().p + 1);
   else
-    L->getTop().p = L->getStack().p + 1;
+    L->getStackSubsystem().setTopPtr(L->getStack().p + 1);
   L->reallocStack(cast_int(L->getCI()->topRef().p - L->getStack().p), 0);
   return status;
 }
