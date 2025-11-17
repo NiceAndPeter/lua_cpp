@@ -394,6 +394,11 @@ LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
 /* Use GCObject::checkFinalizer() method instead of luaC_checkfinalizer */
 LUAI_FUNC void luaC_changemode (lua_State *L, GCKind newmode);
 
+/* Weak table functions (will be moved to gc_weak module in Phase 4) */
+LUAI_FUNC int getmode (global_State *g, Table *h);
+LUAI_FUNC void traverseweakvalue (global_State *g, Table *h);
+LUAI_FUNC int traverseephemeron (global_State *g, Table *h, int inv);
+
 
 /*
 ** {==================================================================

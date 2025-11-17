@@ -136,6 +136,7 @@ set(LUA_OBJECT_SOURCES
 set(LUA_MEMORY_SOURCES
     src/memory/lgc.cpp
     src/memory/lmem.cpp
+    src/memory/gc/gc_marking.cpp
 )
 
 set(LUA_SERIALIZATION_SOURCES
@@ -227,6 +228,7 @@ target_include_directories(liblua_static
         ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
         ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/gc
         ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
         ${CMAKE_CURRENT_SOURCE_DIR}/src/libraries
         ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
@@ -265,6 +267,7 @@ if(LUA_BUILD_SHARED)
             ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
             ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
             ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/gc
             ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
             ${CMAKE_CURRENT_SOURCE_DIR}/src/libraries
             ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
@@ -289,6 +292,7 @@ target_compile_options(lua PRIVATE
 target_include_directories(lua PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/gc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
     ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
@@ -314,6 +318,7 @@ target_compile_options(test_luaallocator PRIVATE
 target_include_directories(test_luaallocator PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
     ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/gc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/core
     ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
     ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
