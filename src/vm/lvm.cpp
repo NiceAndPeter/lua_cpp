@@ -1140,11 +1140,14 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 #define halfProtect(exp)  (savestate(L,ci), (exp))
 
 /*
-** macro executed during Lua functions at points where the
+** function executed during Lua functions at points where the
 ** function can yield.
 */
 #if !defined(luai_threadyield)
-#define luai_threadyield(L)	{lua_unlock(L); lua_lock(L);}
+inline void luai_threadyield(lua_State* L) noexcept {
+  lua_unlock(L);
+  lua_lock(L);
+}
 #endif
 
 /*
