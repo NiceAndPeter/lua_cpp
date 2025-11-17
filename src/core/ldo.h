@@ -15,54 +15,21 @@
 
 
 /*
-** Macro to check stack size and grow stack if needed.  Parameters
-** 'pre'/'pos' allow the macro to preserve a pointer into the
-** stack across reallocations, doing the work only when needed.
-** It also allows the running of one GC step when the stack is
-** reallocated.
-** 'condmovestack' is used in heavy tests to force a stack reallocation
-** at every check.
+** ============================================================
+** STACK CHECKING (Phase 94.4)
+** ============================================================
+** Inline functions and macros for ensuring sufficient stack space.
+** Now delegates to LuaStack::ensureSpace() and ensureSpaceP().
 */
 
-#if !defined(HARDSTACKTESTS)
-#define condmovestack(L,pre,pos)	((void)0)
-#else
-/* realloc stack keeping its size */
-#define condmovestack(L,pre,pos)  \
-  { int sz_ = (L)->getStackSize(); pre; (L)->reallocStack(sz_, 0); pos; }
-#endif
-
-#define luaD_checkstackaux(L,n,pre,pos)  \
-	if (l_unlikely(L->getStackLast().p - L->getTop().p <= (n))) \
-	  { pre; (L)->growStack(n, 1); pos; } \
-	else { condmovestack(L,pre,pos); }
-
-/* Phase 88: Convert luaD_checkstack from macro to inline function
-** In general, 'pre'/'pos' are empty (nothing to save)
-*/
+/* Ensure stack has space for n elements (replaces old luaD_checkstack) */
 inline void luaD_checkstack(lua_State* L, int n) noexcept {
-	if (l_unlikely(L->getStackLast().p - L->getTop().p <= n)) {
-		L->growStack(n, 1);
-	}
-#if defined(HARDSTACKTESTS)
-	else {
-		int sz_ = L->getStackSize();
-		L->reallocStack(sz_, 0);
-	}
-#endif
+	L->getStackSubsystem().ensureSpace(L, n);
 }
 
-
-/* Phase 44.4: savestack/restorestack macros replaced with lua_State methods:
-** - savestack(L, pt) → L->saveStack(pt)
-** - restorestack(L, n) → L->restoreStack(n)
-*/
-
-/* macro to check stack size, preserving 'p' */
+/* Check stack preserving pointer (replaces old checkstackp macro) */
 #define checkstackp(L,n,p)  \
-  luaD_checkstackaux(L, n, \
-    ptrdiff_t t__ = L->saveStack(p),  /* save 'p' */ \
-    p = L->restoreStack(t__))  /* 'pos' part: restore 'p' */
+  (p = L->getStackSubsystem().ensureSpaceP(L, n, p))
 
 
 /*
