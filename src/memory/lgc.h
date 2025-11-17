@@ -399,6 +399,9 @@ LUAI_FUNC int getmode (global_State *g, Table *h);
 LUAI_FUNC void traverseweakvalue (global_State *g, Table *h);
 LUAI_FUNC int traverseephemeron (global_State *g, Table *h, int inv);
 
+/* Sweeping helper (will be moved to gc_sweeping module in Phase 2) */
+LUAI_FUNC void freeobj (lua_State *L, GCObject *o);
+
 
 /*
 ** {==================================================================

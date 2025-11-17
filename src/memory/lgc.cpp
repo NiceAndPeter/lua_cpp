@@ -891,7 +891,8 @@ static void freeupval (lua_State *L, UpVal *uv) {
 
 
 // Phase 50: Call destructors before freeing memory (proper RAII)
-static void freeobj (lua_State *L, GCObject *o) {
+// Made non-static for use by gc_sweeping module (Phase 2)
+void freeobj (lua_State *L, GCObject *o) {
   assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
   switch (o->getType()) {
     case LUA_VPROTO: {
