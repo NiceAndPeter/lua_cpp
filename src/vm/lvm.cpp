@@ -1369,6 +1369,154 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 #if LUA_USE_JUMPTABLE
 #include "ljumptab.h"
 #endif
+
+  /* Convert operation macros to lambdas for better type safety and debuggability.
+   * These lambdas capture local variables (L, pc, base, k, etc.) automatically.
+   * Note: User has explicitly allowed performance regression for this conversion.
+   */
+
+  // Undefine macros to avoid naming conflicts
+  #undef op_arithI
+  #undef op_arithf_aux
+  #undef op_arithf
+  #undef op_arithfK
+  #undef op_arith_aux
+  #undef op_arith
+  #undef op_arithK
+  #undef op_bitwiseK
+  #undef op_bitwise
+  #undef op_order
+  #undef op_orderI
+
+  // Lambda: Arithmetic with immediate operand
+  auto op_arithI = [&](auto&& iop, auto&& fop, Instruction i) {
+    TValue *ra = vRA(i);
+    TValue *v1 = vRB(i);
+    int imm = InstructionView(i).sc();
+    if (ttisinteger(v1)) {
+      lua_Integer iv1 = ivalue(v1);
+      pc++; setivalue(ra, iop(L, iv1, imm));
+    }
+    else if (ttisfloat(v1)) {
+      lua_Number nb = fltvalue(v1);
+      lua_Number fimm = cast_num(imm);
+      pc++; setfltvalue(ra, fop(L, nb, fimm));
+    }
+  };
+
+  // Lambda: Auxiliary function for arithmetic operations over floats
+  auto op_arithf_aux = [&](const TValue *v1, const TValue *v2, auto&& fop, Instruction i) {
+    lua_Number n1, n2;
+    if (tonumberns(v1, n1) && tonumberns(v2, n2)) {
+      StkId ra = RA(i);
+      pc++; setfltvalue(s2v(ra), fop(L, n1, n2));
+    }
+  };
+
+  // Lambda: Arithmetic operations over floats with register operands
+  auto op_arithf = [&](auto&& fop, Instruction i) {
+    TValue *v1 = vRB(i);
+    TValue *v2 = vRC(i);
+    op_arithf_aux(v1, v2, fop, i);
+  };
+
+  // Lambda: Arithmetic operations with K operands for floats
+  auto op_arithfK = [&](auto&& fop, Instruction i) {
+    TValue *v1 = vRB(i);
+    TValue *v2 = KC(i);
+    lua_assert(ttisnumber(v2));
+    op_arithf_aux(v1, v2, fop, i);
+  };
+
+  // Lambda: Auxiliary for arithmetic operations over integers and floats
+  auto op_arith_aux = [&](const TValue *v1, const TValue *v2, auto&& iop, auto&& fop, Instruction i) {
+    if (ttisinteger(v1) && ttisinteger(v2)) {
+      StkId ra = RA(i);
+      lua_Integer i1 = ivalue(v1);
+      lua_Integer i2 = ivalue(v2);
+      pc++; setivalue(s2v(ra), iop(L, i1, i2));
+    }
+    else {
+      op_arithf_aux(v1, v2, fop, i);
+    }
+  };
+
+  // Lambda: Arithmetic operations with register operands
+  auto op_arith = [&](auto&& iop, auto&& fop, Instruction i) {
+    TValue *v1 = vRB(i);
+    TValue *v2 = vRC(i);
+    op_arith_aux(v1, v2, iop, fop, i);
+  };
+
+  // Lambda: Arithmetic operations with K operands
+  auto op_arithK = [&](auto&& iop, auto&& fop, Instruction i) {
+    TValue *v1 = vRB(i);
+    TValue *v2 = KC(i);
+    lua_assert(ttisnumber(v2));
+    op_arith_aux(v1, v2, iop, fop, i);
+  };
+
+  // Lambda: Bitwise operations with constant operand
+  auto op_bitwiseK = [&](auto&& op, Instruction i) {
+    TValue *v1 = vRB(i);
+    TValue *v2 = KC(i);
+    lua_Integer i1;
+    lua_Integer i2 = ivalue(v2);
+    if (tointegerns(v1, &i1)) {
+      StkId ra = RA(i);
+      pc++; setivalue(s2v(ra), op(i1, i2));
+    }
+  };
+
+  // Lambda: Bitwise operations with register operands
+  auto op_bitwise = [&](auto&& op, Instruction i) {
+    TValue *v1 = vRB(i);
+    TValue *v2 = vRC(i);
+    lua_Integer i1, i2;
+    if (tointegerns(v1, &i1) && tointegerns(v2, &i2)) {
+      StkId ra = RA(i);
+      pc++; setivalue(s2v(ra), op(i1, i2));
+    }
+  };
+
+  // Lambda: Order operations with register operands
+  // Note: Cannot use operators as template parameters, so we pass comparator function objects
+  auto op_order = [&](auto&& cmp, auto&& other, Instruction i) {
+    TValue *ra = vRA(i);
+    int cond;
+    TValue *rb = vRB(i);
+    if (ttisnumber(ra) && ttisnumber(rb))
+      cond = cmp(ra, rb);  // Use comparator function object
+    else
+      Protect(cond = other(L, ra, rb));
+    // docondjump() macro expansion
+    if (cond != InstructionView(i).k()) pc++; else donextjump(ci);
+  };
+
+  // Lambda: Order operations with immediate operand
+  auto op_orderI = [&](auto&& opi, auto&& opf, int inv, TMS tm, Instruction i) {
+    TValue *ra = vRA(i);
+    int cond;
+    int im = InstructionView(i).sb();
+    if (ttisinteger(ra))
+      cond = opi(ivalue(ra), im);
+    else if (ttisfloat(ra)) {
+      lua_Number fa = fltvalue(ra);
+      lua_Number fim = cast_num(im);
+      cond = opf(fa, fim);
+    }
+    else {
+      int isf = InstructionView(i).c();
+      Protect(cond = luaT_callorderiTM(L, ra, im, inv, isf, tm));
+    }
+    // docondjump() macro expansion
+    if (cond != InstructionView(i).k()) pc++; else donextjump(ci);
+  };
+
+  // Comparator function objects for op_order (operators cannot be passed as template params)
+  auto cmp_lt = [](const TValue* a, const TValue* b) { return *a < *b; };
+  auto cmp_le = [](const TValue* a, const TValue* b) { return *a <= *b; };
+
  startfunc:
   trap = L->getHookMask();
  returning:  /* trap already set */
@@ -1595,49 +1743,49 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_ADDI) {
-        op_arithI(L, l_addi, luai_numadd);
+        op_arithI(l_addi, luai_numadd, i);
         vmbreak;
       }
       vmcase(OP_ADDK) {
-        op_arithK(L, l_addi, luai_numadd);
+        op_arithK(l_addi, luai_numadd, i);
         vmbreak;
       }
       vmcase(OP_SUBK) {
-        op_arithK(L, l_subi, luai_numsub);
+        op_arithK(l_subi, luai_numsub, i);
         vmbreak;
       }
       vmcase(OP_MULK) {
-        op_arithK(L, l_muli, luai_nummul);
+        op_arithK(l_muli, luai_nummul, i);
         vmbreak;
       }
       vmcase(OP_MODK) {
         savestate(L, ci);  /* in case of division by 0 */
-        op_arithK(L, luaV_mod, luaV_modf);
+        op_arithK(luaV_mod, luaV_modf, i);
         vmbreak;
       }
       vmcase(OP_POWK) {
-        op_arithfK(L, luai_numpow);
+        op_arithfK(luai_numpow, i);
         vmbreak;
       }
       vmcase(OP_DIVK) {
-        op_arithfK(L, luai_numdiv);
+        op_arithfK(luai_numdiv, i);
         vmbreak;
       }
       vmcase(OP_IDIVK) {
         savestate(L, ci);  /* in case of division by 0 */
-        op_arithK(L, luaV_idiv, luai_numidiv);
+        op_arithK(luaV_idiv, luai_numidiv, i);
         vmbreak;
       }
       vmcase(OP_BANDK) {
-        op_bitwiseK(L, l_band);
+        op_bitwiseK(l_band, i);
         vmbreak;
       }
       vmcase(OP_BORK) {
-        op_bitwiseK(L, l_bor);
+        op_bitwiseK(l_bor, i);
         vmbreak;
       }
       vmcase(OP_BXORK) {
-        op_bitwiseK(L, l_bxor);
+        op_bitwiseK(l_bxor, i);
         vmbreak;
       }
       vmcase(OP_SHLI) {
@@ -1661,53 +1809,53 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_ADD) {
-        op_arith(L, l_addi, luai_numadd);
+        op_arith(l_addi, luai_numadd, i);
         vmbreak;
       }
       vmcase(OP_SUB) {
-        op_arith(L, l_subi, luai_numsub);
+        op_arith(l_subi, luai_numsub, i);
         vmbreak;
       }
       vmcase(OP_MUL) {
-        op_arith(L, l_muli, luai_nummul);
+        op_arith(l_muli, luai_nummul, i);
         vmbreak;
       }
       vmcase(OP_MOD) {
         savestate(L, ci);  /* in case of division by 0 */
-        op_arith(L, luaV_mod, luaV_modf);
+        op_arith(luaV_mod, luaV_modf, i);
         vmbreak;
       }
       vmcase(OP_POW) {
-        op_arithf(L, luai_numpow);
+        op_arithf(luai_numpow, i);
         vmbreak;
       }
       vmcase(OP_DIV) {  /* float division (always with floats) */
-        op_arithf(L, luai_numdiv);
+        op_arithf(luai_numdiv, i);
         vmbreak;
       }
       vmcase(OP_IDIV) {  /* floor division */
         savestate(L, ci);  /* in case of division by 0 */
-        op_arith(L, luaV_idiv, luai_numidiv);
+        op_arith(luaV_idiv, luai_numidiv, i);
         vmbreak;
       }
       vmcase(OP_BAND) {
-        op_bitwise(L, l_band);
+        op_bitwise(l_band, i);
         vmbreak;
       }
       vmcase(OP_BOR) {
-        op_bitwise(L, l_bor);
+        op_bitwise(l_bor, i);
         vmbreak;
       }
       vmcase(OP_BXOR) {
-        op_bitwise(L, l_bxor);
+        op_bitwise(l_bxor, i);
         vmbreak;
       }
       vmcase(OP_SHL) {
-        op_bitwise(L, luaV_shiftl);
+        op_bitwise(luaV_shiftl, i);
         vmbreak;
       }
       vmcase(OP_SHR) {
-        op_bitwise(L, luaV_shiftr);
+        op_bitwise(luaV_shiftr, i);
         vmbreak;
       }
       vmcase(OP_MMBIN) {
@@ -1813,11 +1961,11 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LT) {
-        op_order(L, <, lessthanothers);
+        op_order(cmp_lt, lessthanothers, i);
         vmbreak;
       }
       vmcase(OP_LE) {
-        op_order(L, <=, lessequalothers);
+        op_order(cmp_le, lessequalothers, i);
         vmbreak;
       }
       vmcase(OP_EQK) {
@@ -1842,19 +1990,19 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LTI) {
-        op_orderI(L, l_lti, luai_numlt, 0, TM_LT);
+        op_orderI(l_lti, luai_numlt, 0, TM_LT, i);
         vmbreak;
       }
       vmcase(OP_LEI) {
-        op_orderI(L, l_lei, luai_numle, 0, TM_LE);
+        op_orderI(l_lei, luai_numle, 0, TM_LE, i);
         vmbreak;
       }
       vmcase(OP_GTI) {
-        op_orderI(L, l_gti, luai_numgt, 1, TM_LT);
+        op_orderI(l_gti, luai_numgt, 1, TM_LT, i);
         vmbreak;
       }
       vmcase(OP_GEI) {
-        op_orderI(L, l_gei, luai_numge, 1, TM_LE);
+        op_orderI(l_gei, luai_numge, 1, TM_LE, i);
         vmbreak;
       }
       vmcase(OP_TEST) {
