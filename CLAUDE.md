@@ -845,12 +845,26 @@ git push -u origin <branch-name>
 - **CONSTRUCTOR_PLAN.md** - Constructor implementation strategy
 - **PHASE_36_2_PLAN.md** - Specific phase documentation
 
+### Garbage Collector
+- **GC_SIMPLIFICATION_ANALYSIS.md** - ⭐ Recommended approach: Incremental modularization (2025-11-17)
+  - Identifies 7 simplification opportunities with minimal codebase impact
+  - Module extraction strategy: 40% code organization improvement
+  - Reduces lgc.cpp from 1,950 to ~500-600 lines
+  - Target: ≤4.33s performance, zero API breakage
+- **GC_PITFALLS_ANALYSIS.md** - Comprehensive GC architecture analysis (2025-11-15)
+  - Tri-color marking, generational GC, ephemerons, finalization
+  - Critical pitfalls and edge cases
+  - C++ modernization risks and safe practices
+
 ### Build & Development
 - **CMAKE_BUILD.md** - CMake build instructions
 
 ---
 
-**Last Updated**: 2025-11-15 - After completing SRP refactoring (Phases 90-92)
-**Current Phase**: SRP refactoring complete! All major classes decomposed.
-**Performance Status**: ✅ EXCELLENT - Avg 2.08s across all refactorings (4% faster than baseline!)
-**Achievements**: FuncState, global_State, and Proto successfully refactored with zero performance regression
+**Last Updated**: 2025-11-17 - After GC simplification analysis
+**Current Phase**: GC analysis complete. Recommended: Incremental module extraction (not GC removal).
+**Performance Status**: ✅ EXCELLENT - Current baseline 4.20s (new machine), target ≤4.33s
+**Achievements**:
+- FuncState, global_State, and Proto successfully refactored with zero performance regression
+- GC simplification strategy identified: 40% code organization improvement via module extraction
+- GC removal deemed NOT feasible (circular refs, weak tables, resurrection semantics require GC)
