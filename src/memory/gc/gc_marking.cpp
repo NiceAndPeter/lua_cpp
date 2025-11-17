@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include "gc_marking.h"
+#include "gc_weak.h"
 #include "../lgc.h"
 #include "../../core/ldo.h"
 #include "../../objects/lfunc.h"
@@ -268,7 +269,7 @@ static inline void traversestrongtable(global_State* g, Table* h) {
 */
 l_mem GCMarking::traversetable(global_State* g, Table* h) {
     markobjectN(g, h->getMetatable());
-    switch (getmode(g, h)) {
+    switch (GCWeak::getmode(g, h)) {
         case 0:  /* not weak */
             traversestrongtable(g, h);
             break;
@@ -276,7 +277,7 @@ l_mem GCMarking::traversetable(global_State* g, Table* h) {
             traverseweakvalue(g, h);
             break;
         case 2:  /* weak keys (ephemeron) */
-            traverseephemeron(g, h, 0);
+            GCWeak::traverseephemeron(g, h, 0);
             break;
         case 3:  /* all weak; nothing to traverse */
             if (g->getGCState() == GCState::Propagate)

@@ -22,7 +22,6 @@
 #include "gc/gc_sweeping.h"
 #include "gc/gc_finalizer.h"
 #include "gc/gc_weak.h"
-#include "gc/gc_barrier.h"
 #include "lmem.h"
 #include "lobject.h"
 #include "lstate.h"
@@ -319,9 +318,8 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
 void luaC_barrierback_ (lua_State *L, GCObject *o) {
   global_State *g = G(L);
   lua_assert(isblack(o) && !isdead(g, o));
-  /* FIXME: Assertion fails after module integration - investigating */
-  /* lua_assert((g->getGCKind() != GCKind::GenerationalMinor)
-          || (isold(o) && getage(o) != GCAge::Touched1)); */
+  lua_assert((g->getGCKind() != GCKind::GenerationalMinor)
+          || (isold(o) && getage(o) != GCAge::Touched1));
   if (getage(o) == GCAge::Touched2)  /* already in gray list? */
     set2gray(o);  /* make it gray to become touched1 */
   else  /* link it in 'grayagain' and paint it gray */
@@ -554,15 +552,6 @@ static int traversearray (global_State *g, Table *h) {
 }
 
 
-/*
-** Wrapper for traverseephemeron - delegates to GCWeak module.
-** See gc_weak.cpp for implementation.
-*/
-int traverseephemeron (global_State *g, Table *h, int inv) {
-  return GCWeak::traverseephemeron(g, h, inv);
-}
-
-
 static void traversestrongtable (global_State *g, Table *h) {
   Node *n, *limit = gnodelast(h);
   traversearray(g, h);
@@ -582,18 +571,9 @@ static void traversestrongtable (global_State *g, Table *h) {
 /*
 ** (result & 1) iff weak values; (result & 2) iff weak keys.
 */
-/*
-** Wrapper for getmode - delegates to GCWeak module.
-** See gc_weak.cpp for implementation.
-*/
-int getmode (global_State *g, Table *h) {
-  return GCWeak::getmode(g, h);
-}
-
-
 static l_mem traversetable (global_State *g, Table *h) {
   markobjectN(g, h->getMetatable());
-  switch (getmode(g, h)) {
+  switch (GCWeak::getmode(g, h)) {
     case 0:  /* not weak */
       traversestrongtable(g, h);
       break;
@@ -601,7 +581,7 @@ static l_mem traversetable (global_State *g, Table *h) {
       traverseweakvalue(g, h);
       break;
     case 2:  /* weak keys */
-      traverseephemeron(g, h, 0);
+      GCWeak::traverseephemeron(g, h, 0);
       break;
     case 3:  /* all weak; nothing to traverse */
       if (g->getGCState() == GCState::Propagate)
@@ -883,16 +863,6 @@ void freeobj (lua_State *L, GCObject *o) {
 ** interleaved with program execution, preventing long pauses.
 */
 /* sweeplist now in GCSweeping module */
-
-
-/*
-** Wrapper for sweeptolive - delegates to GCSweeping module.
-** See gc_sweeping.cpp for implementation.
-*/
-static GCObject **sweeptolive (lua_State *L, GCObject **p) {
-  return GCSweeping::sweeptolive(L, p);
-}
-
 /* }====================================================== */
 
 
@@ -1013,18 +983,6 @@ static void sweep2old (lua_State *L, GCObject **p) {
   GCSweeping::sweep2old(L, p);
 }
 
-
-/*
-** Wrapper for sweepgen - delegates to GCSweeping module.
-** See gc_sweeping.cpp for implementation.
-*/
-static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
-                            GCObject *limit, GCObject **pfirstold1,
-                            l_mem *paddedold) {
-  return GCSweeping::sweepgen(L, g, p, limit, pfirstold1, paddedold);
-}
-
-
 /*
 ** Correct a list of gray objects. Return a pointer to the last element
 ** left on the list, so that we can link another list to the end of
@@ -1089,8 +1047,7 @@ static void markold (global_State *g, GCObject *from, GCObject *to) {
   GCObject *p;
   for (p = from; p != to; p = p->getNext()) {
     if (getage(p) == GCAge::Old1) {
-      /* FIXME: Assertion fails after module integration - investigating */
-      /* lua_assert(!iswhite(p)); */
+      lua_assert(!iswhite(p));
       setage(p, GCAge::Old);  /* now they are old */
       if (isblack(p))
         reallymarkobject(g, p);
@@ -1162,23 +1119,23 @@ static void youngcollection (lua_State *L, global_State *g) {
 
   /* sweep nursery and get a pointer to its last live element */
   g->setGCState(GCState::SweepAllGC);
-  psurvival = sweepgen(L, g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
+  psurvival = GCSweeping::sweepgen(L, g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
   /* sweep 'survival' */
-  sweepgen(L, g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
+  GCSweeping::sweepgen(L, g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
   g->setReallyOld(g->getOld1());
   g->setOld1(*psurvival);  /* 'survival' survivals are old now */
   g->setSurvival(g->getAllGC());  /* all news are survivals */
 
   /* repeat for 'finobj' lists */
   dummy = NULL;  /* no 'firstold1' optimization for 'finobj' lists */
-  psurvival = sweepgen(L, g, g->getFinObjPtr(), g->getFinObjSur(), &dummy, &addedold1);
+  psurvival = GCSweeping::sweepgen(L, g, g->getFinObjPtr(), g->getFinObjSur(), &dummy, &addedold1);
   /* sweep 'survival' */
-  sweepgen(L, g, psurvival, g->getFinObjOld1(), &dummy, &addedold1);
+  GCSweeping::sweepgen(L, g, psurvival, g->getFinObjOld1(), &dummy, &addedold1);
   g->setFinObjROld(g->getFinObjOld1());
   g->setFinObjOld1(*psurvival);  /* 'survival' survivals are old now */
   g->setFinObjSur(g->getFinObj());  /* all news are survivals */
 
-  sweepgen(L, g, g->getToBeFnzPtr(), NULL, &dummy, &addedold1);
+  GCSweeping::sweepgen(L, g, g->getToBeFnzPtr(), NULL, &dummy, &addedold1);
 
   /* keep total number of added old1 bytes */
   g->setGCMarked(marked + addedold1);
@@ -1625,7 +1582,7 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     if (g->isSweepPhase()) {
       makewhite(g, this);  /* "sweep" object 'this' */
       if (g->getSweepGC() == &this->next)  /* should not remove 'sweepgc' object */
-        g->setSweepGC(sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
+        g->setSweepGC(GCSweeping::sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
     }
     else
       correctpointers(g, this);

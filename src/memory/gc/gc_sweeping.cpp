@@ -15,6 +15,8 @@
 #include "../lgc.h"
 #include "../../core/ldo.h"
 #include "../../objects/ltable.h"
+#include "../../objects/lfunc.h"
+#include "../../objects/lstring.h"
 #include "gc_marking.h"
 
 /*
@@ -46,6 +48,59 @@
 */
 static inline void set2gray(GCObject* x) noexcept {
     x->clearMarkedBits(maskcolors);
+}
+
+/*
+** Calculate the size (in bytes) of a GC object.
+** Used for generational GC accounting.
+*/
+static l_mem objsize(GCObject* o) {
+    lu_mem res;
+    switch (o->getType()) {
+        case LUA_VTABLE: {
+            res = luaH_size(gco2t(o));
+            break;
+        }
+        case LUA_VLCL: {
+            LClosure* cl = gco2lcl(o);
+            res = sizeLclosure(cl->getNumUpvalues());
+            break;
+        }
+        case LUA_VCCL: {
+            CClosure* cl = gco2ccl(o);
+            res = sizeCclosure(cl->getNumUpvalues());
+            break;
+        }
+        case LUA_VUSERDATA: {
+            Udata* u = gco2u(o);
+            res = sizeudata(u->getNumUserValues(), u->getLen());
+            break;
+        }
+        case LUA_VPROTO: {
+            res = gco2p(o)->memorySize();
+            break;
+        }
+        case LUA_VTHREAD: {
+            res = luaE_threadsize(gco2th(o));
+            break;
+        }
+        case LUA_VSHRSTR: {
+            TString* ts = gco2ts(o);
+            res = sizestrshr(cast_uint(ts->getShrlen()));
+            break;
+        }
+        case LUA_VLNGSTR: {
+            TString* ts = gco2ts(o);
+            res = luaS_sizelngstr(ts->getLnglen(), ts->getShrlen());
+            break;
+        }
+        case LUA_VUPVAL: {
+            res = sizeof(UpVal);
+            break;
+        }
+        default: res = 0; lua_assert(0);
+    }
+    return cast(l_mem, res);
 }
 
 /*
@@ -185,35 +240,33 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State* g, GCObject** p,
     l_mem addedold = 0;
     int white = g->getWhite();
     GCObject* curr;
-    GCObject** firstold1 = NULL;
 
     while ((curr = *p) != limit) {
-        lua_assert(!isold(curr) || getage(curr) == GCAge::Old1);
-
         if (iswhite(curr)) {  /* is 'curr' dead? */
-            lua_assert(isdead(g, curr) && getage(curr) != GCAge::Old1);
+            lua_assert(!isold(curr) && isdead(g, curr));
             *p = curr->getNext();  /* remove 'curr' from list */
             freeobj(L, curr);  /* erase 'curr' */
         }
         else {  /* correct mark and age */
             GCAge age = getage(curr);
-            GCAge newage = nextage[static_cast<int>(age)];
-
-            if (newage == GCAge::Old1 && firstold1 == NULL)
-                firstold1 = p;  /* first OLD1 object in the list */
-
-            if (age == GCAge::Old1)
-                addedold++;  /* will be OLD (not OLD1) after advancing age */
-
-            setage(curr, newage);
-
-            curr->setMarked(cast_byte((curr->getMarked() & ~(~0u << AGEBITS)) | white));
+            if (age == GCAge::New) {  /* new objects go back to white */
+                int marked = curr->getMarked() & ~maskgcbits;  /* erase GC bits */
+                curr->setMarked(cast_byte(marked | static_cast<lu_byte>(GCAge::Survival) | white));
+            }
+            else {  /* all other objects will be old, and so keep their color */
+                lua_assert(age != GCAge::Old1);  /* advanced in 'markold' */
+                setage(curr, nextage[static_cast<size_t>(age)]);
+                if (getage(curr) == GCAge::Old1) {
+                    addedold += objsize(curr);  /* bytes becoming old */
+                    if (*pfirstold1 == NULL)
+                        *pfirstold1 = curr;  /* first OLD1 object in the list */
+                }
+            }
             p = curr->getNextPtr();  /* go to next element */
         }
     }
 
-    *pfirstold1 = (firstold1 == NULL) ? NULL : *firstold1;
-    *paddedold = addedold;
+    *paddedold += addedold;
     return p;
 }
 
