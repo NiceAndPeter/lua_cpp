@@ -121,7 +121,7 @@ typedef struct ConsControl {
 
 inline UnOpr getunopr (int op) noexcept {
   switch (op) {
-    case TK_NOT: return UnOpr::OPR_NOT;
+    case static_cast<int>(RESERVED::TK_NOT): return UnOpr::OPR_NOT;
     case '-': return UnOpr::OPR_MINUS;
     case '~': return UnOpr::OPR_BNOT;
     case '#': return UnOpr::OPR_LEN;
@@ -138,21 +138,21 @@ inline BinOpr getbinopr (int op) noexcept {
     case '%': return BinOpr::OPR_MOD;
     case '^': return BinOpr::OPR_POW;
     case '/': return BinOpr::OPR_DIV;
-    case TK_IDIV: return BinOpr::OPR_IDIV;
+    case static_cast<int>(RESERVED::TK_IDIV): return BinOpr::OPR_IDIV;
     case '&': return BinOpr::OPR_BAND;
     case '|': return BinOpr::OPR_BOR;
     case '~': return BinOpr::OPR_BXOR;
-    case TK_SHL: return BinOpr::OPR_SHL;
-    case TK_SHR: return BinOpr::OPR_SHR;
-    case TK_CONCAT: return BinOpr::OPR_CONCAT;
-    case TK_NE: return BinOpr::OPR_NE;
-    case TK_EQ: return BinOpr::OPR_EQ;
+    case static_cast<int>(RESERVED::TK_SHL): return BinOpr::OPR_SHL;
+    case static_cast<int>(RESERVED::TK_SHR): return BinOpr::OPR_SHR;
+    case static_cast<int>(RESERVED::TK_CONCAT): return BinOpr::OPR_CONCAT;
+    case static_cast<int>(RESERVED::TK_NE): return BinOpr::OPR_NE;
+    case static_cast<int>(RESERVED::TK_EQ): return BinOpr::OPR_EQ;
     case '<': return BinOpr::OPR_LT;
-    case TK_LE: return BinOpr::OPR_LE;
+    case static_cast<int>(RESERVED::TK_LE): return BinOpr::OPR_LE;
     case '>': return BinOpr::OPR_GT;
-    case TK_GE: return BinOpr::OPR_GE;
-    case TK_AND: return BinOpr::OPR_AND;
-    case TK_OR: return BinOpr::OPR_OR;
+    case static_cast<int>(RESERVED::TK_GE): return BinOpr::OPR_GE;
+    case static_cast<int>(RESERVED::TK_AND): return BinOpr::OPR_AND;
+    case static_cast<int>(RESERVED::TK_OR): return BinOpr::OPR_OR;
     default: return BinOpr::OPR_NOBINOPR;
   }
 }
