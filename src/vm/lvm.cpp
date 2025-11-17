@@ -1043,7 +1043,7 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 
 
 /*
-** Register and constant access macros
+** Register and constant access functions (converted from macros to lambdas)
 **
 ** RA, RB, RC: Convert instruction field to stack index (StkId pointer)
 ** vRA, vRB, vRC: Get TValue* from stack index (s2v = stack-to-value)
@@ -1053,16 +1053,10 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 ** Example instruction format (iABC):
 **   OP_ADD A B C  means: R(A) := R(B) + R(C)
 **   OP_ADDK A B C means: R(A) := R(B) + K(C)  [if k bit set]
+**
+** NOTE: These have been converted to lambdas defined inside luaV_execute()
+** for better type safety and debuggability. See lines 1274-1301 for implementations.
 */
-#define RA(i)	(base+InstructionView(i).a())
-#define vRA(i)	s2v(RA(i))
-#define RB(i)	(base+InstructionView(i).b())
-#define vRB(i)	s2v(RB(i))
-#define KB(i)	(k+InstructionView(i).b())
-#define RC(i)	(base+InstructionView(i).c())
-#define vRC(i)	s2v(RC(i))
-#define KC(i)	(k+InstructionView(i).c())
-#define RKC(i)	((InstructionView(i).testk()) ? k + InstructionView(i).c() : s2v(base + InstructionView(i).c()))
 
 
 
@@ -1247,7 +1241,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
    * Note: User has explicitly allowed performance regression for this conversion.
    */
 
-  // Undefine macros to avoid naming conflicts
+  // Undefine operation macros to avoid naming conflicts
   #undef op_arithI
   #undef op_arithf_aux
   #undef op_arithf
@@ -1259,6 +1253,46 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   #undef op_bitwise
   #undef op_order
   #undef op_orderI
+
+  // Undefine register access macros to avoid naming conflicts
+  #undef RA
+  #undef vRA
+  #undef RB
+  #undef vRB
+  #undef KB
+  #undef RC
+  #undef vRC
+  #undef KC
+  #undef RKC
+
+  // Register access lambdas (defined before operation lambdas that use them)
+  auto RA = [&](Instruction i) -> StkId {
+    return base + InstructionView(i).a();
+  };
+  auto vRA = [&](Instruction i) -> TValue* {
+    return s2v(base + InstructionView(i).a());
+  };
+  [[maybe_unused]] auto RB = [&](Instruction i) -> StkId {
+    return base + InstructionView(i).b();
+  };
+  auto vRB = [&](Instruction i) -> TValue* {
+    return s2v(base + InstructionView(i).b());
+  };
+  auto KB = [&](Instruction i) -> TValue* {
+    return k + InstructionView(i).b();
+  };
+  [[maybe_unused]] auto RC = [&](Instruction i) -> StkId {
+    return base + InstructionView(i).c();
+  };
+  auto vRC = [&](Instruction i) -> TValue* {
+    return s2v(base + InstructionView(i).c());
+  };
+  auto KC = [&](Instruction i) -> TValue* {
+    return k + InstructionView(i).c();
+  };
+  auto RKC = [&](Instruction i) -> TValue* {
+    return InstructionView(i).testk() ? (k + InstructionView(i).c()) : s2v(base + InstructionView(i).c());
+  };
 
   // Lambda: Arithmetic with immediate operand
   auto op_arithI = [&](auto iop, auto fop, Instruction i) {
