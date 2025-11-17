@@ -132,10 +132,10 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
   StkId top = L->getTop().p;
   StkId func = top;
   const TValue *tm = luaT_gettmbyobj(L, obj, TM_CLOSE);
-  L->getStackSubsystem().setSlot(L, top++, tm);  /* will call metamethod... */
-  L->getStackSubsystem().setSlot(L, top++, obj);  /* with 'self' as the 1st argument */
+  L->getStackSubsystem().setSlot(top++, tm);  /* will call metamethod... */
+  L->getStackSubsystem().setSlot(top++, obj);  /* with 'self' as the 1st argument */
   if (err != NULL)  /* if there was an error... */
-    L->getStackSubsystem().setSlot(L, top++, err);  /* then error object will be 2nd argument */
+    L->getStackSubsystem().setSlot(top++, err);  /* then error object will be 2nd argument */
   L->getStackSubsystem().setTopPtr(top);  /* add function and arguments */
   if (yy)
     L->call( func, 0);
@@ -228,7 +228,7 @@ void luaF_closeupval (lua_State *L, StkId level) {
     TValue *slot = uv->getValueSlot();  /* new position for value */
     lua_assert(uv->getLevel() < L->getTop().p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
-    setobj(L, slot, uv->getVP());  /* move value to upvalue slot */
+    *slot = *uv->getVP();  /* move value to upvalue slot */
     uv->setVP(slot);  /* now current value lives here */
     if (!iswhite(uv)) {  /* neither white nor dead? */
       nw2black(uv);  /* closed upvalues cannot be gray */

@@ -245,10 +245,10 @@ public:
   */
 
   /* Assign to stack slot from TValue */
-  void setSlot(lua_State* L, StackValue* dest, const TValue* src) noexcept;
+  void setSlot(StackValue* dest, const TValue* src) noexcept;
 
   /* Copy between stack slots */
-  void copySlot(lua_State* L, StackValue* dest, StackValue* src) noexcept;
+  void copySlot(StackValue* dest, StackValue* src) noexcept;
 
   /* Set slot to nil */
   void setNil(StackValue* slot) noexcept;

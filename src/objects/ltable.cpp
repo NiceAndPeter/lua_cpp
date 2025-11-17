@@ -439,7 +439,7 @@ int luaH_next (lua_State *L, Table *t, StkId key) {
     if (!isempty(gval(gnode(t, i)))) {  /* a non-empty entry? */
       Node *n = gnode(t, i);
       n->getKey(L, s2v(key));
-      L->getStackSubsystem().setSlot(L, key + 1, gval(n));
+      L->getStackSubsystem().setSlot(key + 1, gval(n));
       return 1;
     }
   }
@@ -1006,7 +1006,7 @@ static int insertkey (Table *t, const TValue *key, TValue *value) {
   }
   mp->setKey(key);
   lua_assert(isempty(gval(mp)));
-  setobj2t(cast(lua_State *, 0), gval(mp), value);
+  *gval(mp) = *value;
   return 1;
 }
 
@@ -1066,7 +1066,7 @@ static int hashkeyisempty (Table *t, lua_Unsigned key) {
 
 static lu_byte finishnodeget (const TValue *val, TValue *res) {
   if (!ttisnil(val)) {
-    setobj(((lua_State*)NULL), res, val);
+    *res = *val;
   }
   return ttypetag(val);
 }
@@ -1102,7 +1102,7 @@ static int retpsetcode (Table *t, const TValue *slot) {
 
 static int finishnodeset (Table *t, const TValue *slot, TValue *val) {
   if (!ttisnil(slot)) {
-    setobj(((lua_State*)NULL), cast(TValue*, slot), val);
+    *cast(TValue*, slot) = *val;
     return HOK;  /* success */
   }
   else
@@ -1114,7 +1114,7 @@ static int rawfinishnodeset (const TValue *slot, TValue *val) {
   if (isabstkey(slot))
     return 0;  /* no slot with that key */
   else {
-    setobj(((lua_State*)NULL), cast(TValue*, slot), val);
+    *cast(TValue*, slot) = *val;
     return 1;  /* success */
   }
 }
@@ -1405,7 +1405,7 @@ int Table::psetInt(lua_Integer key, TValue* val) {
 int Table::psetShortStr(TString* key, TValue* val) {
   const TValue *slot = HgetShortStr(key);
   if (!ttisnil(slot)) {  /* key already has a value? (all too common) */
-    setobj(((lua_State*)NULL), cast(TValue*, slot), val);  /* update it */
+    *cast(TValue*, slot) = *val;  /* update it */
     return HOK;  /* done */
   }
   else if (checknoTM(getMetatable(), TM_NEWINDEX)) {  /* no metamethod? */
@@ -1482,7 +1482,7 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
     luaH_newkey(L, this, key, value);
   }
   else if (hres > 0) {  /* regular Node? */
-    setobj2t(L, gval(gnode(this, hres - HFIRSTNODE)), value);
+    *gval(gnode(this, hres - HFIRSTNODE)) = *value;
   }
   else {  /* array entry */
     hres = ~hres;  /* real index */
