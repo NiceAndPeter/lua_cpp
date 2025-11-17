@@ -745,26 +745,26 @@ static char *buildop (Proto *p, int pc, char *buff) {
     buff += sprintf(buff, "(%2d", lineinfo);
   buff += sprintf(buff, " - %4d) %4d - ", line, pc);
   switch (getOpMode(o)) {
-    case iABC:
+    case OpMode::iABC:
       sprintf(buff, "%-12s%4d %4d %4d%s", name,
               InstructionView(i).a(), InstructionView(i).b(), InstructionView(i).c(),
               InstructionView(i).k() ? " (k)" : "");
       break;
-    case ivABC:
+    case OpMode::ivABC:
       sprintf(buff, "%-12s%4d %4d %4d%s", name,
               InstructionView(i).a(), InstructionView(i).vb(), InstructionView(i).vc(),
               InstructionView(i).k() ? " (k)" : "");
       break;
-    case iABx:
+    case OpMode::iABx:
       sprintf(buff, "%-12s%4d %4d", name, InstructionView(i).a(), InstructionView(i).bx());
       break;
-    case iAsBx:
+    case OpMode::iAsBx:
       sprintf(buff, "%-12s%4d %4d", name, InstructionView(i).a(), InstructionView(i).sbx());
       break;
-    case iAx:
+    case OpMode::iAx:
       sprintf(buff, "%-12s%4d", name, InstructionView(i).ax());
       break;
-    case isJ:
+    case OpMode::isJ:
       sprintf(buff, "%-12s%4d", name, InstructionView(i).sj());
       break;
   }

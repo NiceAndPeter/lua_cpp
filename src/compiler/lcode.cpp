@@ -239,7 +239,7 @@ void FuncState::removelastinstruction() {
 */
 int FuncState::codeAsBx(OpCode o, int A, int Bc) {
   int b = Bc + OFFSET_sBx;
-  lua_assert(getOpMode(o) == iAsBx);
+  lua_assert(getOpMode(o) == OpMode::iAsBx);
   lua_assert(A <= MAXARG_A && b <= MAXARG_Bx);
   return code(CREATE_ABx(o, A, b));
 }
@@ -1100,14 +1100,14 @@ int FuncState::code(Instruction i) {
 
 int FuncState::codeABx(int o, int A, int Bx) {
   OpCode op = static_cast<OpCode>(o);
-  lua_assert(getOpMode(op) == iABx);
+  lua_assert(getOpMode(op) == OpMode::iABx);
   lua_assert(A <= MAXARG_A && Bx <= MAXARG_Bx);
   return code(CREATE_ABx(op, A, Bx));
 }
 
 int FuncState::codeABCk(int o, int A, int B, int C, int k) {
   OpCode op = static_cast<OpCode>(o);
-  lua_assert(getOpMode(op) == iABC);
+  lua_assert(getOpMode(op) == OpMode::iABC);
   lua_assert(A <= MAXARG_A && B <= MAXARG_B &&
              C <= MAXARG_C && (k & ~1) == 0);
   return code(CREATE_ABCk(op, A, B, C, k));
@@ -1115,7 +1115,7 @@ int FuncState::codeABCk(int o, int A, int B, int C, int k) {
 
 int FuncState::codevABCk(int o, int A, int B, int C, int k) {
   OpCode op = static_cast<OpCode>(o);
-  lua_assert(getOpMode(op) == ivABC);
+  lua_assert(getOpMode(op) == OpMode::ivABC);
   lua_assert(A <= MAXARG_A && B <= MAXARG_vB &&
              C <= MAXARG_vC && (k & ~1) == 0);
   return code(CREATE_vABCk(op, A, B, C, k));
@@ -1123,7 +1123,7 @@ int FuncState::codevABCk(int o, int A, int B, int C, int k) {
 
 int FuncState::codesJ(int o, int sj, int k) {
   int j = sj + OFFSET_sJ;
-  lua_assert(getOpMode(static_cast<OpCode>(o)) == isJ);
+  lua_assert(getOpMode(static_cast<OpCode>(o)) == OpMode::isJ);
   lua_assert(j <= MAXARG_sJ && (k & ~1) == 0);
   return code(CREATE_sJ(static_cast<OpCode>(o), j, k));
 }
