@@ -99,6 +99,7 @@ endif()
 set(LUA_CORE_SOURCES
     src/core/lapi.cpp
     src/core/ldo.cpp
+    src/core/lstack.cpp
     src/core/lstate.cpp
     src/core/ltm.cpp
     src/core/ldebug.cpp

@@ -294,7 +294,7 @@ int luaU_dump (lua_State *L, const Proto *f, lua_Writer w, void *data,
   DumpState D;
   D.h = luaH_new(L);  /* aux. table to keep strings already dumped */
   sethvalue2s(L, L->getTop().p, D.h);  /* anchor it */
-  L->getTop().p++;
+  L->getStackSubsystem().push();
   D.L = L;
   D.writer = w;
   D.offset = 0;

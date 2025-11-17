@@ -73,7 +73,7 @@ void luaV_concat (lua_State *L, int total) {
       for (n = 1; n < total && tostring(L, s2v(top - n - 1)); n++) {
         size_t l = tsslen(tsvalue(s2v(top - n - 1)));
         if (l_unlikely(l >= MAX_SIZE - sizeof(TString) - tl)) {
-          L->getTop().p = top - total;  /* pop strings to avoid wasting stack */
+          L->getStackSubsystem().setTopPtr(top - total);  /* pop strings to avoid wasting stack */
           luaG_runerror(L, "string length overflow");
         }
         tl += l;
@@ -90,7 +90,7 @@ void luaV_concat (lua_State *L, int total) {
       setsvalue2s(L, top - n, ts);  /* create result */
     }
     total -= n - 1;  /* got 'n' strings to create one new */
-    L->getTop().p -= n - 1;  /* popped 'n' strings and pushed one */
+    L->getStackSubsystem().popN(n - 1);  /* popped 'n' strings and pushed one */
   } while (total > 1);  /* repeat until only 1 result left */
 }
 

@@ -21,6 +21,7 @@ typedef void (*Pfunc) (lua_State *L, void *ud);
 #include "lobject.h"
 #include "ltm.h"
 #include "lzio.h"
+#include "lstack.h"
 
 
 /*
@@ -390,13 +391,10 @@ public:
 */
 class lua_State : public GCBase<lua_State> {
 private:
-  // Step 1: Stack fields (encapsulated)
-  StkIdRel top;  /* first free slot in the stack */
-  StkIdRel stack_last;  /* end of stack (last element + 1) */
-  StkIdRel stack;  /* stack base */
-  StkIdRel tbclist;  /* list of to-be-closed variables */
+  // Stack subsystem (SRP refactoring - Phase 93)
+  LuaStack stack_;  /* stack management subsystem */
 
-  // Step 2: CallInfo fields (encapsulated)
+  // CallInfo fields (encapsulated)
   CallInfo *ci;  /* call info for current function */
   CallInfo base_ci;  /* CallInfo for first level (C host) */
 
@@ -435,11 +433,12 @@ public:
     // Link to global state
     l_G = g;
 
-    // Stack fields - initialize to NULL, will be allocated by stack_init
-    stack.p = nullptr;
-    stack_last.p = nullptr;
-    tbclist.p = nullptr;
-    top.p = nullptr;
+    // Stack subsystem - initialize to nullptr, will be allocated by stack_init
+    // Note: stack_ members are initialized to nullptr by default (C++ guarantees zero-init for objects)
+    stack_.getStack().p = nullptr;
+    stack_.getStackLast().p = nullptr;
+    stack_.getTbclist().p = nullptr;
+    stack_.getTop().p = nullptr;
 
     // CallInfo fields
     ci = nullptr;
@@ -473,25 +472,29 @@ public:
     nCcalls = 0;
   }
 
-  // Step 1: Stack field accessors - return references to allow .p access
-  StkIdRel& getTop() noexcept { return top; }
-  const StkIdRel& getTop() const noexcept { return top; }
-  void setTop(StkIdRel t) noexcept { top = t; }
+  // Stack subsystem accessor
+  inline LuaStack& getStackSubsystem() noexcept { return stack_; }
+  inline const LuaStack& getStackSubsystem() const noexcept { return stack_; }
 
-  StkIdRel& getStack() noexcept { return stack; }
-  const StkIdRel& getStack() const noexcept { return stack; }
-  void setStack(StkIdRel s) noexcept { stack = s; }
+  // Stack field accessors - delegate to stack_ subsystem
+  inline StkIdRel& getTop() noexcept { return stack_.getTop(); }
+  inline const StkIdRel& getTop() const noexcept { return stack_.getTop(); }
+  inline void setTop(StkIdRel t) noexcept { stack_.setTop(t); }
 
-  StkIdRel& getStackLast() noexcept { return stack_last; }
-  const StkIdRel& getStackLast() const noexcept { return stack_last; }
-  void setStackLast(StkIdRel sl) noexcept { stack_last = sl; }
+  inline StkIdRel& getStack() noexcept { return stack_.getStack(); }
+  inline const StkIdRel& getStack() const noexcept { return stack_.getStack(); }
+  inline void setStack(StkIdRel s) noexcept { stack_.setStack(s); }
 
-  StkIdRel& getTbclist() noexcept { return tbclist; }
-  const StkIdRel& getTbclist() const noexcept { return tbclist; }
-  void setTbclist(StkIdRel tbc) noexcept { tbclist = tbc; }
+  inline StkIdRel& getStackLast() noexcept { return stack_.getStackLast(); }
+  inline const StkIdRel& getStackLast() const noexcept { return stack_.getStackLast(); }
+  inline void setStackLast(StkIdRel sl) noexcept { stack_.setStackLast(sl); }
 
-  // Stack size computation
-  int getStackSize() const noexcept { return cast_int(stack_last.p - stack.p); }
+  inline StkIdRel& getTbclist() noexcept { return stack_.getTbclist(); }
+  inline const StkIdRel& getTbclist() const noexcept { return stack_.getTbclist(); }
+  inline void setTbclist(StkIdRel tbc) noexcept { stack_.setTbclist(tbc); }
+
+  // Stack size computation - delegate to stack_ subsystem
+  inline int getStackSize() const noexcept { return stack_.getSize(); }
 
   // Step 2: CallInfo field accessors
   CallInfo* getCI() noexcept { return ci; }
@@ -584,23 +587,23 @@ public:
     hookcount = basehookcount;
   }
 
-  // Stack pointer save/restore (for reallocation safety)
-  ptrdiff_t saveStack(StkId pt) const noexcept {
-    return cast_charp(pt) - cast_charp(stack.p);
+  // Stack pointer save/restore (for reallocation safety) - delegate to stack_
+  inline ptrdiff_t saveStack(StkId pt) const noexcept {
+    return stack_.save(pt);
   }
 
-  StkId restoreStack(ptrdiff_t n) const noexcept {
-    return cast(StkId, cast_charp(stack.p) + n);
+  inline StkId restoreStack(ptrdiff_t n) const noexcept {
+    return stack_.restore(n);
   }
 
   // Existing accessors (kept for compatibility)
   CallInfo* getCallInfo() const noexcept { return ci; }  // Alias for getCI()
 
-  // Stack operation methods (implemented in ldo.cpp)
-  void inctop();
-  void shrinkStack();
-  int growStack(int n, int raiseerror);
-  int reallocStack(int newsize, int raiseerror);
+  // Stack operation methods - delegate to stack_ subsystem
+  inline void inctop() { stack_.incTop(this); }
+  inline void shrinkStack() { stack_.shrink(this); }
+  inline int growStack(int n, int raiseerror) { return stack_.grow(this, n, raiseerror); }
+  inline int reallocStack(int newsize, int raiseerror) { return stack_.realloc(this, newsize, raiseerror); }
 
   // Error handling methods (implemented in ldo.cpp)
   l_noret doThrow(TStatus errcode);

@@ -110,10 +110,10 @@ void lua_State::setErrorObj(TStatus errcode, StkId oldtop) {
   }
   else {
     lua_assert(errorstatus(errcode));  /* must be a real error */
-    lua_assert(!ttisnil(s2v(top.p - 1)));  /* with a non-nil object */
-    *s2v(oldtop) = *s2v(top.p - 1);  /* move it to 'oldtop' - use operator= */
+    lua_assert(!ttisnil(s2v(getTop().p - 1)));  /* with a non-nil object */
+    *s2v(oldtop) = *s2v(getTop().p - 1);  /* move it to 'oldtop' - use operator= */
   }
-  top.p = oldtop + 1;  /* top goes back to old top plus error object */
+  getStackSubsystem().setTopPtr(oldtop + 1);  /* top goes back to old top plus error object */
 }
 
 
@@ -152,7 +152,8 @@ l_noret lua_State::doThrow(TStatus errcode) {
     errcode = luaE_resetthread(this, errcode);  /* close all upvalues */
     setStatus(errcode);
     if (mainth->getErrorJmp()) {  /* main thread has a handler? */
-      *s2v(mainth->getTop().p++) = *s2v(top.p - 1);  /* copy error obj. - use operator= */
+      *s2v(mainth->getTop().p) = *s2v(getTop().p - 1);  /* copy error obj. - use operator= */
+      mainth->getStackSubsystem().push();
       mainth->doThrow(errcode);  /* re-throw in main thread */
     }
     else {  /* no handler at all; abort */
@@ -297,8 +298,8 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
 // Convert to lua_State method
 l_noret lua_State::errorError() {
   TString *msg = luaS_newliteral(this, "error in error handling");
-  setsvalue2s(this, top.p, msg);
-  top.p++;  /* assume EXTRA_STACK */
+  setsvalue2s(this, getTop().p, msg);
+  getStackSubsystem().push();  /* assume EXTRA_STACK */
   doThrow(LUA_ERRERR);
 }
 
@@ -317,105 +318,11 @@ l_noret lua_State::errorError() {
 #define LUAI_STRICT_ADDRESS	1
 #endif
 
-#if LUAI_STRICT_ADDRESS
 /*
-** Change all pointers to the stack into offsets.
-*/
-static void relstack (lua_State *L) {
-  CallInfo *ci;
-  UpVal *up;
-  L->getTop().offset = L->saveStack(L->getTop().p);
-  L->getTbclist().offset = L->saveStack(L->getTbclist().p);
-  for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
-    up->setOffset(L->saveStack(up->getLevel()));
-  for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
-    ci->topRef().offset = L->saveStack(ci->topRef().p);
-    ci->funcRef().offset = L->saveStack(ci->funcRef().p);
-  }
-}
-
-
-/*
-** Change back all offsets into pointers.
-*/
-static void correctstack (lua_State *L, StkId oldstack) {
-  CallInfo *ci;
-  UpVal *up;
-  UNUSED(oldstack);
-  L->getTop().p = L->restoreStack(L->getTop().offset);
-  L->getTbclist().p = L->restoreStack(L->getTbclist().offset);
-  for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
-    up->setVP(s2v(L->restoreStack(up->getOffset())));
-  for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
-    ci->topRef().p = L->restoreStack(ci->topRef().offset);
-    ci->funcRef().p = L->restoreStack(ci->funcRef().offset);
-    if (ci->isLua())
-      ci->getTrap() = 1;  /* signal to update 'trap' in 'luaV_execute' */
-  }
-}
-
-#else
-/*
-** Assume that it is fine to use an address after its deallocation,
-** as long as we do not dereference it.
+** relstack() and correctstack() moved to LuaStack class (lstack.cpp)
+** as relPointers() and correctPointers() methods
 */
 
-static void relstack (lua_State *L) { UNUSED(L); }  /* do nothing */
-
-
-/*
-** Correct pointers into 'oldstack' to point into 'L->getStack()'.
-*/
-static void correctstack (lua_State *L, StkId oldstack) {
-  CallInfo *ci;
-  UpVal *up;
-  StkId newstack = L->getStack().p;
-  if (oldstack == newstack)
-    return;
-  L->getTop().p = L->getTop().p - oldstack + newstack;
-  L->getTbclist().p = L->getTbclist().p - oldstack + newstack;
-  for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
-    up->setVP(s2v(up->getLevel() - oldstack + newstack));
-  for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
-    ci->topRef().p = ci->topRef().p - oldstack + newstack;
-    ci->funcRef().p = ci->funcRef().p - oldstack + newstack;
-    if (ci->isLua())
-      ci->getTrap() = 1;  /* signal to update 'trap' in 'luaV_execute' */
-  }
-}
-#endif
-
-
-// Removed luaD_reallocstack - now lua_State::reallocStack() method
-
-
-// Removed luaD_growstack - now lua_State::growStack() method
-
-
-/*
-** Compute how much of the stack is being used, by computing the
-** maximum top of all call frames in the stack and the current top.
-*/
-// Convert to private lua_State method
-int lua_State::stackInUse() {
-  CallInfo *ci_iter;
-  int res;
-  StkId lim = top.p;
-  for (ci_iter = getCI(); ci_iter != NULL; ci_iter = ci_iter->getPrevious()) {
-    if (lim < ci_iter->topRef().p) lim = ci_iter->topRef().p;
-  }
-  lua_assert(lim <= stack_last.p + EXTRA_STACK);
-  res = cast_int(lim - stack.p) + 1;  /* part of stack in use */
-  if (res < LUA_MINSTACK)
-    res = LUA_MINSTACK;  /* ensure a minimum size */
-  return res;
-}
-
-
-// Removed luaD_shrinkstack - now lua_State::shrinkStack() method
-
-
-// Removed luaD_inctop - now lua_State::inctop() method
 
 /* }================================================================== */
 
@@ -431,7 +338,7 @@ void lua_State::callHook(int event, int line,
   lua_Hook hook_func = getHook();
   if (hook_func && getAllowHook()) {  /* make sure there is a hook */
     CallInfo *ci_local = ci;
-    ptrdiff_t top_saved = this->saveStack(top.p);  /* preserve original 'top' */
+    ptrdiff_t top_saved = this->saveStack(getTop().p);  /* preserve original 'top' */
     ptrdiff_t ci_top = this->saveStack(ci_local->topRef().p);  /* idem for 'ci->getTop()' */
     lua_Debug ar;
     ar.event = event;
@@ -439,11 +346,11 @@ void lua_State::callHook(int event, int line,
     ar.i_ci = ci_local;
     transferinfo.ftransfer = ftransfer;
     transferinfo.ntransfer = ntransfer;
-    if (ci_local->isLua() && top.p < ci_local->topRef().p)
-      top.p = ci_local->topRef().p;  /* protect entire activation register */
+    if (ci_local->isLua() && getTop().p < ci_local->topRef().p)
+      getStackSubsystem().setTopPtr(ci_local->topRef().p);  /* protect entire activation register */
     luaD_checkstack(this, LUA_MINSTACK);  /* ensure minimum stack size */
-    if (ci_local->topRef().p < top.p + LUA_MINSTACK)
-      ci_local->topRef().p = top.p + LUA_MINSTACK;
+    if (ci_local->topRef().p < getTop().p + LUA_MINSTACK)
+      ci_local->topRef().p = getTop().p + LUA_MINSTACK;
     setAllowHook(0);  /* cannot call hooks inside a hook */
     ci_local->callStatusRef() |= CIST_HOOKED;
     lua_unlock(this);
@@ -452,7 +359,7 @@ void lua_State::callHook(int event, int line,
     lua_assert(!getAllowHook());
     setAllowHook(1);
     ci_local->topRef().p = this->restoreStack(ci_top);
-    top.p = this->restoreStack(top_saved);
+    getStackSubsystem().setTopPtr(this->restoreStack(top_saved));
     ci_local->callStatusRef() &= ~CIST_HOOKED;
   }
 }
@@ -485,7 +392,7 @@ void lua_State::hookCall(CallInfo *ci_arg) {
 // Convert to private lua_State method
 void lua_State::retHook(CallInfo *ci_arg, int nres) {
   if (getHookMask() & LUA_MASKRET) {  /* is return hook on? */
-    StkId firstres = top.p - nres;  /* index of first result */
+    StkId firstres = getTop().p - nres;  /* index of first result */
     int delta = 0;  /* correction for vararg functions */
     int ftransfer;
     if (ci_arg->isLua()) {
@@ -519,9 +426,9 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
   tm = luaT_gettmbyobj(this, s2v(func), TM_CALL);
   if (l_unlikely(ttisnil(tm)))  /* no metamethod? */
     luaG_callerror(this, s2v(func));
-  for (p = top.p; p > func; p--)  /* open space for metamethod */
+  for (p = getTop().p; p > func; p--)  /* open space for metamethod */
     *s2v(p) = *s2v(p-1);  /* shift stack - use operator= */
-  top.p++;  /* stack space pre-allocated by the caller */
+  getStackSubsystem().push();  /* stack space pre-allocated by the caller */
   setobj2s(this, func, tm);  /* metamethod is the new function to be called */
   if ((status_val & MAX_CCMT) == MAX_CCMT)  /* is counter full? */
     luaG_runerror(this, "'__call' chain too long");
@@ -533,7 +440,7 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
 // Convert to private lua_State method
 void lua_State::genMoveResults(StkId res, int nres,
                                              int wanted) {
-  StkId firstresult = top.p - nres;  /* index of first result */
+  StkId firstresult = getTop().p - nres;  /* index of first result */
   int i;
   if (nres > wanted)  /* extra results? */
     nres = wanted;  /* don't need them */
@@ -541,7 +448,7 @@ void lua_State::genMoveResults(StkId res, int nres,
     *s2v(res + i) = *s2v(firstresult + i);  /* use operator= */
   for (; i < wanted; i++)  /* complete wanted number of results */
     setnilvalue(s2v(res + i));
-  top.p = res + wanted;  /* top points after the last result */
+  getStackSubsystem().setTopPtr(res + wanted);  /* top points after the last result */
 }
 
 
@@ -557,14 +464,14 @@ void lua_State::moveResults(StkId res, int nres,
                                           l_uint32 fwanted) {
   switch (fwanted) {  /* handle typical cases separately */
     case 0 + 1:  /* no values needed */
-      top.p = res;
+      getStackSubsystem().setTopPtr(res);
       return;
     case 1 + 1:  /* one value needed */
       if (nres == 0)   /* no results? */
         setnilvalue(s2v(res));  /* adjust with nil */
       else  /* at least one result */
-        *s2v(res) = *s2v(top.p - nres);  /* move it to proper place - use operator= */
-      top.p = res + 1;
+        *s2v(res) = *s2v(getTop().p - nres);  /* move it to proper place - use operator= */
+      getStackSubsystem().setTopPtr(res + 1);
       return;
     case LUA_MULTRET + 1:
       genMoveResults( res, nres, nres);  /* we want all results */
@@ -645,10 +552,10 @@ int lua_State::preCallC(StkId func, unsigned status_val,
   CallInfo *ci_new;
   checkstackp(this, LUA_MINSTACK, func);  /* ensure minimum stack size */
   ci_new = setCI(prepareCallInfo(func, status_val | CIST_C,
-                               top.p + LUA_MINSTACK));
-  lua_assert(ci_new->topRef().p <= stack_last.p);
+                               getTop().p + LUA_MINSTACK));
+  lua_assert(ci_new->topRef().p <= getStackLast().p);
   if (l_unlikely(hookmask & LUA_MASKCALL)) {
-    int narg = cast_int(top.p - func) - 1;
+    int narg = cast_int(getTop().p - func) - 1;
     callHook(LUA_HOOKCALL, -1, 1, narg);
   }
   lua_unlock(this);
@@ -689,10 +596,10 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
       for (; narg1 <= nfixparams; narg1++)
         setnilvalue(s2v(func + narg1));  /* complete missing arguments */
       ci_arg->topRef().p = func + 1 + fsize;  /* top for new function */
-      lua_assert(ci_arg->topRef().p <= stack_last.p);
+      lua_assert(ci_arg->topRef().p <= getStackLast().p);
       ci_arg->setSavedPC(p->getCode());  /* starting point */
       ci_arg->callStatusRef() |= CIST_TAIL;
-      top.p = func + narg1;  /* set top */
+      getStackSubsystem().setTopPtr(func + narg1);  /* set top */
       return -1;
     }
     default: {  /* not a function */
@@ -728,15 +635,17 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
     case LUA_VLCL: {  /* Lua function */
       CallInfo *ci_new;
       Proto *p = clLvalue(s2v(func))->getProto();
-      int narg = cast_int(top.p - func) - 1;  /* number of real arguments */
+      int narg = cast_int(getTop().p - func) - 1;  /* number of real arguments */
       int nfixparams = p->getNumParams();
       int fsize = p->getMaxStackSize();  /* frame size */
       checkstackp(this, fsize, func);
       ci_new = setCI(prepareCallInfo(func, status_val, func + 1 + fsize));
       ci_new->setSavedPC(p->getCode());  /* starting point */
-      for (; narg < nfixparams; narg++)
-        setnilvalue(s2v(top.p++));  /* complete missing arguments */
-      lua_assert(ci_new->topRef().p <= stack_last.p);
+      for (; narg < nfixparams; narg++) {
+        setnilvalue(s2v(getTop().p));  /* complete missing arguments */
+        getStackSubsystem().push();
+      }
+      lua_assert(ci_new->topRef().p <= getStackLast().p);
       return ci_new;
     }
     default: {  /* not a function */
@@ -915,7 +824,7 @@ CallInfo* lua_State::findPCall() {
 */
 static int resume_error (lua_State *L, const char *msg, int narg) {
   api_checkpop(L, narg);
-  L->getTop().p -= narg;  /* remove args from the stack */
+  L->getStackSubsystem().popN(narg);  /* remove args from the stack */
   setsvalue2s(L, L->getTop().p, luaS_new(L, msg));  /* push error message */
   api_incr_top(L);
   lua_unlock(L);
@@ -944,7 +853,7 @@ static void resume (lua_State *L, void *ud) {
          executed yet */
       lua_assert(ci->getCallStatus() & CIST_HOOKYIELD);
       (*ci->getSavedPCPtr())--;
-      L->getTop().p = firstArg;  /* discard arguments */
+      L->getStackSubsystem().setTopPtr(firstArg);  /* discard arguments */
       luaV_execute(L, ci);  /* just continue running Lua code */
     }
     else {  /* 'common' yield */
@@ -1174,7 +1083,7 @@ TStatus lua_State::protectedParser(ZIO *z, const char *name,
   p.z = z; p.name = name; p.mode = mode;
   /* Dyndata (gt, label, actvar) auto-initialized via LuaVector - no manual setup */
   luaZ_initbuffer(this, &p.buff);
-  status_result = pCall(f_parser, &p, this->saveStack(top.p), getErrFunc());
+  status_result = pCall(f_parser, &p, this->saveStack(getTop().p), getErrFunc());
   luaZ_freebuffer(this, &p.buff);
   /* Dyndata auto-cleaned via RAII - no manual free needed */
   decnny(this);
@@ -1183,80 +1092,8 @@ TStatus lua_State::protectedParser(ZIO *z, const char *name,
 
 
 /*
-** lua_State method implementations
+** Stack operation methods moved to LuaStack class (lstack.cpp)
+** lua_State now delegates to stack_ subsystem via inline methods
 */
-void lua_State::inctop() {
-  top.p++;
-  luaD_checkstack(this, 1);
-}
-
-void lua_State::shrinkStack() {
-  int inuse = stackInUse();
-  int max = (inuse > MAXSTACK / 3) ? MAXSTACK : inuse * 3;
-  /* if thread is currently not handling a stack overflow and its
-     size is larger than maximum "reasonable" size, shrink it */
-  if (inuse <= MAXSTACK && getStackSize() > max) {
-    int nsize = (inuse > MAXSTACK / 2) ? MAXSTACK : inuse * 2;
-    reallocStack(nsize, 0);  /* ok if that fails */
-  }
-  else  /* don't change stack */
-    condmovestack(this,(void)0,(void)0);  /* (change only for debugging) */
-  luaE_shrinkCI(this);  /* shrink CI list */
-}
-
-int lua_State::growStack(int n, int raiseerror) {
-  int size = getStackSize();
-  if (l_unlikely(size > MAXSTACK)) {
-    /* if stack is larger than maximum, thread is already using the
-       extra space reserved for errors, that is, thread is handling
-       a stack error; cannot grow further than that. */
-    lua_assert(getStackSize() == ERRORSTACKSIZE);
-    if (raiseerror)
-      errorError();  /* stack error inside message handler */
-    return 0;  /* if not 'raiseerror', just signal it */
-  }
-  else if (n < MAXSTACK) {  /* avoids arithmetic overflows */
-    int newsize = size + (size >> 1);  /* tentative new size (size * 1.5) */
-    int needed = cast_int(top.p - stack.p) + n;
-    if (newsize > MAXSTACK)  /* cannot cross the limit */
-      newsize = MAXSTACK;
-    if (newsize < needed)  /* but must respect what was asked for */
-      newsize = needed;
-    if (l_likely(newsize <= MAXSTACK))
-      return reallocStack(newsize, raiseerror);
-  }
-  /* else stack overflow */
-  /* add extra size to be able to handle the error message */
-  reallocStack(ERRORSTACKSIZE, raiseerror);
-  if (raiseerror)
-    luaG_runerror(this, "stack overflow");
-  return 0;
-}
-
-int lua_State::reallocStack(int newsize, int raiseerror) {
-  int oldsize = getStackSize();
-  int i;
-  StkId newstack;
-  StkId oldstack = stack.p;
-  lu_byte oldgcstop = G(this)->getGCStopEm();
-  lua_assert(newsize <= MAXSTACK || newsize == ERRORSTACKSIZE);
-  relstack(this);  /* change pointers to offsets */
-  G(this)->setGCStopEm(1);  /* stop emergency collection */
-  newstack = luaM_reallocvector(this, oldstack, oldsize + EXTRA_STACK,
-                                   newsize + EXTRA_STACK, StackValue);
-  G(this)->setGCStopEm(oldgcstop);  /* restore emergency collection */
-  if (l_unlikely(newstack == NULL)) {  /* reallocation failed? */
-    correctstack(this, oldstack);  /* change offsets back to pointers */
-    if (raiseerror)
-      luaM_error(this);
-    else return 0;  /* do not raise an error */
-  }
-  stack.p = newstack;
-  correctstack(this, oldstack);  /* change offsets back to pointers */
-  stack_last.p = stack.p + newsize;
-  for (i = oldsize + EXTRA_STACK; i < newsize + EXTRA_STACK; i++)
-    setnilvalue(s2v(newstack + i)); /* erase new segment */
-  return 1;
-}
 
 

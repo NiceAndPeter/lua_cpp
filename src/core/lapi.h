@@ -21,9 +21,29 @@
 
 
 
-/* Increments 'L->getTop().p', checking for stack overflows */
-#define api_incr_top(L)  \
-    (L->getTop().p++, api_check(L, L->getTop().p <= L->getCI()->topRef().p, "stack overflow"))
+/*
+** ============================================================
+** API STACK OPERATIONS (Phase 94.3)
+** ============================================================
+** Inline functions replacing former macros, now using LuaStack methods.
+*/
+
+/* Increment top with overflow check (replaces api_incr_top macro) */
+inline void api_incr_top(lua_State* L) noexcept {
+  L->getStackSubsystem().pushChecked(L->getCI()->topRef().p);
+}
+
+/* Check if stack has at least n elements (replaces api_checknelems macro) */
+inline void api_checknelems(lua_State* L, int n) noexcept {
+  api_check(L, L->getStackSubsystem().checkHasElements(L->getCI(), n),
+            "not enough elements in the stack");
+}
+
+/* Check if n elements can be popped (replaces api_checkpop macro) */
+inline void api_checkpop(lua_State* L, int n) noexcept {
+  api_check(L, L->getStackSubsystem().checkCanPop(L->getCI(), n),
+            "not enough free elements in the stack");
+}
 
 
 /*
@@ -48,21 +68,5 @@ inline void adjustresults(lua_State* L, int nres) noexcept {
 		L->getCI()->topRef().p = L->getTop().p;
 	}
 }
-
-
-/* Ensure the stack has at least 'n' elements */
-#define api_checknelems(L,n) \
-       api_check(L, (n) < (L->getTop().p - L->getCI()->funcRef().p), \
-                         "not enough elements in the stack")
-
-
-/* Ensure the stack has at least 'n' elements to be popped. (Some
-** functions only update a slot after checking it for popping, but that
-** is only an optimization for a pop followed by a push.)
-*/
-#define api_checkpop(L,n) \
-	api_check(L, (n) < L->getTop().p - L->getCI()->funcRef().p &&  \
-                     L->getTbclist().p < L->getTop().p - (n), \
-			  "not enough free elements in the stack")
 
 #endif

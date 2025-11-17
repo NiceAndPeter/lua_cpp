@@ -524,7 +524,7 @@ static void pushbuff (lua_State *L, void *ud) {
     default: {  /* no errors, but it can raise one creating the new string */
       TString *ts = luaS_newlstr(L, buff->b, buff->blen);
       setsvalue2s(L, L->getTop().p, ts);
-      L->getTop().p++;
+      L->getStackSubsystem().push();
     }
   }
 }

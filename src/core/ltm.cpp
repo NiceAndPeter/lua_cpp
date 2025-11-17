@@ -107,7 +107,7 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func + 1, p1);  /* 1st argument */
   setobj2s(L, func + 2, p2);  /* 2nd argument */
   setobj2s(L, func + 3, p3);  /* 3rd argument */
-  L->getTop().p = func + 4;
+  L->getStackSubsystem().setTopPtr(func + 4);
   /* metamethod may yield only when called from Lua code */
   if (L->getCI()->isLuaCode())
     L->call( func, 0);
@@ -123,7 +123,7 @@ lu_byte luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
   setobj2s(L, func, f);  /* push function (assume EXTRA_STACK) */
   setobj2s(L, func + 1, p1);  /* 1st argument */
   setobj2s(L, func + 2, p2);  /* 2nd argument */
-  L->getTop().p += 3;
+  L->getStackSubsystem().adjust(3);
   /* metamethod may yield only when called from Lua code */
   if (L->getCI()->isLuaCode())
     L->call( func, 1);
@@ -232,10 +232,12 @@ void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
   ci->setExtraArgs(nextra);
   luaD_checkstack(L, p->getMaxStackSize() + 1);
   /* copy function to the top of the stack */
-  *s2v(L->getTop().p++) = *s2v(ci->funcRef().p);  /* use operator= */
+  *s2v(L->getTop().p) = *s2v(ci->funcRef().p);  /* use operator= */
+  L->getStackSubsystem().push();
   /* move fixed parameters to the top of the stack */
   for (i = 1; i <= nfixparams; i++) {
-    *s2v(L->getTop().p++) = *s2v(ci->funcRef().p + i);  /* use operator= */
+    *s2v(L->getTop().p) = *s2v(ci->funcRef().p + i);  /* use operator= */
+    L->getStackSubsystem().push();
     setnilvalue(s2v(ci->funcRef().p + i));  /* erase original parameter (for GC) */
   }
   ci->funcRef().p += actual + 1;
@@ -250,7 +252,7 @@ void luaT_getvarargs (lua_State *L, CallInfo *ci, StkId where, int wanted) {
   if (wanted < 0) {
     wanted = nextra;  /* get all extra arguments available */
     checkstackp(L, nextra, where);  /* ensure stack space */
-    L->getTop().p = where + nextra;  /* next instruction will need top */
+    L->getStackSubsystem().setTopPtr(where + nextra);  /* next instruction will need top */
   }
   for (i = 0; i < wanted && i < nextra; i++)
     *s2v(where + i) = *s2v(ci->funcRef().p - nextra + i);  /* use operator= */

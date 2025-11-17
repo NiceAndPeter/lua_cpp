@@ -427,7 +427,7 @@ LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
   if (cl->getNumUpvalues() != cl->getProto()->getUpvaluesSize())
     error(&S, "corrupted chunk");
   luai_verifycode(L, cl->getProto());
-  L->getTop().p--;  /* pop table */
+  L->getStackSubsystem().pop();  /* pop table */
   return cl;
 }
 

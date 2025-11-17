@@ -444,14 +444,21 @@ inline void setobj(lua_State* L, TValue* obj1, const TValue* obj2) noexcept {
 	lua_assert(!isnonstrictnil(obj1));
 }
 
-/* from stack to stack */
+/*
+** ============================================================
+** STACK ASSIGNMENT OPERATIONS (Phase 94.5)
+** ============================================================
+** These functions now delegate to LuaStack methods for centralization.
+*/
+
+/* from stack to stack (replaces old setobjs2s) */
 inline void setobjs2s(lua_State* L, StackValue* o1, StackValue* o2) noexcept {
-	setobj(L, s2v(o1), s2v(o2));
+	L->getStackSubsystem().copySlot(L, o1, o2);
 }
 
-/* to stack (not from same stack) */
+/* to stack (not from same stack) (replaces old setobj2s) */
 inline void setobj2s(lua_State* L, StackValue* o1, const TValue* o2) noexcept {
-	setobj(L, s2v(o1), o2);
+	L->getStackSubsystem().setSlot(L, o1, o2);
 }
 
 /*

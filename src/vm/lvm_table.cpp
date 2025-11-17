@@ -111,9 +111,9 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       tm = fasttm(L, h->getMetatable(), TM_NEWINDEX);  /* get metamethod */
       if (tm == NULL) {  /* no metamethod? */
         sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */
-        L->getTop().p++;  /* assume EXTRA_STACK */
+        L->getStackSubsystem().push();  /* assume EXTRA_STACK */
         luaH_finishset(L, h, key, val, hres);  /* set new value */
-        L->getTop().p--;
+        L->getStackSubsystem().pop();
         invalidateTMcache(h);
         luaC_barrierback(L, obj2gco(h), val);
         return;

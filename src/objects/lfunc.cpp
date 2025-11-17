@@ -136,7 +136,7 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
   setobj2s(L, top++, obj);  /* with 'self' as the 1st argument */
   if (err != NULL)  /* if there was an error... */
     setobj2s(L, top++, err);  /* then error object will be 2nd argument */
-  L->getTop().p = top;  /* add function and arguments */
+  L->getStackSubsystem().setTopPtr(top);  /* add function and arguments */
   if (yy)
     L->call( func, 0);
   else
@@ -172,7 +172,7 @@ static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
   TValue *errobj;
   switch (status) {
     case LUA_OK:
-      L->getTop().p = level + 1;  /* call will be at this level */
+      L->getStackSubsystem().setTopPtr(level + 1);  /* call will be at this level */
       /* FALLTHROUGH */
     case CLOSEKTOP:  /* don't need to change top */
       errobj = NULL;  /* no error object */
