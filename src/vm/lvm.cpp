@@ -1110,36 +1110,6 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 
 
 /*
-** Protect code that, in general, can raise errors, reallocate the
-** stack, and change the hooks.
-**
-** Usage pattern: Protect(operation_that_might_error());
-**
-** This macro:
-** 1. Saves VM state (pc and top) before the operation
-** 2. Executes the operation (which may throw or trigger GC)
-** 3. Updates trap after operation (in case GC changed hook state or resized stack)
-**
-** CRITICAL for operations like:
-** - Metamethod calls (can throw Lua errors)
-** - Table operations that allocate (can trigger GC, which can call __gc, which can throw)
-** - String operations (can allocate and trigger GC)
-*/
-#define Protect(exp)  (savestate(L,ci), (exp), updatetrap(ci))
-
-/* special version that does not change the top */
-#define ProtectNT(exp)  (savepc(ci), (exp), updatetrap(ci))
-
-/*
-** Protect code that can only raise errors. (That is, it cannot change
-** the stack or hooks.)
-**
-** Lighter-weight than Protect() - doesn't need to update trap since
-** the operation cannot trigger GC or change hooks.
-*/
-#define halfProtect(exp)  (savestate(L,ci), (exp))
-
-/*
 ** function executed during Lua functions at points where the
 ** function can yield.
 */
@@ -1170,34 +1140,6 @@ inline void luai_threadyield(lua_State* L) noexcept {
                          updatetrap(ci)); \
            luai_threadyield(L); }
 
-
-/*
-** Fetch an instruction and prepare its execution.
-**
-** This is called at the top of each iteration of the main VM loop.
-**
-** TRAP MECHANISM: If trap is set (non-zero), we need to handle:
-** - Debug hooks (line hooks, call hooks, return hooks)
-** - Stack reallocation (if another coroutine resized the stack)
-**
-** The 'l_unlikely' hint tells the compiler this branch is rarely taken,
-** allowing better code layout (hot path stays in instruction cache).
-**
-** PERFORMANCE: In the common case (no trap), this compiles to just:
-**   test trap, trap
-**   jnz slow_path
-**   mov i, [pc]
-**   inc pc
-**
-** This is executed billions of times, so every instruction matters.
-*/
-#define vmfetch()	{ \
-  if (l_unlikely(trap)) {  /* stack reallocation or hooks? */ \
-    trap = luaG_traceexec(L, pc);  /* handle hooks */ \
-    updatebase(ci);  /* correct stack */ \
-  } \
-  i = *(pc++); \
-}
 
 #define vmdispatch(o)	switch(o)
 #define vmcase(l)	case l:
