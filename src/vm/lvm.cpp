@@ -681,9 +681,13 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
 }
 
 
-/* macro used by 'luaV_concat' to ensure that element at 'o' is a string */
-#define tostring(L,o)  \
-	(ttisstring(o) || (cvt2str(o) && (luaO_tostring(L, o), 1)))
+/* Function to ensure that element at 'o' is a string (converts if possible) */
+inline bool tostring(lua_State* L, TValue* o) {
+	if (ttisstring(o)) return true;
+	if (!cvt2str(o)) return false;
+	luaO_tostring(L, o);
+	return true;
+}
 
 inline bool isemptystr(const TValue* o) noexcept {
 	return ttisshrstring(o) && tsvalue(o)->length() == 0;
