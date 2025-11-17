@@ -178,9 +178,9 @@ LUA_API void lua_closeslot (lua_State *L, int idx) {
 static void reverse (lua_State *L, StkId from, StkId to) {
   for (; from < to; from++, to--) {
     TValue temp;
-    setobj(L, &temp, s2v(from));
+    temp = *s2v(from);
     *s2v(from) = *s2v(to);  /* swap - use operator= */
-    L->getStackSubsystem().setSlot(L, to, &temp);
+    L->getStackSubsystem().setSlot(to, &temp);
   }
 }
 
@@ -210,7 +210,7 @@ LUA_API void lua_copy (lua_State *L, int fromidx, int toidx) {
   fr = L->getStackSubsystem().indexToValue(L, fromidx);
   to = L->getStackSubsystem().indexToValue(L, toidx);
   api_check(L, isvalid(L, to), "invalid index");
-  setobj(L, to, fr);
+  *to = *fr;
   if (isupvalue(toidx))  /* function upvalue? */
     luaC_barrier(L, clCvalue(s2v(L->getCI()->funcRef().p)), fr);
   /* LUA_REGISTRYINDEX does not need gc barrier
@@ -221,7 +221,7 @@ LUA_API void lua_copy (lua_State *L, int fromidx, int toidx) {
 
 LUA_API void lua_pushvalue (lua_State *L, int idx) {
   lua_lock(L);
-  L->getStackSubsystem().setSlot(L, L->getTop().p, L->getStackSubsystem().indexToValue(L, idx));
+  L->getStackSubsystem().setSlot(L->getTop().p, L->getStackSubsystem().indexToValue(L, idx));
   api_incr_top(L);
   lua_unlock(L);
 }
@@ -574,7 +574,7 @@ LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
     cl = CClosure::create(L, n);
     cl->setFunction(fn);
     for (i = 0; i < n; i++) {
-      setobj2n(L, cl->getUpvalue(i), s2v(L->getTop().p - n + i));
+      *cl->getUpvalue(i) = *s2v(L->getTop().p - n + i);
       /* does not need barrier because closure is white */
       lua_assert(iswhite(cl));
     }
@@ -794,7 +794,7 @@ LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
     t = LUA_TNONE;
   }
   else {
-    L->getStackSubsystem().setSlot(L, L->getTop().p, &uvalue(o)->getUserValue(n - 1)->uv);
+    L->getStackSubsystem().setSlot(L->getTop().p, &uvalue(o)->getUserValue(n - 1)->uv);
     t = ttype(s2v(L->getTop().p));
   }
   api_incr_top(L);
@@ -965,7 +965,7 @@ LUA_API int lua_setiuservalue (lua_State *L, int idx, int n) {
   if (!(cast_uint(n) - 1u < cast_uint(uvalue(o)->getNumUserValues())))
     res = 0;  /* 'n' not in [1, uvalue(o)->getNumUserValues()] */
   else {
-    setobj(L, &uvalue(o)->getUserValue(n - 1)->uv, s2v(L->getTop().p - 1));
+    uvalue(o)->getUserValue(n - 1)->uv = *s2v(L->getTop().p - 1);
     luaC_barrierback(L, gcvalue(o), s2v(L->getTop().p - 1));
     res = 1;
   }
@@ -1085,7 +1085,7 @@ LUA_API int lua_load (lua_State *L, lua_Reader reader, void *data,
       TValue gt;
       getGlobalTable(L, &gt);
       /* set global table as 1st upvalue of 'f' (may be LUA_ENV) */
-      setobj(L, f->getUpval(0)->getVP(), &gt);
+      *f->getUpval(0)->getVP() = gt;
       luaC_barrier(L, f->getUpval(0), &gt);
     }
   }
@@ -1350,7 +1350,7 @@ LUA_API const char *lua_getupvalue (lua_State *L, int funcindex, int n) {
   lua_lock(L);
   name = aux_upvalue(L->getStackSubsystem().indexToValue(L,funcindex), n, &val, NULL);
   if (name) {
-    L->getStackSubsystem().setSlot(L, L->getTop().p, val);
+    L->getStackSubsystem().setSlot(L->getTop().p, val);
     api_incr_top(L);
   }
   lua_unlock(L);
@@ -1369,7 +1369,7 @@ LUA_API const char *lua_setupvalue (lua_State *L, int funcindex, int n) {
   name = aux_upvalue(fi, n, &val, &owner);
   if (name) {
     L->getStackSubsystem().pop();
-    setobj(L, val, s2v(L->getTop().p));
+    *val = *s2v(L->getTop().p);
     luaC_barrier(L, owner, val);
   }
   lua_unlock(L);

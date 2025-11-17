@@ -321,7 +321,7 @@ int FuncState::addk(Proto *proto, TValue *v) {
   luaM_growvector(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
   while (oldsize < proto->getConstantsSize())
     setnilvalue(&proto->getConstants()[oldsize++]);
-  setobj(L, &proto->getConstants()[k], v);
+  proto->getConstants()[k] = *v;
   incrementNK();
   luaC_barrier(L, proto, v);
   return k;
@@ -1146,7 +1146,7 @@ int FuncState::exp2const(const expdesc *e, TValue *v) {
       return 1;
     }
     case VCONST: {
-      setobj(getLexState()->getLuaState(), v, const2val(e));
+      *v = *const2val(e);
       return 1;
     }
     default: return tonumeral(e, v);

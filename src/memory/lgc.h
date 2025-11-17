@@ -448,18 +448,9 @@ inline void* Table::operator new(size_t size, lua_State* L, lu_byte tt) {
 ** ===================================================================
 */
 
-/* Main function to copy values (from 'obj2' to 'obj1') */
-inline void setobj(lua_State* L, TValue* obj1, const TValue* obj2) noexcept {
-	obj1->valueField() = obj2->getValue();
-	settt_(obj1, obj2->getType());
-	checkliveness(L, obj1);
-	lua_assert(!isnonstrictnil(obj1));
-}
-
 /*
 ** TValue assignment operator (simple copy, no GC barriers)
 ** Use this for stack-to-stack assignments or when you know barriers aren't needed.
-** For assignments to GC objects that may need barriers, use setobj2t/setobj2n.
 */
 inline TValue& TValue::operator=(const TValue& other) noexcept {
 	value_ = other.value_;

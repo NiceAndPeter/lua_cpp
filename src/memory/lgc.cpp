@@ -1105,9 +1105,9 @@ static void GCTM (lua_State *L) {
     lu_byte oldgcstp  = g->getGCStp();
     g->setGCStp(oldgcstp | GCSTPGC);  /* avoid GC steps */
     L->setAllowHook(0);  /* stop debug hooks during GC metamethod */
-    L->getStackSubsystem().setSlot(L, L->getTop().p, tm);  /* push finalizer... */
+    L->getStackSubsystem().setSlot(L->getTop().p, tm);  /* push finalizer... */
     L->getStackSubsystem().push();
-    L->getStackSubsystem().setSlot(L, L->getTop().p, &v);  /* ... and its argument */
+    L->getStackSubsystem().setSlot(L->getTop().p, &v);  /* ... and its argument */
     L->getStackSubsystem().push();
     L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
     status = L->pCall( dothecall, NULL, L->saveStack(L->getTop().p - 2), 0);
