@@ -223,6 +223,18 @@ inline bool isdead(const global_State* g, const T* v) noexcept {
 	return isdeadm(otherwhite(g), reinterpret_cast<const GCObject*>(v)->getMarked());
 }
 
+/*
+** Check liveness of a value being manipulated by the program.
+** Any value being manipulated by the program either is non-collectable,
+** or the collectable object has the right tag and it is not dead.
+** The option 'L == NULL' allows this function to be used where L is not available.
+*/
+inline void checkliveness(lua_State* L, const TValue* obj) noexcept {
+	(void)L;
+	lua_longassert(!iscollectable(obj) ||
+		(righttt(obj) && (L == nullptr || !isdead(G(L), gcvalue(obj)))));
+}
+
 inline void changewhite(GCObject* x) noexcept {
 	x->setMarked(x->getMarked() ^ WHITEBITS);
 }
