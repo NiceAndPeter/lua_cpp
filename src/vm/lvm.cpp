@@ -1641,7 +1641,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (hres == HOK)
           luaV_finishfastset(L, upval, rc);
         else
-          Protect(luaV_finishset(L, upval, rb, rc, hres));
+          Protect([&]() { luaV_finishset(L, upval, rb, rc, hres); });
         vmbreak;
       }
       vmcase(OP_SETTABLE) {
@@ -1658,7 +1658,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
         else
-          Protect(luaV_finishset(L, s2v(ra), rb, rc, hres));
+          Protect([&]() { luaV_finishset(L, s2v(ra), rb, rc, hres); });
         vmbreak;
       }
       vmcase(OP_SETI) {
@@ -1672,7 +1672,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         else {
           TValue key;
           setivalue(&key, b);
-          Protect(luaV_finishset(L, s2v(ra), &key, rc, hres));
+          Protect([&]() { luaV_finishset(L, s2v(ra), &key, rc, hres); });
         }
         vmbreak;
       }
@@ -1686,7 +1686,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
         else
-          Protect(luaV_finishset(L, s2v(ra), rb, rc, hres));
+          Protect([&]() { luaV_finishset(L, s2v(ra), rb, rc, hres); });
         vmbreak;
       }
       vmcase(OP_NEWTABLE) {
