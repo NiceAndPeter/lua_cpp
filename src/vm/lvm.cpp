@@ -1276,6 +1276,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   #undef donextjump
   #undef docondjump
 
+  // Undefine exception handling macros to avoid naming conflicts
+  #undef Protect
+  #undef ProtectNT
+  #undef halfProtect
+  #undef checkGC
+
   // Register access lambdas (defined before operation lambdas that use them)
   auto RA = [&](Instruction i) -> StkId {
     return base + InstructionView(i).a();
@@ -1340,6 +1346,28 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       pc++;
     else
       donextjump(ci_arg);
+  };
+
+  // Exception handling lambdas
+  auto Protect = [&](auto&& expr) {
+    savestate(L, ci);
+    expr();
+    updatetrap(ci);
+  };
+  auto ProtectNT = [&](auto&& expr) {
+    savepc(ci);
+    expr();
+    updatetrap(ci);
+  };
+  auto halfProtect = [&](auto&& expr) {
+    savestate(L, ci);
+    expr();
+  };
+  auto checkGC = [&](lua_State* L_arg, StkId c_val) {
+    luaC_condGC(L_arg,
+                (savepc(ci), L_arg->getTop().p = c_val),
+                updatetrap(ci));
+    luai_threadyield(L_arg);
   };
 
   // Lambda: Arithmetic with immediate operand
