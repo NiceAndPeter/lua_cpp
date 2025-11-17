@@ -18,6 +18,10 @@
 #include "ldo.h"
 #include "lfunc.h"
 #include "lgc.h"
+#include "gc/gc_marking.h"
+#include "gc/gc_sweeping.h"
+#include "gc/gc_finalizer.h"
+#include "gc/gc_weak.h"
 #include "lmem.h"
 #include "lobject.h"
 #include "lstate.h"
@@ -277,23 +281,6 @@ static void clearkey (Node *n) {
 
 
 /*
-** tells whether a key or value can be cleared from a weak
-** table. Non-collectable objects are never removed from weak
-** tables. Strings behave as 'values', so are never removed too. for
-** other objects: if really collected, cannot keep them; for objects
-** being finalized, keep them in keys, but not in values
-*/
-static int iscleared (global_State *g, const GCObject *o) {
-  if (o == NULL) return 0;  /* non-collectable value */
-  else if (novariant(o->getType()) == LUA_TSTRING) {
-    markobject(g, o);  /* strings are 'values', so are never weak */
-    return 0;
-  }
-  else return iswhite(o);
-}
-
-
-/*
 ** Barrier that moves collector forward, that is, marks the white object
 ** 'v' being pointed by the black object 'o'.  In the generational
 ** mode, 'v' must also become old, if 'o' is old; however, it cannot
@@ -538,27 +525,12 @@ static void genlink (global_State *g, GCObject *o) {
 ** put it in 'weak' list, to be cleared; otherwise, call 'genlink'
 ** to check table age in generational mode.
 */
-static void traverseweakvalue (global_State *g, Table *h) {
-  Node *n, *limit = gnodelast(h);
-  /* if there is array part, assume it may have white values (it is not
-     worth traversing it now just to check) */
-  int hasclears = (h->arraySize() > 0);
-  for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
-    if (isempty(gval(n)))  /* entry is empty? */
-      clearkey(n);  /* clear its key */
-    else {
-      lua_assert(!n->isKeyNil());
-      markkey(g, n);
-      if (!hasclears && iscleared(g, gcvalueN(gval(n))))  /* a white value? */
-        hasclears = 1;  /* table will have to be cleared */
-    }
-  }
-  if (g->getGCState() == GCState::Propagate)
-    linkgclistTable(h, *g->getGrayAgainPtr());  /* must retraverse it in atomic phase */
-  else if (hasclears)
-      linkgclistTable(h, *g->getWeakPtr());  /* has to be cleared later */
-  else
-    genlink(g, obj2gco(h));
+/*
+** Wrapper for traverseweakvalue - delegates to GCWeak module.
+** See gc_weak.cpp for implementation.
+*/
+void traverseweakvalue (global_State *g, Table *h) {
+  GCWeak::traverseweakvalue(g, h);
 }
 
 
@@ -576,53 +548,6 @@ static int traversearray (global_State *g, Table *h) {
       reallymarkobject(g, o);
     }
   }
-  return marked;
-}
-
-
-/*
-** Traverse an ephemeron table and link it to proper list. Returns true
-** iff any object was marked during this traversal (which implies that
-** convergence has to continue). During propagation phase, keep table
-** in 'grayagain' list, to be visited again in the atomic phase. In
-** the atomic phase, if table has any white->white entry, it has to
-** be revisited during ephemeron convergence (as that key may turn
-** black). Otherwise, if it has any white key, table has to be cleared
-** (in the atomic phase). In generational mode, some tables
-** must be kept in some gray list for post-processing; this is done
-** by 'genlink'.
-*/
-static int traverseephemeron (global_State *g, Table *h, int inv) {
-  int hasclears = 0;  /* true if table has white keys */
-  int hasww = 0;  /* true if table has entry "white-key -> white-value" */
-  unsigned int i;
-  unsigned int nsize = h->nodeSize();
-  int marked = traversearray(g, h);  /* traverse array part */
-  /* traverse hash part; if 'inv', traverse descending
-     (see 'convergeephemerons') */
-  for (i = 0; i < nsize; i++) {
-    Node *n = inv ? gnode(h, nsize - 1 - i) : gnode(h, i);
-    if (isempty(gval(n)))  /* entry is empty? */
-      clearkey(n);  /* clear its key */
-    else if (iscleared(g, n->getKeyGCOrNull())) {  /* key is not marked (yet)? */
-      hasclears = 1;  /* table must be cleared */
-      if (valiswhite(gval(n)))  /* value not marked yet? */
-        hasww = 1;  /* white-white entry */
-    }
-    else if (valiswhite(gval(n))) {  /* value not marked yet? */
-      marked = 1;
-      reallymarkobject(g, gcvalue(gval(n)));  /* mark it now */
-    }
-  }
-  /* link table into proper list */
-  if (g->getGCState() == GCState::Propagate)
-    linkgclistTable(h, *g->getGrayAgainPtr());  /* must retraverse it in atomic phase */
-  else if (hasww)  /* table has white->white entries? */
-    linkgclistTable(h, *g->getEphemeronPtr());  /* have to propagate again */
-  else if (hasclears)  /* table has white keys? */
-    linkgclistTable(h, *g->getAllWeakPtr());  /* may have to clean white keys */
-  else
-    genlink(g, obj2gco(h));  /* check whether collector still needs to see it */
   return marked;
 }
 
@@ -646,22 +571,9 @@ static void traversestrongtable (global_State *g, Table *h) {
 /*
 ** (result & 1) iff weak values; (result & 2) iff weak keys.
 */
-static int getmode (global_State *g, Table *h) {
-  const TValue *mode = gfasttm(g, h->getMetatable(), TM_MODE);
-  if (mode == NULL || !ttisshrstring(mode))
-    return 0;  /* ignore non-(short)string modes */
-  else {
-    const char *smode = getshrstr(tsvalue(mode));
-    const char *weakkey = strchr(smode, 'k');
-    const char *weakvalue = strchr(smode, 'v');
-    return ((weakkey != NULL) << 1) | (weakvalue != NULL);
-  }
-}
-
-
 static l_mem traversetable (global_State *g, Table *h) {
   markobjectN(g, h->getMetatable());
-  switch (getmode(g, h)) {
+  switch (GCWeak::getmode(g, h)) {
     case 0:  /* not weak */
       traversestrongtable(g, h);
       break;
@@ -669,7 +581,7 @@ static l_mem traversetable (global_State *g, Table *h) {
       traverseweakvalue(g, h);
       break;
     case 2:  /* weak keys */
-      traverseephemeron(g, h, 0);
+      GCWeak::traverseephemeron(g, h, 0);
       break;
     case 3:  /* all weak; nothing to traverse */
       if (g->getGCState() == GCState::Propagate)
@@ -806,25 +718,12 @@ static void propagateall (global_State *g) {
 ** inverts the direction of the traversals, trying to speed up
 ** convergence on chains in the same table.
 */
+/*
+** Wrapper for convergeephemerons - delegates to GCWeak module.
+** See gc_weak.cpp for implementation.
+*/
 static void convergeephemerons (global_State *g) {
-  int changed;
-  int dir = 0;
-  do {
-    GCObject *w;
-    GCObject *next = g->getEphemeron();  /* get ephemeron list */
-    g->setEphemeron(NULL);  /* tables may return to this list when traversed */
-    changed = 0;
-    while ((w = next) != NULL) {  /* for each ephemeron table */
-      Table *h = gco2t(w);
-      next = h->getGclist();  /* list is rebuilt during loop */
-      nw2black(h);  /* out of the list (for now) */
-      if (traverseephemeron(g, h, dir)) {  /* marked some value? */
-        propagateall(g);  /* propagate changes */
-        changed = 1;  /* will have to revisit all ephemeron tables */
-      }
-    }
-    dir = !dir;  /* invert direction next time */
-  } while (changed);  /* repeat until no more changes */
+  GCWeak::convergeephemerons(g);
 }
 
 /* }====================================================== */
@@ -838,45 +737,20 @@ static void convergeephemerons (global_State *g) {
 
 
 /*
-** clear entries with unmarked keys from all weaktables in list 'l'
+** Wrapper for clearbykeys - delegates to GCWeak module.
+** See gc_weak.cpp for implementation.
 */
 static void clearbykeys (global_State *g, GCObject *l) {
-  for (; l; l = gco2t(l)->getGclist()) {
-    Table *h = gco2t(l);
-    Node *limit = gnodelast(h);
-    Node *n;
-    for (n = gnode(h, 0); n < limit; n++) {
-      if (iscleared(g, n->getKeyGCOrNull()))  /* unmarked key? */
-        setempty(gval(n));  /* remove entry */
-      if (isempty(gval(n)))  /* is entry empty? */
-        clearkey(n);  /* clear its key */
-    }
-  }
+  GCWeak::clearbykeys(g, l);
 }
 
 
 /*
-** clear entries with unmarked values from all weaktables in list 'l' up
-** to element 'f'
+** Wrapper for clearbyvalues - delegates to GCWeak module.
+** See gc_weak.cpp for implementation.
 */
 static void clearbyvalues (global_State *g, GCObject *l, GCObject *f) {
-  for (; l != f; l = gco2t(l)->getGclist()) {
-    Table *h = gco2t(l);
-    Node *n, *limit = gnodelast(h);
-    unsigned int i;
-    unsigned int asize = h->arraySize();
-    for (i = 0; i < asize; i++) {
-      GCObject *o = gcvalarr(h, i);
-      if (iscleared(g, o))  /* value was collected? */
-        *h->getArrayTag(i) = LUA_VEMPTY;  /* remove entry */
-    }
-    for (n = gnode(h, 0); n < limit; n++) {
-      if (iscleared(g, gcvalueN(gval(n))))  /* unmarked value? */
-        setempty(gval(n));  /* remove entry */
-      if (isempty(gval(n)))  /* is entry empty? */
-        clearkey(n);  /* clear its key */
-    }
-  }
+  GCWeak::clearbyvalues(g, l, f);
 }
 
 
@@ -890,7 +764,8 @@ static void freeupval (lua_State *L, UpVal *uv) {
 
 
 // Phase 50: Call destructors before freeing memory (proper RAII)
-static void freeobj (lua_State *L, GCObject *o) {
+// Made non-static for use by gc_sweeping module (Phase 2)
+void freeobj (lua_State *L, GCObject *o) {
   assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
   switch (o->getType()) {
     case LUA_VPROTO: {
@@ -987,37 +862,7 @@ static void freeobj (lua_State *L, GCObject *o) {
 ** The countin parameter limits work per step. This allows sweeping to be
 ** interleaved with program execution, preventing long pauses.
 */
-static GCObject **sweeplist (lua_State *L, GCObject **p, l_mem countin) {
-  global_State *g = G(L);
-  lu_byte ow = otherwhite(g);
-  lu_byte white = g->getWhite();  /* current white */
-  while (*p != NULL && countin-- > 0) {
-    GCObject *curr = *p;
-    lu_byte marked = curr->getMarked();
-    if (isdeadm(ow, marked)) {  /* is 'curr' dead? */
-      *p = curr->getNext();  /* remove 'curr' from list */
-      freeobj(L, curr);  /* erase 'curr' */
-    }
-    else {  /* change mark to 'white' and age to 'new' */
-      curr->setMarked(cast_byte((marked & ~maskgcbits) | white | static_cast<lu_byte>(GCAge::New)));
-      p = curr->getNextPtr();  /* go to next element */
-    }
-  }
-  return (*p == NULL) ? NULL : p;
-}
-
-
-/*
-** sweep a list until a live object (or end of list)
-*/
-static GCObject **sweeptolive (lua_State *L, GCObject **p) {
-  GCObject **old = p;
-  do {
-    p = sweeplist(L, p, 1);
-  } while (p == old);
-  return p;
-}
-
+/* sweeplist now in GCSweeping module */
 /* }====================================================== */
 
 
@@ -1030,163 +875,54 @@ static GCObject **sweeptolive (lua_State *L, GCObject **p) {
 /*
 ** If possible, shrink string table.
 */
-static void checkSizes (lua_State *L, global_State *g) {
-  if (!g->getGCEmergency()) {
-    if (g->getStringTable()->getNumElements() < g->getStringTable()->getSize() / 4)  /* string table too big? */
-      luaS_resize(L, g->getStringTable()->getSize() / 2);
-  }
-}
-
-
 /*
-** Get the next udata to be finalized from the 'tobefnz' list, and
-** link it back into the 'allgc' list.
+** Wrapper for checkSizes - delegates to GCFinalizer module.
+** See gc_finalizer.cpp for implementation.
 */
-static GCObject *udata2finalize (global_State *g) {
-  GCObject *o = g->getToBeFnz();  /* get first element */
-  lua_assert(tofinalize(o));
-  g->setToBeFnz(o->getNext());  /* remove it from 'tobefnz' list */
-  o->setNext(g->getAllGC());  /* return it to 'allgc' list */
-  g->setAllGC(o);
-  o->clearMarkedBit(FINALIZEDBIT);  /* object is "normal" again */
-  if (g->isSweepPhase())
-    makewhite(g, o);  /* "sweep" object */
-  else if (getage(o) == GCAge::Old1)
-    g->setFirstOld1(o);  /* it is the first OLD1 object in the list */
-  return o;
+static void checkSizes (lua_State *L, global_State *g) {
+  GCFinalizer::checkSizes(L, g);
 }
 
 
-static void dothecall (lua_State *L, void *ud) {
-  UNUSED(ud);
-  L->callNoYield( L->getTop().p - 2, 0);
-}
+/* udata2finalize, dothecall now in GCFinalizer module */
 
 
 /*
-** Execute a single finalizer (__gc metamethod).
-**
-** FINALIZATION PROCESS:
-** 1. Get next object from tobefnz list (objects pending finalization)
-** 2. Look up its __gc metamethod
-** 3. Call the metamethod in protected mode
-** 4. Handle any errors by issuing a warning
-**
-** CRITICAL INVARIANTS DURING FINALIZATION:
-** - Disable GC during __gc execution (GCSTPGC flag)
-**   Rationale: __gc can allocate, but we can't collect during finalization
-**   because it could trigger nested finalizers, leading to reentrancy issues
-**
-** - Disable debug hooks (setAllowHook(0))
-**   Rationale: Debug hooks during __gc could interfere with finalization
-**
-** - Mark call frame with CIST_FIN flag
-**   Rationale: Allows error handling to know we're in a finalizer
-**
-** ERROR HANDLING:
-** Errors in __gc are non-fatal. We issue a warning but continue execution.
-** This prevents a badly written __gc from crashing the entire program.
-**
-** RESURRECTION:
-** If __gc stores the object in a global variable or other reachable location,
-** the object is "resurrected" and won't be collected. It will be finalized
-** again in the next GC cycle if it becomes unreachable again.
+** Wrapper for GCTM - delegates to GCFinalizer module.
+** See gc_finalizer.cpp for full implementation and documentation.
 */
 static void GCTM (lua_State *L) {
-  global_State *g = G(L);
-  const TValue *tm;
-  TValue v;
-  lua_assert(!g->getGCEmergency());
-  setgcovalue(L, &v, udata2finalize(g));
-  tm = luaT_gettmbyobj(L, &v, TM_GC);
-  if (!notm(tm)) {  /* is there a finalizer? */
-    TStatus status;
-    lu_byte oldah = L->getAllowHook();
-    lu_byte oldgcstp  = g->getGCStp();
-    g->setGCStp(oldgcstp | GCSTPGC);  /* avoid GC steps */
-    L->setAllowHook(0);  /* stop debug hooks during GC metamethod */
-    L->getStackSubsystem().setSlot(L->getTop().p, tm);  /* push finalizer... */
-    L->getStackSubsystem().push();
-    L->getStackSubsystem().setSlot(L->getTop().p, &v);  /* ... and its argument */
-    L->getStackSubsystem().push();
-    L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
-    status = L->pCall( dothecall, NULL, L->saveStack(L->getTop().p - 2), 0);
-    L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
-    L->setAllowHook(oldah);  /* restore hooks */
-    g->setGCStp(oldgcstp);  /* restore state */
-    if (l_unlikely(status != LUA_OK)) {  /* error while running __gc? */
-      luaE_warnerror(L, "__gc");
-      L->getStackSubsystem().pop();  /* pops error object */
-    }
-  }
+  GCFinalizer::GCTM(L);
 }
 
 
 /*
-** call all pending finalizers
+** Wrapper for callallpendingfinalizers - delegates to GCFinalizer module.
+** See gc_finalizer.cpp for implementation.
 */
 static void callallpendingfinalizers (lua_State *L) {
-  global_State *g = G(L);
-  while (g->getToBeFnz())
-    GCTM(L);
+  GCFinalizer::callallpendingfinalizers(L);
 }
 
 
-/*
-** find last 'next' field in list 'p' list (to add elements in its end)
-*/
-static GCObject **findlast (GCObject **p) {
-  while (*p != NULL)
-    p = (*p)->getNextPtr();
-  return p;
-}
+/* findlast, checkpointer now in GCFinalizer module */
 
 
 /*
-** Move all unreachable objects (or 'all' objects) that need
-** finalization from list 'finobj' to list 'tobefnz' (to be finalized).
-** (Note that objects after 'finobjold1' cannot be white, so they
-** don't need to be traversed. In incremental mode, 'finobjold1' is NULL,
-** so the whole list is traversed.)
+** Wrapper for separatetobefnz - delegates to GCFinalizer module.
+** See gc_finalizer.cpp for implementation.
 */
 static void separatetobefnz (global_State *g, int all) {
-  GCObject *curr;
-  GCObject **p = g->getFinObjPtr();
-  GCObject **lastnext = findlast(g->getToBeFnzPtr());
-  while ((curr = *p) != g->getFinObjOld1()) {  /* traverse all finalizable objects */
-    lua_assert(tofinalize(curr));
-    if (!(iswhite(curr) || all))  /* not being collected? */
-      p = curr->getNextPtr();  /* don't bother with it */
-    else {
-      if (curr == g->getFinObjSur())  /* removing 'finobjsur'? */
-        g->setFinObjSur(curr->getNext());  /* correct it */
-      *p = curr->getNext();  /* remove 'curr' from 'finobj' list */
-      curr->setNext(*lastnext);  /* link at the end of 'tobefnz' list */
-      *lastnext = curr;
-      lastnext = curr->getNextPtr();
-    }
-  }
+  GCFinalizer::separatetobefnz(g, all);
 }
 
 
 /*
-** If pointer 'p' points to 'o', move it to the next element.
-*/
-static void checkpointer (GCObject **p, GCObject *o) {
-  if (o == *p)
-    *p = o->getNext();
-}
-
-
-/*
-** Correct pointers to objects inside 'allgc' list when
-** object 'o' is being removed from the list.
+** Wrapper for correctpointers - delegates to GCFinalizer module.
+** See gc_finalizer.cpp for implementation.
 */
 static void correctpointers (global_State *g, GCObject *o) {
-  checkpointer(g->getSurvivalPtr(), o);
-  checkpointer(g->getOld1Ptr(), o);
-  checkpointer(g->getReallyOldPtr(), o);
-  checkpointer(g->getFirstOld1Ptr(), o);
+  GCFinalizer::correctpointers(g, o);
 }
 
 
@@ -1239,85 +975,13 @@ static void setpause (global_State *g) {
 ** are now old---must be in a gray list. Everything else is not in a
 ** gray list. Open upvalues are also kept gray.
 */
-static void sweep2old (lua_State *L, GCObject **p) {
-  GCObject *curr;
-  global_State *g = G(L);
-  while ((curr = *p) != NULL) {
-    if (iswhite(curr)) {  /* is 'curr' dead? */
-      lua_assert(isdead(g, curr));
-      *p = curr->getNext();  /* remove 'curr' from list */
-      freeobj(L, curr);  /* erase 'curr' */
-    }
-    else {  /* all surviving objects become old */
-      setage(curr, GCAge::Old);
-      if (curr->getType() == LUA_VTHREAD) {  /* threads must be watched */
-        lua_State *th = gco2th(curr);
-        linkgclistThread(th, *g->getGrayAgainPtr());  /* insert into 'grayagain' list */
-      }
-      else if (curr->getType() == LUA_VUPVAL && gco2upv(curr)->isOpen())
-        set2gray(curr);  /* open upvalues are always gray */
-      else  /* everything else is black */
-        nw2black(curr);
-      p = curr->getNextPtr();  /* go to next element */
-    }
-  }
-}
-
-
 /*
-** Sweep for generational mode. Delete dead objects. (Because the
-** collection is not incremental, there are no "new white" objects
-** during the sweep. So, any white object must be dead.) For
-** non-dead objects, advance their ages and clear the color of
-** new objects. (Old objects keep their colors.)
-** The ages of GCAge::Touched1 and GCAge::Touched2 objects cannot be advanced
-** here, because these old-generation objects are usually not swept
-** here.  They will all be advanced in 'correctgraylist'. That function
-** will also remove objects turned white here from any gray list.
+** Wrapper for sweep2old - delegates to GCSweeping module.
+** See gc_sweeping.cpp for implementation.
 */
-static GCObject **sweepgen (lua_State *L, global_State *g, GCObject **p,
-                            GCObject *limit, GCObject **pfirstold1,
-                            l_mem *paddedold) {
-  static const GCAge nextage[] = {
-    GCAge::Survival,  /* from GCAge::New */
-    GCAge::Old1,      /* from GCAge::Survival */
-    GCAge::Old1,      /* from GCAge::Old0 */
-    GCAge::Old,       /* from GCAge::Old1 */
-    GCAge::Old,       /* from GCAge::Old (do not change) */
-    GCAge::Touched1,  /* from GCAge::Touched1 (do not change) */
-    GCAge::Touched2   /* from GCAge::Touched2 (do not change) */
-  };
-  l_mem addedold = 0;
-  int white = g->getWhite();
-  GCObject *curr;
-  while ((curr = *p) != limit) {
-    if (iswhite(curr)) {  /* is 'curr' dead? */
-      lua_assert(!isold(curr) && isdead(g, curr));
-      *p = curr->getNext();  /* remove 'curr' from list */
-      freeobj(L, curr);  /* erase 'curr' */
-    }
-    else {  /* correct mark and age */
-      GCAge age = getage(curr);
-      if (age == GCAge::New) {  /* new objects go back to white */
-        int marked = curr->getMarked() & ~maskgcbits;  /* erase GC bits */
-        curr->setMarked(cast_byte(marked | static_cast<lu_byte>(GCAge::Survival) | white));
-      }
-      else {  /* all other objects will be old, and so keep their color */
-        lua_assert(age != GCAge::Old1);  /* advanced in 'markold' */
-        setage(curr, nextage[static_cast<size_t>(age)]);
-        if (getage(curr) == GCAge::Old1) {
-          addedold += objsize(curr);  /* bytes becoming old */
-          if (*pfirstold1 == NULL)
-            *pfirstold1 = curr;  /* first OLD1 object in the list */
-        }
-      }
-      p = curr->getNextPtr();  /* go to next element */
-    }
-  }
-  *paddedold += addedold;
-  return p;
+static void sweep2old (lua_State *L, GCObject **p) {
+  GCSweeping::sweep2old(L, p);
 }
-
 
 /*
 ** Correct a list of gray objects. Return a pointer to the last element
@@ -1455,23 +1119,23 @@ static void youngcollection (lua_State *L, global_State *g) {
 
   /* sweep nursery and get a pointer to its last live element */
   g->setGCState(GCState::SweepAllGC);
-  psurvival = sweepgen(L, g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
+  psurvival = GCSweeping::sweepgen(L, g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
   /* sweep 'survival' */
-  sweepgen(L, g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
+  GCSweeping::sweepgen(L, g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
   g->setReallyOld(g->getOld1());
   g->setOld1(*psurvival);  /* 'survival' survivals are old now */
   g->setSurvival(g->getAllGC());  /* all news are survivals */
 
   /* repeat for 'finobj' lists */
   dummy = NULL;  /* no 'firstold1' optimization for 'finobj' lists */
-  psurvival = sweepgen(L, g, g->getFinObjPtr(), g->getFinObjSur(), &dummy, &addedold1);
+  psurvival = GCSweeping::sweepgen(L, g, g->getFinObjPtr(), g->getFinObjSur(), &dummy, &addedold1);
   /* sweep 'survival' */
-  sweepgen(L, g, psurvival, g->getFinObjOld1(), &dummy, &addedold1);
+  GCSweeping::sweepgen(L, g, psurvival, g->getFinObjOld1(), &dummy, &addedold1);
   g->setFinObjROld(g->getFinObjOld1());
   g->setFinObjOld1(*psurvival);  /* 'survival' survivals are old now */
   g->setFinObjSur(g->getFinObj());  /* all news are survivals */
 
-  sweepgen(L, g, g->getToBeFnzPtr(), NULL, &dummy, &addedold1);
+  GCSweeping::sweepgen(L, g, g->getToBeFnzPtr(), NULL, &dummy, &addedold1);
 
   /* keep total number of added old1 bytes */
   g->setGCMarked(marked + addedold1);
@@ -1603,30 +1267,20 @@ static int checkmajorminor (lua_State *L, global_State *g) {
 
 
 /*
-** Enter first sweep phase.
-** The call to 'sweeptolive' makes the pointer point to an object
-** inside the list (instead of to the header), so that the real sweep do
-** not need to skip objects created between "now" and the start of the
-** real sweep.
+** Wrapper for entersweep - delegates to GCSweeping module.
+** See gc_sweeping.cpp for implementation.
 */
 static void entersweep (lua_State *L) {
-  global_State *g = G(L);
-  g->setGCState(GCState::SweepAllGC);
-  lua_assert(g->getSweepGC() == NULL);
-  g->setSweepGC(sweeptolive(L, g->getAllGCPtr()));
+  GCSweeping::entersweep(L);
 }
 
 
 /*
-** Delete all objects in list 'p' until (but not including) object
-** 'limit'.
+** Wrapper for deletelist - delegates to GCSweeping module.
+** See gc_sweeping.cpp for implementation.
 */
 static void deletelist (lua_State *L, GCObject *p, GCObject *limit) {
-  while (p != limit) {
-    GCObject *next = p->getNext();
-    freeobj(L, p);
-    p = next;
-  }
+  GCSweeping::deletelist(L, p, limit);
 }
 
 
@@ -1690,17 +1344,12 @@ static void atomic (lua_State *L) {
 
 
 /*
-** Do a sweep step. The normal case (not fast) sweeps at most GCSWEEPMAX
-** elements. The fast case sweeps the whole list.
+** Wrapper for sweepstep - delegates to GCSweeping module.
+** See gc_sweeping.cpp for implementation.
 */
 static void sweepstep (lua_State *L, global_State *g,
                        GCState nextstate, GCObject **nextlist, int fast) {
-  if (g->getSweepGC())
-    g->setSweepGC(sweeplist(L, g->getSweepGC(), fast ? MAX_LMEM : GCSWEEPMAX));
-  else {  /* enter next state */
-    g->setGCState(nextstate);
-    g->setSweepGC(nextlist);
-  }
+  GCSweeping::sweepstep(L, g, nextstate, nextlist, fast);
 }
 
 
@@ -1933,7 +1582,7 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
     if (g->isSweepPhase()) {
       makewhite(g, this);  /* "sweep" object 'this' */
       if (g->getSweepGC() == &this->next)  /* should not remove 'sweepgc' object */
-        g->setSweepGC(sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
+        g->setSweepGC(GCSweeping::sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
     }
     else
       correctpointers(g, this);
