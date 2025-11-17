@@ -439,7 +439,7 @@ int luaH_next (lua_State *L, Table *t, StkId key) {
     if (!isempty(gval(gnode(t, i)))) {  /* a non-empty entry? */
       Node *n = gnode(t, i);
       n->getKey(L, s2v(key));
-      setobj2s(L, key + 1, gval(n));
+      L->getStackSubsystem().setSlot(L, key + 1, gval(n));
       return 1;
     }
   }

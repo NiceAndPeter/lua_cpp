@@ -445,23 +445,6 @@ inline void setobj(lua_State* L, TValue* obj1, const TValue* obj2) noexcept {
 }
 
 /*
-** ============================================================
-** STACK ASSIGNMENT OPERATIONS (Phase 94.5)
-** ============================================================
-** These functions now delegate to LuaStack methods for centralization.
-*/
-
-/* from stack to stack (replaces old setobjs2s) */
-inline void setobjs2s(lua_State* L, StackValue* o1, StackValue* o2) noexcept {
-	L->getStackSubsystem().copySlot(L, o1, o2);
-}
-
-/* to stack (not from same stack) (replaces old setobj2s) */
-inline void setobj2s(lua_State* L, StackValue* o1, const TValue* o2) noexcept {
-	L->getStackSubsystem().setSlot(L, o1, o2);
-}
-
-/*
 ** TValue assignment operator (simple copy, no GC barriers)
 ** Use this for stack-to-stack assignments or when you know barriers aren't needed.
 ** For assignments to GC objects that may need barriers, use setobj2t/setobj2n.

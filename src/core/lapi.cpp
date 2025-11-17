@@ -180,7 +180,7 @@ static void reverse (lua_State *L, StkId from, StkId to) {
     TValue temp;
     setobj(L, &temp, s2v(from));
     *s2v(from) = *s2v(to);  /* swap - use operator= */
-    setobj2s(L, to, &temp);
+    L->getStackSubsystem().setSlot(L, to, &temp);
   }
 }
 
@@ -221,7 +221,7 @@ LUA_API void lua_copy (lua_State *L, int fromidx, int toidx) {
 
 LUA_API void lua_pushvalue (lua_State *L, int idx) {
   lua_lock(L);
-  setobj2s(L, L->getTop().p, L->getStackSubsystem().indexToValue(L, idx));
+  L->getStackSubsystem().setSlot(L, L->getTop().p, L->getStackSubsystem().indexToValue(L, idx));
   api_incr_top(L);
   lua_unlock(L);
 }
@@ -794,7 +794,7 @@ LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
     t = LUA_TNONE;
   }
   else {
-    setobj2s(L, L->getTop().p, &uvalue(o)->getUserValue(n - 1)->uv);
+    L->getStackSubsystem().setSlot(L, L->getTop().p, &uvalue(o)->getUserValue(n - 1)->uv);
     t = ttype(s2v(L->getTop().p));
   }
   api_incr_top(L);
@@ -1350,7 +1350,7 @@ LUA_API const char *lua_getupvalue (lua_State *L, int funcindex, int n) {
   lua_lock(L);
   name = aux_upvalue(L->getStackSubsystem().indexToValue(L,funcindex), n, &val, NULL);
   if (name) {
-    setobj2s(L, L->getTop().p, val);
+    L->getStackSubsystem().setSlot(L, L->getTop().p, val);
     api_incr_top(L);
   }
   lua_unlock(L);

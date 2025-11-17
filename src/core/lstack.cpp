@@ -471,11 +471,10 @@ int LuaStack::getDepthFromFunc(CallInfo* ci) const noexcept {
 ** ASSIGNMENT OPERATIONS (Phase 94.1)
 ** ==================================================================
 ** Assign values to stack slots with GC awareness.
-** Replaces setobj2s() and setobjs2s() from lgc.h.
 */
 
 /*
-** Assign to stack slot from TValue (replaces setobj2s).
+** Assign to stack slot from TValue.
 ** Uses GC-aware setobj() to handle barriers.
 */
 void LuaStack::setSlot(lua_State* L, StackValue* dest, const TValue* src) noexcept {
@@ -484,7 +483,7 @@ void LuaStack::setSlot(lua_State* L, StackValue* dest, const TValue* src) noexce
 
 
 /*
-** Copy between stack slots (replaces setobjs2s).
+** Copy between stack slots.
 */
 void LuaStack::copySlot(lua_State* L, StackValue* dest, StackValue* src) noexcept {
   setobj(L, s2v(dest), s2v(src));

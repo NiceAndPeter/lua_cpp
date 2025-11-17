@@ -429,7 +429,7 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
   for (p = getTop().p; p > func; p--)  /* open space for metamethod */
     *s2v(p) = *s2v(p-1);  /* shift stack - use operator= */
   getStackSubsystem().push();  /* stack space pre-allocated by the caller */
-  setobj2s(this, func, tm);  /* metamethod is the new function to be called */
+  getStackSubsystem().setSlot(this, func, tm);  /* metamethod is the new function to be called */
   if ((status_val & MAX_CCMT) == MAX_CCMT)  /* is counter full? */
     luaG_runerror(this, "'__call' chain too long");
   return status_val + (1u << CIST_CCMT);  /* increment counter */
