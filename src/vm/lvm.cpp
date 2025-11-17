@@ -1905,27 +1905,27 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_LEN) {
         StkId ra = RA(i);
-        Protect(luaV_objlen(L, ra, vRB(i)));
+        Protect([&]() { luaV_objlen(L, ra, vRB(i)); });
         vmbreak;
       }
       vmcase(OP_CONCAT) {
         StkId ra = RA(i);
         int n = InstructionView(i).b();  /* number of elements to concatenate */
         L->getTop().p = ra + n;  /* mark the end of concat operands */
-        ProtectNT(luaV_concat(L, n));
+        ProtectNT([&]() { luaV_concat(L, n); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
         vmbreak;
       }
       vmcase(OP_CLOSE) {
         StkId ra = RA(i);
         lua_assert(!InstructionView(i).b());  /* 'close must be alive */
-        Protect(luaF_close(L, ra, LUA_OK, 1));
+        Protect([&]() { luaF_close(L, ra, LUA_OK, 1); });
         vmbreak;
       }
       vmcase(OP_TBC) {
         StkId ra = RA(i);
         /* create new to-be-closed upvalue */
-        halfProtect(luaF_newtbcupval(L, ra));
+        halfProtect([&]() { luaF_newtbcupval(L, ra); });
         vmbreak;
       }
       vmcase(OP_JMP) {
@@ -1936,7 +1936,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         StkId ra = RA(i);
         int cond;
         TValue *rb = vRB(i);
-        Protect(cond = luaV_equalobj(L, s2v(ra), rb));
+        Protect([&]() { cond = luaV_equalobj(L, s2v(ra), rb); });
         docondjump(cond, ci, i);
         vmbreak;
       }
