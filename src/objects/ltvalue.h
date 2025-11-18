@@ -39,7 +39,7 @@ enum class F2Imod {
 ** Union of all Lua values
 */
 typedef union Value {
-  struct GCObject *gc;    /* collectable objects */
+  GCObject *gc;    /* collectable objects */
   void *p;         /* light userdata */
   lua_CFunction f; /* light C functions */
   lua_Integer i;   /* integer numbers */
@@ -59,7 +59,7 @@ union Closure;
 class LClosure;
 class CClosure;
 struct lua_State;
-struct GCObject;
+class GCObject;
 
 
 /*
