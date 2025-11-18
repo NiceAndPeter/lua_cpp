@@ -15,7 +15,7 @@
 
 inline constexpr int EOZ = -1;			/* end of stream */
 
-typedef struct Zio ZIO;
+typedef class Zio ZIO;
 
 /* Forward declaration for inline function */
 LUAI_FUNC int luaZ_fill (ZIO *z);
