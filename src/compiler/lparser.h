@@ -226,11 +226,11 @@ public:
   inline int getSize() const noexcept { return static_cast<int>(vec.capacity()); }
 
   /* Modifying size */
-  inline void setN(int new_n) { vec.resize(new_n); }
+  inline void setN(int new_n) { vec.resize(static_cast<size_t>(new_n)); }
 
   /* Direct vector access for modern operations */
   inline void push_back(const Labeldesc& desc) { vec.push_back(desc); }
-  inline void reserve(int capacity) { vec.reserve(capacity); }
+  inline void reserve(int capacity) { vec.reserve(static_cast<size_t>(capacity)); }
   inline Labeldesc& operator[](int index) { return vec[index]; }
   inline const Labeldesc& operator[](int index) const { return vec[index]; }
 
