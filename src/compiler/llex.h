@@ -15,7 +15,7 @@
 /* Forward declarations */
 class expdesc;
 struct Labeldesc;
-struct Labellist;
+class Labellist;
 struct ConsControl;
 struct LHS_assign;
 struct BlockCnt;
