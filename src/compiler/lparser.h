@@ -231,8 +231,8 @@ public:
   /* Direct vector access for modern operations */
   inline void push_back(const Labeldesc& desc) { vec.push_back(desc); }
   inline void reserve(int capacity) { vec.reserve(static_cast<size_t>(capacity)); }
-  inline Labeldesc& operator[](int index) { return vec[index]; }
-  inline const Labeldesc& operator[](int index) const { return vec[index]; }
+  inline Labeldesc& operator[](int index) { return vec[static_cast<size_t>(index)]; }
+  inline const Labeldesc& operator[](int index) const { return vec[static_cast<size_t>(index)]; }
 
   /* For luaM_growvector replacement */
   inline void ensureCapacity(int needed) {
