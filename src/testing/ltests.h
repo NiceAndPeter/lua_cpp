@@ -84,15 +84,15 @@ extern int lua_checkmemory (lua_State *L);
 /*
 ** Function to print an object GC-friendly
 */
-struct GCObject;
-extern void lua_printobj (lua_State *L, struct GCObject *o);
+class GCObject;
+extern void lua_printobj (lua_State *L, class GCObject *o);
 
 
 /*
 ** Function to print a value
 */
-struct TValue;
-extern void lua_printvalue (struct TValue *v);
+class TValue;
+extern void lua_printvalue (class TValue *v);
 
 /*
 ** Function to print the stack

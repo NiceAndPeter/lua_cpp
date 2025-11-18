@@ -389,7 +389,7 @@ public:
 /*
 ** 'per thread' state
 */
-class lua_State : public GCBase<lua_State> {
+struct lua_State : public GCBase<lua_State> {
 private:
   // Stack subsystem (SRP refactoring - Phase 93)
   LuaStack stack_;  /* stack management subsystem */

@@ -672,7 +672,7 @@ class Udata : public GCBase<Udata> {
 private:
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
-  struct Table *metatable;
+  Table *metatable;
   GCObject *gclist;
   UValue uv[1];  /* user values */
 
@@ -738,7 +738,7 @@ public:
 typedef struct Udata0 : public GCBase<Udata0> {
   unsigned short nuvalue;  /* number of user values */
   size_t len;  /* number of bytes */
-  struct Table *metatable;
+  Table *metatable;
   union {LUAI_MAXALIGN;} bindata;
 } Udata0;
 
@@ -948,7 +948,7 @@ private:
   int sizep;  /* size of 'p' */
   TValue *k;  /* constants used by the function */
   Instruction *code;  /* opcodes */
-  struct Proto **p;  /* functions defined inside the function */
+  Proto **p;  /* functions defined inside the function */
   Upvaldesc *upvalues;  /* upvalue information */
   GCObject *gclist;
 
@@ -1254,7 +1254,7 @@ class LClosure : public GCBase<LClosure> {
 private:
   lu_byte nupvalues;
   GCObject *gclist;
-  struct Proto *p;
+  Proto *p;
   UpVal *upvals[1];  /* list of upvalues */
 
 public:
