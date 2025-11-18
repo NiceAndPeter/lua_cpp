@@ -749,7 +749,7 @@ typedef struct Udata0 : public GCBase<Udata0> {
 // This triggers -Winvalid-offsetof but is safe because we control the memory layout
 constexpr inline size_t udatamemoffset(int nuv) noexcept {
 	return (nuv == 0) ? offsetof(Udata0, bindata)
-	                  : Udata::uvOffset() + (sizeof(UValue) * nuv);
+	                  : Udata::uvOffset() + (sizeof(UValue) * static_cast<size_t>(nuv));
 }
 
 /* get the address of the memory block inside 'Udata' */
