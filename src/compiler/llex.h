@@ -58,7 +58,7 @@ enum class UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR };
 * WARNING: if you change the order of this enumeration,
 * grep "ORDER RESERVED"
 */
-enum RESERVED {
+enum class RESERVED {
   /* terminal symbols denoted by reserved words */
   TK_AND = FIRST_RESERVED, TK_BREAK,
   TK_DO, TK_ELSE, TK_ELSEIF, TK_END, TK_FALSE, TK_FOR, TK_FUNCTION,
@@ -72,7 +72,7 @@ enum RESERVED {
 };
 
 /* number of reserved words */
-inline constexpr int NUM_RESERVED = (cast_int(TK_WHILE-FIRST_RESERVED + 1));
+inline constexpr int NUM_RESERVED = (cast_int(static_cast<int>(RESERVED::TK_WHILE)-FIRST_RESERVED + 1));
 
 
 typedef union {

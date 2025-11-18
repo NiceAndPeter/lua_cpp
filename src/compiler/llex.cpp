@@ -82,7 +82,7 @@ const char *LexState::tokenToStr(int token) {
   }
   else {
     const char *s = luaX_tokens[token - FIRST_RESERVED];
-    if (token < TK_EOS)  /* fixed format (symbols and reserved words)? */
+    if (token < static_cast<int>(RESERVED::TK_EOS))  /* fixed format (symbols and reserved words)? */
       return luaO_pushfstring(getLuaState(), "'%s'", s);
     else  /* names, strings, and numerals */
       return s;
@@ -91,8 +91,8 @@ const char *LexState::tokenToStr(int token) {
 
 const char* LexState::txtToken(int token) {
   switch (token) {
-    case TK_NAME: case TK_STRING:
-    case TK_FLT: case TK_INT:
+    case static_cast<int>(RESERVED::TK_NAME): case static_cast<int>(RESERVED::TK_STRING):
+    case static_cast<int>(RESERVED::TK_FLT): case static_cast<int>(RESERVED::TK_INT):
       save('\0');
       return luaO_pushfstring(getLuaState(), "'%s'", luaZ_buffer(getBuffer()));
     default:
@@ -160,7 +160,7 @@ void LexState::setInput(lua_State *state, ZIO *zio, TString *src, int firstchar)
   getCurrentTokenRef().token = 0;
   setLuaState(state);
   setCurrent(firstchar);
-  getLookaheadRef().token = TK_EOS;  /* no look-ahead token */
+  getLookaheadRef().token = static_cast<int>(RESERVED::TK_EOS);  /* no look-ahead token */
   setZIO(zio);
   setLineNumber(1);
   setLastLine(1);
@@ -238,15 +238,15 @@ int LexState::readNumeral(SemInfo *seminfo) {
     saveAndNext();  /* force an error */
   save('\0');
   if (luaO_str2num(luaZ_buffer(getBuffer()), &obj) == 0)  /* format error? */
-    lexError("malformed number", TK_FLT);
+    lexError("malformed number", static_cast<int>(RESERVED::TK_FLT));
   if (ttisinteger(&obj)) {
     seminfo->i = ivalue(&obj);
-    return TK_INT;
+    return static_cast<int>(RESERVED::TK_INT);
   }
   else {
     lua_assert(ttisfloat(&obj));
     seminfo->r = fltvalue(&obj);
-    return TK_FLT;
+    return static_cast<int>(RESERVED::TK_FLT);
   }
 }
 
@@ -283,7 +283,7 @@ void LexState::readLongString(SemInfo *seminfo, size_t sep) {
         const char *what = (seminfo ? "string" : "comment");
         const char *msg = luaO_pushfstring(getLuaState(),
                      "unfinished long %s (starting at line %d)", what, line);
-        lexError(msg, TK_EOS);
+        lexError(msg, static_cast<int>(RESERVED::TK_EOS));
         break;  /* to avoid warnings */
       }
       case ']': {
@@ -315,7 +315,7 @@ void LexState::escCheck(int c, const char *msg) {
   if (!c) {
     if (getCurrentChar() != EOZ)
       saveAndNext();  /* add current to buffer for error message */
-    lexError(msg, TK_STRING);
+    lexError(msg, static_cast<int>(RESERVED::TK_STRING));
   }
 }
 
@@ -384,11 +384,11 @@ void LexState::readString(int del, SemInfo *seminfo) {
   while (getCurrentChar() != del) {
     switch (getCurrentChar()) {
       case EOZ:
-        lexError("unfinished string", TK_EOS);
+        lexError("unfinished string", static_cast<int>(RESERVED::TK_EOS));
         break;  /* to avoid warnings */
       case '\n':
       case '\r':
-        lexError("unfinished string", TK_STRING);
+        lexError("unfinished string", static_cast<int>(RESERVED::TK_STRING));
         break;  /* to avoid warnings */
       case '\\': {  /* escape sequences */
         int c;  /* final character to be saved */
@@ -477,54 +477,54 @@ int LexState::lex(SemInfo *seminfo) {
         size_t sep = skipSep();
         if (sep >= 2) {
           readLongString(seminfo, sep);
-          return TK_STRING;
+          return static_cast<int>(RESERVED::TK_STRING);
         }
         else if (sep == 0)  /* '[=...' missing second bracket? */
-          lexError("invalid long string delimiter", TK_STRING);
+          lexError("invalid long string delimiter", static_cast<int>(RESERVED::TK_STRING));
         return '[';
       }
       case '=': {
         next();
-        if (checkNext1('=')) return TK_EQ;  /* '==' */
+        if (checkNext1('=')) return static_cast<int>(RESERVED::TK_EQ);  /* '==' */
         else return '=';
       }
       case '<': {
         next();
-        if (checkNext1('=')) return TK_LE;  /* '<=' */
-        else if (checkNext1('<')) return TK_SHL;  /* '<<' */
+        if (checkNext1('=')) return static_cast<int>(RESERVED::TK_LE);  /* '<=' */
+        else if (checkNext1('<')) return static_cast<int>(RESERVED::TK_SHL);  /* '<<' */
         else return '<';
       }
       case '>': {
         next();
-        if (checkNext1('=')) return TK_GE;  /* '>=' */
-        else if (checkNext1('>')) return TK_SHR;  /* '>>' */
+        if (checkNext1('=')) return static_cast<int>(RESERVED::TK_GE);  /* '>=' */
+        else if (checkNext1('>')) return static_cast<int>(RESERVED::TK_SHR);  /* '>>' */
         else return '>';
       }
       case '/': {
         next();
-        if (checkNext1('/')) return TK_IDIV;  /* '//' */
+        if (checkNext1('/')) return static_cast<int>(RESERVED::TK_IDIV);  /* '//' */
         else return '/';
       }
       case '~': {
         next();
-        if (checkNext1('=')) return TK_NE;  /* '~=' */
+        if (checkNext1('=')) return static_cast<int>(RESERVED::TK_NE);  /* '~=' */
         else return '~';
       }
       case ':': {
         next();
-        if (checkNext1(':')) return TK_DBCOLON;  /* '::' */
+        if (checkNext1(':')) return static_cast<int>(RESERVED::TK_DBCOLON);  /* '::' */
         else return ':';
       }
       case '"': case '\'': {  /* short literal strings */
         readString(getCurrentChar(), seminfo);
-        return TK_STRING;
+        return static_cast<int>(RESERVED::TK_STRING);
       }
       case '.': {  /* '.', '..', '...', or number */
         saveAndNext();
         if (checkNext1('.')) {
           if (checkNext1('.'))
-            return TK_DOTS;   /* '...' */
-          else return TK_CONCAT;   /* '..' */
+            return static_cast<int>(RESERVED::TK_DOTS);   /* '...' */
+          else return static_cast<int>(RESERVED::TK_CONCAT);   /* '..' */
         }
         else if (!lisdigit(getCurrentChar())) return '.';
         else return readNumeral(seminfo);
@@ -534,7 +534,7 @@ int LexState::lex(SemInfo *seminfo) {
         return readNumeral(seminfo);
       }
       case EOZ: {
-        return TK_EOS;
+        return static_cast<int>(RESERVED::TK_EOS);
       }
       default: {
         if (lislalpha(getCurrentChar())) {  /* identifier or reserved word? */
@@ -549,7 +549,7 @@ int LexState::lex(SemInfo *seminfo) {
             return ts->getExtra() - 1 + FIRST_RESERVED;
           else {
             seminfo->ts = anchorStr(ts);
-            return TK_NAME;
+            return static_cast<int>(RESERVED::TK_NAME);
           }
         }
         else {  /* single-char tokens ('+', '*', '%', '{', '}', ...) */
@@ -565,9 +565,9 @@ int LexState::lex(SemInfo *seminfo) {
 
 void LexState::nextToken() {
   setLastLine(getLineNumber());
-  if (getLookahead().token != TK_EOS) {  /* is there a look-ahead token? */
+  if (getLookahead().token != static_cast<int>(RESERVED::TK_EOS)) {  /* is there a look-ahead token? */
     getCurrentTokenRef() = getLookahead();  /* use this one */
-    getLookaheadRef().token = TK_EOS;  /* and discharge it */
+    getLookaheadRef().token = static_cast<int>(RESERVED::TK_EOS);  /* and discharge it */
   }
   else
     getCurrentTokenRef().token = lex(&getCurrentTokenRef().seminfo);  /* read next token */
@@ -575,7 +575,7 @@ void LexState::nextToken() {
 
 
 int LexState::lookaheadToken() {
-  lua_assert(getLookahead().token == TK_EOS);
+  lua_assert(getLookahead().token == static_cast<int>(RESERVED::TK_EOS));
   getLookaheadRef().token = lex(&getLookaheadRef().seminfo);
   return getLookahead().token;
 }

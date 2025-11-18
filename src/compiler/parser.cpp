@@ -100,7 +100,7 @@ typedef struct ConsControl {
 
 inline UnOpr getunopr (int op) noexcept {
   switch (op) {
-    case TK_NOT: return UnOpr::OPR_NOT;
+    case static_cast<int>(RESERVED::TK_NOT): return UnOpr::OPR_NOT;
     case '-': return UnOpr::OPR_MINUS;
     case '~': return UnOpr::OPR_BNOT;
     case '#': return UnOpr::OPR_LEN;
@@ -117,21 +117,21 @@ inline BinOpr getbinopr (int op) noexcept {
     case '%': return BinOpr::OPR_MOD;
     case '^': return BinOpr::OPR_POW;
     case '/': return BinOpr::OPR_DIV;
-    case TK_IDIV: return BinOpr::OPR_IDIV;
+    case static_cast<int>(RESERVED::TK_IDIV): return BinOpr::OPR_IDIV;
     case '&': return BinOpr::OPR_BAND;
     case '|': return BinOpr::OPR_BOR;
     case '~': return BinOpr::OPR_BXOR;
-    case TK_SHL: return BinOpr::OPR_SHL;
-    case TK_SHR: return BinOpr::OPR_SHR;
-    case TK_CONCAT: return BinOpr::OPR_CONCAT;
-    case TK_NE: return BinOpr::OPR_NE;
-    case TK_EQ: return BinOpr::OPR_EQ;
+    case static_cast<int>(RESERVED::TK_SHL): return BinOpr::OPR_SHL;
+    case static_cast<int>(RESERVED::TK_SHR): return BinOpr::OPR_SHR;
+    case static_cast<int>(RESERVED::TK_CONCAT): return BinOpr::OPR_CONCAT;
+    case static_cast<int>(RESERVED::TK_NE): return BinOpr::OPR_NE;
+    case static_cast<int>(RESERVED::TK_EQ): return BinOpr::OPR_EQ;
     case '<': return BinOpr::OPR_LT;
-    case TK_LE: return BinOpr::OPR_LE;
+    case static_cast<int>(RESERVED::TK_LE): return BinOpr::OPR_LE;
     case '>': return BinOpr::OPR_GT;
-    case TK_GE: return BinOpr::OPR_GE;
-    case TK_AND: return BinOpr::OPR_AND;
-    case TK_OR: return BinOpr::OPR_OR;
+    case static_cast<int>(RESERVED::TK_GE): return BinOpr::OPR_GE;
+    case static_cast<int>(RESERVED::TK_AND): return BinOpr::OPR_AND;
+    case static_cast<int>(RESERVED::TK_OR): return BinOpr::OPR_OR;
     default: return BinOpr::OPR_NOBINOPR;
   }
 }
@@ -225,7 +225,7 @@ void Parser::check_match(int what, int who, int where) {
 
 TString *Parser::str_checkname() {
   TString *ts;
-  check(TK_NAME);
+  check(static_cast<int>(RESERVED::TK_NAME));
   ts = ls->getSemInfo().ts;
   ls->nextToken();
   return ts;
@@ -502,10 +502,10 @@ void Parser::close_func() {
 */
 int Parser::block_follow( int withuntil) {
   switch (ls->getToken()) {
-    case TK_ELSE: case TK_ELSEIF:
-    case TK_END: case TK_EOS:
+    case static_cast<int>(RESERVED::TK_ELSE): case static_cast<int>(RESERVED::TK_ELSEIF):
+    case static_cast<int>(RESERVED::TK_END): case static_cast<int>(RESERVED::TK_EOS):
       return 1;
-    case TK_UNTIL: return withuntil;
+    case static_cast<int>(RESERVED::TK_UNTIL): return withuntil;
     default: return 0;
   }
 }
@@ -514,7 +514,7 @@ int Parser::block_follow( int withuntil) {
 void Parser::statlist() {
   /* statlist -> { stat [';'] } */
   while (!block_follow(1)) {
-    if (ls->getToken() == TK_RETURN) {
+    if (ls->getToken() == static_cast<int>(RESERVED::TK_RETURN)) {
       statement();
       return;  /* 'return' must be last statement */
     }
@@ -554,7 +554,7 @@ void Parser::recfield( ConsControl *cc) {
   FuncState *funcstate = fs;
   lu_byte reg = fs->getFreeReg();
   expdesc tab, key, val;
-  if (ls->getToken() == TK_NAME)
+  if (ls->getToken() == static_cast<int>(RESERVED::TK_NAME))
     codename( &key);
   else  /* ls->getToken() == '[' */
     yindex(&key);
@@ -578,7 +578,7 @@ void Parser::listfield( ConsControl *cc) {
 void Parser::field( ConsControl *cc) {
   /* field -> listfield | recfield */
   switch(ls->getToken()) {
-    case TK_NAME: {  /* may be 'listfield' or 'recfield' */
+    case static_cast<int>(RESERVED::TK_NAME): {  /* may be 'listfield' or 'recfield' */
       if (ls->lookaheadToken() != '=')  /* expression? */
         listfield(cc);
       else
@@ -642,12 +642,12 @@ void Parser::parlist() {
   if (ls->getToken() != ')') {  /* is 'parlist' not empty? */
     do {
       switch (ls->getToken()) {
-        case TK_NAME: {
+        case static_cast<int>(RESERVED::TK_NAME): {
           new_localvar( str_checkname());
           nparams++;
           break;
         }
-        case TK_DOTS: {
+        case static_cast<int>(RESERVED::TK_DOTS): {
           ls->nextToken();
           isvararg = 1;
           break;
@@ -680,7 +680,7 @@ void Parser::body( expdesc *e, int ismethod, int line) {
   checknext( ')');
   statlist();
   new_fs.getProto()->setLastLineDefined(ls->getLineNumber());
-  check_match( TK_END, TK_FUNCTION, line);
+  check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_FUNCTION), line);
   codeclosure(e);
   close_func();
 }
@@ -721,7 +721,7 @@ void Parser::funcargs( expdesc *f) {
       constructor(&args);
       break;
     }
-    case TK_STRING: {  /* funcargs -> STRING */
+    case static_cast<int>(RESERVED::TK_STRING): {  /* funcargs -> STRING */
       args.initString(ls->getSemInfo().ts);
       ls->nextToken();  /* must use 'seminfo' before 'next' */
       break;
@@ -767,7 +767,7 @@ void Parser::primaryexp( expdesc *v) {
       fs->dischargevars(v);
       return;
     }
-    case TK_NAME: {
+    case static_cast<int>(RESERVED::TK_NAME): {
       singlevar(v);
       return;
     }
@@ -804,7 +804,7 @@ void Parser::suffixedexp( expdesc *v) {
         funcargs(v);
         break;
       }
-      case '(': case TK_STRING: case '{' /*}*/: {  /* funcargs */
+      case '(': case static_cast<int>(RESERVED::TK_STRING): case '{' /*}*/: {  /* funcargs */
         funcstate->exp2nextreg(v);
         funcargs(v);
         break;
@@ -819,33 +819,33 @@ void Parser::simpleexp( expdesc *v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
   switch (ls->getToken()) {
-    case TK_FLT: {
+    case static_cast<int>(RESERVED::TK_FLT): {
       v->init(VKFLT, 0);
       v->setFloatValue(ls->getSemInfo().r);
       break;
     }
-    case TK_INT: {
+    case static_cast<int>(RESERVED::TK_INT): {
       v->init(VKINT, 0);
       v->setIntValue(ls->getSemInfo().i);
       break;
     }
-    case TK_STRING: {
+    case static_cast<int>(RESERVED::TK_STRING): {
       v->initString(ls->getSemInfo().ts);
       break;
     }
-    case TK_NIL: {
+    case static_cast<int>(RESERVED::TK_NIL): {
       v->init(VNIL, 0);
       break;
     }
-    case TK_TRUE: {
+    case static_cast<int>(RESERVED::TK_TRUE): {
       v->init(VTRUE, 0);
       break;
     }
-    case TK_FALSE: {
+    case static_cast<int>(RESERVED::TK_FALSE): {
       v->init(VFALSE, 0);
       break;
     }
-    case TK_DOTS: {  /* vararg */
+    case static_cast<int>(RESERVED::TK_DOTS): {  /* vararg */
       FuncState *funcstate = fs;
       check_condition(this, funcstate->getProto()->getFlag() & PF_ISVARARG,
                       "cannot use '...' outside a vararg function");
@@ -856,7 +856,7 @@ void Parser::simpleexp( expdesc *v) {
       constructor(v);
       return;
     }
-    case TK_FUNCTION: {
+    case static_cast<int>(RESERVED::TK_FUNCTION): {
       ls->nextToken();
       body(v, 0, ls->getLineNumber());
       return;
@@ -1047,8 +1047,8 @@ void Parser::checkrepeated( TString *name) {
 
 void Parser::labelstat( TString *name, int line) {
   /* label -> '::' NAME '::' */
-  checknext( TK_DBCOLON);  /* skip double colon */
-  while (ls->getToken() == ';' || ls->getToken() == TK_DBCOLON)
+  checknext(static_cast<int>(RESERVED::TK_DBCOLON));  /* skip double colon */
+  while (ls->getToken() == ';' || ls->getToken() == static_cast<int>(RESERVED::TK_DBCOLON))
     statement();  /* skip other no-op statements */
   checkrepeated(name);  /* check for repeated labels */
   ls->createlabel(fs, name, line, block_follow(0));
@@ -1065,10 +1065,10 @@ void Parser::whilestat( int line) {
   whileinit = funcstate->getlabel();
   condexit = cond();
   funcstate->enterblock(&bl, 1);
-  checknext( TK_DO);
+  checknext(static_cast<int>(RESERVED::TK_DO));
   block();
   funcstate->patchlist(funcstate->jump(), whileinit);
-  check_match( TK_END, TK_WHILE, line);
+  check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_WHILE), line);
   funcstate->leaveblock();
   funcstate->patchtohere(condexit);  /* false conditions finish the loop */
 }
@@ -1084,7 +1084,7 @@ void Parser::repeatstat( int line) {
   funcstate->enterblock(&bl2, 0);  /* scope block */
   ls->nextToken();  /* skip REPEAT */
   statlist();
-  check_match( TK_UNTIL, TK_REPEAT, line);
+  check_match(static_cast<int>(RESERVED::TK_UNTIL), static_cast<int>(RESERVED::TK_REPEAT), line);
   condexit = cond();  /* read condition (inside scope block) */
   funcstate->leaveblock();  /* finish scope */
   if (bl2.upval) {  /* upvalues? */
@@ -1124,7 +1124,7 @@ void Parser::forbody( int base, int line, int nvars, int isgen) {
   BlockCnt bl;
   FuncState *funcstate = fs;
   int prep, endfor;
-  checknext( TK_DO);
+  checknext(static_cast<int>(RESERVED::TK_DO));
   prep = funcstate->codeABx(forprep[isgen], base, 0);
   funcstate->getFreeRegRef()--;  /* both 'forprep' remove one register from the stack */
   funcstate->enterblock(&bl, 0);  /* scope for declared variables */
@@ -1182,7 +1182,7 @@ void Parser::forlist( TString *indexname) {
     new_localvar( str_checkname());
     nvars++;
   }
-  checknext( TK_IN);
+  checknext(static_cast<int>(RESERVED::TK_IN));
   line = ls->getLineNumber();
   adjust_assign(4, explist(&e), &e);
   adjustlocalvars(3);  /* start scope for internal variables */
@@ -1202,10 +1202,10 @@ void Parser::forstat( int line) {
   varname = str_checkname();  /* first variable name */
   switch (ls->getToken()) {
     case '=': fornum(varname, line); break;
-    case ',': case TK_IN: forlist(varname); break;
+    case ',': case static_cast<int>(RESERVED::TK_IN): forlist(varname); break;
     default: ls->syntaxError( "'=' or 'in' expected");
   }
-  check_match( TK_END, TK_FOR, line);
+  check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_FOR), line);
   funcstate->leaveblock();  /* loop scope ('break' jumps to this point) */
 }
 
@@ -1216,10 +1216,10 @@ void Parser::test_then_block( int *escapelist) {
   int condtrue;
   ls->nextToken();  /* skip IF or ELSEIF */
   condtrue = cond();  /* read condition */
-  checknext( TK_THEN);
+  checknext(static_cast<int>(RESERVED::TK_THEN));
   block();  /* 'then' part */
-  if (ls->getToken() == TK_ELSE ||
-      ls->getToken() == TK_ELSEIF)  /* followed by 'else'/'elseif'? */
+  if (ls->getToken() == static_cast<int>(RESERVED::TK_ELSE) ||
+      ls->getToken() == static_cast<int>(RESERVED::TK_ELSEIF))  /* followed by 'else'/'elseif'? */
     funcstate->concat(escapelist, funcstate->jump());  /* must jump over it */
   funcstate->patchtohere(condtrue);
 }
@@ -1230,11 +1230,11 @@ void Parser::ifstat( int line) {
   FuncState *funcstate = fs;
   int escapelist = NO_JUMP;  /* exit list for finished parts */
   test_then_block(&escapelist);  /* IF cond THEN block */
-  while (ls->getToken() == TK_ELSEIF)
+  while (ls->getToken() == static_cast<int>(RESERVED::TK_ELSEIF))
     test_then_block(&escapelist);  /* ELSEIF cond THEN block */
-  if (testnext( TK_ELSE))
+  if (testnext(static_cast<int>(RESERVED::TK_ELSE)))
     block();  /* 'else' part */
-  check_match( TK_END, TK_IF, line);
+  check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_IF), line);
   funcstate->patchtohere(escapelist);  /* patch escape list to 'if' end */
 }
 
@@ -1385,7 +1385,7 @@ void Parser::globalfunc( int line) {
 void Parser::globalstatfunc( int line) {
   /* stat -> GLOBAL globalfunc | GLOBAL globalstat */
   ls->nextToken();  /* skip 'global' */
-  if (testnext( TK_FUNCTION))
+  if (testnext(static_cast<int>(RESERVED::TK_FUNCTION)))
     globalfunc(line);
   else
     globalstat();
@@ -1477,70 +1477,70 @@ void Parser::statement() {
       ls->nextToken();  /* skip ';' */
       break;
     }
-    case TK_IF: {  /* stat -> ifstat */
+    case static_cast<int>(RESERVED::TK_IF): {  /* stat -> ifstat */
       ifstat(line);
       break;
     }
-    case TK_WHILE: {  /* stat -> whilestat */
+    case static_cast<int>(RESERVED::TK_WHILE): {  /* stat -> whilestat */
       whilestat(line);
       break;
     }
-    case TK_DO: {  /* stat -> DO block END */
+    case static_cast<int>(RESERVED::TK_DO): {  /* stat -> DO block END */
       ls->nextToken();  /* skip DO */
       block();
-      check_match( TK_END, TK_DO, line);
+      check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_DO), line);
       break;
     }
-    case TK_FOR: {  /* stat -> forstat */
+    case static_cast<int>(RESERVED::TK_FOR): {  /* stat -> forstat */
       forstat(line);
       break;
     }
-    case TK_REPEAT: {  /* stat -> repeatstat */
+    case static_cast<int>(RESERVED::TK_REPEAT): {  /* stat -> repeatstat */
       repeatstat(line);
       break;
     }
-    case TK_FUNCTION: {  /* stat -> funcstat */
+    case static_cast<int>(RESERVED::TK_FUNCTION): {  /* stat -> funcstat */
       funcstat(line);
       break;
     }
-    case TK_LOCAL: {  /* stat -> localstat */
+    case static_cast<int>(RESERVED::TK_LOCAL): {  /* stat -> localstat */
       ls->nextToken();  /* skip LOCAL */
-      if (testnext( TK_FUNCTION))  /* local function? */
+      if (testnext(static_cast<int>(RESERVED::TK_FUNCTION)))  /* local function? */
         localfunc();
       else
         localstat();
       break;
     }
-    case TK_GLOBAL: {  /* stat -> globalstatfunc */
+    case static_cast<int>(RESERVED::TK_GLOBAL): {  /* stat -> globalstatfunc */
       globalstatfunc(line);
       break;
     }
-    case TK_DBCOLON: {  /* stat -> label */
+    case static_cast<int>(RESERVED::TK_DBCOLON): {  /* stat -> label */
       ls->nextToken();  /* skip double colon */
       labelstat(str_checkname(), line);
       break;
     }
-    case TK_RETURN: {  /* stat -> retstat */
+    case static_cast<int>(RESERVED::TK_RETURN): {  /* stat -> retstat */
       ls->nextToken();  /* skip RETURN */
       retstat();
       break;
     }
-    case TK_BREAK: {  /* stat -> breakstat */
+    case static_cast<int>(RESERVED::TK_BREAK): {  /* stat -> breakstat */
       breakstat(line);
       break;
     }
-    case TK_GOTO: {  /* stat -> 'goto' NAME */
+    case static_cast<int>(RESERVED::TK_GOTO): {  /* stat -> 'goto' NAME */
       ls->nextToken();  /* skip 'goto' */
       gotostat(line);
       break;
     }
 #if defined(LUA_COMPAT_GLOBAL)
-    case TK_NAME: {
+    case static_cast<int>(RESERVED::TK_NAME): {
       /* compatibility code to parse global keyword when "global"
          is not reserved */
       if (ls->getSemInfo().ts == ls->getGlobalName()) {  /* current = "global"? */
         int lk = ls->lookaheadToken();
-        if (lk == '<' || lk == TK_NAME || lk == '*' || lk == TK_FUNCTION) {
+        if (lk == '<' || lk == static_cast<int>(RESERVED::TK_NAME) || lk == '*' || lk == static_cast<int>(RESERVED::TK_FUNCTION)) {
           /* 'global <attrib>' or 'global name' or 'global *' or
              'global function' */
           globalstatfunc(line);
@@ -1583,7 +1583,7 @@ void Parser::mainfunc(FuncState *funcstate) {
   luaC_objbarrier(ls->getLuaState(), funcstate->getProto(), env->getName());
   ls->nextToken();  /* read first token */
   statlist();  /* parse main body */
-  check( TK_EOS);
+  check(static_cast<int>(RESERVED::TK_EOS));
   close_func();
 }
 
