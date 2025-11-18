@@ -13,7 +13,7 @@
 /*
 ** Forward declarations
 */
-class lua_State;
+struct lua_State;
 class CallInfo;
 class UpVal;
 
