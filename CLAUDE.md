@@ -902,7 +902,7 @@ git push -u origin <branch-name>
 
 ### CI/CD & Infrastructure
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI/CD pipeline
-  - Automated builds (GCC 13, Clang 16, Debug/Release)
+  - Automated builds (GCC 13, Clang 15, Debug/Release)
   - Test suite execution
   - Performance regression detection (5.00s threshold)
   - Sanitizer testing (ASAN + UBSAN)
@@ -952,7 +952,7 @@ These plans have been fully implemented and are kept for historical reference:
 **Performance Status**: ✅ EXCELLENT - Current baseline 4.20s (new machine), target ≤4.33s
 **Recent Achievements**:
 - **Phase 101**: CI/CD infrastructure with GitHub Actions ✅
-  - Automated builds (GCC 13, Clang 16)
+  - Automated builds (GCC 13, Clang 15)
   - Test suite automation
   - Performance regression detection (5.00s threshold in CI)
   - Sanitizer testing (ASAN + UBSAN)

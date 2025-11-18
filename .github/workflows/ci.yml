@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [gcc-13, clang-16]
+        compiler: [gcc-13, clang-15]
         build-type: [Release, Debug]
 
     steps:
@@ -31,13 +31,10 @@ jobs:
           sudo apt-get install -y g++-13
           echo "CC=gcc-13" >> $GITHUB_ENV
           echo "CXX=g++-13" >> $GITHUB_ENV
-        elif [[ "${{ matrix.compiler }}" == "clang-16" ]]; then
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 16
-          sudo apt-get install -y clang-16
-          echo "CC=clang-16" >> $GITHUB_ENV
-          echo "CXX=clang++-16" >> $GITHUB_ENV
+        elif [[ "${{ matrix.compiler }}" == "clang-15" ]]; then
+          sudo apt-get install -y clang-15
+          echo "CC=clang-15" >> $GITHUB_ENV
+          echo "CXX=clang++-15" >> $GITHUB_ENV
         fi
 
     - name: Configure CMake
@@ -177,14 +174,14 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake clang-16
+        sudo apt-get install -y cmake clang-15
 
     - name: Build with sanitizers
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_C_COMPILER=clang-16 \
-          -DCMAKE_CXX_COMPILER=clang++-16 \
+          -DCMAKE_C_COMPILER=clang-15 \
+          -DCMAKE_CXX_COMPILER=clang++-15 \
           -DLUA_ENABLE_ASAN=ON \
           -DLUA_ENABLE_UBSAN=ON
         cmake --build build

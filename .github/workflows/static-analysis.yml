@@ -67,10 +67,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        wget https://apt.llvm.org/llvm.sh
-        chmod +x llvm.sh
-        sudo ./llvm.sh 16
-        sudo apt-get install -y clang-16 clang-tidy-16 cmake
+        sudo apt-get install -y clang-15 clang-tidy-15 cmake
 
     - name: Create .clang-tidy config
       run: |
@@ -103,15 +100,15 @@ jobs:
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=clang-16 \
-          -DCMAKE_CXX_COMPILER=clang++-16 \
+          -DCMAKE_C_COMPILER=clang-15 \
+          -DCMAKE_CXX_COMPILER=clang++-15 \
           -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
     - name: Run clang-tidy
       run: |
         # Run on a subset of files (full analysis can be very slow)
         find src -name "*.cpp" | head -20 | xargs -I {} \
-          clang-tidy-16 \
+          clang-tidy-15 \
           -p build \
           {} \
           2>&1 | tee clang_tidy_report.txt || true
@@ -134,14 +131,14 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y iwyu cmake clang-16
+        sudo apt-get install -y iwyu cmake clang-15
 
     - name: Configure CMake
       run: |
         cmake -B build \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_C_COMPILER=clang-16 \
-          -DCMAKE_CXX_COMPILER=clang++-16 \
+          -DCMAKE_C_COMPILER=clang-15 \
+          -DCMAKE_CXX_COMPILER=clang++-15 \
           -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=iwyu
 
     - name: Run IWYU
