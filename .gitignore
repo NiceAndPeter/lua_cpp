@@ -17,3 +17,6 @@ temp
 build/
 install_test/
 cmake-build-*/
+coverage_html/
+coverage_*.info
+build_coverage/
