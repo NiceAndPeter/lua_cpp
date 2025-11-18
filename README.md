@@ -4,12 +4,14 @@ A comprehensive modernization of Lua from C to C++23, achieving **zero performan
 
 ## Project Status
 
-**Performance**: 2.14s (3% faster than 2.17s baseline) ✅
+**Performance**: 4.20s baseline (current machine) ✅
 **Converted**: 19 structs → classes (100%)
-**Encapsulated**: 13/19 classes fully private (68%)
+**Encapsulated**: 19/19 classes fully private (100%) ✅
 **Macros Converted**: ~500 (37% of convertible macros)
+**Enum Classes**: All major enums converted (Phases 96-100) ✅
 **Build Status**: Zero warnings with `-Werror`
 **Tests**: All passing
+**Current Phase**: 100 - Enum class conversion complete
 
 ## Key Features
 
@@ -45,12 +47,21 @@ class TString : public GCBase<TString> { /* ... */ };
 
 All 9 GC-managed classes inherit from `GCBase<Derived>` for zero-cost abstraction.
 
-### Fully Encapsulated Classes
+### Fully Encapsulated Classes (19/19 - 100%)
 
-- ✅ `Table`, `TString`, `Proto`, `UpVal` - Core data types
+**Core Data Types:**
+- ✅ `Table`, `TString`, `Proto`, `UpVal`, `Udata`
 - ✅ `CClosure`, `LClosure` - Closure types
-- ✅ `CallInfo`, `GCObject` - VM internals
-- ✅ `expdesc`, `LocVar`, `AbsLineInfo`, `Upvaldesc` - Compiler types
+
+**VM Internals:**
+- ✅ `lua_State`, `global_State`, `CallInfo`
+- ✅ `GCObject`, `TValue` - Base types
+
+**Compiler Types:**
+- ✅ `FuncState`, `LexState`, `expdesc`
+- ✅ `LocVar`, `AbsLineInfo`, `Upvaldesc`
+
+**Utilities:**
 - ✅ `stringtable` - String interning
 
 ## Building
@@ -82,8 +93,9 @@ for i in 1 2 3 4 5; do
     ../build/lua all.lua 2>&1 | grep "total time:"
 done
 
-# Target: ≤2.21s (1% tolerance)
-# Current: ~2.14s ✓
+# Current machine baseline: 4.20s
+# Target: ≤4.33s (3% tolerance)
+# Historical baseline: 2.17s (different hardware)
 ```
 
 ## Project Structure
@@ -103,18 +115,22 @@ src/
 
 ## Documentation
 
-- **[claude.md](claude.md)** - Comprehensive project guide and architecture
-- **[ENCAPSULATION_PLAN.md](ENCAPSULATION_PLAN.md)** - Encapsulation roadmap (Phases 37-42)
-- **[CONSTRUCTOR_PLAN.md](CONSTRUCTOR_PLAN.md)** - Constructor conversion details
-- **[CMAKE_BUILD.md](CMAKE_BUILD.md)** - Build system documentation
+- **[CLAUDE.md](CLAUDE.md)** - ⭐ Comprehensive AI assistant guide with full project documentation
+- **[CMAKE_BUILD.md](CMAKE_BUILD.md)** - Build system configuration and options
+- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - SRP refactoring achievements (Phases 90-93)
+- **[Documentation Index](CLAUDE.md#documentation-index)** - Complete index of all 29 documentation files organized by category
 
 ## Key Achievements
 
-- **500+ macros** converted to inline constexpr functions
-- **CRTP implementation** across all GC types for zero-cost polymorphism
-- **Performance improvement** despite adding type safety (2.14s vs 2.17s)
-- **Zero API breakage** - Full backward compatibility maintained
-- **Modern exception handling** - Cleaner error propagation
+- **19/19 classes fully encapsulated** with private fields and comprehensive accessors ✅
+- **500+ macros** converted to inline constexpr functions (37% of convertible)
+- **CRTP implementation** across all 9 GC types for zero-cost polymorphism
+- **SRP refactoring complete** - FuncState, global_State, Proto decomposed (6% faster!)
+- **Enum class conversion** - All major enums modernized (Phases 96-100)
+- **GC modularization** - Extracted GCCore, GCMarking, GCCollector modules
+- **LuaStack centralization** - Complete stack encapsulation (Phase 94)
+- **Zero API breakage** - Full C API compatibility maintained
+- **Modern exception handling** - C++ exceptions replace setjmp/longjmp
 
 ## Contributing
 
@@ -127,11 +143,11 @@ This is an experimental modernization project. The focus is on:
 
 ## Performance Philosophy
 
-**Zero tolerance for regression**:
-- Every change must be benchmarked
-- Target: ≤2.21s (≤1% from baseline)
-- Current: 2.14s (3% improvement) ✓
-- Immediate revert if performance degrades
+**Strict performance enforcement**:
+- Every significant change must be benchmarked
+- Current machine target: ≤4.33s (≤3% from 4.20s baseline)
+- Historical baseline: 2.17s (different hardware)
+- Immediate revert if performance degrades beyond tolerance
 
 ## License
 

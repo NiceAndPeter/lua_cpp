@@ -837,34 +837,102 @@ git push -u origin <branch-name>
 
 ---
 
-## Additional Resources
+## Documentation Index
 
-### Architectural Planning
-- **SRP_ANALYSIS.md** - Single Responsibility Principle analysis & refactoring roadmap (2025-11-15)
-- **ENCAPSULATION_PLAN.md** - Detailed phase-by-phase encapsulation plan (may be outdated)
-- **CONSTRUCTOR_PLAN.md** - Constructor implementation strategy
-- **PHASE_36_2_PLAN.md** - Specific phase documentation
+### Core Documentation
+- **[README.md](README.md)** - Project overview and quick start guide
+- **[CLAUDE.md](CLAUDE.md)** - This file: Comprehensive AI assistant guide
+- **[CMAKE_BUILD.md](CMAKE_BUILD.md)** - Build system configuration and options
 
-### Garbage Collector
-- **GC_SIMPLIFICATION_ANALYSIS.md** - ⭐ Recommended approach: Incremental modularization (2025-11-17)
-  - Identifies 7 simplification opportunities with minimal codebase impact
+### Architecture & Refactoring
+- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - ⭐ Phases 90-93 summary: SRP refactoring achievements
+  - FuncState, global_State, Proto decomposition
+  - 6% performance improvement
+  - 81 fields → 14 focused subsystems
+- **[SRP_ANALYSIS.md](SRP_ANALYSIS.md)** - Single Responsibility Principle detailed analysis (2025-11-15)
+  - Complete decomposition proposals for major classes
+  - Risk assessment and implementation roadmap
+  - Performance impact predictions
+- **[CPP_MODERNIZATION_ANALYSIS.md](CPP_MODERNIZATION_ANALYSIS.md)** - C++23 modernization opportunities
+  - Language feature recommendations
+  - Zero-cost abstraction patterns
+  - Migration strategies
+
+### Garbage Collection
+- **[GC_SIMPLIFICATION_ANALYSIS.md](GC_SIMPLIFICATION_ANALYSIS.md)** - ⭐ Recommended: Incremental modularization (2025-11-17)
+  - 7 simplification opportunities identified
   - Module extraction strategy: 40% code organization improvement
   - Reduces lgc.cpp from 1,950 to ~500-600 lines
   - Target: ≤4.33s performance, zero API breakage
-- **GC_PITFALLS_ANALYSIS.md** - Comprehensive GC architecture analysis (2025-11-15)
+- **[GC_PITFALLS_ANALYSIS.md](GC_PITFALLS_ANALYSIS.md)** - Comprehensive GC architecture deep-dive (2025-11-15)
   - Tri-color marking, generational GC, ephemerons, finalization
   - Critical pitfalls and edge cases
   - C++ modernization risks and safe practices
+  - Why GC removal is not feasible
 
-### Build & Development
-- **CMAKE_BUILD.md** - CMake build instructions
+### Memory Management
+- **[MEMORY_ALLOCATION_ARCHITECTURE.md](MEMORY_ALLOCATION_ARCHITECTURE.md)** - Memory allocation system design
+  - Current architecture overview
+  - Allocator patterns and strategies
+- **[CUSTOM_ALLOCATOR_PLAN.md](CUSTOM_ALLOCATOR_PLAN.md)** - Custom allocator implementation plan
+  - Requirements and design considerations
+  - Performance implications
+- **[LUAALLOCATOR_README.md](LUAALLOCATOR_README.md)** - LuaAllocator class documentation
+  - API reference and usage examples
+
+### Type System & Compiler Analysis
+- **[UNION_REMOVAL_ANALYSIS.md](UNION_REMOVAL_ANALYSIS.md)** - Analysis of C union to C++ conversion
+  - TValue union modernization strategies
+  - Type safety improvements
+- **[INIT_TO_CONSTRUCTOR_ANALYSIS.md](INIT_TO_CONSTRUCTOR_ANALYSIS.md)** - Constructor conversion analysis
+  - Phases 1-2 planning and rationale
+  - Initialization safety improvements
+- **[CPP_STDLIB_OPPORTUNITIES.md](CPP_STDLIB_OPPORTUNITIES.md)** - Standard library integration opportunities
+  - Where std:: components could be beneficial
+  - Performance vs compatibility tradeoffs
+
+### VM & Performance Analysis
+- **[lambda_performance_analysis.md](lambda_performance_analysis.md)** - Lambda vs function pointer performance
+  - Benchmarking results
+  - Recommendations for hot paths
+- **[lvm_analysis_suggestions.md](lvm_analysis_suggestions.md)** - VM interpreter optimization suggestions
+- **[lvm_implementation_plan.md](lvm_implementation_plan.md)** - VM modernization implementation plan
+- **[lvm_remaining_macros.md](lvm_remaining_macros.md)** - Macro conversion tracking for VM
+- **[lvm_updated_analysis_2025-11-17.md](lvm_updated_analysis_2025-11-17.md)** - Latest VM analysis update
+
+### Completed Plans (Historical Reference)
+These plans have been fully implemented and are kept for historical reference:
+- **[ENCAPSULATION_PLAN.md](ENCAPSULATION_PLAN.md)** - ✅ Phases 37-42: All classes encapsulated
+- **[CONSTRUCTOR_PLAN.md](CONSTRUCTOR_PLAN.md)** - ✅ Phases 1-2: Constructor implementation complete
+- **[CONSTRUCTOR_REFACTOR_PLAN.md](CONSTRUCTOR_REFACTOR_PLAN.md)** - ✅ Constructor refactoring complete
+- **[LUASTACK_AGGRESSIVE_PLAN.md](LUASTACK_AGGRESSIVE_PLAN.md)** - ✅ Phase 94: Stack centralization complete
+- **[LUASTACK_ASSIGNMENT_PLAN.md](LUASTACK_ASSIGNMENT_PLAN.md)** - ✅ Stack assignment operations complete
+- **[PHASE_36_2_PLAN.md](PHASE_36_2_PLAN.md)** - ✅ Historical phase plan
+- **[AGGRESSIVE_MACRO_ELIMINATION_PLAN.md](AGGRESSIVE_MACRO_ELIMINATION_PLAN.md)** - ✅ Macro conversion phases complete
+- **[phase2_experiment_results.md](phase2_experiment_results.md)** - ✅ Phase 2 experimental data
+- **[phase2_macro_analysis.md](phase2_macro_analysis.md)** - ✅ Phase 2 macro analysis
+- **[claude.md](claude.md)** - ⚠️ Outdated, redirects to CLAUDE.md
+
+### Quick Navigation by Topic
+
+**Want to understand the architecture?** → Start with [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) and [SRP_ANALYSIS.md](SRP_ANALYSIS.md)
+
+**Want to work on GC?** → Read [GC_SIMPLIFICATION_ANALYSIS.md](GC_SIMPLIFICATION_ANALYSIS.md) and [GC_PITFALLS_ANALYSIS.md](GC_PITFALLS_ANALYSIS.md)
+
+**Want to optimize performance?** → Check [lambda_performance_analysis.md](lambda_performance_analysis.md) and lvm_*.md files
+
+**Want to modernize code?** → See [CPP_MODERNIZATION_ANALYSIS.md](CPP_MODERNIZATION_ANALYSIS.md) and [CPP_STDLIB_OPPORTUNITIES.md](CPP_STDLIB_OPPORTUNITIES.md)
+
+**Want to understand what's been done?** → Read [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) and completed plans
 
 ---
 
-**Last Updated**: 2025-11-17 - After GC simplification analysis
-**Current Phase**: GC analysis complete. Recommended: Incremental module extraction (not GC removal).
+**Last Updated**: 2025-11-18 - After enum class conversion phases (95-100) and documentation reorganization
+**Current Phase**: Phase 100 complete - All major enums converted to enum class
 **Performance Status**: ✅ EXCELLENT - Current baseline 4.20s (new machine), target ≤4.33s
-**Achievements**:
-- FuncState, global_State, and Proto successfully refactored with zero performance regression
+**Recent Achievements**:
+- Phases 96-100: BinOpr, UnOpr, F2Imod, OpMode, TMS, RESERVED converted to enum class
+- GC modularization: GCCore, GCMarking, GCCollector modules extracted
+- Complete documentation index with 29 files organized by category
+- FuncState, global_State, and Proto successfully refactored with SRP (6% performance improvement)
 - GC simplification strategy identified: 40% code organization improvement via module extraction
-- GC removal deemed NOT feasible (circular refs, weak tables, resurrection semantics require GC)
