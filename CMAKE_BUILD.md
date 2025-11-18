@@ -27,6 +27,7 @@ cmake --install build --prefix /usr/local
 | `LUA_BUILD_SHARED` | `OFF` | Build shared library |
 | `LUA_ENABLE_ASAN` | `OFF` | Enable AddressSanitizer |
 | `LUA_ENABLE_UBSAN` | `OFF` | Enable UndefinedBehaviorSanitizer |
+| `LUA_ENABLE_COVERAGE` | `OFF` | Enable code coverage reporting (gcov/lcov) |
 | `LUA_ENABLE_LTO` | `OFF` | Enable Link Time Optimization |
 
 ## Examples
@@ -35,6 +36,15 @@ cmake --install build --prefix /usr/local
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=ON
 cmake --build build
+```
+
+**Code coverage:**
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_COVERAGE=ON
+cmake --build build
+cd testes && ../build/lua all.lua
+lcov --capture --directory ../build --output-file coverage.info
+genhtml coverage.info --output-directory coverage_html
 ```
 
 **Release with LTO:**

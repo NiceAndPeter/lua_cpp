@@ -1,0 +1,115 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  coverage:
+    name: Generate Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake g++-13 lcov
+
+    - name: Configure with coverage
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=gcc-13 \
+          -DCMAKE_CXX_COMPILER=g++-13 \
+          -DLUA_ENABLE_COVERAGE=ON
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Run tests to generate coverage data
+      working-directory: testes
+      run: ../build/lua all.lua
+
+    - name: Generate coverage report
+      run: |
+        # Capture coverage data
+        lcov --capture \
+          --directory build \
+          --output-file coverage.info \
+          --rc lcov_branch_coverage=1
+
+        # Filter out system headers and test files
+        lcov --remove coverage.info \
+          '/usr/*' \
+          '*/build/*' \
+          '*/testes/*' \
+          --output-file coverage_filtered.info \
+          --rc lcov_branch_coverage=1
+
+        # Generate HTML report
+        genhtml coverage_filtered.info \
+          --output-directory coverage_html \
+          --rc lcov_branch_coverage=1
+
+        # Print summary
+        lcov --list coverage_filtered.info
+
+    - name: Calculate coverage percentage
+      id: coverage
+      run: |
+        # Extract line coverage percentage
+        COVERAGE=$(lcov --summary coverage_filtered.info 2>&1 | \
+          grep "lines" | \
+          awk '{print $2}' | \
+          sed 's/%//')
+
+        echo "Line coverage: ${COVERAGE}%"
+        echo "coverage=${COVERAGE}" >> $GITHUB_OUTPUT
+
+        # Optionally fail if coverage is below threshold
+        # Uncomment to enforce minimum coverage:
+        # if (( $(echo "$COVERAGE < 70.0" | bc -l) )); then
+        #   echo "ERROR: Coverage ${COVERAGE}% is below 70% threshold"
+        #   exit 1
+        # fi
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          coverage_html/
+          coverage_filtered.info
+        retention-days: 30
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const coverage = '${{ steps.coverage.outputs.coverage }}';
+          const body = `## 📊 Code Coverage Report\n\n` +
+                      `Line Coverage: **${coverage}%**\n\n` +
+                      `[Download detailed report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: body
+          });
+
+    # Optional: Upload to Codecov
+    # - name: Upload to Codecov
+    #   uses: codecov/codecov-action@v4
+    #   with:
+    #     files: ./coverage_filtered.info
+    #     flags: unittests
+    #     name: codecov-lua-cpp
+    #     fail_ci_if_error: false

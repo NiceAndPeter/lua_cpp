@@ -1,0 +1,156 @@
+name: Static Analysis
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  cppcheck:
+    name: CPPCheck Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install cppcheck
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cppcheck
+
+    - name: Run cppcheck
+      run: |
+        cppcheck \
+          --enable=all \
+          --std=c++23 \
+          --suppress=missingIncludeSystem \
+          --suppress=unusedFunction \
+          --suppress=unmatchedSuppression \
+          --inline-suppr \
+          --error-exitcode=1 \
+          --xml \
+          --xml-version=2 \
+          src/ \
+          2> cppcheck_report.xml || true
+
+        # Generate readable report
+        cppcheck \
+          --enable=all \
+          --std=c++23 \
+          --suppress=missingIncludeSystem \
+          --suppress=unusedFunction \
+          --suppress=unmatchedSuppression \
+          --inline-suppr \
+          src/ \
+          2>&1 | tee cppcheck_report.txt
+
+    - name: Upload cppcheck results
+      uses: actions/upload-artifact@v4
+      with:
+        name: cppcheck-report
+        path: |
+          cppcheck_report.xml
+          cppcheck_report.txt
+        retention-days: 30
+
+  clang-tidy:
+    name: Clang-Tidy Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
+        sudo apt-get install -y clang-16 clang-tidy-16 cmake
+
+    - name: Create .clang-tidy config
+      run: |
+        cat > .clang-tidy << 'EOF'
+        ---
+        Checks: >
+          bugprone-*,
+          modernize-*,
+          performance-*,
+          readability-*,
+          -modernize-use-trailing-return-type,
+          -readability-identifier-length,
+          -readability-magic-numbers,
+          -readability-function-cognitive-complexity
+
+        WarningsAsErrors: ''
+
+        CheckOptions:
+          - key: readability-identifier-naming.ClassCase
+            value: CamelCase
+          - key: readability-identifier-naming.FunctionCase
+            value: camelCase
+          - key: readability-identifier-naming.VariableCase
+            value: lower_case
+          - key: readability-identifier-naming.ConstantCase
+            value: UPPER_CASE
+        EOF
+
+    - name: Configure CMake for compile_commands.json
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=clang-16 \
+          -DCMAKE_CXX_COMPILER=clang++-16 \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+    - name: Run clang-tidy
+      run: |
+        # Run on a subset of files (full analysis can be very slow)
+        find src -name "*.cpp" | head -20 | xargs -I {} \
+          clang-tidy-16 \
+          -p build \
+          {} \
+          2>&1 | tee clang_tidy_report.txt || true
+
+    - name: Upload clang-tidy results
+      uses: actions/upload-artifact@v4
+      with:
+        name: clang-tidy-report
+        path: clang_tidy_report.txt
+        retention-days: 30
+
+  include-what-you-use:
+    name: Include-What-You-Use
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y iwyu cmake clang-16
+
+    - name: Configure CMake
+      run: |
+        cmake -B build \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_COMPILER=clang-16 \
+          -DCMAKE_CXX_COMPILER=clang++-16 \
+          -DCMAKE_CXX_INCLUDE_WHAT_YOU_USE=iwyu
+
+    - name: Run IWYU
+      run: |
+        cmake --build build 2>&1 | tee iwyu_report.txt || true
+
+    - name: Upload IWYU results
+      uses: actions/upload-artifact@v4
+      with:
+        name: iwyu-report
+        path: iwyu_report.txt
+        retention-days: 30

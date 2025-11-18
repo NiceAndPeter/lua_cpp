@@ -18,6 +18,7 @@ option(LUA_BUILD_TESTS "Build with test mode enabled" ON)
 option(LUA_ENABLE_ASSERTIONS "Enable runtime assertions (for debugging)" ON)
 option(LUA_ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(LUA_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(LUA_ENABLE_COVERAGE "Enable code coverage reporting (gcov/lcov)" OFF)
 option(LUA_ENABLE_LTO "Enable Link Time Optimization" OFF)
 option(LUA_BUILD_SHARED "Build shared library in addition to static" OFF)
 
@@ -88,6 +89,17 @@ endif()
 if(LUA_ENABLE_UBSAN)
     add_compile_options(-fsanitize=undefined)
     add_link_options(-fsanitize=undefined)
+endif()
+
+# Coverage options
+if(LUA_ENABLE_COVERAGE)
+    message(STATUS "Code coverage enabled")
+    add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
+    add_link_options(--coverage)
+    # Disable optimizations for better coverage accuracy
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        message(WARNING "Coverage works best with Debug or RelWithDebInfo build type")
+    endif()
 endif()
 
 # Link Time Optimization

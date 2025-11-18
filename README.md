@@ -1,5 +1,8 @@
 # Lua C++ - Modern C++23 Conversion of Lua 5.5
 
+[![CI/CD](https://github.com/NiceAndPeter/lua_cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/NiceAndPeter/lua_cpp/actions/workflows/ci.yml)
+[![Coverage](https://github.com/NiceAndPeter/lua_cpp/actions/workflows/coverage.yml/badge.svg)](https://github.com/NiceAndPeter/lua_cpp/actions/workflows/coverage.yml)
+
 A comprehensive modernization of Lua from C to C++23, achieving **zero performance regression** while adding type safety and encapsulation.
 
 ## Project Status
@@ -15,7 +18,8 @@ A comprehensive modernization of Lua from C to C++23, achieving **zero performan
 
 ## Key Features
 
-- **Zero Performance Regression**: Strict ≤1% tolerance enforced
+- **Zero Performance Regression**: Strict ≤3% tolerance enforced
+- **Automated CI/CD**: GitHub Actions for builds, tests, and performance tracking
 - **Full C API Compatibility**: Public API unchanged
 - **Modern C++23**: CRTP, inline constexpr, enum classes
 - **Type Safety**: Replaced macros with type-safe inline functions
