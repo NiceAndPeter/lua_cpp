@@ -14,7 +14,7 @@
 ** Forward declarations
 */
 struct lua_State;
-class CallInfo;
+struct CallInfo;
 class UpVal;
 
 /*

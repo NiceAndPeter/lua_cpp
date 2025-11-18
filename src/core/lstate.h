@@ -251,7 +251,7 @@ inline constexpr l_uint32 CIST_FIN = (CIST_HOOKYIELD << 1);
 ** - field 'nres' is used only while closing tbc variables when
 ** returning from a function;
 */
-class CallInfo {
+struct CallInfo {
 private:
   StkIdRel func;  /* function index in the stack */
   StkIdRel top;  /* top for this function */
