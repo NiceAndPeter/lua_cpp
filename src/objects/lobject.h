@@ -1145,8 +1145,8 @@ private:
   } v;
   union {
     struct {  /* (when open) */
-      struct UpVal *next;  /* linked list */
-      struct UpVal **previous;
+      UpVal *next;  /* linked list */
+      UpVal **previous;
     } open;
     TValue value;  /* the value (when closed) */
   } u;
