@@ -52,6 +52,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 
+# Clang-specific warnings
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    list(APPEND WARNING_FLAGS
+        -Wno-invalid-offsetof
+    )
+endif()
+
 # Optimization and platform flags
 set(OPTIMIZE_FLAGS
     -O3
