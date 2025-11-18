@@ -58,7 +58,7 @@ class Table;
 union Closure;
 class LClosure;
 class CClosure;
-class lua_State;
+struct lua_State;
 struct GCObject;
 
 
