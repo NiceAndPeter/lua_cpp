@@ -162,11 +162,11 @@ inline Node* hashstr(const Table* t, const TString* str) noexcept {
 	return hashpow2(t, str->getHash());
 }
 
-inline Node* hashboolean(Table* t, int p) noexcept {
+inline Node* hashboolean(Table* t, unsigned int p) noexcept {
 	return hashpow2(t, p);
 }
 
-inline Node* hashboolean(const Table* t, int p) noexcept {
+inline Node* hashboolean(const Table* t, unsigned int p) noexcept {
 	return hashpow2(t, p);
 }
 
@@ -207,7 +207,7 @@ static const TValue absentkey = {ABSTKEYCONSTANT};
 static Node *hashint (const Table *t, lua_Integer i) {
   lua_Unsigned ui = l_castS2U(i);
   if (ui <= cast_uint(std::numeric_limits<int>::max()))
-    return gnode(t, cast_int(ui) % cast_int((t->nodeSize()-1) | 1));
+    return gnode(t, cast_uint(ui) % ((t->nodeSize()-1) | 1));
   else
     return hashmod(t, ui);
 }
@@ -676,9 +676,9 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     t->setDummy();  /* signal that it is using dummy node */
   }
   else {
-    int i;
-    int lsize = luaO_ceillog2(size);
-    if (lsize > MAXHBITS || (1 << lsize) > MAXHSIZE)
+    unsigned int i;
+    unsigned int lsize = luaO_ceillog2(size);
+    if (lsize > MAXHBITS || (1u << lsize) > MAXHSIZE)
       luaG_runerror(L, "table overflow");
     size = Table::powerOfTwo(lsize);
     if (lsize < LIMFORLAST)  /* no 'lastfree' field? */
@@ -691,7 +691,7 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     }
     t->setLsizenode(cast_byte(lsize));
     t->setNoDummy();
-    for (i = 0; i < cast_int(size); i++) {
+    for (i = 0; i < size; i++) {
       Node *n = gnode(t, i);
       gnext(n) = 0;
       n->setKeyNil();
@@ -1482,7 +1482,7 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
     luaH_newkey(L, this, key, value);
   }
   else if (hres > 0) {  /* regular Node? */
-    *gval(gnode(this, hres - HFIRSTNODE)) = *value;
+    *gval(gnode(this, static_cast<unsigned int>(hres - HFIRSTNODE))) = *value;
   }
   else {  /* array entry */
     hres = ~hres;  /* real index */

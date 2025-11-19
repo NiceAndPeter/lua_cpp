@@ -65,7 +65,7 @@ static inline void clearkey(Node* n) { GCCore::clearkey(n); }
 ** Get last node in hash array (one past the end)
 */
 static inline Node* gnodelast(Table* h) noexcept {
-    return gnode(h, cast_sizet(h->nodeSize()));
+    return gnode(h, h->nodeSize());
 }
 
 /*

@@ -330,7 +330,7 @@ static void printobj (global_State *g, GCObject *o) {
 }
 
 
-void lua_printobj (lua_State *L, struct GCObject *o) {
+void lua_printobj (lua_State *L, GCObject *o) {
   printobj(G(L), o);
 }
 
@@ -1116,7 +1116,7 @@ static int table_query (lua_State *L) {
   }
   else if (cast_uint(i) < asize) {
     lua_pushinteger(L, i);
-    if (!tagisempty(*t->getArrayTag(i)))
+    if (!tagisempty(*t->getArrayTag(cast_uint(i))))
       arr2obj(t, cast_uint(i), s2v(L->getTop().p));
     else
       setnilvalue(s2v(L->getTop().p));
@@ -1125,19 +1125,19 @@ static int table_query (lua_State *L) {
   }
   else if (cast_uint(i -= cast_int(asize)) < t->nodeSize()) {
     TValue k;
-    gnode(t, i)->getKey(L, &k);
-    if (!isempty(gval(gnode(t, i))) ||
+    gnode(t, cast_uint(i))->getKey(L, &k);
+    if (!isempty(gval(gnode(t, cast_uint(i)))) ||
         ttisnil(&k) ||
         ttisnumber(&k)) {
       pushobject(L, &k);
     }
     else
       lua_pushliteral(L, "<undef>");
-    if (!isempty(gval(gnode(t, i))))
-      pushobject(L, gval(gnode(t, i)));
+    if (!isempty(gval(gnode(t, cast_uint(i)))))
+      pushobject(L, gval(gnode(t, cast_uint(i))));
     else
       lua_pushnil(L);
-    lua_pushinteger(L, gnext(&t->getNodeArray()[i]));
+    lua_pushinteger(L, gnext(&t->getNodeArray()[cast_uint(i)]));
   }
   return 3;
 }
@@ -1180,7 +1180,7 @@ static int string_query (lua_State *L) {
     lua_pushinteger(L ,tb->getNumElements());
     return 2;
   }
-  else if (s < tb->getSize()) {
+  else if (cast_uint(s) < tb->getSize()) {
     TString *ts;
     int n = 0;
     for (ts = tb->getHash()[s]; ts != NULL; ts = ts->getNext()) {

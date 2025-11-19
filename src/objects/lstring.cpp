@@ -65,8 +65,8 @@ unsigned luaS_hashlongstr (TString *ts) {
 }
 
 
-static void tablerehash (TString **vect, int osize, int nsize) {
-  int i;
+static void tablerehash (TString **vect, unsigned int osize, unsigned int nsize) {
+  unsigned int i;
   for (i = osize; i < nsize; i++)  /* clear new elements */
     vect[i] = NULL;
   for (i = 0; i < osize; i++) {  /* rehash old part of the array */
@@ -88,9 +88,9 @@ static void tablerehash (TString **vect, int osize, int nsize) {
 ** (This can degrade performance, but any non-zero size should work
 ** correctly.)
 */
-void luaS_resize (lua_State *L, int nsize) {
+void luaS_resize (lua_State *L, unsigned int nsize) {
   stringtable *tb = G(L)->getStringTable();
-  int osize = tb->getSize();
+  unsigned int osize = tb->getSize();
   TString **newvect;
   if (nsize < osize)  /* shrinking table? */
     tablerehash(tb->getHash(), osize, nsize);  /* depopulate shrinking part */
@@ -114,7 +114,7 @@ void luaS_resize (lua_State *L, int nsize) {
 ** a non-collectable string.)
 */
 void luaS_clearcache (global_State *g) {
-  int i, j;
+  unsigned int i, j;
   for (i = 0; i < STRCACHE_N; i++)
     for (j = 0; j < STRCACHE_M; j++) {
       if (iswhite(g->getStrCache(i, j)))  /* will entry be collected? */
@@ -128,7 +128,7 @@ void luaS_clearcache (global_State *g) {
 */
 void luaS_init (lua_State *L) {
   global_State *g = G(L);
-  int i, j;
+  unsigned int i, j;
   stringtable *tb = G(L)->getStringTable();
   tb->setHash(luaM_newvector(L, MINSTRTABSIZE, TString*));
   tablerehash(tb->getHash(), 0, MINSTRTABSIZE);  /* clear array */
@@ -305,7 +305,7 @@ TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
 */
 TString *luaS_new (lua_State *L, const char *str) {
   unsigned int i = point2uint(str) % STRCACHE_N;  /* hash */
-  int j;
+  unsigned int j;
   global_State *g = G(L);
   for (j = 0; j < STRCACHE_M; j++) {
     if (strcmp(str, getstr(g->getStrCache(i, j))) == 0)  /* hit? */

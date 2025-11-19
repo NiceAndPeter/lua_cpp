@@ -1706,9 +1706,9 @@ public:
 /*
 ** 'module' operation for hashing (size is always a power of 2)
 */
-inline unsigned int lmod(int s, unsigned int size) noexcept {
+inline unsigned int lmod(unsigned int s, unsigned int size) noexcept {
 	lua_assert((size & (size - 1)) == 0);  /* size must be power of 2 */
-	return cast_uint(s) & cast_uint(size - 1);
+	return s & (size - 1);
 }
 
 

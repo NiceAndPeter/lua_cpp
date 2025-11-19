@@ -325,30 +325,33 @@ target_include_directories(lua PRIVATE
 )
 
 # LuaAllocator test executable (optional, for testing the allocator)
-add_executable(test_luaallocator
-    test_luaallocator.cpp
-)
+# Note: Only build with GCC due to C++23 libstdc++ compatibility issues with Clang 15
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_executable(test_luaallocator
+        test_luaallocator.cpp
+    )
 
-target_link_libraries(test_luaallocator PRIVATE
-    liblua_static
-)
+    target_link_libraries(test_luaallocator PRIVATE
+        liblua_static
+    )
 
-target_compile_options(test_luaallocator PRIVATE
-    -Wall
-    ${WARNING_FLAGS}
-    ${OPTIMIZE_FLAGS}
-)
+    target_compile_options(test_luaallocator PRIVATE
+        -Wall
+        ${WARNING_FLAGS}
+        ${OPTIMIZE_FLAGS}
+    )
 
-target_include_directories(test_luaallocator PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/gc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/core
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
-)
+    target_include_directories(test_luaallocator PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/testing
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/memory
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/memory/gc
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/core
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/objects
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/compiler
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/vm
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/serialization
+    )
+endif()
 
 # Install targets
 include(GNUInstallDirs)

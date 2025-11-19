@@ -51,11 +51,7 @@ static inline void clearkey(Node* n) { GCCore::clearkey(n); }
 ** Get last node in hash array (one past the end)
 */
 static inline Node* gnodelast(Table* h) noexcept {
-    return gnode(h, cast_sizet(h->nodeSize()));
-}
-
-static inline Node* gnodelast(const Table* h) noexcept {
-    return gnode(h, cast_sizet(h->nodeSize()));
+    return gnode(h, h->nodeSize());
 }
 
 /* Note: objsize is now in GCCore module */
@@ -81,23 +77,6 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
     linkgclist_(obj2gco(th), th->getGclistPtr(), &p);
 }
 
-/*
-** Link object for generational collection
-** In generational mode, some objects go back to a gray list if they're
-** old or if we're in the propagation phase.
-*/
-static void genlink(global_State* g, GCObject* o) {
-    lua_assert(isblack(o));
-    if (g->getGCKind() == GCKind::GenerationalMinor) {  /* generational mode? */
-        if (isold(o))
-            return;  /* old objects don't need to be linked */
-        /* else link in appropriate list for next minor collection */
-        linkobjgclist(o, *g->getSurvivalPtr());
-        setage(o, GCAge::Survival);  /* survived this cycle */
-    }
-    /* incremental mode: keep object in black state */
-}
-
 /* Note: gcvalueN is now in lgc.h */
 
 /*
@@ -115,43 +94,6 @@ static void genlink(global_State* g, GCObject* o) {
 
 /* Functions getmode, traverseweakvalue, traverseephemeron are in lgc.cpp
    and will be moved to gc_weak module in Phase 4 */
-
-/*
-** Traverse array part of a table
-** Returns true if any object was marked
-*/
-static inline int traversearray(global_State* g, Table* h) {
-    unsigned asize = h->arraySize();
-    int marked = 0;  /* true if some object is marked in this traversal */
-    unsigned i;
-    for (i = 0; i < asize; i++) {
-        GCObject* o = gcvalarr(h, i);
-        if (o != NULL && iswhite(o)) {
-            marked = 1;
-            GCMarking::reallymarkobject(g, o);
-        }
-    }
-    return marked;
-}
-
-/*
-** Traverse a strong (non-weak) table
-*/
-static inline void traversestrongtable(global_State* g, Table* h) {
-    Node* n;
-    Node* limit = gnodelast(h);
-    traversearray(g, h);
-    for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
-        if (isempty(gval(n)))  /* entry is empty? */
-            clearkey(n);  /* clear its key */
-        else {
-            lua_assert(!n->isKeyNil());
-            markkey(g, n);
-            markvalue(g, gval(n));
-        }
-    }
-    genlink(g, obj2gco(h));
-}
 
 /*
 ** Traverse a table (delegates to weak or strong traversal)

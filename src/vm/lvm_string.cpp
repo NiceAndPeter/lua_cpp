@@ -109,7 +109,7 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
       return;
     }
     case LUA_VSHRSTR: {
-      setivalue(s2v(ra), tsvalue(rb)->length());
+      setivalue(s2v(ra), static_cast<lua_Integer>(tsvalue(rb)->length()));
       return;
     }
     case LUA_VLNGSTR: {

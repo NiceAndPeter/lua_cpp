@@ -177,20 +177,20 @@ enum class GCKind : lu_byte {
 class stringtable {
 private:
   TString **hash;  /* array of buckets (linked lists of strings) */
-  int nuse;  /* number of elements */
-  int size;  /* number of buckets */
+  unsigned int nuse;  /* number of elements */
+  unsigned int size;  /* number of buckets */
 
 public:
   // Inline accessors
   TString** getHash() const noexcept { return hash; }
   TString*** getHashPtr() noexcept { return &hash; }  // For reallocation
-  int getNumElements() const noexcept { return nuse; }
-  int getSize() const noexcept { return size; }
+  unsigned int getNumElements() const noexcept { return nuse; }
+  unsigned int getSize() const noexcept { return size; }
 
   // Inline setters
   void setHash(TString** h) noexcept { hash = h; }
-  void setNumElements(int n) noexcept { nuse = n; }
-  void setSize(int s) noexcept { size = s; }
+  void setNumElements(unsigned int n) noexcept { nuse = n; }
+  void setSize(unsigned int s) noexcept { size = s; }
   void incrementNumElements() noexcept { nuse++; }
   void decrementNumElements() noexcept { nuse--; }
 };
@@ -921,8 +921,8 @@ public:
   inline stringtable* getTable() noexcept { return &strt; }
   inline const stringtable* getTable() const noexcept { return &strt; }
 
-  inline TString* getCache(int n, int m) const noexcept { return cache[n][m]; }
-  inline void setCache(int n, int m, TString* str) noexcept { cache[n][m] = str; }
+  inline TString* getCache(unsigned int n, unsigned int m) const noexcept { return cache[n][m]; }
+  inline void setCache(unsigned int n, unsigned int m, TString* str) noexcept { cache[n][m] = str; }
 };
 
 
@@ -1146,8 +1146,8 @@ public:
   inline stringtable* getStringTable() noexcept { return strings.getTable(); }
   inline const stringtable* getStringTable() const noexcept { return strings.getTable(); }
 
-  inline TString* getStrCache(int n, int m) const noexcept { return strings.getCache(n, m); }
-  inline void setStrCache(int n, int m, TString* str) noexcept { strings.setCache(n, m, str); }
+  inline TString* getStrCache(unsigned int n, unsigned int m) const noexcept { return strings.getCache(n, m); }
+  inline void setStrCache(unsigned int n, unsigned int m, TString* str) noexcept { strings.setCache(n, m, str); }
 
   /* Delegating accessors for TypeSystem */
   inline TValue* getRegistry() noexcept { return types.getRegistry(); }

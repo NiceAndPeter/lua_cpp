@@ -35,7 +35,7 @@ CClosure::CClosure(int nupvals) {
 
 // Factory method
 CClosure* CClosure::create(lua_State* L, int nupvals) {
-  size_t extra = (nupvals > 0) ? (nupvals - 1) * sizeof(TValue) : 0;
+  size_t extra = (nupvals > 0) ? (static_cast<size_t>(nupvals) - 1) * sizeof(TValue) : 0;
   CClosure* c = new (L, LUA_VCCL, extra) CClosure(nupvals);
   return c;
 }

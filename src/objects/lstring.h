@@ -66,7 +66,7 @@ inline bool eqshrstr(const TString* a, const TString* b) noexcept {
 LUAI_FUNC unsigned luaS_hash (const char *str, size_t l, unsigned seed);
 LUAI_FUNC unsigned luaS_hashlongstr (TString *ts);
 LUAI_FUNC int luaS_eqstr (TString *a, TString *b);
-LUAI_FUNC void luaS_resize (lua_State *L, int newsize);
+LUAI_FUNC void luaS_resize (lua_State *L, unsigned int newsize);
 LUAI_FUNC void luaS_clearcache (global_State *g);
 LUAI_FUNC void luaS_init (lua_State *L);
 /* Phase 26: Removed luaS_remove - now TString::remove() method */

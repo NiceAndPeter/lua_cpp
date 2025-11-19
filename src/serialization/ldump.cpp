@@ -210,7 +210,7 @@ static void dumpConstants (DumpState *D, const Proto *f) {
 static void dumpProtos (DumpState *D, const Proto *f) {
   int n = f->getProtosSize();
   dumpInt(D, n);
-  for (const auto& proto : std::span(f->getProtos(), n)) {
+  for (const auto& proto : std::span(f->getProtos(), static_cast<size_t>(n))) {
     dumpFunction(D, proto);
   }
 }
@@ -219,7 +219,7 @@ static void dumpProtos (DumpState *D, const Proto *f) {
 static void dumpUpvalues (DumpState *D, const Proto *f) {
   int n = f->getUpvaluesSize();
   dumpInt(D, n);
-  for (const auto& uv : std::span(f->getUpvalues(), n)) {
+  for (const auto& uv : std::span(f->getUpvalues(), static_cast<size_t>(n))) {
     dumpByte(D, uv.getInStackRaw());
     dumpByte(D, uv.getIndex());
     dumpByte(D, uv.getKind());
@@ -242,14 +242,14 @@ static void dumpDebug (DumpState *D, const Proto *f) {
   }
   n = (D->strip) ? 0 : f->getLocVarsSize();
   dumpInt(D, n);
-  for (const auto& lv : std::span(f->getLocVars(), n)) {
+  for (const auto& lv : std::span(f->getLocVars(), static_cast<size_t>(n))) {
     dumpString(D, lv.getVarName());
     dumpInt(D, lv.getStartPC());
     dumpInt(D, lv.getEndPC());
   }
   n = (D->strip) ? 0 : f->getUpvaluesSize();
   dumpInt(D, n);
-  for (const auto& uv : std::span(f->getUpvalues(), n)) {
+  for (const auto& uv : std::span(f->getUpvalues(), static_cast<size_t>(n))) {
     dumpString(D, uv.getName());
   }
 }

@@ -201,7 +201,7 @@ static void loadCode (LoadState *S, Proto *f) {
   else {
     f->setCode(luaM_newvectorchecked(S->L, n, Instruction));
     f->setCodeSize(n);
-    loadVector(S, f->getCode(), n);
+    loadVector(S, f->getCode(), static_cast<size_t>(n));
   }
 }
 
@@ -299,7 +299,7 @@ static void loadDebug (LoadState *S, Proto *f) {
   else {
     f->setLineInfo(luaM_newvectorchecked(S->L, n, ls_byte));
     f->setLineInfoSize(n);
-    loadVector(S, f->getLineInfo(), n);
+    loadVector(S, f->getLineInfo(), static_cast<size_t>(n));
   }
   n = loadInt(S);
   if (n > 0) {
@@ -311,7 +311,7 @@ static void loadDebug (LoadState *S, Proto *f) {
     else {
       f->setAbsLineInfo(luaM_newvectorchecked(S->L, n, AbsLineInfo));
       f->setAbsLineInfoSize(n);
-      loadVector(S, f->getAbsLineInfo(), n);
+      loadVector(S, f->getAbsLineInfo(), static_cast<size_t>(n));
     }
   }
   n = loadInt(S);

@@ -112,11 +112,11 @@ static void reallymarkobject (global_State *g, GCObject *o);
 ** one after last element in a hash array
 */
 inline Node* gnodelast(Table* h) noexcept {
-	return gnode(h, cast_sizet(h->nodeSize()));
+	return gnode(h, h->nodeSize());
 }
 
 inline Node* gnodelast(const Table* h) noexcept {
-	return gnode(h, cast_sizet(h->nodeSize()));
+	return gnode(h, h->nodeSize());
 }
 
 
