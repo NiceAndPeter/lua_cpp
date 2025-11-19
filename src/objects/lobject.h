@@ -1622,19 +1622,19 @@ public:
   }
 
   inline unsigned int* getLenHint() noexcept {
-    return cast(unsigned*, array);
+    return static_cast<unsigned int*>(static_cast<void*>(array));
   }
 
   inline const unsigned int* getLenHint() const noexcept {
-    return cast(const unsigned*, array);
+    return static_cast<const unsigned int*>(static_cast<const void*>(array));
   }
 
   inline lu_byte* getArrayTag(lua_Unsigned k) noexcept {
-    return cast(lu_byte*, array) + sizeof(unsigned) + k;
+    return static_cast<lu_byte*>(static_cast<void*>(array)) + sizeof(unsigned) + k;
   }
 
   inline const lu_byte* getArrayTag(lua_Unsigned k) const noexcept {
-    return cast(const lu_byte*, array) + sizeof(unsigned) + k;
+    return static_cast<const lu_byte*>(static_cast<const void*>(array)) + sizeof(unsigned) + k;
   }
 
   inline Value* getArrayVal(lua_Unsigned k) noexcept {

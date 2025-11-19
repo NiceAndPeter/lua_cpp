@@ -90,7 +90,7 @@ inline bool haslastfree(const Table* t) noexcept {
 }
 
 inline Node*& getlastfree(Table* t) noexcept {
-	return (cast(Limbox *, t->getNodeArray()) - 1)->lastfree;
+	return (reinterpret_cast<Limbox*>(t->getNodeArray()) - 1)->lastfree;
 }
 
 
@@ -417,7 +417,7 @@ static unsigned findindex (lua_State *L, Table *t, TValue *key,
     const TValue *n = getgeneric(t, key, 1);
     if (l_unlikely(isabstkey(n)))
       luaG_runerror(L, "invalid key to 'next'");  /* key not found */
-    i = cast_uint(cast(Node*, n) - gnode(t, 0));  /* key index in hash table */
+    i = cast_uint(reinterpret_cast<const Node*>(n) - gnode(t, 0));  /* key index in hash table */
     /* hash elements are numbered after array ones */
     return (i + 1) + asize;
   }
@@ -642,8 +642,8 @@ static Value *resizearray (lua_State *L , Table *t,
   }
   else {
     size_t newasizeb = concretesize(newasize);
-    Value *np = cast(Value *,
-                  luaM_reallocvector(L, NULL, 0, newasizeb, lu_byte));
+    Value *np = static_cast<Value*>(
+                  static_cast<void*>(luaM_reallocvector(L, NULL, 0, newasizeb, lu_byte)));
     if (np == NULL)  /* allocation error? */
       return NULL;
     np += newasize;  /* shift pointer to the end of value segment */
@@ -671,7 +671,7 @@ static Value *resizearray (lua_State *L , Table *t,
 */
 static void setnodevector (lua_State *L, Table *t, unsigned size) {
   if (size == 0) {  /* no elements to hash part? */
-    t->setNodeArray(cast(Node *, dummynode));  /* use common 'dummynode' */
+    t->setNodeArray(const_cast<Node*>(dummynode));  /* use common 'dummynode' */
     t->setLsizenode(0);
     t->setDummy();  /* signal that it is using dummy node */
   }
@@ -686,7 +686,7 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     else {
       size_t bsize = size * sizeof(Node) + sizeof(Limbox);
       char *node = luaM_newblock(L, bsize);
-      t->setNodeArray(cast(Node *, node + sizeof(Limbox)));
+      t->setNodeArray(reinterpret_cast<Node*>(node + sizeof(Limbox)));
       getlastfree(t) = gnode(t, size);  /* all positions are free */
     }
     t->setLsizenode(cast_byte(lsize));
@@ -1022,7 +1022,7 @@ static void newcheckedkey (Table *t, const TValue *key, TValue *value) {
   else {
     int done = insertkey(t, key, value);  /* insert key in the hash part */
     lua_assert(done);  /* it cannot fail */
-    cast(void, done);  /* to avoid warnings */
+    static_cast<void>(done);  /* to avoid warnings */
   }
 }
 
@@ -1096,13 +1096,13 @@ static int retpsetcode (Table *t, const TValue *slot) {
   if (isabstkey(slot))
     return HNOTFOUND;  /* no slot with that key */
   else  /* return node encoded */
-    return cast_int((cast(Node*, slot) - t->getNodeArray())) + HFIRSTNODE;
+    return cast_int((reinterpret_cast<const Node*>(slot) - t->getNodeArray())) + HFIRSTNODE;
 }
 
 
 static int finishnodeset (Table *t, const TValue *slot, TValue *val) {
   if (!ttisnil(slot)) {
-    *cast(TValue*, slot) = *val;
+    *const_cast<TValue*>(slot) = *val;
     return HOK;  /* success */
   }
   else
@@ -1114,7 +1114,7 @@ static int rawfinishnodeset (const TValue *slot, TValue *val) {
   if (isabstkey(slot))
     return 0;  /* no slot with that key */
   else {
-    *cast(TValue*, slot) = *val;
+    *const_cast<TValue*>(slot) = *val;
     return 1;  /* success */
   }
 }
@@ -1405,7 +1405,7 @@ int Table::psetInt(lua_Integer key, TValue* val) {
 int Table::psetShortStr(TString* key, TValue* val) {
   const TValue *slot = HgetShortStr(key);
   if (!ttisnil(slot)) {  /* key already has a value? (all too common) */
-    *cast(TValue*, slot) = *val;  /* update it */
+    *const_cast<TValue*>(slot) = *val;  /* update it */
     return HOK;  /* done */
   }
   else if (checknoTM(getMetatable(), TMS::TM_NEWINDEX)) {  /* no metamethod? */
