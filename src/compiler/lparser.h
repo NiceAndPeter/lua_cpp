@@ -237,7 +237,7 @@ public:
   /* For luaM_growvector replacement */
   inline void ensureCapacity(int needed) {
     if (needed > getSize()) {
-      vec.reserve(needed);
+      vec.reserve(static_cast<size_t>(needed));
     }
   }
   inline Labeldesc* allocateNew() {
