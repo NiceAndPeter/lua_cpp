@@ -15,6 +15,7 @@ temp
 
 # CMake build directories
 build/
+build_clang/
 install_test/
 cmake-build-*/
 coverage_html/
