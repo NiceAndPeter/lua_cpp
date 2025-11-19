@@ -268,9 +268,9 @@ public:
   inline int actvarGetN() const noexcept { return static_cast<int>(actvar_vec.size()); }
   inline int actvarGetSize() const noexcept { return static_cast<int>(actvar_vec.capacity()); }
 
-  inline void actvarSetN(int new_n) { actvar_vec.resize(new_n); }
-  inline Vardesc& actvarAt(int index) { return actvar_vec[index]; }
-  inline const Vardesc& actvarAt(int index) const { return actvar_vec[index]; }
+  inline void actvarSetN(int new_n) { actvar_vec.resize(static_cast<size_t>(new_n)); }
+  inline Vardesc& actvarAt(int index) { return actvar_vec[static_cast<size_t>(index)]; }
+  inline const Vardesc& actvarAt(int index) const { return actvar_vec[static_cast<size_t>(index)]; }
 
   inline Vardesc* actvarAllocateNew() {
     actvar_vec.resize(actvar_vec.size() + 1);
