@@ -1633,7 +1633,7 @@ void FuncState::settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hs
   int rc = asize % (MAXARG_vC + 1);  /* lower bits of array size */
   int k = (extra > 0);  /* true iff needs extra argument */
   int hsize_coded = (hsize != 0) ? luaO_ceillog2(cast_uint(hsize)) + 1 : 0;
-  *inst = CREATE_vABCk(OP_NEWTABLE, ra, hsize_coded, rc, k);
+  *inst = CREATE_vABCk(OP_NEWTABLE, static_cast<int>(ra), hsize_coded, rc, k);
   *(inst + 1) = CREATE_Ax(OP_EXTRAARG, extra);
 }
 
