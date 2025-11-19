@@ -539,7 +539,7 @@ public:
 
   // Method declarations (implemented in lstring.cpp)
   unsigned hashLongStr();
-  bool equals(TString* other);
+  bool equals(const TString* other) const;
   void remove(lua_State* L);           // Phase 25a: from luaS_remove
   TString* normalize(lua_State* L);    // Phase 25a: from luaS_normstr
 
@@ -772,7 +772,7 @@ inline void* Udata::getMemory() noexcept {
   return getudatamem(this);
 }
 inline const void* Udata::getMemory() const noexcept {
-  return getudatamem(const_cast<Udata*>(this));
+  return getudatamem(this);  // Calls const overload
 }
 
 /* }================================================================== */
@@ -1863,7 +1863,7 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 			}
 			case LUA_VSHRSTR: case LUA_VLNGSTR: {
 				/* Compare strings with different variants */
-				return const_cast<TString*>(tsvalue(&l))->equals(const_cast<TString*>(tsvalue(&r)));
+				return tsvalue(&l)->equals(tsvalue(&r));
 			}
 			default:
 				return false;
@@ -1882,7 +1882,7 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 			case LUA_VSHRSTR:
 				return eqshrstr(tsvalue(&l), tsvalue(&r));
 			case LUA_VLNGSTR:
-				return const_cast<TString*>(tsvalue(&l))->equals(const_cast<TString*>(tsvalue(&r)));
+				return tsvalue(&l)->equals(tsvalue(&r));
 			case LUA_VUSERDATA:
 				return uvalue(&l) == uvalue(&r);
 			case LUA_VLCF:
@@ -1919,7 +1919,7 @@ inline bool operator<=(const TString& l, const TString& r) noexcept {
 /* operator== for TString - equality check using existing equals() method */
 inline bool operator==(const TString& l, const TString& r) noexcept {
 	// Use equals() method which handles short vs long string optimization
-	return const_cast<TString&>(l).equals(const_cast<TString*>(&r));
+	return l.equals(&r);
 }
 
 /* operator!= for TString - inequality check */

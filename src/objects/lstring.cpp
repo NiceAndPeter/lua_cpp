@@ -405,7 +405,7 @@ unsigned TString::hashLongStr() {
   return getHash();
 }
 
-bool TString::equals(TString* other) {
+bool TString::equals(const TString* other) const {
   size_t len1, len2;
   const char *s1 = getlstr(this, len1);
   const char *s2 = getlstr(other, len2);

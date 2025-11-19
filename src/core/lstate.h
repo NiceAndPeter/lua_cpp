@@ -399,7 +399,7 @@ private:
   CallInfo base_ci;  /* CallInfo for first level (C host) */
 
   // Step 3: GC and state management fields (encapsulated)
-  global_State *l_G;
+  mutable global_State *l_G;  /* mutable: GC can happen during any operation */
   UpVal *openupval;  /* list of open upvalues in this stack */
   GCObject *gclist;
   lua_State *twups;  /* list of threads with open upvalues */
@@ -507,7 +507,7 @@ public:
 
   // Step 3: GC and state management field accessors
   global_State* getGlobalState() noexcept { return l_G; }
-  const global_State* getGlobalState() const noexcept { return l_G; }
+  global_State* getGlobalState() const noexcept { return l_G; }  // mutable field
   void setGlobalState(global_State* g) noexcept { l_G = g; }
   global_State*& getGlobalStateRef() noexcept { return l_G; }  // For G() macro
 
@@ -1199,7 +1199,7 @@ public:
 
 /* Get global state from lua_State (returns reference to allow assignment) */
 inline global_State*& G(lua_State* L) noexcept { return L->getGlobalStateRef(); }
-inline global_State* G(const lua_State* L) noexcept { return const_cast<global_State*>(L->getGlobalState()); }
+inline global_State* G(const lua_State* L) noexcept { return L->getGlobalState(); }
 
 /* Get main thread from global_State */
 inline lua_State* mainthread(global_State* g) noexcept { return &g->getMainThread()->l; }

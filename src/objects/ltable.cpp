@@ -453,7 +453,7 @@ inline size_t extraLastfree(const Table* t) noexcept {
 }
 
 /* 'node' size in bytes */
-static size_t sizehash (Table *t) {
+static size_t sizehash (const Table *t) {
   return cast_sizet(t->nodeSize()) * sizeof(Node) + extraLastfree(t);
 }
 
@@ -925,7 +925,7 @@ Table *luaH_new (lua_State *L) {
 }
 
 
-lu_mem luaH_size (Table *t) {
+lu_mem luaH_size (const Table *t) {
   lu_mem sz = static_cast<lu_mem>(sizeof(Table)) + concretesize(t->arraySize());
   if (!t->isDummy())
     sz += sizehash(t);
@@ -1499,7 +1499,7 @@ void Table::resizeArray(lua_State* L, unsigned nasize) {
 }
 
 lu_mem Table::size() const {
-  return luaH_size(const_cast<Table*>(this));
+  return luaH_size(this);
 }
 
 int Table::tableNext(lua_State* L, StkId key) {
