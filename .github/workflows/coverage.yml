@@ -42,7 +42,9 @@ jobs:
         lcov --capture \
           --directory build \
           --output-file coverage.info \
-          --rc lcov_branch_coverage=1
+          --rc branch_coverage=1 \
+          --rc geninfo_unexecuted_blocks=1 \
+          --ignore-errors mismatch,gcov,inconsistent
 
         # Filter out system headers and test files
         lcov --remove coverage.info \
@@ -50,12 +52,14 @@ jobs:
           '*/build/*' \
           '*/testes/*' \
           --output-file coverage_filtered.info \
-          --rc lcov_branch_coverage=1
+          --rc branch_coverage=1 \
+          --ignore-errors mismatch,gcov,inconsistent
 
         # Generate HTML report
         genhtml coverage_filtered.info \
           --output-directory coverage_html \
-          --rc lcov_branch_coverage=1
+          --rc branch_coverage=1 \
+          --ignore-errors mismatch
 
         # Print summary
         lcov --list coverage_filtered.info
