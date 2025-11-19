@@ -170,7 +170,7 @@ public:
 private:
   // Shared state (lexer + parser)
   struct lua_State *L;
-  struct Dyndata *dyd;  /* dynamic structures shared by lexer and parser */
+  class Dyndata *dyd;  /* dynamic structures shared by lexer and parser */
 
 public:
   // Phase 94: Accessors delegating to subsystems
