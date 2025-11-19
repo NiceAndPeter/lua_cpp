@@ -236,11 +236,11 @@ public:
 
   // Parser utility methods (used by FuncState, kept in LexState for access)
   Labeldesc *findlabel(TString *name, int ilb);
-  int newlabelentry(struct FuncState *fs, Labellist *l, TString *name, int line, int pc);
-  void closegoto(struct FuncState *fs, int g, Labeldesc *label, int bup);
-  l_noret jumpscopeerror(struct FuncState *fs, Labeldesc *gt);
-  void createlabel(struct FuncState *fs, TString *name, int line, int last);
-  l_noret undefgoto(struct FuncState *fs, Labeldesc *gt);
+  int newlabelentry(class FuncState *fs, Labellist *l, TString *name, int line, int pc);
+  void closegoto(class FuncState *fs, int g, Labeldesc *label, int bup);
+  l_noret jumpscopeerror(class FuncState *fs, Labeldesc *gt);
+  void createlabel(class FuncState *fs, TString *name, int line, int last);
+  l_noret undefgoto(class FuncState *fs, Labeldesc *gt);
 
 private:
   // Phase 93: Lexer helper methods (converted from static functions)
