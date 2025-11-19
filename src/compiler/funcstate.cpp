@@ -448,7 +448,7 @@ void FuncState::fixforjump(int pcpos, int dest, int back) {
     offset = -offset;
   if (l_unlikely(offset > MAXARG_Bx))
     getLexState()->syntaxError("control structure too long");
-  SETARG_Bx(*jmp, offset);
+  SETARG_Bx(*jmp, static_cast<unsigned int>(offset));
 }
 
 

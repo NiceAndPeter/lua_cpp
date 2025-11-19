@@ -144,7 +144,7 @@ int FuncState::patchtestreg(int node, int reg) {
   if (InstructionView(*i).opcode() != OP_TESTSET)
     return 0;  /* cannot patch other instructions */
   if (reg != NO_REG && reg != InstructionView(*i).b())
-    SETARG_A(*i, reg);
+    SETARG_A(*i, static_cast<unsigned int>(reg));
   else {
      /* no register to put value or register already has the value;
         change instruction to simple test */
@@ -534,7 +534,7 @@ void FuncState::discharge2reg(expdesc *e, int reg) {
     }
     case VRELOC: {
       Instruction *instr = &getinstruction(this, e);
-      SETARG_A(*instr, reg);  /* instruction will put result in 'reg' */
+      SETARG_A(*instr, static_cast<unsigned int>(reg));  /* instruction will put result in 'reg' */
       break;
     }
     case VNONRELOC: {
@@ -919,7 +919,7 @@ int FuncState::finishbinexpneg(expdesc *e1, expdesc *e2, OpCode op, int line, TM
       int v2 = cast_int(i2);
       finishbinexpval(e1, e2, op, int2sC(-v2), 0, line, OP_MMBINI, event);
       /* correct metamethod argument */
-      SETARG_B(getProto()->getCode()[getPC() - 1], int2sC(v2));
+      SETARG_B(getProto()->getCode()[getPC() - 1], static_cast<unsigned int>(int2sC(v2)));
       return 1;  /* successfully coded */
     }
   }
@@ -1055,8 +1055,8 @@ void FuncState::codeconcat(expdesc *e1, expdesc *e2, int line) {
     int n = InstructionView(*ie2).b();  /* # of elements concatenated in 'e2' */
     lua_assert(e1->getInfo() + 1 == InstructionView(*ie2).a());
     freeExpression(e2);
-    SETARG_A(*ie2, e1->getInfo());  /* correct first element ('e1') */
-    SETARG_B(*ie2, n + 1);  /* will concatenate one more element */
+    SETARG_A(*ie2, static_cast<unsigned int>(e1->getInfo()));  /* correct first element ('e1') */
+    SETARG_B(*ie2, static_cast<unsigned int>(n + 1));  /* will concatenate one more element */
   }
   else {  /* 'e2' is not a concatenation */
     codeABC(OP_CONCAT, e1->getInfo(), 2, 0);  /* new concat opcode */
@@ -1168,8 +1168,8 @@ void FuncState::nil(int from, int n) {
         (from <= pfrom && pfrom <= l + 1)) {  /* can connect both? */
       if (pfrom < from) from = pfrom;  /* from = min(from, pfrom) */
       if (pl > l) l = pl;  /* l = max(l, pl) */
-      SETARG_A(*previous, from);
-      SETARG_B(*previous, l - from);
+      SETARG_A(*previous, static_cast<unsigned int>(from));
+      SETARG_B(*previous, static_cast<unsigned int>(l - from));
       return;
     }  /* else go through */
   }
@@ -1420,11 +1420,11 @@ void FuncState::setreturns(expdesc *e, int nresults) {
   Instruction *instr = &getinstruction(this, e);
   luaY_checklimit(this, nresults + 1, MAXARG_C, "multiple results");
   if (e->getKind() == VCALL)  /* expression is an open function call? */
-    SETARG_C(*instr, nresults + 1);
+    SETARG_C(*instr, static_cast<unsigned int>(nresults + 1));
   else {
     lua_assert(e->getKind() == VVARARG);
-    SETARG_C(*instr, nresults + 1);
-    SETARG_A(*instr, getFreeReg());
+    SETARG_C(*instr, static_cast<unsigned int>(nresults + 1));
+    SETARG_A(*instr, static_cast<unsigned int>(getFreeReg()));
     reserveregs(1);
   }
 }
@@ -1671,7 +1671,7 @@ void FuncState::finish() {
         if (getNeedClose())
           SETARG_k(*instr, 1);  /* signal that it needs to close */
         if (p->getFlag() & PF_ISVARARG)
-          SETARG_C(*instr, p->getNumParams() + 1);  /* signal that it is vararg */
+          SETARG_C(*instr, static_cast<unsigned int>(p->getNumParams()) + 1);  /* signal that it is vararg */
         break;
       }
       case OP_JMP: {
