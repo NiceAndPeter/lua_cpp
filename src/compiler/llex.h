@@ -221,8 +221,8 @@ public:
   // Shared state accessors
   struct lua_State* getLuaState() const noexcept { return L; }
   void setLuaState(struct lua_State* state) noexcept { L = state; }
-  struct Dyndata* getDyndata() const noexcept { return dyd; }
-  void setDyndata(struct Dyndata* d) noexcept { dyd = d; }
+  class Dyndata* getDyndata() const noexcept { return dyd; }
+  void setDyndata(class Dyndata* d) noexcept { dyd = d; }
 
   // Lexer method declarations (implemented in llex.cpp)
   void saveAndNext();
