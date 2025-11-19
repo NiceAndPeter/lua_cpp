@@ -926,7 +926,7 @@ Table *luaH_new (lua_State *L) {
 
 
 lu_mem luaH_size (Table *t) {
-  lu_mem sz = cast(lu_mem, sizeof(Table)) + concretesize(t->arraySize());
+  lu_mem sz = static_cast<lu_mem>(sizeof(Table)) + concretesize(t->arraySize());
   if (!t->isDummy())
     sz += sizehash(t);
   return sz;

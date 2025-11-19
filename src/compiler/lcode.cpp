@@ -201,7 +201,7 @@ void FuncState::savelineinfo(Proto *proto, int line) {
   }
   luaM_growvector(getLexState()->getLuaState(), proto->getLineInfoRef(), pcval, proto->getLineInfoSizeRef(), ls_byte,
                   std::numeric_limits<int>::max(), "opcodes");
-  proto->getLineInfo()[pcval] = cast(ls_byte, linedif);
+  proto->getLineInfo()[pcval] = static_cast<ls_byte>(linedif);
   setPreviousLine(line);  /* last line saved */
 }
 
@@ -821,14 +821,14 @@ static inline OpCode binopr2op (BinOpr opr, BinOpr baser, OpCode base) {
   lua_assert(baser <= opr &&
             ((baser == BinOpr::OPR_ADD && opr <= BinOpr::OPR_SHR) ||
              (baser == BinOpr::OPR_LT && opr <= BinOpr::OPR_LE)));
-  return cast(OpCode, (cast_int(opr) - cast_int(baser)) + cast_int(base));
+  return static_cast<OpCode>((cast_int(opr) - cast_int(baser)) + cast_int(base));
 }
 
 /*
 ** Convert a UnOpr to an OpCode  (ORDER OPR - ORDER OP)
 */
 static inline OpCode unopr2op (UnOpr opr) {
-  return cast(OpCode, (cast_int(opr) - cast_int(UnOpr::OPR_MINUS)) +
+  return static_cast<OpCode>((cast_int(opr) - cast_int(UnOpr::OPR_MINUS)) +
                                        cast_int(OP_UNM));
 }
 
@@ -837,7 +837,7 @@ static inline OpCode unopr2op (UnOpr opr) {
 */
 static inline TMS binopr2TM (BinOpr opr) {
   lua_assert(BinOpr::OPR_ADD <= opr && opr <= BinOpr::OPR_SHR);
-  return cast(TMS, (cast_int(opr) - cast_int(BinOpr::OPR_ADD)) + cast_int(TMS::TM_ADD));
+  return static_cast<TMS>((cast_int(opr) - cast_int(BinOpr::OPR_ADD)) + cast_int(TMS::TM_ADD));
 }
 
 /*
@@ -1617,7 +1617,7 @@ void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
     case BinOpr::OPR_GT: case BinOpr::OPR_GE: {
       /* '(a > b)' <=> '(b < a)';  '(a >= b)' <=> '(b <= a)' */
       swapexps(e1, e2);
-      op = cast(BinOpr, (cast_int(op) - cast_int(BinOpr::OPR_GT)) + cast_int(BinOpr::OPR_LT));
+      op = static_cast<BinOpr>((cast_int(op) - cast_int(BinOpr::OPR_GT)) + cast_int(BinOpr::OPR_LT));
     }  /* FALLTHROUGH */
     case BinOpr::OPR_LT: case BinOpr::OPR_LE: {
       codeorder(op, e1, e2);
