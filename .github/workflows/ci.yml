@@ -51,9 +51,9 @@ jobs:
     - name: Run Tests
       working-directory: testes
       run: |
-        ../build/lua all.lua
-        # Check for expected success output
-        ../build/lua all.lua 2>&1 | grep -q "final OK !!!" || exit 1
+        # Run tests once and check for expected success output
+        ../build/lua all.lua 2>&1 | tee test_output.txt
+        grep -q "final OK !!!" test_output.txt || exit 1
 
     - name: Upload build artifacts
       if: matrix.build-type == 'Release' && matrix.compiler == 'gcc-13'
@@ -189,15 +189,11 @@ jobs:
     - name: Run tests with sanitizers
       working-directory: testes
       run: |
-        # Run with sanitizer options
+        # Run with sanitizer options and check for success
         ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
         UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
-        ../build/lua all.lua
-
-        # Check for success
-        ASAN_OPTIONS=detect_leaks=1:halt_on_error=1 \
-        UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1 \
-        ../build/lua all.lua 2>&1 | grep -q "final OK !!!" || exit 1
+        ../build/lua all.lua 2>&1 | tee test_output.txt
+        grep -q "final OK !!!" test_output.txt || exit 1
 
   build-summary:
     name: Build Summary
