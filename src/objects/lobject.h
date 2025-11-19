@@ -1658,7 +1658,7 @@ public:
   lu_byte getInt(lua_Integer key, TValue* res);
   lu_byte getShortStr(TString* key, TValue* res);
   lu_byte getStr(TString* key, TValue* res);
-  const TValue* HgetShortStr(TString* key);
+  TValue* HgetShortStr(TString* key);
 
   int pset(const TValue* key, TValue* val);
   int psetInt(lua_Integer key, TValue* val);

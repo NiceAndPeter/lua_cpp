@@ -350,7 +350,7 @@ static int equalkey (const TValue *k1, const Node *n2, int deadok) {
 ** which may be in array part, nor for floats with integral values.)
 ** See explanation about 'deadok' in function 'equalkey'.
 */
-static const TValue *getgeneric (Table *t, const TValue *key, int deadok) {
+static TValue *getgeneric (Table *t, const TValue *key, int deadok) {
   Node *n = mainpositionTV(t, key);
   for (;;) {  /* check whether 'key' is somewhere in the chain */
     if (equalkey(key, n, deadok))
@@ -358,7 +358,7 @@ static const TValue *getgeneric (Table *t, const TValue *key, int deadok) {
     else {
       int nx = gnext(n);
       if (nx == 0)
-        return &absentkey;  /* not found */
+        return const_cast<TValue*>(&absentkey);  /* not found */
       n += nx;
     }
   }
@@ -1042,7 +1042,7 @@ static void luaH_newkey (lua_State *L, Table *t, const TValue *key,
 }
 
 
-static const TValue *getintfromhash (Table *t, lua_Integer key) {
+static TValue *getintfromhash (Table *t, lua_Integer key) {
   Node *n = hashint(t, key);
   lua_assert(!ikeyinarray(t, key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
@@ -1054,7 +1054,7 @@ static const TValue *getintfromhash (Table *t, lua_Integer key) {
       n += nx;
     }
   }
-  return &absentkey;
+  return const_cast<TValue*>(&absentkey);
 }
 
 
@@ -1072,7 +1072,7 @@ static lu_byte finishnodeget (const TValue *val, TValue *res) {
 }
 
 
-static const TValue *Hgetlongstr (Table *t, TString *key) {
+static TValue *Hgetlongstr (Table *t, TString *key) {
   TValue ko;
   lua_assert(!strisshr(key));
   setsvalue(cast(lua_State *, NULL), &ko, key);
@@ -1080,7 +1080,7 @@ static const TValue *Hgetlongstr (Table *t, TString *key) {
 }
 
 
-static const TValue *Hgetstr (Table *t, TString *key) {
+static TValue *Hgetstr (Table *t, TString *key) {
   if (strisshr(key))
     return t->HgetShortStr(key);
   else
@@ -1100,9 +1100,9 @@ static int retpsetcode (Table *t, const TValue *slot) {
 }
 
 
-static int finishnodeset (Table *t, const TValue *slot, TValue *val) {
+static int finishnodeset (Table *t, TValue *slot, TValue *val) {
   if (!ttisnil(slot)) {
-    *const_cast<TValue*>(slot) = *val;
+    *slot = *val;
     return HOK;  /* success */
   }
   else
@@ -1110,11 +1110,11 @@ static int finishnodeset (Table *t, const TValue *slot, TValue *val) {
 }
 
 
-static int rawfinishnodeset (const TValue *slot, TValue *val) {
+static int rawfinishnodeset (TValue *slot, TValue *val) {
   if (isabstkey(slot))
     return 0;  /* no slot with that key */
   else {
-    *const_cast<TValue*>(slot) = *val;
+    *slot = *val;
     return 1;  /* success */
   }
 }
@@ -1359,7 +1359,7 @@ lu_byte Table::getStr(TString* key, TValue* res) {
   return finishnodeget(Hgetstr(this, key), res);
 }
 
-const TValue* Table::HgetShortStr(TString* key) {
+TValue* Table::HgetShortStr(TString* key) {
   Node *n = hashstr(this, key);
   lua_assert(strisshr(key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
@@ -1368,7 +1368,7 @@ const TValue* Table::HgetShortStr(TString* key) {
     else {
       int nx = gnext(n);
       if (nx == 0)
-        return &absentkey;  /* not found */
+        return const_cast<TValue*>(&absentkey);  /* not found */
       n += nx;
     }
   }
@@ -1403,9 +1403,9 @@ int Table::psetInt(lua_Integer key, TValue* val) {
 }
 
 int Table::psetShortStr(TString* key, TValue* val) {
-  const TValue *slot = HgetShortStr(key);
+  TValue *slot = HgetShortStr(key);
   if (!ttisnil(slot)) {  /* key already has a value? (all too common) */
-    *const_cast<TValue*>(slot) = *val;  /* update it */
+    *slot = *val;  /* update it */
     return HOK;  /* done */
   }
   else if (checknoTM(getMetatable(), TMS::TM_NEWINDEX)) {  /* no metamethod? */
