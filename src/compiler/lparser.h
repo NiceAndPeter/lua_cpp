@@ -441,8 +441,8 @@ class FuncState {
 private:
   /* Core context (unchanged) */
   Proto *f;  /* current function header */
-  struct FuncState *prev;  /* enclosing function */
-  struct LexState *ls;  /* lexical state */
+  class FuncState *prev;  /* enclosing function */
+  class LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
   int np;  /* number of elements in 'p' (nested functions) */
 
@@ -457,13 +457,13 @@ public:
   /* Core context accessors (unchanged) */
   inline Proto* getProto() const noexcept { return f; }
   inline FuncState* getPrev() const noexcept { return prev; }
-  inline struct LexState* getLexState() const noexcept { return ls; }
+  inline class LexState* getLexState() const noexcept { return ls; }
   inline struct BlockCnt* getBlock() const noexcept { return bl; }
   inline int getNP() const noexcept { return np; }
 
   inline void setProto(Proto* proto) noexcept { f = proto; }
   inline void setPrev(FuncState* prev_) noexcept { prev = prev_; }
-  inline void setLexState(struct LexState* ls_) noexcept { ls = ls_; }
+  inline void setLexState(class LexState* ls_) noexcept { ls = ls_; }
   inline void setBlock(struct BlockCnt* bl_) noexcept { bl = bl_; }
   inline void setNP(int np_) noexcept { np = np_; }
   inline void incrementNP() noexcept { np++; }
@@ -694,21 +694,21 @@ private:
 */
 class Parser {
 private:
-  struct LexState *ls;  /* lexical state (for tokens and shared data) */
-  struct FuncState *fs;  /* current function state */
+  class LexState *ls;  /* lexical state (for tokens and shared data) */
+  class FuncState *fs;  /* current function state */
 
 public:
   // Constructor
-  explicit Parser(struct LexState* lexState, struct FuncState* funcState)
+  explicit Parser(class LexState* lexState, class FuncState* funcState)
     : ls(lexState), fs(funcState) {}
 
   // Accessors
-  inline struct LexState* getLexState() const noexcept { return ls; }
-  inline struct FuncState* getFuncState() const noexcept { return fs; }
-  inline struct Dyndata* getDyndata() const noexcept { return ls->getDyndata(); }
+  inline class LexState* getLexState() const noexcept { return ls; }
+  inline class FuncState* getFuncState() const noexcept { return fs; }
+  inline class Dyndata* getDyndata() const noexcept { return ls->getDyndata(); }
 
-  inline void setLexState(struct LexState* lexState) noexcept { ls = lexState; }
-  inline void setFuncState(struct FuncState* funcState) noexcept { fs = funcState; }
+  inline void setLexState(class LexState* lexState) noexcept { ls = lexState; }
+  inline void setFuncState(class FuncState* funcState) noexcept { fs = funcState; }
 
   // Parser utility methods (extracted from LexState public API)
   l_noret error_expected(int token);
