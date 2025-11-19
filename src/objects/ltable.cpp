@@ -85,12 +85,48 @@ typedef union {
   char padding[offsetof(Limbox_aux, follows_pNode)];
 } Limbox;
 
+/*
+** NodeArray: Zero-overhead wrapper for hash table node storage.
+** Provides encapsulated access to nodes and optional Limbox metadata.
+** Layout: [Limbox?][Node array] - NodeArray* points to first Node.
+**
+** This is a zero-size helper class - it adds no memory overhead.
+** It simply provides methods to access the memory layout.
+*/
+class NodeArray {
+public:
+  // Allocate node storage with optional Limbox metadata
+  static Node* allocate(lua_State* L, unsigned int n, bool withLastfree) {
+    if (withLastfree) {
+      // Large table: allocate Limbox + Node[]
+      size_t total = sizeof(Limbox) + n * sizeof(Node);
+      char* block = luaM_newblock(L, total);
+      // Limbox is at the start, nodes follow
+      Limbox* limbox = reinterpret_cast<Limbox*>(block);
+      Node* nodeStart = reinterpret_cast<Node*>(block + sizeof(Limbox));
+      // Initialize Limbox
+      limbox->lastfree = nodeStart + n;  // all positions are free
+      return nodeStart;
+    } else {
+      // Small table: just Node[] (no Limbox)
+      return luaM_newvector(L, n, Node);
+    }
+  }
+
+  // Access lastfree from node pointer (only valid if table has Limbox)
+  static Node*& getLastFree(Node* nodeStart) {
+    // lastfree is stored in Limbox before the nodes
+    Limbox* limbox = reinterpret_cast<Limbox*>(nodeStart) - 1;
+    return limbox->lastfree;
+  }
+};
+
 inline bool haslastfree(const Table* t) noexcept {
 	return t->getLsizenode() >= LIMFORLAST;
 }
 
 inline Node*& getlastfree(Table* t) noexcept {
-	return (reinterpret_cast<Limbox*>(t->getNodeArray()) - 1)->lastfree;
+	return NodeArray::getLastFree(t->getNodeArray());
 }
 
 
@@ -681,14 +717,9 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     if (lsize > MAXHBITS || (1u << lsize) > MAXHSIZE)
       luaG_runerror(L, "table overflow");
     size = Table::powerOfTwo(lsize);
-    if (lsize < LIMFORLAST)  /* no 'lastfree' field? */
-      t->setNodeArray(luaM_newvector(L, size, Node));
-    else {
-      size_t bsize = size * sizeof(Node) + sizeof(Limbox);
-      char *node = luaM_newblock(L, bsize);
-      t->setNodeArray(reinterpret_cast<Node*>(node + sizeof(Limbox)));
-      getlastfree(t) = gnode(t, size);  /* all positions are free */
-    }
+    bool needsLastfree = (lsize >= LIMFORLAST);
+    Node* nodes = NodeArray::allocate(L, size, needsLastfree);
+    t->setNodeArray(nodes);
     t->setLsizenode(cast_byte(lsize));
     t->setNoDummy();
     for (i = 0; i < size; i++) {
