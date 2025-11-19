@@ -665,7 +665,7 @@ void FuncState::negatecondition(expdesc *e) {
   Instruction *instr = getjumpcontrol(e->getInfo());
   lua_assert(testTMode(InstructionView(*instr).opcode()) && InstructionView(*instr).opcode() != OP_TESTSET &&
                                            InstructionView(*instr).opcode() != OP_TEST);
-  SETARG_k(*instr, (InstructionView(*instr).k() ^ 1));
+  SETARG_k(*instr, static_cast<unsigned int>(InstructionView(*instr).k() ^ 1));
 }
 
 /*

@@ -627,7 +627,7 @@ void Parser::constructor( expdesc *table_exp) {
   } while (testnext( ',') || testnext( ';'));
   check_match( /*{*/ '}', '{' /*}*/, line);
   funcstate->lastlistfield(&cc);
-  funcstate->settablesize(pc, table_exp->getInfo(), static_cast<unsigned>(cc.na), static_cast<unsigned>(cc.nh));
+  funcstate->settablesize(pc, static_cast<unsigned>(table_exp->getInfo()), static_cast<unsigned>(cc.na), static_cast<unsigned>(cc.nh));
 }
 
 /* }====================================================================== */
