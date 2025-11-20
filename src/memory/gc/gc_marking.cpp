@@ -137,16 +137,16 @@ l_mem GCMarking::traverseudata(global_State* g, Udata* u) {
 ** Traverse a prototype (function template)
 */
 l_mem GCMarking::traverseproto(global_State* g, Proto* f) {
-    int i;
     markobjectN(g, f->getSource());
-    for (i = 0; i < f->getConstantsSize(); i++)
-        markvalue(g, &f->getConstants()[i]);
-    for (i = 0; i < f->getUpvaluesSize(); i++)
-        markobjectN(g, f->getUpvalues()[i].getName());
-    for (i = 0; i < f->getProtosSize(); i++)
-        markobjectN(g, f->getProtos()[i]);
-    for (i = 0; i < f->getLocVarsSize(); i++)
-        markobjectN(g, f->getLocVars()[i].getVarName());
+    // Phase 112: Use std::span and range-based for loops
+    for (auto& constant : f->getConstantsSpan())
+        markvalue(g, &constant);
+    for (const auto& upval : f->getUpvaluesSpan())
+        markobjectN(g, upval.getName());
+    for (Proto* nested : f->getProtosSpan())
+        markobjectN(g, nested);
+    for (const auto& locvar : f->getDebugInfo().getLocVarsSpan())
+        markobjectN(g, locvar.getVarName());
     return 1 + f->getConstantsSize() + f->getUpvaluesSize() +
            f->getProtosSize() + f->getLocVarsSize();
 }

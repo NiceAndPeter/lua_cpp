@@ -172,33 +172,32 @@ static void dumpString (DumpState *D, TString *ts) {
 
 
 static void dumpCode (DumpState *D, const Proto *f) {
-  dumpInt(D, f->getCodeSize());
-  dumpAlign(D, sizeof(f->getCode()[0]));
-  lua_assert(f->getCode() != NULL);
-  dumpVector(D, f->getCode(), cast_uint(f->getCodeSize()));
+  auto code = f->getCodeSpan();
+  dumpInt(D, static_cast<int>(code.size()));
+  dumpAlign(D, sizeof(code[0]));
+  lua_assert(code.data() != NULL);
+  dumpVector(D, code.data(), cast_uint(code.size()));
 }
 
 
 static void dumpFunction (DumpState *D, const Proto *f);
 
 static void dumpConstants (DumpState *D, const Proto *f) {
-  int i;
-  int n = f->getConstantsSize();
-  dumpInt(D, n);
-  for (i = 0; i < n; i++) {
-    const TValue *o = &f->getConstants()[i];
-    int tt = ttypetag(o);
+  auto constants = f->getConstantsSpan();
+  dumpInt(D, static_cast<int>(constants.size()));
+  for (const auto& constant : constants) {
+    int tt = ttypetag(&constant);
     dumpByte(D, tt);
     switch (tt) {
       case LUA_VNUMFLT:
-        dumpNumber(D, fltvalue(o));
+        dumpNumber(D, fltvalue(&constant));
         break;
       case LUA_VNUMINT:
-        dumpInteger(D, ivalue(o));
+        dumpInteger(D, ivalue(&constant));
         break;
       case LUA_VSHRSTR:
       case LUA_VLNGSTR:
-        dumpString(D, tsvalue(o));
+        dumpString(D, tsvalue(&constant));
         break;
       default:
         lua_assert(tt == LUA_VNIL || tt == LUA_VFALSE || tt == LUA_VTRUE);
@@ -208,18 +207,18 @@ static void dumpConstants (DumpState *D, const Proto *f) {
 
 
 static void dumpProtos (DumpState *D, const Proto *f) {
-  int n = f->getProtosSize();
-  dumpInt(D, n);
-  for (const auto& proto : std::span(f->getProtos(), static_cast<size_t>(n))) {
+  auto protos = f->getProtosSpan();
+  dumpInt(D, static_cast<int>(protos.size()));
+  for (Proto* proto : protos) {
     dumpFunction(D, proto);
   }
 }
 
 
 static void dumpUpvalues (DumpState *D, const Proto *f) {
-  int n = f->getUpvaluesSize();
-  dumpInt(D, n);
-  for (const auto& uv : std::span(f->getUpvalues(), static_cast<size_t>(n))) {
+  auto upvalues = f->getUpvaluesSpan();
+  dumpInt(D, static_cast<int>(upvalues.size()));
+  for (const auto& uv : upvalues) {
     dumpByte(D, uv.getInStackRaw());
     dumpByte(D, uv.getIndex());
     dumpByte(D, uv.getKind());
@@ -229,27 +228,31 @@ static void dumpUpvalues (DumpState *D, const Proto *f) {
 
 static void dumpDebug (DumpState *D, const Proto *f) {
   int n;
-  n = (D->strip) ? 0 : f->getLineInfoSize();
+  auto lineinfo = f->getDebugInfo().getLineInfoSpan();
+  n = (D->strip) ? 0 : static_cast<int>(lineinfo.size());
   dumpInt(D, n);
-  if (f->getLineInfo() != NULL)
-    dumpVector(D, f->getLineInfo(), cast_uint(n));
-  n = (D->strip) ? 0 : f->getAbsLineInfoSize();
+  if (lineinfo.data() != NULL)
+    dumpVector(D, lineinfo.data(), cast_uint(n));
+  auto abslineinfo = f->getDebugInfo().getAbsLineInfoSpan();
+  n = (D->strip) ? 0 : static_cast<int>(abslineinfo.size());
   dumpInt(D, n);
   if (n > 0) {
     /* 'abslineinfo' is an array of structures of int's */
     dumpAlign(D, sizeof(int));
-    dumpVector(D, f->getAbsLineInfo(), cast_uint(n));
+    dumpVector(D, abslineinfo.data(), cast_uint(n));
   }
-  n = (D->strip) ? 0 : f->getLocVarsSize();
+  auto locvars = f->getDebugInfo().getLocVarsSpan();
+  n = (D->strip) ? 0 : static_cast<int>(locvars.size());
   dumpInt(D, n);
-  for (const auto& lv : std::span(f->getLocVars(), static_cast<size_t>(n))) {
+  for (const auto& lv : locvars.subspan(0, n)) {
     dumpString(D, lv.getVarName());
     dumpInt(D, lv.getStartPC());
     dumpInt(D, lv.getEndPC());
   }
-  n = (D->strip) ? 0 : f->getUpvaluesSize();
+  auto upvalues = f->getUpvaluesSpan();
+  n = (D->strip) ? 0 : static_cast<int>(upvalues.size());
   dumpInt(D, n);
-  for (const auto& uv : std::span(f->getUpvalues(), static_cast<size_t>(n))) {
+  for (const auto& uv : upvalues.subspan(0, n)) {
     dumpString(D, uv.getName());
   }
 }

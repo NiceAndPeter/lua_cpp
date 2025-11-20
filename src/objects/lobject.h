@@ -10,6 +10,7 @@
 
 
 #include <cstdarg>
+#include <span>
 
 
 #include "llimits.h"
@@ -929,6 +930,28 @@ public:
 
   /* Pointer accessors */
   inline TString** getSourcePtr() noexcept { return &source; }
+
+  /* Phase 112: std::span accessors for debug info arrays */
+  inline std::span<ls_byte> getLineInfoSpan() noexcept {
+    return std::span(lineinfo, sizelineinfo);
+  }
+  inline std::span<const ls_byte> getLineInfoSpan() const noexcept {
+    return std::span(lineinfo, sizelineinfo);
+  }
+
+  inline std::span<AbsLineInfo> getAbsLineInfoSpan() noexcept {
+    return std::span(abslineinfo, sizeabslineinfo);
+  }
+  inline std::span<const AbsLineInfo> getAbsLineInfoSpan() const noexcept {
+    return std::span(abslineinfo, sizeabslineinfo);
+  }
+
+  inline std::span<LocVar> getLocVarsSpan() noexcept {
+    return std::span(locvars, sizelocvars);
+  }
+  inline std::span<const LocVar> getLocVarsSpan() const noexcept {
+    return std::span(locvars, sizelocvars);
+  }
 };
 
 
@@ -1008,6 +1031,36 @@ public:
   inline bool isVarArg() const noexcept { return flag != 0; }
   inline Instruction* getCode() const noexcept { return code; }
   inline TValue* getConstants() const noexcept { return k; }
+
+  /* Phase 112: std::span accessors for arrays */
+  inline std::span<Instruction> getCodeSpan() noexcept {
+    return std::span(code, sizecode);
+  }
+  inline std::span<const Instruction> getCodeSpan() const noexcept {
+    return std::span(code, sizecode);
+  }
+
+  inline std::span<TValue> getConstantsSpan() noexcept {
+    return std::span(k, sizek);
+  }
+  inline std::span<const TValue> getConstantsSpan() const noexcept {
+    return std::span(k, sizek);
+  }
+
+  inline std::span<Proto*> getProtosSpan() noexcept {
+    return std::span(p, sizep);
+  }
+  inline std::span<Proto* const> getProtosSpan() const noexcept {
+    return std::span(p, sizep);
+  }
+
+  inline std::span<Upvaldesc> getUpvaluesSpan() noexcept {
+    return std::span(upvalues, sizeupvalues);
+  }
+  inline std::span<const Upvaldesc> getUpvaluesSpan() const noexcept {
+    return std::span(upvalues, sizeupvalues);
+  }
+
   inline Proto** getProtos() const noexcept { return p; }
   inline Upvaldesc* getUpvalues() const noexcept { return upvalues; }
   inline GCObject* getGclist() const noexcept { return gclist; }
