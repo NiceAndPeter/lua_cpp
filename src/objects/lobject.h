@@ -222,40 +222,40 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 /* Common type for all collectable objects */
 class GCObject {
 protected:
-  GCObject* next;
-  lu_byte tt;
-  lu_byte marked;
+  mutable GCObject* next;     /* GC list linkage (mutable for GC bookkeeping) */
+  lu_byte tt;                  /* Type tag (immutable) */
+  mutable lu_byte marked;      /* GC mark bits (mutable for GC bookkeeping) */
 
 public:
   // Inline accessors
   GCObject* getNext() const noexcept { return next; }
-  void setNext(GCObject* n) noexcept { next = n; }
+  void setNext(GCObject* n) const noexcept { next = n; }  /* const - next is mutable */
   // Pointer-to-pointer for efficient GC list manipulation (allows in-place removal)
-  GCObject** getNextPtr() noexcept { return &next; }
+  GCObject** getNextPtr() const noexcept { return &next; }  /* const - next is mutable */
   lu_byte getType() const noexcept { return tt; }
   void setType(lu_byte t) noexcept { tt = t; }
   lu_byte getMarked() const noexcept { return marked; }
-  void setMarked(lu_byte m) noexcept { marked = m; }
+  void setMarked(lu_byte m) const noexcept { marked = m; }  /* const - marked is mutable */
   bool isMarked() const noexcept { return marked != 0; }
 
-  // Marked field bit manipulation methods
-  void setMarkedBit(int bit) noexcept { marked |= cast_byte(1 << bit); }
-  void clearMarkedBit(int bit) noexcept { marked &= cast_byte(~(1 << bit)); }
-  void clearMarkedBits(int mask) noexcept { marked &= cast_byte(~mask); }
+  // Marked field bit manipulation methods (const - marked is mutable)
+  void setMarkedBit(int bit) const noexcept { marked |= cast_byte(1 << bit); }
+  void clearMarkedBit(int bit) const noexcept { marked &= cast_byte(~(1 << bit)); }
+  void clearMarkedBits(int mask) const noexcept { marked &= cast_byte(~mask); }
 
   // Marked field bit manipulation helpers (for backward compatibility)
-  lu_byte& getMarkedRef() noexcept { return marked; }
+  lu_byte& getMarkedRef() const noexcept { return marked; }  /* const - marked is mutable */
 
   // GC color and age methods (defined in lgc.h after constants are available)
   inline bool isWhite() const noexcept;
   inline bool isBlack() const noexcept;
   inline bool isGray() const noexcept;
   inline GCAge getAge() const noexcept;
-  inline void setAge(GCAge age) noexcept;
+  inline void setAge(GCAge age) const noexcept;  /* const - marked is mutable */
   inline bool isOld() const noexcept;
 
   // GC operations (implemented in lgc.cpp)
-  void fix(lua_State* L);
+  void fix(lua_State* L) const;  /* const - only modifies mutable GC fields */
   void checkFinalizer(lua_State* L, Table* mt);
 };
 
@@ -301,18 +301,18 @@ class GCBase: public GCObject {
 public:
     // Accessor methods (preferred over direct field access)
     constexpr GCObject* getNext() const noexcept { return next; }
-    constexpr void setNext(GCObject* n) noexcept { next = n; }
+    constexpr void setNext(GCObject* n) const noexcept { next = n; }  /* const - next is mutable */
 
     constexpr lu_byte getType() const noexcept { return tt; }
     constexpr void setType(lu_byte t) noexcept { tt = t; }
 
     constexpr lu_byte getMarked() const noexcept { return marked; }
-    constexpr void setMarked(lu_byte m) noexcept { marked = m; }
+    constexpr void setMarked(lu_byte m) const noexcept { marked = m; }  /* const - marked is mutable */
 
     constexpr bool isMarked() const noexcept { return marked != 0; }
 
     // GC color and age methods (defined in lgc.h after constants)
-    inline void setAge(GCAge age) noexcept;
+    inline void setAge(GCAge age) const noexcept;  /* const - marked is mutable */
     inline bool isOld() const noexcept;
 
     // Cast to GCObject* for compatibility
@@ -1545,7 +1545,7 @@ public:
 // Table inherits from GCBase (CRTP)
 class Table : public GCBase<Table> {
 private:
-  lu_byte flags;  /* 1<<p means tagmethod(p) is not present */
+  mutable lu_byte flags;  /* 1<<p means tagmethod(p) is not present (mutable for metamethod caching) */
   lu_byte lsizenode;  /* log2 of number of slots of 'node' array */
   unsigned int asize;  /* number of slots in 'array' array */
   Value *array;  /* array part */
@@ -1579,9 +1579,9 @@ public:
   lu_byte getFlags() const noexcept { return flags; }
   void setFlags(lu_byte f) noexcept { flags = f; }
 
-  // Flags field bit manipulation methods
-  void setFlagBits(int mask) noexcept { flags |= cast_byte(mask); }
-  void clearFlagBits(int mask) noexcept { flags &= cast_byte(~mask); }
+  // Flags field bit manipulation methods (const - flags is mutable)
+  void setFlagBits(int mask) const noexcept { flags |= cast_byte(mask); }
+  void clearFlagBits(int mask) const noexcept { flags &= cast_byte(~mask); }
 
   // Flags field reference accessor (for backward compatibility)
   lu_byte& getFlagsRef() noexcept { return flags; }

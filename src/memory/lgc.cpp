@@ -899,7 +899,7 @@ void global_State::correctGrayLists() {
 /*
 ** GCObject method implementations
 */
-void GCObject::fix(lua_State* L) {
+void GCObject::fix(lua_State* L) const {  /* const - only modifies mutable GC fields */
   global_State *g = G(L);
   lua_assert(g->getAllGC() == this);  /* object must be 1st in 'allgc' list! */
   set2gray(this);  /* they will be gray forever */

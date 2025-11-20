@@ -827,7 +827,7 @@ private:
   GCObject *ephemeron;    /* Ephemeron tables (weak keys) */
   GCObject *allweak;      /* All-weak tables */
   GCObject *tobefnz;      /* To be finalized */
-  GCObject *fixedgc;      /* Never collected objects */
+  mutable GCObject *fixedgc;      /* Never collected objects (mutable for GC bookkeeping) */
 
   /* Generational collector lists */
   GCObject *survival;     /* Survived one GC cycle */
@@ -877,7 +877,7 @@ public:
   inline GCObject** getToBeFnzPtr() noexcept { return &tobefnz; }
 
   inline GCObject* getFixedGC() const noexcept { return fixedgc; }
-  inline void setFixedGC(GCObject* fgc) noexcept { fixedgc = fgc; }
+  inline void setFixedGC(const GCObject* fgc) const noexcept { fixedgc = const_cast<GCObject*>(fgc); }  /* const - fixedgc is GC list */
   inline GCObject** getFixedGCPtr() noexcept { return &fixedgc; }
 
   /* Generational collector accessors */
@@ -1110,7 +1110,7 @@ public:
   inline GCObject** getToBeFnzPtr() noexcept { return gcLists.getToBeFnzPtr(); }
 
   inline GCObject* getFixedGC() const noexcept { return gcLists.getFixedGC(); }
-  inline void setFixedGC(GCObject* fgc) noexcept { gcLists.setFixedGC(fgc); }
+  inline void setFixedGC(const GCObject* fgc) const noexcept { gcLists.setFixedGC(fgc); }  /* const - fixedgc is mutable */
   inline GCObject** getFixedGCPtr() noexcept { return gcLists.getFixedGCPtr(); }
 
   /* Delegating accessors for GCObjectLists (generational) */
@@ -1208,7 +1208,7 @@ inline const lua_State* mainthread(const global_State* g) noexcept { return &g->
 // Phase 88: Define gfasttm() and fasttm() inline functions (declared in ltm.h)
 // Must be defined here after global_State is fully defined
 inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept {
-	return checknoTM(mt, e) ? nullptr : luaT_gettm(const_cast<Table*>(mt), e, g->getTMName(static_cast<int>(e)));
+	return checknoTM(mt, e) ? nullptr : luaT_gettm(mt, e, g->getTMName(static_cast<int>(e)));
 }
 
 inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept {
@@ -1271,12 +1271,14 @@ inline UpVal* gco2upv(GCObject* o) noexcept {
 
 /*
 ** Convert a Lua object to GCObject using reinterpret_cast
-** Note: Returns non-const even for const input (for GC marking compatibility)
+** Note: Returns non-const even for const input since GC operations modify
+** mutable bookkeeping fields (marked, next) which is const-correct.
 */
 inline GCObject* obj2gco(void* v) noexcept {
 	return reinterpret_cast<GCObject*>(v);
 }
 
+/* Const overload for GC marking - returns non-const to modify mutable GC fields */
 inline GCObject* obj2gco(const void* v) noexcept {
 	return reinterpret_cast<GCObject*>(const_cast<void*>(v));
 }

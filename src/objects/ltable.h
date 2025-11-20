@@ -11,10 +11,10 @@
 
 
 // Phase 19: Table accessor macros converted to inline functions
-// Note: Original macro did implicit const-cast, so non-const version works with const Table*
+// Note: Returns Node* even for const Table* to support Lua's read/write lookup semantics
 inline Node* gnode(Table* t, unsigned int i) noexcept { return t->getNode(i); }
 inline Node* gnode(const Table* t, unsigned int i) noexcept {
-  return const_cast<Table*>(t)->getNode(i);
+  return const_cast<Table*>(t)->getNode(i);  /* Lookup functions need mutable access */
 }
 inline TValue* gval(Node* n) noexcept { return n->getValue(); }
 inline const TValue* gval(const Node* n) noexcept { return n->getValue(); }
@@ -142,6 +142,10 @@ LUAI_FUNC lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res);
 
 /* Special get for metamethods */
 LUAI_FUNC const TValue *luaH_Hgetshortstr (Table *t, TString *key);
+/* Const overload for metamethod lookup (casts away const for lookup semantics) */
+inline const TValue *luaH_Hgetshortstr (const Table *t, TString *key) {
+  return luaH_Hgetshortstr(const_cast<Table*>(t), key);
+}
 
 LUAI_FUNC int luaH_psetint (Table *t, lua_Integer key, TValue *val);
 LUAI_FUNC int luaH_psetshortstr (Table *t, TString *key, TValue *val);

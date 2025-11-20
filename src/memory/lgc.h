@@ -143,7 +143,7 @@ inline GCAge GCObject::getAge() const noexcept {
   return static_cast<GCAge>(marked & AGEBITS);
 }
 
-inline void GCObject::setAge(GCAge age) noexcept {
+inline void GCObject::setAge(GCAge age) const noexcept {  /* const - marked is mutable */
   marked = cast_byte((marked & (~AGEBITS)) | static_cast<lu_byte>(age));
 }
 
@@ -152,7 +152,7 @@ inline bool GCObject::isOld() const noexcept {
 }
 
 template<typename Derived>
-inline void GCBase<Derived>::setAge(GCAge age) noexcept {
+inline void GCBase<Derived>::setAge(GCAge age) const noexcept {  /* const - marked is mutable */
   marked = cast_byte((marked & (~AGEBITS)) | static_cast<lu_byte>(age));
 }
 
@@ -185,12 +185,12 @@ inline GCAge getage(const T* o) noexcept {
 
 template<typename T>
 inline void setage(T* o, lu_byte a) noexcept {
-  reinterpret_cast<GCObject*>(o)->setAge(static_cast<GCAge>(a));
+  reinterpret_cast<const GCObject*>(o)->setAge(static_cast<GCAge>(a));
 }
 
 template<typename T>
 inline void setage(T* o, GCAge a) noexcept {
-  reinterpret_cast<GCObject*>(o)->setAge(a);
+  reinterpret_cast<const GCObject*>(o)->setAge(a);
 }
 
 template<typename T>
@@ -495,7 +495,7 @@ inline void makewhite(global_State* g, GCObject* x) noexcept {
 ** Clears all color bits, resulting in gray (neither white nor black).
 ** Gray objects are linked into gray lists for incremental processing.
 */
-inline void set2gray(GCObject* x) noexcept {
+inline void set2gray(const GCObject* x) noexcept {  /* const - marked is mutable */
     x->clearMarkedBits(maskcolors);
 }
 

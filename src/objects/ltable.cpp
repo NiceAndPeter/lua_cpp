@@ -225,13 +225,13 @@ inline Node* hashpointer(const Table* t, T* p) noexcept {
 ** part?") when indexing. Its sole node has an empty value and a key
 ** (DEADKEY, NULL) that is different from any valid TValue.
 */
-static const Node dummynode_ = Node(
+static Node dummynode_ = Node(
   {NULL}, LUA_VEMPTY,  /* value's value and type */
   LUA_TDEADKEY, 0, {NULL}  /* key type, next, and key value */
 );
 
 
-static const TValue absentkey = {ABSTKEYCONSTANT};
+static TValue absentkey = {ABSTKEYCONSTANT};
 
 
 /*
@@ -394,7 +394,7 @@ static TValue *getgeneric (Table *t, const TValue *key, int deadok) {
     else {
       int nx = gnext(n);
       if (nx == 0)
-        return const_cast<TValue*>(&absentkey);  /* not found */
+        return &absentkey;  /* not found */
       n += nx;
     }
   }
@@ -707,7 +707,7 @@ static Value *resizearray (lua_State *L , Table *t,
 */
 static void setnodevector (lua_State *L, Table *t, unsigned size) {
   if (size == 0) {  /* no elements to hash part? */
-    t->setNodeArray(const_cast<Node*>(dummynode));  /* use common 'dummynode' */
+    t->setNodeArray(dummynode);  /* use common 'dummynode' */
     t->setLsizenode(0);
     t->setDummy();  /* signal that it is using dummy node */
   }
@@ -1085,7 +1085,7 @@ static TValue *getintfromhash (Table *t, lua_Integer key) {
       n += nx;
     }
   }
-  return const_cast<TValue*>(&absentkey);
+  return &absentkey;
 }
 
 
@@ -1399,7 +1399,7 @@ TValue* Table::HgetShortStr(TString* key) {
     else {
       int nx = gnext(n);
       if (nx == 0)
-        return const_cast<TValue*>(&absentkey);  /* not found */
+        return &absentkey;  /* not found */
       n += nx;
     }
   }
