@@ -740,7 +740,7 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
 
 ### Future Work & Architectural Opportunities
 
-**📋 Single Responsibility Principle Analysis** - See `SRP_ANALYSIS.md`
+**📋 Single Responsibility Principle Analysis** - See `docs/SRP_ANALYSIS.md`
 
 **Analysis Date**: 2025-11-15
 **Status**: Analysis complete, implementation planning phase
@@ -769,7 +769,7 @@ inline constexpr int GETARG_A(Instruction i) noexcept {
 - ✅ All refactoring must be zero-cost abstractions (inline accessors)
 - ✅ Benchmark after every significant change
 
-**See `SRP_ANALYSIS.md` for detailed analysis, decomposition proposals, and implementation roadmap.**
+**See `docs/SRP_ANALYSIS.md` for detailed analysis, decomposition proposals, and implementation roadmap.**
 
 ---
 
@@ -842,63 +842,63 @@ git push -u origin <branch-name>
 ### Core Documentation
 - **[README.md](README.md)** - Project overview and quick start guide
 - **[CLAUDE.md](CLAUDE.md)** - This file: Comprehensive AI assistant guide
-- **[CMAKE_BUILD.md](CMAKE_BUILD.md)** - Build system configuration and options
+- **[CMAKE_BUILD.md](docs/CMAKE_BUILD.md)** - Build system configuration and options
 
 ### Architecture & Refactoring
-- **[REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md)** - ⭐ Phases 90-93 summary: SRP refactoring achievements
+- **[REFACTORING_SUMMARY.md](docs/REFACTORING_SUMMARY.md)** - ⭐ Phases 90-93 summary: SRP refactoring achievements
   - FuncState, global_State, Proto decomposition
   - 6% performance improvement
   - 81 fields → 14 focused subsystems
-- **[SRP_ANALYSIS.md](SRP_ANALYSIS.md)** - Single Responsibility Principle detailed analysis (2025-11-15)
+- **[SRP_ANALYSIS.md](docs/SRP_ANALYSIS.md)** - Single Responsibility Principle detailed analysis (2025-11-15)
   - Complete decomposition proposals for major classes
   - Risk assessment and implementation roadmap
   - Performance impact predictions
-- **[CPP_MODERNIZATION_ANALYSIS.md](CPP_MODERNIZATION_ANALYSIS.md)** - C++23 modernization opportunities
+- **[CPP_MODERNIZATION_ANALYSIS.md](docs/CPP_MODERNIZATION_ANALYSIS.md)** - C++23 modernization opportunities
   - Language feature recommendations
   - Zero-cost abstraction patterns
   - Migration strategies
 
 ### Garbage Collection
-- **[GC_SIMPLIFICATION_ANALYSIS.md](GC_SIMPLIFICATION_ANALYSIS.md)** - ⭐ Recommended: Incremental modularization (2025-11-17)
+- **[GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md)** - ⭐ Recommended: Incremental modularization (2025-11-17)
   - 7 simplification opportunities identified
   - Module extraction strategy: 40% code organization improvement
   - Reduces lgc.cpp from 1,950 to ~500-600 lines
   - Target: ≤4.33s performance, zero API breakage
-- **[GC_PITFALLS_ANALYSIS.md](GC_PITFALLS_ANALYSIS.md)** - Comprehensive GC architecture deep-dive (2025-11-15)
+- **[GC_PITFALLS_ANALYSIS.md](docs/GC_PITFALLS_ANALYSIS.md)** - Comprehensive GC architecture deep-dive (2025-11-15)
   - Tri-color marking, generational GC, ephemerons, finalization
   - Critical pitfalls and edge cases
   - C++ modernization risks and safe practices
   - Why GC removal is not feasible
 
 ### Memory Management
-- **[MEMORY_ALLOCATION_ARCHITECTURE.md](MEMORY_ALLOCATION_ARCHITECTURE.md)** - Memory allocation system design
+- **[MEMORY_ALLOCATION_ARCHITECTURE.md](docs/MEMORY_ALLOCATION_ARCHITECTURE.md)** - Memory allocation system design
   - Current architecture overview
   - Allocator patterns and strategies
-- **[CUSTOM_ALLOCATOR_PLAN.md](CUSTOM_ALLOCATOR_PLAN.md)** - Custom allocator implementation plan
+- **[CUSTOM_ALLOCATOR_PLAN.md](docs/CUSTOM_ALLOCATOR_PLAN.md)** - Custom allocator implementation plan
   - Requirements and design considerations
   - Performance implications
-- **[LUAALLOCATOR_README.md](LUAALLOCATOR_README.md)** - LuaAllocator class documentation
+- **[LUAALLOCATOR_README.md](docs/LUAALLOCATOR_README.md)** - LuaAllocator class documentation
   - API reference and usage examples
 
 ### Type System & Compiler Analysis
-- **[UNION_REMOVAL_ANALYSIS.md](UNION_REMOVAL_ANALYSIS.md)** - Analysis of C union to C++ conversion
+- **[UNION_REMOVAL_ANALYSIS.md](docs/UNION_REMOVAL_ANALYSIS.md)** - Analysis of C union to C++ conversion
   - TValue union modernization strategies
   - Type safety improvements
-- **[INIT_TO_CONSTRUCTOR_ANALYSIS.md](INIT_TO_CONSTRUCTOR_ANALYSIS.md)** - Constructor conversion analysis
+- **[INIT_TO_CONSTRUCTOR_ANALYSIS.md](docs/INIT_TO_CONSTRUCTOR_ANALYSIS.md)** - Constructor conversion analysis
   - Phases 1-2 planning and rationale
   - Initialization safety improvements
-- **[CPP_STDLIB_OPPORTUNITIES.md](CPP_STDLIB_OPPORTUNITIES.md)** - Standard library integration opportunities
+- **[CPP_STDLIB_OPPORTUNITIES.md](docs/CPP_STDLIB_OPPORTUNITIES.md)** - Standard library integration opportunities
   - Where std:: components could be beneficial
   - Performance vs compatibility tradeoffs
 
 ### VM & Performance Analysis
-- **[lambda_performance_analysis.md](lambda_performance_analysis.md)** - Lambda vs function pointer performance
+- **[lambda_performance_analysis.md](docs/lambda_performance_analysis.md)** - Lambda vs function pointer performance
   - Benchmarking results
   - Recommendations for hot paths
-- **[lvm_analysis_suggestions.md](lvm_analysis_suggestions.md)** - VM interpreter optimization suggestions
-- **[lvm_implementation_plan.md](lvm_implementation_plan.md)** - VM modernization implementation plan
-- **[lvm_remaining_macros.md](lvm_remaining_macros.md)** - Macro conversion tracking for VM
-- **[lvm_updated_analysis_2025-11-17.md](lvm_updated_analysis_2025-11-17.md)** - Latest VM analysis update
+- **[lvm_analysis_suggestions.md](docs/lvm_analysis_suggestions.md)** - VM interpreter optimization suggestions
+- **[lvm_implementation_plan.md](docs/lvm_implementation_plan.md)** - VM modernization implementation plan
+- **[lvm_remaining_macros.md](docs/lvm_remaining_macros.md)** - Macro conversion tracking for VM
+- **[lvm_updated_analysis_2025-11-17.md](docs/lvm_updated_analysis_2025-11-17.md)** - Latest VM analysis update
 
 ### CI/CD & Infrastructure
 - **[.github/workflows/ci.yml](.github/workflows/ci.yml)** - Main CI/CD pipeline
@@ -914,7 +914,7 @@ git push -u origin <branch-name>
   - cppcheck
   - clang-tidy
   - include-what-you-use
-- **[COVERAGE_ANALYSIS.md](COVERAGE_ANALYSIS.md)** - ⭐ Code coverage analysis & metrics
+- **[COVERAGE_ANALYSIS.md](docs/COVERAGE_ANALYSIS.md)** - ⭐ Code coverage analysis & metrics
   - **96.1% line coverage** (15,284 of 15,906 lines)
   - **92.7% function coverage** (1,261 of 1,360 functions)
   - **85.2% branch coverage** (11,017 of 12,924 branches)
@@ -922,35 +922,39 @@ git push -u origin <branch-name>
 
 ### Completed Plans (Historical Reference)
 These plans have been fully implemented and are kept for historical reference:
-- **[ENCAPSULATION_PLAN.md](ENCAPSULATION_PLAN.md)** - ✅ Phases 37-42: All classes encapsulated
-- **[CONSTRUCTOR_PLAN.md](CONSTRUCTOR_PLAN.md)** - ✅ Phases 1-2: Constructor implementation complete
-- **[CONSTRUCTOR_REFACTOR_PLAN.md](CONSTRUCTOR_REFACTOR_PLAN.md)** - ✅ Constructor refactoring complete
-- **[LUASTACK_AGGRESSIVE_PLAN.md](LUASTACK_AGGRESSIVE_PLAN.md)** - ✅ Phase 94: Stack centralization complete
-- **[LUASTACK_ASSIGNMENT_PLAN.md](LUASTACK_ASSIGNMENT_PLAN.md)** - ✅ Stack assignment operations complete
-- **[PHASE_36_2_PLAN.md](PHASE_36_2_PLAN.md)** - ✅ Historical phase plan
-- **[AGGRESSIVE_MACRO_ELIMINATION_PLAN.md](AGGRESSIVE_MACRO_ELIMINATION_PLAN.md)** - ✅ Macro conversion phases complete
-- **[phase2_experiment_results.md](phase2_experiment_results.md)** - ✅ Phase 2 experimental data
-- **[phase2_macro_analysis.md](phase2_macro_analysis.md)** - ✅ Phase 2 macro analysis
-- **[claude.md](claude.md)** - ⚠️ Outdated, redirects to CLAUDE.md
+- **[ENCAPSULATION_PLAN.md](docs/ENCAPSULATION_PLAN.md)** - ✅ Phases 37-42: All classes encapsulated
+- **[CONSTRUCTOR_PLAN.md](docs/CONSTRUCTOR_PLAN.md)** - ✅ Phases 1-2: Constructor implementation complete
+- **[CONSTRUCTOR_REFACTOR_PLAN.md](docs/CONSTRUCTOR_REFACTOR_PLAN.md)** - ✅ Constructor refactoring complete
+- **[LUASTACK_AGGRESSIVE_PLAN.md](docs/LUASTACK_AGGRESSIVE_PLAN.md)** - ✅ Phase 94: Stack centralization complete
+- **[LUASTACK_ASSIGNMENT_PLAN.md](docs/LUASTACK_ASSIGNMENT_PLAN.md)** - ✅ Stack assignment operations complete
+- **[PHASE_36_2_PLAN.md](docs/PHASE_36_2_PLAN.md)** - ✅ Historical phase plan
+- **[AGGRESSIVE_MACRO_ELIMINATION_PLAN.md](docs/AGGRESSIVE_MACRO_ELIMINATION_PLAN.md)** - ✅ Macro conversion phases complete
+- **[phase2_experiment_results.md](docs/phase2_experiment_results.md)** - ✅ Phase 2 experimental data
+- **[phase2_macro_analysis.md](docs/phase2_macro_analysis.md)** - ✅ Phase 2 macro analysis
+- **[claude.md](docs/claude.md)** - ⚠️ Outdated, redirects to CLAUDE.md
 
 ### Quick Navigation by Topic
 
-**Want to understand the architecture?** → Start with [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) and [SRP_ANALYSIS.md](SRP_ANALYSIS.md)
+**Want to understand the architecture?** → Start with [REFACTORING_SUMMARY.md](docs/REFACTORING_SUMMARY.md) and [SRP_ANALYSIS.md](docs/SRP_ANALYSIS.md)
 
-**Want to work on GC?** → Read [GC_SIMPLIFICATION_ANALYSIS.md](GC_SIMPLIFICATION_ANALYSIS.md) and [GC_PITFALLS_ANALYSIS.md](GC_PITFALLS_ANALYSIS.md)
+**Want to work on GC?** → Read [GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md) and [GC_PITFALLS_ANALYSIS.md](docs/GC_PITFALLS_ANALYSIS.md)
 
-**Want to optimize performance?** → Check [lambda_performance_analysis.md](lambda_performance_analysis.md) and lvm_*.md files
+**Want to optimize performance?** → Check [lambda_performance_analysis.md](docs/lambda_performance_analysis.md) and lvm_*.md files
 
-**Want to modernize code?** → See [CPP_MODERNIZATION_ANALYSIS.md](CPP_MODERNIZATION_ANALYSIS.md) and [CPP_STDLIB_OPPORTUNITIES.md](CPP_STDLIB_OPPORTUNITIES.md)
+**Want to modernize code?** → See [CPP_MODERNIZATION_ANALYSIS.md](docs/CPP_MODERNIZATION_ANALYSIS.md) and [CPP_STDLIB_OPPORTUNITIES.md](docs/CPP_STDLIB_OPPORTUNITIES.md)
 
-**Want to understand what's been done?** → Read [REFACTORING_SUMMARY.md](REFACTORING_SUMMARY.md) and completed plans
+**Want to understand what's been done?** → Read [REFACTORING_SUMMARY.md](docs/REFACTORING_SUMMARY.md) and completed plans
 
 ---
 
-**Last Updated**: 2025-11-18 - After CI/CD implementation (Phase 101)
-**Current Phase**: Phase 101 complete - CI/CD infrastructure implemented
+**Last Updated**: 2025-11-20 - After documentation reorganization
+**Current Phase**: Documentation organization - All docs moved to docs/ subfolder
 **Performance Status**: ✅ EXCELLENT - Current baseline 4.20s (new machine), target ≤4.33s
 **Recent Achievements**:
+- **Documentation Organization**: All 29 documentation files moved to docs/ subfolder ✅
+  - README.md and CLAUDE.md remain in root as main entry points
+  - All documentation index links updated to reflect new structure
+  - Git history preserved using git mv
 - **Phase 101**: CI/CD infrastructure with GitHub Actions ✅
   - Automated builds (GCC 13, Clang 15)
   - Test suite automation
@@ -960,6 +964,5 @@ These plans have been fully implemented and are kept for historical reference:
   - Static analysis workflows
 - Phases 96-100: BinOpr, UnOpr, F2Imod, OpMode, TMS, RESERVED converted to enum class
 - GC modularization: GCCore, GCMarking, GCCollector modules extracted
-- Complete documentation index with 29 files organized by category
 - FuncState, global_State, and Proto successfully refactored with SRP (6% performance improvement)
 - GC simplification strategy identified: 40% code organization improvement via module extraction
