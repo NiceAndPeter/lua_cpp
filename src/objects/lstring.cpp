@@ -270,7 +270,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   }
   size_t allocsize = sizestrshr(l);
   ts = createstrobj(L, allocsize, LUA_VSHRSTR, h);
-  ts->setShrlen(cast(ls_byte, l));
+  ts->setShrlen(static_cast<ls_byte>(l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
   std::copy_n(str, l, getshrstr(ts));
   ts->setNext(*list);
@@ -362,7 +362,7 @@ struct NewExt {
 
 
 static void f_newext (lua_State *L, void *ud) {
-  struct NewExt *ne = cast(struct NewExt *, ud);
+  NewExt *ne = static_cast<NewExt*>(ud);
   size_t size = luaS_sizelngstr(0, ne->kind);
   ne->ts = createstrobj(L, size, LUA_VLNGSTR, G(L)->getSeed());
 }

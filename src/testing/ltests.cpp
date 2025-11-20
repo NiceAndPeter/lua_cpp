@@ -101,7 +101,7 @@ static int tpanic (lua_State *L) {
 ** - 2.store: all warnings go to the global '_WARN';
 */
 static void warnf (void *ud, const char *msg, int tocont) {
-  lua_State *L = cast(lua_State *, ud);
+  lua_State *L = static_cast<lua_State*>(ud);
   static char buff[200] = "";  /* should be enough for tests... */
   static int onoff = 0;
   static int mode = 0;  /* start in normal mode */
@@ -218,8 +218,8 @@ static void freeblock (Memcontrol *mc, memHeader *block) {
 
 
 void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
-  Memcontrol *mc = cast(Memcontrol *, ud);
-  memHeader *block = cast(memHeader *, b);
+  Memcontrol *mc = static_cast<Memcontrol*>(ud);
+  memHeader *block = static_cast<memHeader*>(b);
   int type;
   if (mc->memlimit == 0) {  /* first time? */
     char *limit = getenv("MEMLIMIT");  /* initialize memory limit */
@@ -255,7 +255,7 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
     size_t commonsize = (oldsize < size) ? oldsize : size;
     size_t realsize = sizeof(memHeader) + size + MARKSIZE;
     if (realsize < size) return NULL;  /* arithmetic overflow! */
-    newblock = cast(memHeader *, malloc(realsize));  /* alloc a new block */
+    newblock = static_cast<memHeader*>(malloc(realsize));  /* alloc a new block */
     if (newblock == NULL)
       return NULL;  /* really out of memory? */
     if (block) {
@@ -922,7 +922,7 @@ static int mem_query (lua_State *L) {
     return 3;
   }
   else if (lua_isnumber(L, 1)) {
-    unsigned long limit = cast(unsigned long, luaL_checkinteger(L, 1));
+    unsigned long limit = static_cast<unsigned long>(luaL_checkinteger(L, 1));
     if (limit == 0) limit = ULONG_MAX;
     l_memcontrol.memlimit = limit;
     return 0;
@@ -943,9 +943,9 @@ static int mem_query (lua_State *L) {
 
 static int alloc_count (lua_State *L) {
   if (lua_isnone(L, 1))
-    l_memcontrol.countlimit = cast(unsigned long, ~0L);
+    l_memcontrol.countlimit = ULONG_MAX;
   else
-    l_memcontrol.countlimit = cast(unsigned long, luaL_checkinteger(L, 1));
+    l_memcontrol.countlimit = static_cast<unsigned long>(luaL_checkinteger(L, 1));
   return 0;
 }
 
@@ -1285,13 +1285,13 @@ static int doonnewstack (lua_State *L) {
 
 
 static int s2d (lua_State *L) {
-  lua_pushnumber(L, cast_num(*cast(const double *, luaL_checkstring(L, 1))));
+  lua_pushnumber(L, cast_num(*reinterpret_cast<const double*>(luaL_checkstring(L, 1))));
   return 1;
 }
 
 
 static int d2s (lua_State *L) {
-  double d = cast(double, luaL_checknumber(L, 1));
+  double d = static_cast<double>(luaL_checknumber(L, 1));
   lua_pushlstring(L, cast_charp(&d), sizeof(d));
   return 1;
 }
@@ -1324,7 +1324,7 @@ static int newstate (lua_State *L) {
 
 
 static lua_State *getstate (lua_State *L) {
-  lua_State *L1 = cast(lua_State *, lua_touserdata(L, 1));
+  lua_State *L1 = static_cast<lua_State*>(lua_touserdata(L, 1));
   luaL_argcheck(L, L1 != NULL, 1, "state expected");
   return L1;
 }
@@ -2126,7 +2126,7 @@ static int coresume (lua_State *L) {
 #include <fcntl.h>
 
 static int nonblock (lua_State *L) {
-  FILE *f = cast(luaL_Stream*, luaL_checkudata(L, 1, LUA_FILEHANDLE))->f;
+  FILE *f = static_cast<luaL_Stream*>(luaL_checkudata(L, 1, LUA_FILEHANDLE))->f;
   int fd = fileno(f);
   int flags = fcntl(fd, F_GETFL, 0);
   flags |= O_NONBLOCK;
@@ -2151,7 +2151,7 @@ static int testvector (lua_State *L) {
   global_State *g = G(L);
 
   /* Get memory before allocation */
-  lua_Integer membefore = cast(lua_Integer, g->getTotalBytes());
+  lua_Integer membefore = static_cast<lua_Integer>(g->getTotalBytes());
 
   /* Create and populate a LuaVector */
   {
@@ -2174,7 +2174,7 @@ static int testvector (lua_State *L) {
     luaL_argcheck(L, vec.size() == static_cast<size_t>(n), 1, "vector size mismatch");
 
     /* Get memory during allocation */
-    lua_Integer memduring = cast(lua_Integer, g->getTotalBytes());
+    lua_Integer memduring = static_cast<lua_Integer>(g->getTotalBytes());
 
     /* Push allocated bytes */
     lua_pushinteger(L, memduring - membefore);

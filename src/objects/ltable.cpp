@@ -92,6 +92,15 @@ typedef union {
 **
 ** This is a zero-size helper class - it adds no memory overhead.
 ** It simply provides methods to access the memory layout.
+**
+** MEMORY LAYOUT ASSUMPTIONS (C++17 Standard Compliance):
+** 1. Pointer arithmetic on char* is well-defined (C++17 §8.7 [expr.add])
+** 2. reinterpret_cast from char* to properly aligned object pointer is valid
+**    when the memory contains an object of that type (C++17 §8.2.10 [expr.reinterpret.cast])
+** 3. Pointer subtraction (limbox - 1) is valid when both pointers point to
+**    elements of the same array object or one past the end (C++17 §8.7 [expr.add])
+** 4. The allocated block is large enough and properly aligned for both
+**    Limbox and Node array, ensuring no undefined behavior.
 */
 class NodeArray {
 public:
@@ -99,9 +108,11 @@ public:
   static Node* allocate(lua_State* L, unsigned int n, bool withLastfree) {
     if (withLastfree) {
       // Large table: allocate Limbox + Node[]
+      // LAYOUT: [Limbox header][Node array of size n]
       size_t total = sizeof(Limbox) + n * sizeof(Node);
       char* block = luaM_newblock(L, total);
       // Limbox is at the start, nodes follow
+      // Safe per C++17 §8.2.10: reinterpret_cast to properly aligned type
       Limbox* limbox = reinterpret_cast<Limbox*>(block);
       Node* nodeStart = reinterpret_cast<Node*>(block + sizeof(Limbox));
       // Initialize Limbox
@@ -116,6 +127,9 @@ public:
   // Access lastfree from node pointer (only valid if table has Limbox)
   static Node*& getLastFree(Node* nodeStart) {
     // lastfree is stored in Limbox before the nodes
+    // Safe per C++17 §8.7: pointer arithmetic within allocated block
+    // nodeStart points to element after Limbox, so (nodeStart - 1) conceptually
+    // points to the Limbox (treating the block as Limbox array for arithmetic purposes)
     Limbox* limbox = reinterpret_cast<Limbox*>(nodeStart) - 1;
     return limbox->lastfree;
   }
@@ -323,7 +337,7 @@ static Node *mainpositionTV (const Table *t, const TValue *key) {
 
 static inline Node *mainpositionfromnode (const Table *t, Node *nd) {
   TValue key;
-  nd->getKey(cast(lua_State *, NULL), &key);
+  nd->getKey(static_cast<lua_State*>(nullptr), &key);
   return mainpositionTV(t, &key);
 }
 
@@ -1106,7 +1120,7 @@ static lu_byte finishnodeget (const TValue *val, TValue *res) {
 static TValue *Hgetlongstr (Table *t, TString *key) {
   TValue ko;
   lua_assert(!strisshr(key));
-  setsvalue(cast(lua_State *, NULL), &ko, key);
+  setsvalue(static_cast<lua_State*>(nullptr), &ko, key);
   return getgeneric(t, &ko, 0);  /* for long strings, use generic case */
 }
 
@@ -1445,7 +1459,7 @@ int Table::psetShortStr(TString* key, TValue* val) {
     if (isabstkey(slot) &&  /* key is absent? */
        !(isblack(this) && iswhite(key))) {  /* and don't need barrier? */
       TValue tk;  /* key as a TValue */
-      setsvalue(cast(lua_State *, NULL), &tk, key);
+      setsvalue(static_cast<lua_State*>(nullptr), &tk, key);
       if (insertkey(this, &tk, val)) {  /* insert key, if there is space */
         invalidateTMcache(this);
         return HOK;

@@ -68,7 +68,7 @@ l_mem GCCore::objsize(GCObject* o) {
         }
         default: res = 0; lua_assert(0);
     }
-    return cast(l_mem, res);
+    return static_cast<l_mem>(res);
 }
 
 

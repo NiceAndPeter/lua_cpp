@@ -110,7 +110,7 @@ static void dumpVarint (DumpState *D, lua_Unsigned x) {
 
 
 static void dumpSize (DumpState *D, size_t sz) {
-  dumpVarint(D, cast(lua_Unsigned, sz));
+  dumpVarint(D, static_cast<lua_Unsigned>(sz));
 }
 
 

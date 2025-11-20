@@ -121,7 +121,7 @@ public:
 
   /* Convert offset to stack pointer */
   inline StkId restore(ptrdiff_t n) const noexcept {
-    return cast(StkId, cast_charp(stack.p) + n);
+    return reinterpret_cast<StkId>(cast_charp(stack.p) + n);
   }
 
   /*

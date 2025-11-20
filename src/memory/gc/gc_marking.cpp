@@ -118,7 +118,7 @@ l_mem GCMarking::traversetable(global_State* g, Table* h) {
                 linkgclistTable(h, *g->getAllWeakPtr());
             break;
     }
-    return cast(l_mem, 1 + 2 * h->nodeSize() + h->arraySize());
+    return static_cast<l_mem>(1 + 2 * h->nodeSize() + h->arraySize());
 }
 
 /*

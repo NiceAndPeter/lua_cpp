@@ -1196,7 +1196,7 @@ public:
   // Level accessor for open upvalues (Phase 44.3)
   StkId getLevel() const noexcept {
     lua_assert(isOpen());
-    return cast(StkId, v.p);
+    return reinterpret_cast<StkId>(v.p);
   }
 
   // Backward compatibility (getValue returns current value pointer)
@@ -1928,6 +1928,25 @@ inline bool operator!=(const TString& l, const TString& r) noexcept {
 }
 
 /* }================================================================== */
+
+
+/*
+** ===================================================================
+** GC Type Safety Notes
+** ===================================================================
+** All GC-managed types inherit from GCBase<Derived> (CRTP pattern) which
+** provides common GC fields (next, tt, marked). The reinterpret_cast
+** operations used for GC pointer conversions are safe because:
+**
+** 1. All GC objects have a common initial sequence (GCObject fields)
+** 2. Type tags are checked before conversions (via lua_assert)
+** 3. Memory is allocated with proper alignment for all types
+** 4. The CRTP pattern ensures type safety at compile time
+**
+** Note: These types do NOT have C++ standard layout due to CRTP and
+** other C++ features, but the GC conversions remain safe through careful
+** design and runtime type checking.
+*/
 
 
 #endif

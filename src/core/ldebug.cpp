@@ -640,7 +640,7 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
       tm = TMS::TM_NEWINDEX;
       break;
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
-      tm = cast(TMS, InstructionView(i).c());
+      tm = static_cast<TMS>(InstructionView(i).c());
       break;
     }
     case OP_UNM: tm = TMS::TM_UNM; break;

@@ -508,7 +508,7 @@ public:
 ** errors explicitly or through memory errors, so it must run protected.
 */
 static void pushbuff (lua_State *L, void *ud) {
-  BuffFS *buff = cast(BuffFS*, ud);
+  BuffFS *buff = static_cast<BuffFS*>(ud);
   switch (buff->err) {
     case 1:  /* memory error */
       L->doThrow( LUA_ERRMEM);

@@ -38,7 +38,7 @@ inline constexpr size_t lxOffset() noexcept {
 }
 
 inline LX* fromstate(lua_State* L) noexcept {
-  return cast(LX *, cast(lu_byte *, (L)) - lxOffset());
+  return reinterpret_cast<LX*>(reinterpret_cast<lu_byte*>(L) - lxOffset());
 }
 
 
@@ -239,7 +239,7 @@ static void preinit_thread (lua_State *L, global_State *g) {
 
 
 lu_mem luaE_threadsize (lua_State *L) {
-  lu_mem sz = cast(lu_mem, sizeof(LX))
+  lu_mem sz = static_cast<lu_mem>(sizeof(LX))
             + cast_uint(L->getNCI()) * sizeof(CallInfo);
   if (L->getStack().p != NULL)
     sz += cast_uint(L->getStackSize() + EXTRA_STACK) * sizeof(StackValue);
@@ -331,7 +331,7 @@ LUA_API int lua_closethread (lua_State *L, lua_State *from) {
 LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   int i;
   lua_State *L;
-  global_State *g = cast(global_State*,
+  global_State *g = static_cast<global_State*>(
                        (*f)(ud, NULL, LUA_TTHREAD, sizeof(global_State)));
   if (g == NULL) return NULL;
   L = &g->getMainThread()->l;

@@ -226,7 +226,7 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
     lj.status = ex.status();
   }
   catch (...) {  /* non-Lua exception */
-    lj.status = cast(TStatus, -1);  /* create some error code */
+    lj.status = static_cast<TStatus>(-1);  /* create some error code */
   }
 
   setErrorJmp(lj.previous);  /* restore old error handler */
@@ -717,12 +717,12 @@ void lua_State::callNoYield(StkId func, int nResults) {
 */
 // Convert to private lua_State method
 TStatus lua_State::finishPCallK(CallInfo *ci_arg) {
-  TStatus status_val = cast(TStatus, ci_arg->getRecoverStatus());  /* get original status */
+  TStatus status_val = static_cast<TStatus>(ci_arg->getRecoverStatus());  /* get original status */
   if (l_likely(status_val == LUA_OK))  /* no error? */
     status_val = LUA_YIELD;  /* was interrupted by an yield */
   else {  /* error */
     StkId func = this->restoreStack(ci_arg->getFuncIdx());
-    setAllowHook(cast(lu_byte, ci_arg->getOAH()));  /* restore 'allowhook' */
+    setAllowHook(static_cast<lu_byte>(ci_arg->getOAH()));  /* restore 'allowhook' */
     func = luaF_close(this, func, status_val, 1);  /* can yield or raise an error */
     setErrorObj(status_val, func);
     shrinkStack();  /* restore stack size in case of overflow */
@@ -840,7 +840,7 @@ static int resume_error (lua_State *L, const char *msg, int narg) {
 ** coroutine.
 */
 static void resume (lua_State *L, void *ud) {
-  int n = *(cast(int*, ud));  /* number of arguments */
+  int n = *static_cast<int*>(ud);  /* number of arguments */
   StkId firstArg = L->getTop().p - n;  /* first argument */
   CallInfo *ci = L->getCI();
   if (L->getStatus() == LUA_OK)  /* starting a coroutine? */
@@ -973,7 +973,7 @@ struct CloseP {
 ** Auxiliary function to call 'luaF_close' in protected mode.
 */
 static void closepaux (lua_State *L, void *ud) {
-  struct CloseP *pcl = cast(struct CloseP *, ud);
+  CloseP *pcl = static_cast<CloseP*>(ud);
   luaF_close(L, pcl->level, pcl->status, 0);
 }
 
@@ -1054,7 +1054,7 @@ static void checkmode (lua_State *L, const char *mode, const char *x) {
 
 static void f_parser (lua_State *L, void *ud) {
   LClosure *cl;
-  struct SParser *p = cast(struct SParser *, ud);
+  SParser *p = static_cast<SParser*>(ud);
   const char *mode = p->mode ? p->mode : "bt";
   int c = zgetc(p->z);  /* read first character */
   if (c == LUA_SIGNATURE[0]) {

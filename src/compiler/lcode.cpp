@@ -81,7 +81,7 @@ Instruction *FuncState::previousinstruction() {
   if (getPC() > getLastTarget())
     return &getProto()->getCode()[getPC() - 1];  /* previous instruction */
   else
-    return cast(Instruction*, &invalidinstruction);
+    return const_cast<Instruction*>(&invalidinstruction);
 }
 
 /*

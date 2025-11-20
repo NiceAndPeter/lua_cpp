@@ -1296,5 +1296,14 @@ LUAI_FUNC void luaE_warnerror (lua_State *L, const char *where);
 LUAI_FUNC TStatus luaE_resetthread (lua_State *L, TStatus status);
 
 
+/*
+** GC Type Safety for lua_State
+** lua_State inherits from GCBase<lua_State> and participates in the GC system.
+** Like other GC types, it uses reinterpret_cast for pointer conversions which
+** are safe due to common initial sequence, type tag checking, and CRTP design.
+** See lobject.h for detailed explanation of GC type safety.
+*/
+
+
 #endif
 

@@ -222,7 +222,7 @@ void luaC_barrierback_ (lua_State *L, GCObject *o) {
 GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz, size_t offset) {
   global_State *g = G(L);
   char *p = cast_charp(luaM_newobject(L, novariant(tt), sz));
-  GCObject *o = cast(GCObject *, p + offset);
+  GCObject *o = reinterpret_cast<GCObject*>(p + offset);
   o->setMarked(g->getWhite());
   o->setType(tt);
   o->setNext(g->getAllGC());
