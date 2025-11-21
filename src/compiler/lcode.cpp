@@ -733,7 +733,7 @@ int FuncState::isKstr(expdesc *e) {
 /*
 ** Check whether expression 'e' is a literal integer.
 */
-static int isKint (expdesc *e) {
+static bool isKint (expdesc *e) {
   return (e->getKind() == VKINT && !hasjumps(e));
 }
 
@@ -741,7 +741,7 @@ static int isKint (expdesc *e) {
 ** Check whether expression 'e' is a literal integer in
 ** proper range to fit in register C
 */
-static int isCint (expdesc *e) {
+static bool isCint (expdesc *e) {
   return isKint(e) && (l_castS2U(e->getIntValue()) <= l_castS2U(MAXARG_C));
 }
 
@@ -749,7 +749,7 @@ static int isCint (expdesc *e) {
 ** Check whether expression 'e' is a literal integer in
 ** proper range to fit in register sC
 */
-static int isSCint (expdesc *e) {
+static bool isSCint (expdesc *e) {
   return isKint(e) && fitsC(e->getIntValue());
 }
 
@@ -757,20 +757,20 @@ static int isSCint (expdesc *e) {
 ** Check whether expression 'e' is a literal integer or float in
 ** proper range to fit in a register (sB or sC).
 */
-static int isSCnumber (expdesc *e, int *pi, int *isfloat) {
+static bool isSCnumber (expdesc *e, int *pi, int *isfloat) {
   lua_Integer i;
   if (e->getKind() == VKINT)
     i = e->getIntValue();
   else if (e->getKind() == VKFLT && luaV_flttointeger(e->getFloatValue(), &i, F2Imod::F2Ieq))
     *isfloat = 1;
   else
-    return 0;  /* not a number */
+    return false;  /* not a number */
   if (!hasjumps(e) && fitsC(i)) {
     *pi = int2sC(cast_int(i));
-    return 1;
+    return true;
   }
   else
-    return 0;
+    return false;
 }
 
 /*
@@ -778,7 +778,7 @@ static int isSCnumber (expdesc *e, int *pi, int *isfloat) {
 ** Bitwise operations need operands convertible to integers; division
 ** operations cannot have 0 as divisor.
 */
-static int validop (int op, TValue *v1, TValue *v2) {
+static bool validop (int op, TValue *v1, TValue *v2) {
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
     case LUA_OPSHL: case LUA_OPSHR: case LUA_OPBNOT: {  /* conversion errors */
@@ -788,7 +788,7 @@ static int validop (int op, TValue *v1, TValue *v2) {
     }
     case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
       return (nvalue(v2) != 0);
-    default: return 1;  /* everything else is valid */
+    default: return true;  /* everything else is valid */
   }
 }
 
