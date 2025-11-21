@@ -111,7 +111,7 @@ public:
       // Large table: allocate Limbox + Node[]
       // LAYOUT: [Limbox header][Node array of size n]
       // Verify no overflow in size calculation
-      if (n > (MAX_SIZET - sizeof(Limbox)) / sizeof(Node)) {
+      if (static_cast<size_t>(n) > (MAX_SIZET - sizeof(Limbox)) / sizeof(Node)) {
         luaG_runerror(L, "table size overflow");
       }
       size_t total = sizeof(Limbox) + n * sizeof(Node);
