@@ -80,7 +80,7 @@ static void loadAlign (LoadState *S, unsigned align) {
 static const void *getaddr_ (LoadState *S, size_t size) {
   const void *block = luaZ_getaddr(S->Z, size);
   S->offset += size;
-  if (block == NULL)
+  if (block == nullptr)
     error(S, "truncated fixed buffer");
   return block;
 }
@@ -155,7 +155,7 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
   TValue sv;
   size_t size = loadSize(S);
   if (size == 0) {  /* no string? */
-    lua_assert(*sl == NULL);  /* must be prefilled */
+    lua_assert(*sl == nullptr);  /* must be prefilled */
     return;
   }
   else if (size == 1) {  /* previously saved string? */
@@ -175,7 +175,7 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
   }
   else if (S->fixed) {  /* for a fixed buffer, use a fixed string */
     const char *s = getaddr(S, size + 1, char);  /* get content address */
-    *sl = ts = luaS_newextlstr(L, s, size, NULL, NULL);
+    *sl = ts = luaS_newextlstr(L, s, size, nullptr, nullptr);
     luaC_objbarrier(L, p, ts);
   }
   else {  /* create internal copy */
@@ -238,12 +238,12 @@ static void loadConstants (LoadState *S, Proto *f) {
         break;
       case LUA_VSHRSTR:
       case LUA_VLNGSTR: {
-        lua_assert(f->getSource() == NULL);
+        lua_assert(f->getSource() == nullptr);
         loadString(S, f, f->getSourcePtr());  /* use 'source' to anchor string */
-        if (f->getSource() == NULL)
+        if (f->getSource() == nullptr)
           error(S, "bad format for constant string");
         setsvalue2n(S->L, o, f->getSource());  /* save it in the right place */
-        f->setSource(NULL);
+        f->setSource(nullptr);
         break;
       }
       default: error(S, "invalid constant");

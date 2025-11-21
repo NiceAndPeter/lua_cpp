@@ -237,11 +237,11 @@ inline Node* hashpointer(const Table* t, T* p) noexcept {
 ** Common hash part for tables with empty hash parts. That allows all
 ** tables to have a hash part, avoiding an extra check ("is there a hash
 ** part?") when indexing. Its sole node has an empty value and a key
-** (DEADKEY, NULL) that is different from any valid TValue.
+** (DEADKEY, nullptr) that is different from any valid TValue.
 */
 static Node dummynode_ = Node(
-  {NULL}, LUA_VEMPTY,  /* value's value and type */
-  LUA_TDEADKEY, 0, {NULL}  /* key type, next, and key value */
+  {nullptr}, LUA_VEMPTY,  /* value's value and type */
+  LUA_TDEADKEY, 0, {nullptr}  /* key type, next, and key value */
 );
 
 
@@ -688,14 +688,14 @@ static Value *resizearray (lua_State *L , Table *t,
   else if (newasize == 0) {  /* erasing array? */
     Value *op = t->getArray() - oldasize;  /* original array's real address */
     luaM_freemem(L, op, concretesize(oldasize));  /* free it */
-    return NULL;
+    return nullptr;
   }
   else {
     size_t newasizeb = concretesize(newasize);
     Value *np = static_cast<Value*>(
-                  static_cast<void*>(luaM_reallocvector(L, NULL, 0, newasizeb, lu_byte)));
-    if (np == NULL)  /* allocation error? */
-      return NULL;
+                  static_cast<void*>(luaM_reallocvector(L, nullptr, 0, newasizeb, lu_byte)));
+    if (np == nullptr)  /* allocation error? */
+      return nullptr;
     np += newasize;  /* shift pointer to the end of value segment */
     if (oldasize > 0) {
       /* move common elements to new position */
@@ -873,7 +873,7 @@ void luaH_resize (lua_State *L, Table *t, unsigned newasize,
   }
   /* allocate new array */
   newarray = resizearray(L, t, oldasize, newasize);
-  if (l_unlikely(newarray == NULL && newasize > 0)) {  /* allocation failed? */
+  if (l_unlikely(newarray == nullptr && newasize > 0)) {  /* allocation failed? */
     freehash(L, &newt);  /* release new hash part */
     luaM_error(L);  /* raise error (with array unchanged) */
   }
@@ -881,7 +881,7 @@ void luaH_resize (lua_State *L, Table *t, unsigned newasize,
   exchangehashpart(t, &newt);  /* 't' has the new hash ('newt' has the old) */
   t->setArray(newarray);  /* set new array part */
   t->setArraySize(newasize);
-  if (newarray != NULL)
+  if (newarray != nullptr)
     *t->getLenHint() = newasize / 2u;  /* set an initial hint */
   clearNewSlice(t, oldasize, newasize);
   /* re-insert elements from old hash part into new parts */
@@ -1003,7 +1003,7 @@ static Node *getfreepos (Table *t) {
         return free;
     }
   }
-  return NULL;  /* could not find a free place */
+  return nullptr;  /* could not find a free place */
 }
 
 
@@ -1023,7 +1023,7 @@ static int insertkey (Table *t, const TValue *key, TValue *value) {
   if (!isempty(gval(mp)) || t->isDummy()) {  /* main position is taken? */
     Node *othern;
     Node *f = getfreepos(t);  /* get a free place */
-    if (f == NULL)  /* cannot find a free place? */
+    if (f == nullptr)  /* cannot find a free place? */
       return 0;
     lua_assert(!t->isDummy());
     othern = mainpositionfromnode(t, mp);

@@ -271,7 +271,7 @@ int Parser::new_localvar(TString *name) {
 */
 void Parser::check_readonly(expdesc *e) {
   // FuncState passed as parameter
-  TString *varname = NULL;  /* to be set if variable is const */
+  TString *varname = nullptr;  /* to be set if variable is const */
   switch (e->getKind()) {
     case VCONST: {
       varname = ls->getDyndata()->actvar()[e->getInfo()].vd.name;
@@ -413,7 +413,7 @@ Proto *Parser::addprototype() {
     int oldsize = proto->getProtosSize();
     luaM_growvector(state, proto->getProtosRef(), funcstate->getNP(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
     while (oldsize < proto->getProtosSize())
-      proto->getProtos()[oldsize++] = NULL;
+      proto->getProtos()[oldsize++] = nullptr;
   }
   proto->getProtos()[funcstate->getNPRef()++] = clp = luaF_newproto(state);
   luaC_objbarrier(state, proto, clp);
@@ -455,7 +455,7 @@ void Parser::open_func(FuncState *funcstate, BlockCnt *bl) {
   funcstate->setNeedClose(0);
   funcstate->setFirstLocal(ls->getDyndata()->actvar().getN());
   funcstate->setFirstLabel(ls->getDyndata()->label.getN());
-  funcstate->setBlock(NULL);
+  funcstate->setBlock(nullptr);
   f->setSource(ls->getSource());
   luaC_objbarrier(state, f, f->getSource());
   f->setMaxStackSize(2);  /* registers 0/1 are always valid */
@@ -472,7 +472,7 @@ void Parser::close_func() {
   Proto *f = funcstate->getProto();
   funcstate->ret(luaY_nvarstack(funcstate), 0);  /* final return */
   funcstate->leaveblock();
-  lua_assert(funcstate->getBlock() == NULL);
+  lua_assert(funcstate->getBlock() == nullptr);
   funcstate->finish();
   luaM_shrinkvector(state, f->getCodeRef(), f->getCodeSizeRef(), funcstate->getPC(), Instruction);
   luaM_shrinkvector(state, f->getLineInfoRef(), f->getLineInfoSizeRef(), funcstate->getPC(), ls_byte);
@@ -1021,7 +1021,7 @@ void Parser::gotostat( int line) {
 */
 void Parser::breakstat( int line) {
   BlockCnt *bl;  /* to look for an enclosing loop */
-  for (bl = fs->getBlock(); bl != NULL; bl = bl->previous) {
+  for (bl = fs->getBlock(); bl != nullptr; bl = bl->previous) {
     if (bl->isloop)  /* found one? */
       goto ok;
   }
@@ -1039,7 +1039,7 @@ void Parser::breakstat( int line) {
 */
 void Parser::checkrepeated( TString *name) {
   Labeldesc *lb = ls->findlabel(name, fs->getFirstLabel());
-  if (l_unlikely(lb != NULL))  /* already defined? */
+  if (l_unlikely(lb != nullptr))  /* already defined? */
     ls->semerror( "label '%s' already defined on line %d",
                       getstr(name), lb->line);  /* error */
 }
@@ -1361,8 +1361,8 @@ void Parser::globalstat() {
   if (!testnext( '*'))
     globalnames(defkind);
   else {
-    /* use NULL as name to represent '*' entries */
-    new_varkind( NULL, defkind);
+    /* use nullptr as name to represent '*' entries */
+    new_varkind( nullptr, defkind);
     funcstate->getNumActiveVarsRef()++;  /* activate declaration */
   }
 }
@@ -1425,7 +1425,7 @@ void Parser::exprstat() {
   struct LHS_assign v;
   suffixedexp(&v.v);
   if (ls->getToken() == '=' || ls->getToken() == ',') { /* stat -> assignment ? */
-    v.prev = NULL;
+    v.prev = nullptr;
     restassign(&v, 1);
   }
   else {  /* stat -> func */

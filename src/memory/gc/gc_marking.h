@@ -149,7 +149,7 @@ inline void markobject(global_State* g, const T* t) {
     }
 }
 
-/* Mark an object that can be NULL */
+/* Mark an object that can be nullptr */
 template<typename T>
 inline void markobjectN(global_State* g, const T* t) {
     if (t) {

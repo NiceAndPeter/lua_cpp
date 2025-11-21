@@ -28,7 +28,7 @@ int luaZ_fill (ZIO *z) {
   lua_unlock(L);
   buff = z->reader(L, z->data, &size);
   lua_lock(L);
-  if (buff == NULL || size == 0)
+  if (buff == nullptr || size == 0)
     return EOZ;
   z->n = size - 1;  /* discount char being returned */
   z->p = buff;
@@ -75,9 +75,9 @@ size_t luaZ_read (ZIO *z, void *b, size_t n) {
 const void *luaZ_getaddr (ZIO* z, size_t n) {
   const void *res;
   if (!checkbuffer(z))
-    return NULL;  /* no more input */
+    return nullptr;  /* no more input */
   if (z->n < n)  /* not enough bytes? */
-    return NULL;  /* block not whole; cannot give an address */
+    return nullptr;  /* block not whole; cannot give an address */
   res = z->p;  /* get block address */
   z->n -= n;  /* consume these bytes */
   z->p += n;

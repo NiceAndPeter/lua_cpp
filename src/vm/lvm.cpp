@@ -1252,7 +1252,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           L->getStackSubsystem().setTopPtr(ra + b);  /* top signals number of arguments */
         /* else previous instruction set top */
         savepc(ci);  /* in case of errors */
-        if ((newci = L->preCall( ra, nresults)) == NULL)
+        if ((newci = L->preCall( ra, nresults)) == nullptr)
           updatetrap(ci);  /* C call; nothing else to be done */
         else {  /* Lua call: run function in this same C frame */
           ci = newci;

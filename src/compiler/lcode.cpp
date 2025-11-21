@@ -943,7 +943,7 @@ void FuncState::codebinNoK(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int l
 ** constant in the proper range, use variant opcodes with K operands.
 */
 void FuncState::codearith(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line) {
-  if (tonumeral(e2, NULL) && exp2K(e2))  /* K operand? */
+  if (tonumeral(e2, nullptr) && exp2K(e2))  /* K operand? */
     codebinK(opr, e1, e2, flip, line);
   else  /* 'e2' is neither an immediate nor a K operand */
     codebinNoK(opr, e1, e2, flip, line);
@@ -956,7 +956,7 @@ void FuncState::codearith(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int li
 */
 void FuncState::codecommutative(BinOpr op, expdesc *e1, expdesc *e2, int line) {
   int flip = 0;
-  if (tonumeral(e1, NULL)) {  /* is first operand a numeric constant? */
+  if (tonumeral(e1, nullptr)) {  /* is first operand a numeric constant? */
     swapexps(e1, e2);  /* change order */
     flip = 1;
   }
@@ -1527,14 +1527,14 @@ void FuncState::infix(int opr, expdesc *v) {
     case BinOpr::OPR_MOD: case BinOpr::OPR_POW:
     case BinOpr::OPR_BAND: case BinOpr::OPR_BOR: case BinOpr::OPR_BXOR:
     case BinOpr::OPR_SHL: case BinOpr::OPR_SHR: {
-      if (!tonumeral(v, NULL))
+      if (!tonumeral(v, nullptr))
         exp2anyreg(v);
       /* else keep numeral, which may be folded or used as an immediate
          operand */
       break;
     }
     case BinOpr::OPR_EQ: case BinOpr::OPR_NE: {
-      if (!tonumeral(v, NULL))
+      if (!tonumeral(v, nullptr))
         exp2RK(v);
       /* else keep numeral, which may be an immediate operand */
       break;

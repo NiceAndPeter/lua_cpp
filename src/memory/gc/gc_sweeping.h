@@ -38,13 +38,13 @@ public:
     /*
     ** Sweep a list of objects, removing dead ones.
     ** 'countin' limits how many objects to sweep (for incremental collection).
-    ** Returns pointer to where sweeping stopped (NULL if list exhausted).
+    ** Returns pointer to where sweeping stopped (nullptr if list exhausted).
     */
     static GCObject** sweeplist(lua_State* L, GCObject** p, l_mem countin);
 
     /*
     ** Sweep a list until finding a live object (or end of list).
-    ** Returns pointer to first live object (or NULL).
+    ** Returns pointer to first live object (or nullptr).
     */
     static GCObject** sweeptolive(lua_State* L, GCObject** p);
 

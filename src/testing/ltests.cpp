@@ -85,7 +85,7 @@ static int tpanic (lua_State *L) {
                   ? lua_tostring(L, -1)
                   : "error object is not a string";
   return (badexit("PANIC: unprotected error in call to Lua API (%s)\n",
-                   msg, NULL),
+                   msg, nullptr),
           0);  /* do not return to Lua */
 }
 
@@ -121,7 +121,7 @@ static void warnf (void *ud, const char *msg, int tocont) {
       mode = 2;
     else
       badexit("Invalid control warning in test mode: %s\naborting...\n",
-              msg, NULL);
+              msg, nullptr);
     return;
   }
   lasttocont = tocont;
@@ -143,7 +143,7 @@ static void warnf (void *ud, const char *msg, int tocont) {
       case 0: {  /* normal */
         if (buff[0] != '#' && onoff)  /* unexpected warning? */
           badexit("Unexpected warning in test mode: %s\naborting...\n",
-                  buff, NULL);
+                  buff, nullptr);
       }  /* FALLTHROUGH */
       case 1: {  /* allow */
         if (onoff)
@@ -223,9 +223,9 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
   int type;
   if (mc->memlimit == 0) {  /* first time? */
     char *limit = getenv("MEMLIMIT");  /* initialize memory limit */
-    mc->memlimit = limit ? strtoul(limit, NULL, 10) : ULONG_MAX;
+    mc->memlimit = limit ? strtoul(limit, nullptr, 10) : ULONG_MAX;
   }
-  if (block == NULL) {
+  if (block == nullptr) {
     type = (oldsize < LUA_NUMTYPES) ? cast_int(oldsize) : 0;
     oldsize = 0;
   }
@@ -236,28 +236,28 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
   }
   if (size == 0) {
     freeblock(mc, block);
-    return NULL;
+    return nullptr;
   }
   if (mc->failnext) {
     mc->failnext = 0;
-    return NULL;  /* fake a single memory allocation error */
+    return nullptr;  /* fake a single memory allocation error */
   }
   if (mc->countlimit != ~0UL && size != oldsize) {  /* count limit in use? */
     if (mc->countlimit == 0)
-      return NULL;  /* fake a memory allocation error */
+      return nullptr;  /* fake a memory allocation error */
     mc->countlimit--;
   }
   if (size > oldsize && mc->total+size-oldsize > mc->memlimit)
-    return NULL;  /* fake a memory allocation error */
+    return nullptr;  /* fake a memory allocation error */
   else {
     memHeader *newblock;
     int i;
     size_t commonsize = (oldsize < size) ? oldsize : size;
     size_t realsize = sizeof(memHeader) + size + MARKSIZE;
-    if (realsize < size) return NULL;  /* arithmetic overflow! */
+    if (realsize < size) return nullptr;  /* arithmetic overflow! */
     newblock = static_cast<memHeader*>(malloc(realsize));  /* alloc a new block */
-    if (newblock == NULL)
-      return NULL;  /* really out of memory? */
+    if (newblock == nullptr)
+      return nullptr;  /* really out of memory? */
     if (block) {
       memcpy(newblock + 1, block + 1, commonsize);  /* copy old contents */
       freeblock(mc, block);  /* erase (and check) old copy */
@@ -397,7 +397,7 @@ static void checkobjref (global_State *g, GCObject *f, GCObject *t) {
 
 
 /*
-** Version where 't' can be NULL. In that case, it should not apply the
+** Version where 't' can be nullptr. In that case, it should not apply the
 ** macro 'obj2gco' over the object. ('t' may have several types, so this
 ** definition must be a macro.)  Most checks need this version, because
 ** the check may run while an object is still being created.
@@ -498,15 +498,15 @@ static void check_stack (global_State *g, lua_State *L1) {
   CallInfo *ci;
   UpVal *uv;
   assert(!isdead(g, L1));
-  if (L1->getStack().p == NULL) {  /* incomplete thread? */
-    assert(L1->getOpenUpval() == NULL && L1->getCI() == NULL);
+  if (L1->getStack().p == nullptr) {  /* incomplete thread? */
+    assert(L1->getOpenUpval() == nullptr && L1->getCI() == nullptr);
     return;
   }
-  for (uv = L1->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
+  for (uv = L1->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
     assert(uv->isOpen());  /* must be open */
   assert(L1->getTop().p <= L1->getStackLast().p);
   assert(L1->getTbclist().p <= L1->getTop().p);
-  for (ci = L1->getCI(); ci != NULL; ci = ci->getPrevious()) {
+  for (ci = L1->getCI(); ci != nullptr; ci = ci->getPrevious()) {
     assert(ci->topRef().p <= L1->getStackLast().p);
     assert(lua_checkpc(ci));
   }
@@ -672,7 +672,7 @@ static l_mem checklist (global_State *g, int maybedead, int tof,
     incifingray(g, o, &total);
     assert(!tof == !tofinalize(o));
   }
-  for (o = reallyold; o != NULL; o = o->getNext()) {
+  for (o = reallyold; o != nullptr; o = o->getNext()) {
     checkobject(g, o, 0, GCAge::Old);
     incifingray(g, o, &total);
     assert(!tof == !tofinalize(o));
@@ -692,11 +692,11 @@ int lua_checkmemory (lua_State *L) {
     assert(!iswhite(gcvalue(g->getRegistry())));
   }
   assert(!isdead(g, gcvalue(g->getRegistry())));
-  assert(g->getSweepGC() == NULL || g->isSweepPhase());
+  assert(g->getSweepGC() == nullptr || g->isSweepPhase());
   totalin = checkgrays(g);
 
   /* check 'fixedgc' list */
-  for (o = g->getFixedGC(); o != NULL; o = o->getNext()) {
+  for (o = g->getFixedGC(); o != nullptr; o = o->getNext()) {
     assert(o->getType() == LUA_VSHRSTR && isgray(o) && getage(o) == GCAge::Old);
   }
 
@@ -710,7 +710,7 @@ int lua_checkmemory (lua_State *L) {
                               g->getFinObjSur(), g->getFinObjOld1(), g->getFinObjROld());
 
   /* check 'tobefnz' list */
-  for (o = g->getToBeFnz(); o != NULL; o = o->getNext()) {
+  for (o = g->getToBeFnz(); o != nullptr; o = o->getNext()) {
     checkobject(g, o, 0, GCAge::New);
     incifingray(g, o, &totalshould);
     assert(tofinalize(o));
@@ -738,7 +738,7 @@ static char *buildop (Proto *p, int pc, char *buff) {
   OpCode o = static_cast<OpCode>(InstructionView(i).opcode());
   const char *name = opnames[o];
   int line = luaG_getfuncline(p, pc);
-  int lineinfo = (p->getLineInfo() != NULL) ? p->getLineInfo()[pc] : 0;
+  int lineinfo = (p->getLineInfo() != nullptr) ? p->getLineInfo()[pc] : 0;
   if (lineinfo == ABSLINEINFO)
     buff += sprintf(buff, "(__");
   else
@@ -828,7 +828,7 @@ static int listabslineinfo (lua_State *L) {
   luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1),
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
-  luaL_argcheck(L, p->getAbsLineInfo() != NULL, 1, "function has no debug info");
+  luaL_argcheck(L, p->getAbsLineInfo() != nullptr, 1, "function has no debug info");
   lua_createtable(L, 2 * p->getAbsLineInfoSize(), 0);
   for (i=0; i < p->getAbsLineInfoSize(); i++) {
     lua_pushinteger(L, p->getAbsLineInfo()[i].getPC());
@@ -848,7 +848,7 @@ static int listlocals (lua_State *L) {
   luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1),
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
-  while ((name = p->getLocalName(++i, pc)) != NULL)  /* Phase 25b */
+  while ((name = p->getLocalName(++i, pc)) != nullptr)  /* Phase 25b */
     lua_pushstring(L, name);
   return i-1;
 }
@@ -876,10 +876,10 @@ int lua_printallstack (lua_State *L) {
   CallInfo *ci = L->getBaseCI();
   printf("stack: >>\n");
   for (p = L->getStack().p; p < L->getTop().p; p++) {
-    if (ci != NULL && p == ci->funcRef().p) {
+    if (ci != nullptr && p == ci->funcRef().p) {
       printf("  ---\n");
       if (ci == L->getCI())
-        ci = NULL;  /* printed last frame */
+        ci = nullptr;  /* printed last frame */
       else
         ci = ci->getNext();
     }
@@ -959,7 +959,7 @@ static int alloc_failnext (lua_State *L) {
 
 static int settrick (lua_State *L) {
   if (ttisnil(obj_at(L, 1)))
-    l_Trick = NULL;
+    l_Trick = nullptr;
   else
     l_Trick = gcvalue(obj_at(L, 1));
   return 0;
@@ -1183,7 +1183,7 @@ static int string_query (lua_State *L) {
   else if (cast_uint(s) < tb->getSize()) {
     TString *ts;
     int n = 0;
-    for (ts = tb->getHash()[s]; ts != NULL; ts = ts->getNext()) {
+    for (ts = tb->getHash()[s]; ts != nullptr; ts = ts->getNext()) {
       setsvalue2s(L, L->getTop().p, ts);
       api_incr_top(L);
       n++;
@@ -1238,7 +1238,7 @@ static int upvalue (lua_State *L) {
   luaL_checktype(L, 1, LUA_TFUNCTION);
   if (lua_isnone(L, 3)) {
     const char *name = lua_getupvalue(L, 1, n);
-    if (name == NULL) return 0;
+    if (name == nullptr) return 0;
     lua_pushstring(L, name);
     return 2;
   }
@@ -1325,7 +1325,7 @@ static int newstate (lua_State *L) {
 
 static lua_State *getstate (lua_State *L) {
   lua_State *L1 = static_cast<lua_State*>(lua_touserdata(L, 1));
-  luaL_argcheck(L, L1 != NULL, 1, "state expected");
+  luaL_argcheck(L, L1 != nullptr, 1, "state expected");
   return L1;
 }
 
@@ -1338,7 +1338,7 @@ static int loadlib (lua_State *L) {
   luaL_requiref(L1, "T", luaB_opentests, 0);
   lua_assert(lua_type(L1, -1) == LUA_TTABLE);
   /* 'requiref' should not reload module already loaded... */
-  luaL_requiref(L1, "T", NULL, 1);  /* seg. fault if it reloads */
+  luaL_requiref(L1, "T", nullptr, 1);  /* seg. fault if it reloads */
   /* ...but should return the same module */
   lua_assert(lua_compare(L1, -1, -2, LUA_OPEQ));
   return 0;
@@ -1407,7 +1407,7 @@ static int checkpanic (lua_State *L) {
   b.paniccode = luaL_optstring(L, 2, "");
   b.L = L;
   L1 = lua_newstate(f, ud, 0);  /* create new state */
-  if (L1 == NULL) {  /* error? */
+  if (L1 == nullptr) {  /* error? */
     lua_pushstring(L, MEMERRMSG);
     return 1;
   }
@@ -1430,7 +1430,7 @@ static int checkpanic (lua_State *L) {
 static int externKstr (lua_State *L) {
   size_t len;
   const char *s = luaL_checklstring(L, 1, &len);
-  lua_pushexternalstring(L, s, len, NULL, NULL);
+  lua_pushexternalstring(L, s, len, nullptr, nullptr);
   return 1;
 }
 
@@ -1446,8 +1446,8 @@ static int externstr (lua_State *L) {
   void *ud;
   lua_Alloc allocf = lua_getallocf(L, &ud);  /* get allocation function */
   /* create the buffer */
-  char *buff = cast_charp((*allocf)(ud, NULL, 0, len + 1));
-  if (buff == NULL) {  /* memory error? */
+  char *buff = cast_charp((*allocf)(ud, nullptr, 0, len + 1));
+  if (buff == nullptr) {  /* memory error? */
     lua_pushliteral(L, "not enough memory");
     lua_error(L);  /* raise a memory error */
   }
@@ -1591,7 +1591,7 @@ static const char ops[] = "+-*%^/\\&|~<>_!";
 static int runC (lua_State *L, lua_State *L1, const char *pc) {
   char buff[300];
   int status = 0;
-  if (pc == NULL) return luaL_error(L, "attempt to runC null script");
+  if (pc == nullptr) return luaL_error(L, "attempt to runC null script");
   for (;;) {
     const char *inst = getstring;
     if EQ("") return 0;
@@ -1624,7 +1624,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
       int sz = getnum;
       const char *msg = getstring;
       if (*msg == '\0')
-        msg = NULL;  /* to test 'luaL_checkstack' with no message */
+        msg = nullptr;  /* to test 'luaL_checkstack' with no message */
       luaL_checkstack(L1, sz, msg);
     }
     else if EQ("rawcheckstack") {
@@ -1911,7 +1911,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
     }
     else if EQ("testudata") {
       int i = getindex;
-      lua_pushboolean(L1, luaL_testudata(L1, i, getstring) != NULL);
+      lua_pushboolean(L1, luaL_testudata(L1, i, getstring) != nullptr);
     }
     else if EQ("error") {
       lua_error(L1);
@@ -1950,10 +1950,10 @@ static struct X { int x; } x;
       const char *s = lua_tostring(L1, getindex);
       const char *s1 = lua_pushstring(L1, s);
       cast_void(s1);  /* to avoid warnings */
-      lua_longassert((s == NULL && s1 == NULL) || strcmp(s, s1) == 0);
+      lua_longassert((s == nullptr && s1 == nullptr) || strcmp(s, s1) == 0);
     }
     else if EQ("Ltolstring") {
-      luaL_tolstring(L1, getindex, NULL);
+      luaL_tolstring(L1, getindex, nullptr);
     }
     else if EQ("type") {
       lua_pushstring(L1, luaL_typename(L1, getnum));
@@ -2065,7 +2065,7 @@ static void Chook (lua_State *L, lua_Debug *ar) {
 */
 static void sethookaux (lua_State *L, int mask, int count, const char *scpt) {
   if (*scpt == '\0') {  /* no script? */
-    lua_sethook(L, NULL, 0, 0);  /* turn off hooks */
+    lua_sethook(L, nullptr, 0, 0);  /* turn off hooks */
     return;
   }
   lua_getfield(L, LUA_REGISTRYINDEX, "C_HOOK");  /* get C_HOOK table */
@@ -2084,7 +2084,7 @@ static void sethookaux (lua_State *L, int mask, int count, const char *scpt) {
 
 static int sethook (lua_State *L) {
   if (lua_isnoneornil(L, 1))
-    lua_sethook(L, NULL, 0, 0);  /* turn off hooks */
+    lua_sethook(L, nullptr, 0, 0);  /* turn off hooks */
   else {
     const char *scpt = luaL_checkstring(L, 1);
     const char *smask = luaL_checkstring(L, 2);
@@ -2118,7 +2118,7 @@ static int coresume (lua_State *L) {
 
 #if !defined(LUA_USE_POSIX)
 
-#define nonblock	NULL
+#define nonblock	nullptr
 
 #else
 
@@ -2237,7 +2237,7 @@ static const struct luaL_Reg tests_funcs[] = {
   {"externstr", externstr},
   {"testvector", testvector},
   {"nonblock", nonblock},
-  {NULL, NULL}
+  {nullptr, nullptr}
 };
 
 

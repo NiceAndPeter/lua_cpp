@@ -227,7 +227,7 @@ inline bool isdead(const global_State* g, const T* v) noexcept {
 ** Check liveness of a value being manipulated by the program.
 ** Any value being manipulated by the program either is non-collectable,
 ** or the collectable object has the right tag and it is not dead.
-** The option 'L == NULL' allows this function to be used where L is not available.
+** The option 'L == nullptr' allows this function to be used where L is not available.
 */
 inline void checkliveness(lua_State* L, const TValue* obj) noexcept {
 	(void)L;
@@ -519,10 +519,10 @@ inline bool keyiswhite(const Node* n) noexcept {
 }
 
 /*
-** Protected access to objects in values (returns NULL if not collectable)
+** Protected access to objects in values (returns nullptr if not collectable)
 */
 inline GCObject* gcvalueN(const TValue* o) noexcept {
-    return iscollectable(o) ? gcvalue(o) : NULL;
+    return iscollectable(o) ? gcvalue(o) : nullptr;
 }
 
 /* }================================================================== */

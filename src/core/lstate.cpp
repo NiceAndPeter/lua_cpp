@@ -80,13 +80,13 @@ void luaE_setdebt (global_State *g, l_mem debt) {
 
 CallInfo *luaE_extendCI (lua_State *L) {
   CallInfo *ci;
-  lua_assert(L->getCI()->getNext() == NULL);
+  lua_assert(L->getCI()->getNext() == nullptr);
   // Use placement new to call constructor (initializes all 9 fields)
   ci = new (luaM_malloc_(L, sizeof(CallInfo), 0)) CallInfo();
-  lua_assert(L->getCI()->getNext() == NULL);
+  lua_assert(L->getCI()->getNext() == nullptr);
   L->getCI()->setNext(ci);
   ci->setPrevious(L->getCI());
-  ci->setNext(NULL);
+  ci->setNext(nullptr);
   // trap already initialized to 0 in constructor, but keep this for clarity
   ci->getTrap() = 0;
   L->getNCIRef()++;
@@ -100,8 +100,8 @@ CallInfo *luaE_extendCI (lua_State *L) {
 static void freeCI (lua_State *L) {
   CallInfo *ci = L->getCI();
   CallInfo *next = ci->getNext();
-  ci->setNext(NULL);
-  while ((ci = next) != NULL) {
+  ci->setNext(nullptr);
+  while ((ci = next) != nullptr) {
     next = ci->getNext();
     luaM_free(L, ci);
     L->getNCIRef()--;
@@ -116,14 +116,14 @@ static void freeCI (lua_State *L) {
 void luaE_shrinkCI (lua_State *L) {
   CallInfo *ci = L->getCI()->getNext();  /* first free CallInfo */
   CallInfo *next;
-  if (ci == NULL)
+  if (ci == nullptr)
     return;  /* no extra elements */
-  while ((next = ci->getNext()) != NULL) {  /* two extra elements? */
+  while ((next = ci->getNext()) != nullptr) {  /* two extra elements? */
     CallInfo *next2 = next->getNext();  /* next's next */
     ci->setNext(next2);  /* remove next from the list */
     L->getNCIRef()--;
     luaM_free(L, next);  /* free next */
-    if (next2 == NULL)
+    if (next2 == nullptr)
       break;  /* no more elements */
     else {
       next2->setPrevious(ci);
@@ -160,7 +160,7 @@ static void resetCI (lua_State *L) {
   ci->funcRef().p = L->getStack().p;
   setnilvalue(s2v(ci->funcRef().p));  /* 'function' entry for basic 'ci' */
   ci->topRef().p = ci->funcRef().p + 1 + LUA_MINSTACK;  /* +1 for 'function' entry */
-  ci->setK(NULL);
+  ci->setK(nullptr);
   ci->setCallStatus(CIST_C);
   L->setStatus(LUA_OK);
   L->setErrFunc(0);  /* stack unwind can "throw away" the error function */
@@ -233,15 +233,15 @@ static void f_luaopen (lua_State *L, void *ud) {
 static void preinit_thread (lua_State *L, global_State *g) {
   L->init(g);  // Initialize lua_State fields (preserves GC fields)
   L->resetHookCount();   // Initialize hookcount = basehookcount
-  L->getBaseCI()->setPrevious(NULL);
-  L->getBaseCI()->setNext(NULL);
+  L->getBaseCI()->setPrevious(nullptr);
+  L->getBaseCI()->setNext(nullptr);
 }
 
 
 lu_mem luaE_threadsize (lua_State *L) {
   lu_mem sz = static_cast<lu_mem>(sizeof(LX))
             + cast_uint(L->getNCI()) * sizeof(CallInfo);
-  if (L->getStack().p != NULL)
+  if (L->getStack().p != nullptr)
     sz += cast_uint(L->getStackSize() + EXTRA_STACK) * sizeof(StackValue);
   return sz;
 }
@@ -295,7 +295,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
 void luaE_freethread (lua_State *L, lua_State *L1) {
   LX *l = fromstate(L1);
   luaF_closeupval(L1, L1->getStack().p);  /* close all upvalues */
-  lua_assert(L1->getOpenUpval() == NULL);
+  lua_assert(L1->getOpenUpval() == nullptr);
   luai_userstatefree(L, L1);
   freestack(L1);
   luaM_free(L, l);
@@ -332,38 +332,38 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   int i;
   lua_State *L;
   global_State *g = static_cast<global_State*>(
-                       (*f)(ud, NULL, LUA_TTHREAD, sizeof(global_State)));
-  if (g == NULL) return NULL;
+                       (*f)(ud, nullptr, LUA_TTHREAD, sizeof(global_State)));
+  if (g == nullptr) return nullptr;
   L = &g->getMainThread()->l;
   L->setType(LUA_VTHREAD);
   g->setCurrentWhite(bitmask(WHITE0BIT));
   L->setMarked(g->getWhite());
   preinit_thread(L, g);
   g->setAllGC(obj2gco(L));  /* by now, only object is the main thread */
-  L->setNext(NULL);
+  L->setNext(nullptr);
   incnny(L);  /* main thread is always non yieldable */
   g->setFrealloc(f);
   g->setUd(ud);
-  g->setWarnF(NULL);
-  g->setUdWarn(NULL);
+  g->setWarnF(nullptr);
+  g->setUdWarn(nullptr);
   g->setSeed(seed);
   g->setGCStp(GCSTPGC);  /* no GC while building state */
   g->getStringTable()->setSize(0);
   g->getStringTable()->setNumElements(0);
-  g->getStringTable()->setHash(NULL);
+  g->getStringTable()->setHash(nullptr);
   setnilvalue(g->getRegistry());
-  g->setPanic(NULL);
+  g->setPanic(nullptr);
   g->setGCState(GCState::Pause);
   g->setGCKind(GCKind::Incremental);
   g->setGCStopEm(0);
   g->setGCEmergency(0);
-  g->setFinObj(NULL); g->setToBeFnz(NULL); g->setFixedGC(NULL);
-  g->setFirstOld1(NULL); g->setSurvival(NULL); g->setOld1(NULL); g->setReallyOld(NULL);
-  g->setFinObjSur(NULL); g->setFinObjOld1(NULL); g->setFinObjROld(NULL);
-  g->setSweepGC(NULL);
-  g->setGray(NULL); g->setGrayAgain(NULL);
-  g->setWeak(NULL); g->setEphemeron(NULL); g->setAllWeak(NULL);
-  g->setTwups(NULL);
+  g->setFinObj(nullptr); g->setToBeFnz(nullptr); g->setFixedGC(nullptr);
+  g->setFirstOld1(nullptr); g->setSurvival(nullptr); g->setOld1(nullptr); g->setReallyOld(nullptr);
+  g->setFinObjSur(nullptr); g->setFinObjOld1(nullptr); g->setFinObjROld(nullptr);
+  g->setSweepGC(nullptr);
+  g->setGray(nullptr); g->setGrayAgain(nullptr);
+  g->setWeak(nullptr); g->setEphemeron(nullptr); g->setAllWeak(nullptr);
+  g->setTwups(nullptr);
   g->setGCTotalBytes(sizeof(global_State));
   g->setGCMarked(0);
   g->setGCDebt(0);
@@ -377,10 +377,10 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   for (i = 0; i < LUA_NUMTYPES; i++) {
     g->setMetatable(i, nullptr);
   }
-  if (L->rawRunProtected( f_luaopen, NULL) != LUA_OK) {
+  if (L->rawRunProtected( f_luaopen, nullptr) != LUA_OK) {
     /* memory allocation error: free partial state */
     close_state(L);
-    L = NULL;
+    L = nullptr;
   }
   return L;
 }
@@ -395,7 +395,7 @@ LUA_API void lua_close (lua_State *L) {
 
 void luaE_warning (lua_State *L, const char *msg, int tocont) {
   lua_WarnFunction wf = G(L)->getWarnF();
-  if (wf != NULL)
+  if (wf != nullptr)
     wf(G(L)->getUdWarn(), msg, tocont);
 }
 

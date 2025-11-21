@@ -81,7 +81,7 @@
 ** Access to collectable objects in array part of tables
 */
 #define gcvalarr(t,i)  \
-	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : NULL)
+	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
 
 
 #define markvalue(g,o) { checkliveness(mainthread(g),o); \
@@ -92,7 +92,7 @@
 #define markobject(g,t)	{ if (iswhite(t)) reallymarkobject(g, obj2gco(t)); }
 
 /*
-** mark an object that can be NULL (either because it is really optional,
+** mark an object that can be nullptr (either because it is really optional,
 ** or it was stripped as debug info, or inside an uncompleted structure)
 */
 #define markobjectN(g,t)	{ if (t) markobject(g,t); }
@@ -457,7 +457,7 @@ void freeobj (lua_State *L, GCObject *o) {
 ** objects, where a dead object is one marked with the old (non current)
 ** white; change all non-dead objects back to white (and new), preparing
 ** for next collection cycle. Return where to continue the traversal or
-** NULL if list is finished.
+** nullptr if list is finished.
 */
 /*
 ** Sweep a linked list of GC objects, freeing dead objects.
@@ -467,7 +467,7 @@ void freeobj (lua_State *L, GCObject *o) {
 ** - countin: Maximum number of objects to process (for incremental sweeping)
 **
 ** RETURN:
-** - NULL if list is fully swept
+** - nullptr if list is fully swept
 ** - Pointer to next position to continue sweeping (for incremental work)
 **
 ** TWO-WHITE SCHEME:
@@ -579,7 +579,7 @@ static void correctpointers (global_State *g, GCObject *o) {
 */
 static GCObject **correctgraylist (GCObject **p) {
   GCObject *curr;
-  while ((curr = *p) != NULL) {
+  while ((curr = *p) != nullptr) {
     GCObject **next = getgclist(curr);
     if (iswhite(curr))
       goto remove;  /* remove all white objects */
@@ -716,11 +716,11 @@ void luaC_freeallobjects (lua_State *L) {
   g->setGCStp(GCSTPCLS);  /* no extra finalizers after here */
   luaC_changemode(L, GCKind::Incremental);
   separatetobefnz(g, 1);  /* separate all objects with finalizers */
-  lua_assert(g->getFinObj() == NULL);
+  lua_assert(g->getFinObj() == nullptr);
   callallpendingfinalizers(L);
   deletelist(L, g->getAllGC(), obj2gco(mainthread(g)));
-  lua_assert(g->getFinObj() == NULL);  /* no new finalizers */
-  deletelist(L, g->getFixedGC(), NULL);  /* collect fixed objects */
+  lua_assert(g->getFinObj() == nullptr);  /* no new finalizers */
+  deletelist(L, g->getFixedGC(), nullptr);  /* collect fixed objects */
   lua_assert(g->getStringTable()->getNumElements() == 0);
 }
 
@@ -841,8 +841,8 @@ void luaC_fullgc (lua_State *L, int isemergency) {
 ** Called when entering sweep phase or restarting collection.
 */
 void global_State::clearGrayLists() {
-  *getGrayPtr() = *getGrayAgainPtr() = NULL;
-  *getWeakPtr() = *getAllWeakPtr() = *getEphemeronPtr() = NULL;
+  *getGrayPtr() = *getGrayAgainPtr() = nullptr;
+  *getWeakPtr() = *getAllWeakPtr() = *getEphemeronPtr() = nullptr;
 }
 
 
@@ -885,11 +885,11 @@ int global_State::checkMinorMajor() {
 */
 void global_State::correctGrayLists() {
   GCObject **list = correctgraylist(getGrayAgainPtr());
-  *list = getWeak(); setWeak(NULL);
+  *list = getWeak(); setWeak(nullptr);
   list = correctgraylist(list);
-  *list = getAllWeak(); setAllWeak(NULL);
+  *list = getAllWeak(); setAllWeak(nullptr);
   list = correctgraylist(list);
-  *list = getEphemeron(); setEphemeron(NULL);
+  *list = getEphemeron(); setEphemeron(nullptr);
   correctgraylist(list);
 }
 
@@ -912,7 +912,7 @@ void GCObject::fix(lua_State* L) const {  /* const - only modifies mutable GC fi
 void GCObject::checkFinalizer(lua_State* L, Table* mt) {
   global_State *g = G(L);
   if (tofinalize(this) ||                 /* obj. is already marked... */
-      gfasttm(g, mt, TMS::TM_GC) == NULL ||    /* or has no finalizer... */
+      gfasttm(g, mt, TMS::TM_GC) == nullptr ||    /* or has no finalizer... */
       (g->getGCStp() & GCSTPCLS))                   /* or closing state? */
     return;  /* nothing to be done */
   else {  /* move 'this' to 'finobj' list */

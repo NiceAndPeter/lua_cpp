@@ -83,7 +83,7 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
 ** Access to collectable objects in table array part
 */
 #define gcvalarr(t, i)  \
-    ((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : NULL)
+    ((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
 
 
 /*
@@ -182,20 +182,20 @@ l_mem GCMarking::traversethread(global_State* g, lua_State* th) {
     StkId o = th->getStack().p;
     if (isold(th) || g->getGCState() == GCState::Propagate)
         linkgclistThread(th, *g->getGrayAgainPtr());
-    if (o == NULL)
+    if (o == nullptr)
         return 0;  /* stack not completely built yet */
     lua_assert(g->getGCState() == GCState::Atomic ||
-               th->getOpenUpval() == NULL || th->isInTwups());
+               th->getOpenUpval() == nullptr || th->isInTwups());
     for (; o < th->getTop().p; o++)
         markvalue(g, s2v(o));
-    for (uv = th->getOpenUpval(); uv != NULL; uv = uv->getOpenNext())
+    for (uv = th->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
         markobject(g, uv);
     if (g->getGCState() == GCState::Atomic) {
         if (!g->getGCEmergency())
             th->shrinkStack();
         for (o = th->getTop().p; o < th->getStackLast().p + EXTRA_STACK; o++)
             setnilvalue(s2v(o));
-        if (!th->isInTwups() && th->getOpenUpval() != NULL) {
+        if (!th->isInTwups() && th->getOpenUpval() != nullptr) {
             th->setTwups(g->getTwups());
             g->setTwups(th);
         }
@@ -310,7 +310,7 @@ void GCMarking::markmt(global_State* g) {
 */
 void GCMarking::markbeingfnz(global_State* g) {
     GCObject* o;
-    for (o = g->getToBeFnz(); o != NULL; o = o->getNext())
+    for (o = g->getToBeFnz(); o != nullptr; o = o->getNext())
         markobject(g, o);
 }
 
@@ -321,15 +321,15 @@ void GCMarking::markbeingfnz(global_State* g) {
 void GCMarking::remarkupvals(global_State* g) {
     lua_State* thread;
     lua_State** p = g->getTwupsPtr();
-    while ((thread = *p) != NULL) {
-        if (!iswhite(thread) && thread->getOpenUpval() != NULL)
+    while ((thread = *p) != nullptr) {
+        if (!iswhite(thread) && thread->getOpenUpval() != nullptr)
             p = thread->getTwupsPtr();
         else {
             UpVal* uv;
-            lua_assert(!isold(thread) || thread->getOpenUpval() == NULL);
+            lua_assert(!isold(thread) || thread->getOpenUpval() == nullptr);
             *p = thread->getTwups();
             thread->setTwups(thread);  /* mark out of list */
-            for (uv = thread->getOpenUpval(); uv != NULL; uv = uv->getOpenNext()) {
+            for (uv = thread->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext()) {
                 lua_assert(getage(uv) <= getage(thread));
                 if (!iswhite(uv)) {
                     lua_assert(uv->isOpen() && isgray(uv));
@@ -392,7 +392,7 @@ int GCMarking::traversearray(global_State* g, Table* h) {
     unsigned i;
     for (i = 0; i < asize; i++) {
         GCObject* o = gcvalarr(h, i);
-        if (o != NULL && iswhite(o)) {
+        if (o != nullptr && iswhite(o)) {
             marked = 1;
             reallymarkobject(g, o);
         }
@@ -424,6 +424,6 @@ void GCMarking::traversestrongtable(global_State* g, Table* h) {
 ** Clear all gray lists (called when entering sweep phase)
 */
 void GCMarking::cleargraylists(global_State* g) {
-    *g->getGrayPtr() = *g->getGrayAgainPtr() = NULL;
-    *g->getWeakPtr() = *g->getAllWeakPtr() = *g->getEphemeronPtr() = NULL;
+    *g->getGrayPtr() = *g->getGrayAgainPtr() = nullptr;
+    *g->getWeakPtr() = *g->getAllWeakPtr() = *g->getEphemeronPtr() = nullptr;
 }

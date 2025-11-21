@@ -113,7 +113,7 @@ void LuaStack::init(lua_State* L) {
 ** Free stack memory (called from lstate.cpp)
 */
 void LuaStack::free(lua_State* L) {
-  if (stack.p == NULL)
+  if (stack.p == nullptr)
     return;  /* stack not completely built yet */
   /* free stack */
   luaM_freearray(L, stack.p, cast_sizet(getSize() + EXTRA_STACK));
@@ -135,7 +135,7 @@ int LuaStack::inUse(const lua_State* L) const {
   int res;
   StkId lim = top.p;
 
-  for (ci_iter = L->getCI(); ci_iter != NULL; ci_iter = ci_iter->getPrevious()) {
+  for (ci_iter = L->getCI(); ci_iter != nullptr; ci_iter = ci_iter->getPrevious()) {
     if (lim < ci_iter->topRef().p)
       lim = ci_iter->topRef().p;
   }
@@ -168,10 +168,10 @@ void LuaStack::relPointers(lua_State* L) {
   top.offset = save(top.p);
   tbclist.offset = save(tbclist.p);
 
-  for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
+  for (up = L->getOpenUpval(); up != nullptr; up = up->getOpenNext())
     up->setOffset(save(up->getLevel()));
 
-  for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
+  for (ci = L->getCI(); ci != nullptr; ci = ci->getPrevious()) {
     ci->topRef().offset = save(ci->topRef().p);
     ci->funcRef().offset = save(ci->funcRef().p);
   }
@@ -189,10 +189,10 @@ void LuaStack::correctPointers(lua_State* L, StkId oldstack) {
   top.p = restore(top.offset);
   tbclist.p = restore(tbclist.offset);
 
-  for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
+  for (up = L->getOpenUpval(); up != nullptr; up = up->getOpenNext())
     up->setVP(s2v(restore(up->getOffset())));
 
-  for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
+  for (ci = L->getCI(); ci != nullptr; ci = ci->getPrevious()) {
     ci->topRef().p = restore(ci->topRef().offset);
     ci->funcRef().p = restore(ci->funcRef().offset);
     if (ci->isLua())
@@ -225,10 +225,10 @@ void LuaStack::correctPointers(lua_State* L, StkId oldstack) {
   top.p = top.p - oldstack + newstack;
   tbclist.p = tbclist.p - oldstack + newstack;
 
-  for (up = L->getOpenUpval(); up != NULL; up = up->getOpenNext())
+  for (up = L->getOpenUpval(); up != nullptr; up = up->getOpenNext())
     up->setVP(s2v(up->getLevel() - oldstack + newstack));
 
-  for (ci = L->getCI(); ci != NULL; ci = ci->getPrevious()) {
+  for (ci = L->getCI(); ci != nullptr; ci = ci->getPrevious()) {
     ci->topRef().p = ci->topRef().p - oldstack + newstack;
     ci->funcRef().p = ci->funcRef().p - oldstack + newstack;
     if (ci->isLua())
@@ -266,7 +266,7 @@ int LuaStack::realloc(lua_State* L, int newsize, int raiseerror) {
 
   G(L)->setGCStopEm(oldgcstop);  /* restore emergency collection */
 
-  if (l_unlikely(newstack == NULL)) {  /* reallocation failed? */
+  if (l_unlikely(newstack == nullptr)) {  /* reallocation failed? */
     correctPointers(L, oldstack);  /* change offsets back to pointers */
     if (raiseerror)
       luaM_error(L);

@@ -463,7 +463,7 @@ int LexState::lex(SemInfo *seminfo) {
           size_t sep = skipSep();
           luaZ_resetbuffer(getBuffer());  /* 'skip_sep' may dirty the buffer */
           if (sep >= 2) {
-            readLongString(NULL, sep);  /* skip long comment */
+            readLongString(nullptr, sep);  /* skip long comment */
             luaZ_resetbuffer(getBuffer());  /* previous call may dirty the buff. */
             break;
           }

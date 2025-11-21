@@ -54,7 +54,7 @@ typedef struct BlockCnt {
 */
 l_noret LexState::jumpscopeerror(FuncState *funcState, Labeldesc *gt) {
   TString *tsname = funcState->getlocalvardesc(gt->nactvar)->vd.name;
-  const char *varname = (tsname != NULL) ? getstr(tsname) : "*";
+  const char *varname = (tsname != nullptr) ? getstr(tsname) : "*";
   semerror("<goto %s> at line %d jumps into the scope of '%s'",
            getstr(gt->name), gt->line, varname);  /* raise the error */
 }
@@ -103,7 +103,7 @@ Labeldesc *LexState::findlabel(TString *name, int ilb) {
     if (eqstr(lb->name, name))  /* correct label? */
       return lb;
   }
-  return NULL;  /* label not found */
+  return nullptr;  /* label not found */
 }
 
 

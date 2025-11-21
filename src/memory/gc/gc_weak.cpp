@@ -38,7 +38,7 @@
 
 /* Access to collectable objects in array part of tables */
 #define gcvalarr(t,i)  \
-	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : NULL)
+	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
 
 /* Note: gcvalueN and valiswhite are now in lgc.h */
 /* Note: markkey and markvalue are defined in gc_marking.h */
@@ -50,7 +50,7 @@
 ** being finalized, keep them in keys, but not in values.
 */
 static int iscleared(global_State* g, const GCObject* o) {
-    if (o == NULL) return 0;  /* non-collectable value */
+    if (o == nullptr) return 0;  /* non-collectable value */
     else if (novariant(o->getType()) == LUA_TSTRING) {
         markobject(g, o);  /* strings are 'values', so are never weak */
         return 0;
@@ -138,13 +138,13 @@ void GCWeak::genlink(global_State* g, GCObject* o) {
 */
 int GCWeak::getmode(global_State* g, Table* h) {
     const TValue* mode = gfasttm(g, h->getMetatable(), TMS::TM_MODE);
-    if (mode == NULL || !ttisshrstring(mode))
+    if (mode == nullptr || !ttisshrstring(mode))
         return 0;  /* ignore non-(short)string modes */
     else {
         const char* smode = getshrstr(tsvalue(mode));
         const char* weakkey = strchr(smode, 'k');
         const char* weakvalue = strchr(smode, 'v');
-        return ((weakkey != NULL) << 1) | (weakvalue != NULL);
+        return ((weakkey != nullptr) << 1) | (weakvalue != nullptr);
     }
 }
 
@@ -165,7 +165,7 @@ static int traversearray(global_State* g, Table* h) {
     unsigned i;
     for (i = 0; i < asize; i++) {
         GCObject* o = gcvalarr(h, i);
-        if (o != NULL && iswhite(o)) {
+        if (o != nullptr && iswhite(o)) {
             marked = 1;
             GCMarking::reallymarkobject(g, o);
         }
@@ -275,9 +275,9 @@ void GCWeak::convergeephemerons(global_State* g) {
     do {
         GCObject* w;
         GCObject* next = g->getEphemeron();  /* get ephemeron list */
-        g->setEphemeron(NULL);  /* tables may return to this list when traversed */
+        g->setEphemeron(nullptr);  /* tables may return to this list when traversed */
         changed = 0;
-        while ((w = next) != NULL) {  /* for each ephemeron table */
+        while ((w = next) != nullptr) {  /* for each ephemeron table */
             Table* h = gco2t(w);
             next = h->getGclist();  /* list is rebuilt during loop */
             nw2black(h);  /* out of the list (for now) */

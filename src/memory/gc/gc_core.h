@@ -37,7 +37,7 @@ public:
     /*
     ** Get pointer to the gclist field of an object.
     ** Different object types store gclist in different locations.
-    ** Returns pointer to gclist field, or NULL for invalid types.
+    ** Returns pointer to gclist field, or nullptr for invalid types.
     */
     static GCObject** getgclist(GCObject* o);
 

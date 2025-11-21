@@ -72,7 +72,7 @@ static void tablerehash (TString **vect, unsigned int osize, unsigned int nsize)
     std::fill_n(vect + osize, nsize - osize, nullptr);
   for (i = 0; i < osize; i++) {  /* rehash old part of the array */
     TString *p = vect[i];
-    vect[i] = NULL;
+    vect[i] = nullptr;
     while (p) {  /* for each string in the list */
       TString *hnext = p->getNext();  /* save next */
       unsigned int h = lmod(p->getHash(), nsize);  /* new position */
@@ -96,7 +96,7 @@ void luaS_resize (lua_State *L, unsigned int nsize) {
   if (nsize < osize)  /* shrinking table? */
     tablerehash(tb->getHash(), osize, nsize);  /* depopulate shrinking part */
   newvect = luaM_reallocvector(L, tb->getHash(), osize, nsize, TString*);
-  if (l_unlikely(newvect == NULL)) {  /* reallocation failed? */
+  if (l_unlikely(newvect == nullptr)) {  /* reallocation failed? */
     if (nsize < osize)  /* was it shrinking table? */
       tablerehash(tb->getHash(), nsize, osize);  /* restore to original size */
     /* leave table as it was */
@@ -254,8 +254,8 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   stringtable *tb = g->getStringTable();
   unsigned int h = luaS_hash(str, l, g->getSeed());
   TString **list = &tb->getHash()[lmod(h, tb->getSize())];
-  lua_assert(str != NULL);  /* otherwise 'memcmp'/'memcpy' are undefined */
-  for (ts = *list; ts != NULL; ts = ts->getNext()) {
+  lua_assert(str != nullptr);  /* otherwise 'memcmp'/'memcpy' are undefined */
+  for (ts = *list; ts != nullptr; ts = ts->getNext()) {
     if (l == cast_uint(ts->getShrlen()) &&
         (memcmp(str, getshrstr(ts), l * sizeof(char)) == 0)) {
       /* found! */

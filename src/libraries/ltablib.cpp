@@ -415,7 +415,7 @@ static const luaL_Reg tab_funcs[] = {
   {"remove", tremove},
   {"move", tmove},
   {"sort", sort},
-  {NULL, NULL}
+  {nullptr, nullptr}
 };
 
 
