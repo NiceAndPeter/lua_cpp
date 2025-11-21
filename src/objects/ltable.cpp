@@ -412,6 +412,8 @@ static int equalkey (const TValue *k1, const Node *n2, int deadok) {
 */
 static TValue *getgeneric (Table *t, const TValue *key, int deadok) {
   Node *n = mainpositionTV(t, key);
+  const Node *base = gnode(t, 0);
+  const Node *limit = base + t->nodeSize();
   for (;;) {  /* check whether 'key' is somewhere in the chain */
     if (equalkey(key, n, deadok))
       return gval(n);  /* that's it */
@@ -420,6 +422,7 @@ static TValue *getgeneric (Table *t, const TValue *key, int deadok) {
       if (nx == 0)
         return &absentkey;  /* not found */
       n += nx;
+      lua_assert(n >= base && n < limit);  /* ensure we stay in bounds */
     }
   }
 }
@@ -477,7 +480,12 @@ static unsigned findindex (lua_State *L, Table *t, TValue *key,
     const TValue *n = getgeneric(t, key, 1);
     if (l_unlikely(isabstkey(n)))
       luaG_runerror(L, "invalid key to 'next'");  /* key not found */
-    i = cast_uint(reinterpret_cast<const Node*>(n) - gnode(t, 0));  /* key index in hash table */
+    /* Calculate index in hash table with bounds checking */
+    const Node* node_ptr = reinterpret_cast<const Node*>(n);
+    const Node* base = gnode(t, 0);
+    ptrdiff_t diff = node_ptr - base;
+    lua_assert(diff >= 0 && static_cast<size_t>(diff) < t->nodeSize());
+    i = cast_uint(diff);
     /* hash elements are numbered after array ones */
     return (i + 1) + asize;
   }

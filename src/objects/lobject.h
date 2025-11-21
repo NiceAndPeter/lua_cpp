@@ -1795,18 +1795,18 @@ inline constexpr int UTF8BUFFSZ = 8;
   if (msg == nullptr) (L)->doThrow(LUA_ERRMEM);  /* only after 'va_end' */ }
 
 
-LUAI_FUNC int luaO_utf8esc (char *buff, l_uint32 x);
-LUAI_FUNC lu_byte luaO_ceillog2 (unsigned int x);
-LUAI_FUNC lu_byte luaO_codeparam (unsigned int p);
-LUAI_FUNC l_mem luaO_applyparam (lu_byte p, l_mem x);
+[[nodiscard]] LUAI_FUNC int luaO_utf8esc (char *buff, l_uint32 x);
+[[nodiscard]] LUAI_FUNC lu_byte luaO_ceillog2 (unsigned int x);
+[[nodiscard]] LUAI_FUNC lu_byte luaO_codeparam (unsigned int p);
+[[nodiscard]] LUAI_FUNC l_mem luaO_applyparam (lu_byte p, l_mem x);
 
-LUAI_FUNC int luaO_rawarith (lua_State *L, int op, const TValue *p1,
+[[nodiscard]] LUAI_FUNC int luaO_rawarith (lua_State *L, int op, const TValue *p1,
                              const TValue *p2, TValue *res);
 LUAI_FUNC void luaO_arith (lua_State *L, int op, const TValue *p1,
                            const TValue *p2, StkId res);
-LUAI_FUNC size_t luaO_str2num (const char *s, TValue *o);
-LUAI_FUNC unsigned luaO_tostringbuff (const TValue *obj, char *buff);
-LUAI_FUNC lu_byte luaO_hexavalue (int c);
+[[nodiscard]] LUAI_FUNC size_t luaO_str2num (const char *s, TValue *o);
+[[nodiscard]] LUAI_FUNC unsigned luaO_tostringbuff (const TValue *obj, char *buff);
+[[nodiscard]] LUAI_FUNC lu_byte luaO_hexavalue (int c);
 LUAI_FUNC void luaO_tostring (lua_State *L, TValue *obj);
 LUAI_FUNC const char *luaO_pushvfstring (lua_State *L, const char *fmt,
                                                        va_list argp);
@@ -1844,11 +1844,11 @@ LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
 
 /* Forward declarations for comparison helpers (defined in lvm.cpp and lstring.h) */
 /* These handle mixed int/float comparisons correctly */
-LUAI_FUNC int LTintfloat (lua_Integer i, lua_Number f);
-LUAI_FUNC int LEintfloat (lua_Integer i, lua_Number f);
-LUAI_FUNC int LTfloatint (lua_Number f, lua_Integer i);
-LUAI_FUNC int LEfloatint (lua_Number f, lua_Integer i);
-LUAI_FUNC int l_strcmp (const TString* ts1, const TString* ts2);
+[[nodiscard]] LUAI_FUNC int LTintfloat (lua_Integer i, lua_Number f);
+[[nodiscard]] LUAI_FUNC int LEintfloat (lua_Integer i, lua_Number f);
+[[nodiscard]] LUAI_FUNC int LTfloatint (lua_Number f, lua_Integer i);
+[[nodiscard]] LUAI_FUNC int LEfloatint (lua_Number f, lua_Integer i);
+[[nodiscard]] LUAI_FUNC int l_strcmp (const TString* ts1, const TString* ts2);
 /* luaS_eqstr declared in lstring.h */
 
 /* String comparison helpers (defined in lstring.h) */

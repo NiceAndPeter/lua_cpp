@@ -800,7 +800,8 @@ int FuncState::constfolding(int op, expdesc *e1, const expdesc *e2) {
   TValue v1, v2, res;
   if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
     return 0;  /* non-numeric operands or not safe to fold */
-  luaO_rawarith(getLexState()->getLuaState(), op, &v1, &v2, &res);  /* does operation */
+  if (!luaO_rawarith(getLexState()->getLuaState(), op, &v1, &v2, &res))
+    return 0;  /* operation failed */
   if (ttisinteger(&res)) {
     e1->setKind(VKINT);
     e1->setIntValue(ivalue(&res));

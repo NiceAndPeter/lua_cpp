@@ -31,7 +31,7 @@
 ** of the strings. Note that segments can compare equal but still
 ** have different lengths.
 */
-int l_strcmp (const TString *ts1, const TString *ts2) {
+[[nodiscard]] int l_strcmp (const TString *ts1, const TString *ts2) {
   size_t rl1;  /* real length */
   const char *s1 = getlstr(ts1, rl1);
   size_t rl2;
@@ -75,7 +75,7 @@ int l_strcmp (const TString *ts1, const TString *ts2) {
 ** potentially giving incorrect results. Instead, we compute ceil(f) as an
 ** integer and compare in the integer domain where no precision is lost.
 */
-int LTintfloat (lua_Integer i, lua_Number f) {
+[[nodiscard]] int LTintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
     return luai_numlt(cast_num(i), f);  /* compare them as floats */
   else {  /* i < f <=> i < ceil(f) */
@@ -92,7 +92,7 @@ int LTintfloat (lua_Integer i, lua_Number f) {
 ** Check whether integer 'i' is less than or equal to float 'f'.
 ** See comments on previous function.
 */
-int LEintfloat (lua_Integer i, lua_Number f) {
+[[nodiscard]] int LEintfloat (lua_Integer i, lua_Number f) {
   if (l_intfitsf(i))
     return luai_numle(cast_num(i), f);  /* compare them as floats */
   else {  /* i <= f <=> i <= floor(f) */
@@ -109,7 +109,7 @@ int LEintfloat (lua_Integer i, lua_Number f) {
 ** Check whether float 'f' is less than integer 'i'.
 ** See comments on previous function.
 */
-int LTfloatint (lua_Number f, lua_Integer i) {
+[[nodiscard]] int LTfloatint (lua_Number f, lua_Integer i) {
   if (l_intfitsf(i))
     return luai_numlt(f, cast_num(i));  /* compare them as floats */
   else {  /* f < i <=> floor(f) < i */
@@ -126,7 +126,7 @@ int LTfloatint (lua_Number f, lua_Integer i) {
 ** Check whether float 'f' is less than or equal to integer 'i'.
 ** See comments on previous function.
 */
-int LEfloatint (lua_Number f, lua_Integer i) {
+[[nodiscard]] int LEfloatint (lua_Number f, lua_Integer i) {
   if (l_intfitsf(i))
     return luai_numle(f, cast_num(i));  /* compare them as floats */
   else {  /* f <= i <=> ceil(f) <= i */

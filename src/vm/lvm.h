@@ -151,7 +151,7 @@ inline bool tointegerns(const TValue* o, lua_Integer* i) noexcept {
 #define intop(op,v1,v2) l_castU2S(l_castS2U(v1) op l_castS2U(v2))
 
 /* Forward declaration for luaV_equalobj (defined in lvm.cpp) */
-LUAI_FUNC int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2);
+[[nodiscard]] LUAI_FUNC int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2);
 
 inline int luaV_rawequalobj(const TValue* t1, const TValue* t2) noexcept {
 	return *t1 == *t2;  /* Use operator== for raw equality */
@@ -224,7 +224,7 @@ inline void luaV_finishfastset(lua_State* L, const TValue* t, const TValue* v) n
 ** Shift right is the same as shift left with a negative 'y'
 */
 /* Forward declaration for luaV_shiftl (full declaration below) */
-LUAI_FUNC lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y);
+[[nodiscard]] LUAI_FUNC lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y);
 
 inline lua_Integer luaV_shiftr(lua_Integer x, lua_Integer y) noexcept {
 	return luaV_shiftl(x, intop(-, 0, y));
@@ -232,8 +232,8 @@ inline lua_Integer luaV_shiftr(lua_Integer x, lua_Integer y) noexcept {
 
 
 
-LUAI_FUNC int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r);
-LUAI_FUNC int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r);
+[[nodiscard]] LUAI_FUNC int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r);
+[[nodiscard]] LUAI_FUNC int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r);
 #ifndef luaV_flttointeger_declared
 #define luaV_flttointeger_declared
 LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
@@ -245,9 +245,9 @@ LUAI_FUNC void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
 LUAI_FUNC void luaV_finishOp (lua_State *L);
 LUAI_FUNC void luaV_execute (lua_State *L, CallInfo *ci);
 LUAI_FUNC void luaV_concat (lua_State *L, int total);
-LUAI_FUNC lua_Integer luaV_idiv (lua_State *L, lua_Integer x, lua_Integer y);
-LUAI_FUNC lua_Integer luaV_mod (lua_State *L, lua_Integer x, lua_Integer y);
-LUAI_FUNC lua_Number luaV_modf (lua_State *L, lua_Number x, lua_Number y);
+[[nodiscard]] LUAI_FUNC lua_Integer luaV_idiv (lua_State *L, lua_Integer x, lua_Integer y);
+[[nodiscard]] LUAI_FUNC lua_Integer luaV_mod (lua_State *L, lua_Integer x, lua_Integer y);
+[[nodiscard]] LUAI_FUNC lua_Number luaV_modf (lua_State *L, lua_Number x, lua_Number y);
 LUAI_FUNC void luaV_objlen (lua_State *L, StkId ra, const TValue *rb);
 
 #endif
