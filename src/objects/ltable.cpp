@@ -51,6 +51,7 @@
 #include <algorithm>
 #include <cmath>
 #include <climits>
+#include <cstdint>
 #include <cstring>
 
 #include "lua.h"
@@ -109,8 +110,15 @@ public:
     if (withLastfree) {
       // Large table: allocate Limbox + Node[]
       // LAYOUT: [Limbox header][Node array of size n]
+      // Verify no overflow in size calculation
+      if (n > (MAX_SIZET - sizeof(Limbox)) / sizeof(Node)) {
+        luaG_runerror(L, "table size overflow");
+      }
       size_t total = sizeof(Limbox) + n * sizeof(Node);
       char* block = luaM_newblock(L, total);
+      // Verify alignment assumptions (critical for type punning safety)
+      lua_assert(reinterpret_cast<uintptr_t>(block) % alignof(Limbox) == 0);
+      lua_assert(reinterpret_cast<uintptr_t>(block + sizeof(Limbox)) % alignof(Node) == 0);
       // Limbox is at the start, nodes follow
       // Safe per C++17 §8.2.10: reinterpret_cast to properly aligned type
       Limbox* limbox = reinterpret_cast<Limbox*>(block);
@@ -131,6 +139,8 @@ public:
     // nodeStart points to element after Limbox, so (nodeStart - 1) conceptually
     // points to the Limbox (treating the block as Limbox array for arithmetic purposes)
     Limbox* limbox = reinterpret_cast<Limbox*>(nodeStart) - 1;
+    // Verify we're not accessing uninitialized memory
+    lua_assert(limbox->lastfree >= nodeStart);
     return limbox->lastfree;
   }
 };
@@ -704,6 +714,9 @@ static Value *resizearray (lua_State *L , Table *t,
       unsigned tomove = (oldasize < newasize) ? oldasize : newasize;
       size_t tomoveb = (oldasize < newasize) ? oldasizeb : newasizeb;
       lua_assert(tomoveb > 0);
+      lua_assert(tomove <= newasize);  /* ensure destination bounds */
+      lua_assert(tomove <= oldasize);  /* ensure source bounds */
+      lua_assert(tomoveb <= newasizeb);  /* verify size calculation */
       memcpy(np - tomove, op - tomove, tomoveb);
       luaM_freemem(L, op - oldasize, oldasizeb);  /* free old block */
     }
@@ -727,7 +740,9 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
   }
   else {
     unsigned int lsize = luaO_ceillog2(size);
-    if (lsize > MAXHBITS || (1u << lsize) > MAXHSIZE)
+    if (lsize > MAXHBITS)
+      luaG_runerror(L, "table overflow");
+    if ((1u << lsize) > MAXHSIZE)
       luaG_runerror(L, "table overflow");
     size = Table::powerOfTwo(lsize);
     bool needsLastfree = (lsize >= LIMFORLAST);
@@ -1240,6 +1255,7 @@ static lua_Unsigned hash_search (lua_State *L, Table *t, unsigned asize) {
   lua_Unsigned i = asize + 1;  /* caller ensures t[i] is present */
   unsigned rnd = G(L)->getSeed();
   int n = (asize > 0) ? luaO_ceillog2(asize) : 0;  /* width of 'asize' */
+  lua_assert(n >= 0 && n < 32);  /* ensure shift is safe (avoid UB) */
   unsigned mask = (1u << n) - 1;  /* 11...111 with the width of 'asize' */
   unsigned incr = (rnd & mask) + 1;  /* first increment (at least 1) */
   lua_Unsigned j = (incr <= l_castS2U(LUA_MAXINTEGER) - i) ? i + incr : i + 1;
@@ -1247,7 +1263,9 @@ static lua_Unsigned hash_search (lua_State *L, Table *t, unsigned asize) {
   while (!hashkeyisempty(t, j)) {  /* repeat until an absent t[j] */
     i = j;  /* 'i' is a present index */
     if (j <= l_castS2U(LUA_MAXINTEGER)/2 - 1) {
+      lua_Unsigned old_j = j;
       j = j*2 + (rnd & 1);  /* try again with 2j or 2j+1 */
+      lua_assert(j > old_j && j <= l_castS2U(LUA_MAXINTEGER));  /* no wrap */
       rnd >>= 1;
     }
     else {
