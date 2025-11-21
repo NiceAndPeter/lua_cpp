@@ -234,8 +234,9 @@ int FuncState::newupvalue(TString *name, expdesc *v) {
 ** inner-most (the first one found) collective declaration, if there is one.
 */
 int FuncState::searchvar(TString *n, expdesc *var) {
+  int nactive = static_cast<int>(getNumActiveVars());
   int i;
-  for (i = cast_int(getNumActiveVars()) - 1; i >= 0; i--) {
+  for (i = nactive - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(i);
     if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == nullptr) {  /* collective declaration? */

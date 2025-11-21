@@ -997,7 +997,8 @@ static Node *getfreepos (Table *t) {
   }
   else {  /* no 'lastfree' information */
     unsigned i = t->nodeSize();
-    while (i--) {  /* do a linear search */
+    while (i > 0) {  /* do a linear search */
+      i--;
       Node *free = gnode(t, i);
       if (free->isKeyNil())
         return free;
