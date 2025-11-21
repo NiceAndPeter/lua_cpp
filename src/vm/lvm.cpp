@@ -174,6 +174,7 @@ void luaV_finishOp (lua_State *L) {
     case OP_LTI: case OP_LEI:
     case OP_GTI: case OP_GEI:
     case OP_EQ: {  /* note that 'OP_EQI'/'OP_EQK' cannot yield */
+      lua_assert(L->getTop().p > L->getStack().p);  /* ensure stack not empty */
       int res = !l_isfalse(s2v(L->getTop().p - 1));
       L->getStackSubsystem().pop();
       lua_assert(InstructionView(*ci->getSavedPC()).opcode() == OP_JMP);
@@ -184,6 +185,8 @@ void luaV_finishOp (lua_State *L) {
     case OP_CONCAT: {
       StkId top = L->getTop().p - 1;  /* top when 'luaT_tryconcatTM' was called */
       int a = InstructionView(inst).a();      /* first element to concatenate */
+      lua_assert(top >= base + a + 1);  /* ensure valid range for subtraction */
+      lua_assert(top >= L->getStack().p + 2);  /* ensure top-2 is valid */
       int total = cast_int(top - 1 - (base + a));  /* yet to concatenate */
       *s2v(top - 2) = *s2v(top);  /* put TM result in proper position (operator=) */
       L->getStackSubsystem().setTopPtr(top - 1);  /* top is one after last element (at top-2) */

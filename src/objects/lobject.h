@@ -240,8 +240,14 @@ public:
   bool isMarked() const noexcept { return marked != 0; }
 
   // Marked field bit manipulation methods (const - marked is mutable)
-  void setMarkedBit(int bit) const noexcept { marked |= cast_byte(1 << bit); }
-  void clearMarkedBit(int bit) const noexcept { marked &= cast_byte(~(1 << bit)); }
+  void setMarkedBit(int bit) const noexcept {
+    lua_assert(bit >= 0 && bit < 8);  /* lu_byte is 8 bits */
+    marked |= cast_byte(1 << bit);
+  }
+  void clearMarkedBit(int bit) const noexcept {
+    lua_assert(bit >= 0 && bit < 8);  /* lu_byte is 8 bits */
+    marked &= cast_byte(~(1 << bit));
+  }
   void clearMarkedBits(int mask) const noexcept { marked &= cast_byte(~mask); }
 
   // Marked field bit manipulation helpers (for backward compatibility)

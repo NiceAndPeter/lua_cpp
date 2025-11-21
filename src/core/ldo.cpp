@@ -392,6 +392,7 @@ void lua_State::hookCall(CallInfo *ci_arg) {
 // Convert to private lua_State method
 void lua_State::retHook(CallInfo *ci_arg, int nres) {
   if (getHookMask() & LUA_MASKRET) {  /* is return hook on? */
+    lua_assert(getTop().p >= getStack().p + nres);  /* ensure nres is in bounds */
     StkId firstres = getTop().p - nres;  /* index of first result */
     int delta = 0;  /* correction for vararg functions */
     int ftransfer;
@@ -426,6 +427,7 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
   tm = luaT_gettmbyobj(this, s2v(func), TMS::TM_CALL);
   if (l_unlikely(ttisnil(tm)))  /* no metamethod? */
     luaG_callerror(this, s2v(func));
+  lua_assert(func >= getStack().p && getTop().p > func);  /* ensure valid bounds */
   for (p = getTop().p; p > func; p--)  /* open space for metamethod */
     *s2v(p) = *s2v(p-1);  /* shift stack - use operator= */
   getStackSubsystem().push();  /* stack space pre-allocated by the caller */
@@ -440,10 +442,12 @@ unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
 // Convert to private lua_State method
 void lua_State::genMoveResults(StkId res, int nres,
                                              int wanted) {
+  lua_assert(nres >= 0 && getTop().p >= getStack().p + nres);  /* ensure nres valid */
   StkId firstresult = getTop().p - nres;  /* index of first result */
   int i;
   if (nres > wanted)  /* extra results? */
     nres = wanted;  /* don't need them */
+  lua_assert(firstresult >= getStack().p && res >= getStack().p);  /* ensure valid pointers */
   for (i = 0; i < nres; i++)  /* move all results to correct place */
     *s2v(res + i) = *s2v(firstresult + i);  /* use operator= */
   for (; i < wanted; i++)  /* complete wanted number of results */

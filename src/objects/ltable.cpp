@@ -674,8 +674,14 @@ static void numusehash (const Table *t, Counters *ct) {
 static size_t concretesize (unsigned int size) {
   if (size == 0)
     return 0;
-  else  /* space for the two arrays plus an unsigned in between */
-    return size * (sizeof(Value) + 1) + sizeof(unsigned);
+  else {
+    /* space for the two arrays plus an unsigned in between */
+    size_t elemSize = sizeof(Value) + 1;
+    /* Check for overflow in multiplication */
+    if (wouldSizeMultiplyOverflow(size, elemSize))
+      return 0;  /* Signal overflow to caller */
+    return size * elemSize + sizeof(unsigned);
+  }
 }
 
 
