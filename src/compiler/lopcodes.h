@@ -288,6 +288,15 @@ public:
 	constexpr int sj() const noexcept {
 		return getarg(inst_, POS_sJ, SIZE_sJ) - OFFSET_sJ;
 	}
+
+	/* Instruction property accessors - encapsulate luaP_opmodes array access */
+	/* Defined below after luaP_opmodes declaration */
+	inline OpMode getOpMode() const noexcept;
+	inline bool testAMode() const noexcept;
+	inline bool testTMode() const noexcept;
+	inline bool testITMode() const noexcept;
+	inline bool testOTMode() const noexcept;
+	inline bool testMMMode() const noexcept;
 };
 
 
@@ -563,6 +572,31 @@ inline bool testOTMode(int m) noexcept {
 
 inline bool testMMMode(int m) noexcept {
 	return (luaP_opmodes[m] & (1 << 7)) != 0;
+}
+
+/* InstructionView property method implementations (defined after luaP_opmodes) */
+inline OpMode InstructionView::getOpMode() const noexcept {
+	return static_cast<OpMode>(luaP_opmodes[opcode()] & 7);
+}
+
+inline bool InstructionView::testAMode() const noexcept {
+	return (luaP_opmodes[opcode()] & (1 << 3)) != 0;
+}
+
+inline bool InstructionView::testTMode() const noexcept {
+	return (luaP_opmodes[opcode()] & (1 << 4)) != 0;
+}
+
+inline bool InstructionView::testITMode() const noexcept {
+	return (luaP_opmodes[opcode()] & (1 << 5)) != 0;
+}
+
+inline bool InstructionView::testOTMode() const noexcept {
+	return (luaP_opmodes[opcode()] & (1 << 6)) != 0;
+}
+
+inline bool InstructionView::testMMMode() const noexcept {
+	return (luaP_opmodes[opcode()] & (1 << 7)) != 0;
 }
 
 

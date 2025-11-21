@@ -126,7 +126,7 @@ int FuncState::condjump(OpCode o, int A, int B, int C, int k) {
 */
 Instruction *FuncState::getjumpcontrol(int position) {
   Instruction *pi = &getProto()->getCode()[position];
-  if (position >= 1 && testTMode(InstructionView(*(pi-1)).opcode()))
+  if (position >= 1 && InstructionView(*(pi-1)).testTMode())
     return pi-1;
   else
     return pi;
@@ -663,9 +663,10 @@ void FuncState::codeABRK(OpCode o, int A, int B, expdesc *ec) {
 */
 void FuncState::negatecondition(expdesc *e) {
   Instruction *instr = getjumpcontrol(e->getInfo());
-  lua_assert(testTMode(InstructionView(*instr).opcode()) && InstructionView(*instr).opcode() != OP_TESTSET &&
-                                           InstructionView(*instr).opcode() != OP_TEST);
-  SETARG_k(*instr, static_cast<unsigned int>(InstructionView(*instr).k() ^ 1));
+  InstructionView view(*instr);
+  lua_assert(view.testTMode() && view.opcode() != OP_TESTSET &&
+                                  view.opcode() != OP_TEST);
+  SETARG_k(*instr, static_cast<unsigned int>(view.k() ^ 1));
 }
 
 /*

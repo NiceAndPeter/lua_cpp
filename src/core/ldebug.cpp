@@ -456,16 +456,17 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
   int pc;
   int setreg = -1;  /* keep last instruction that changed 'reg' */
   int jmptarget = 0;  /* any code before this address is conditional */
-  if (testMMMode(InstructionView(p->getCode()[lastpc]).opcode()))
+  if (InstructionView(p->getCode()[lastpc]).testMMMode())
     lastpc--;  /* previous instruction was not actually executed */
   for (pc = 0; pc < lastpc; pc++) {
     Instruction i = p->getCode()[pc];
-    OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
-    int a = InstructionView(i).a();
+    InstructionView view(i);
+    OpCode op = static_cast<OpCode>(view.opcode());
+    int a = view.a();
     int change;  /* true if current instruction changed 'reg' */
     switch (op) {
       case OP_LOADNIL: {  /* set registers from 'a' to 'a+b' */
-        int b = InstructionView(i).b();
+        int b = view.b();
         change = (a <= reg && reg <= a + b);
         break;
       }
@@ -479,7 +480,7 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
         break;
       }
       case OP_JMP: {  /* doesn't change registers, but changes 'jmptarget' */
-        int b = InstructionView(i).sj();
+        int b = view.sj();
         int dest = pc + 1 + b;
         /* jump does not skip 'lastpc' and is larger than current one? */
         if (dest <= lastpc && dest > jmptarget)
@@ -488,7 +489,7 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
         break;
       }
       default:  /* any instruction that sets A */
-        change = (testAMode(op) && reg == a);
+        change = (view.testAMode() && reg == a);
         break;
     }
     if (change)
