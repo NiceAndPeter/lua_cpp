@@ -213,7 +213,6 @@ static void loadFunction(LoadState *S, Proto *f);
 
 // Phase 115.2: Use span accessors
 static void loadConstants (LoadState *S, Proto *f) {
-  int i;
   int n = loadInt(S);
   f->setConstants(luaM_newvectorchecked(S->L, n, TValue));
   f->setConstantsSize(n);
@@ -221,7 +220,7 @@ static void loadConstants (LoadState *S, Proto *f) {
   for (TValue& v : constantsSpan) {
     setnilvalue(&v);
   }
-  for (i = 0; i < n; i++) {
+  for (size_t i = 0; i < static_cast<size_t>(n); i++) {
     TValue *o = &constantsSpan[i];
     int t = loadByte(S);
     switch (t) {
@@ -278,7 +277,6 @@ static void loadProtos (LoadState *S, Proto *f) {
 */
 // Phase 115.2: Use span accessors
 static void loadUpvalues (LoadState *S, Proto *f) {
-  int i;
   int n = loadInt(S);
   f->setUpvalues(luaM_newvectorchecked(S->L, n, Upvaldesc));
   f->setUpvaluesSize(n);
@@ -287,7 +285,7 @@ static void loadUpvalues (LoadState *S, Proto *f) {
   for (Upvaldesc& uv : upvaluesSpan) {
     uv.setName(nullptr);
   }
-  for (i = 0; i < n; i++) {  /* following calls can raise errors */
+  for (size_t i = 0; i < static_cast<size_t>(n); i++) {  /* following calls can raise errors */
     upvaluesSpan[i].setInStack(loadByte(S));
     upvaluesSpan[i].setIndex(loadByte(S));
     upvaluesSpan[i].setKind(loadByte(S));
@@ -297,7 +295,6 @@ static void loadUpvalues (LoadState *S, Proto *f) {
 
 // Phase 115.2: Use span accessors
 static void loadDebug (LoadState *S, Proto *f) {
-  int i;
   int n = loadInt(S);
   if (S->fixed) {
     f->setLineInfo(getaddr(S, n, ls_byte));
@@ -330,7 +327,7 @@ static void loadDebug (LoadState *S, Proto *f) {
   for (LocVar& lv : locVarsSpan) {
     lv.setVarName(nullptr);
   }
-  for (i = 0; i < n; i++) {
+  for (size_t i = 0; i < static_cast<size_t>(n); i++) {
     loadString(S, f, locVarsSpan[i].getVarNamePtr());
     locVarsSpan[i].setStartPC(loadInt(S));
     locVarsSpan[i].setEndPC(loadInt(S));
@@ -339,7 +336,7 @@ static void loadDebug (LoadState *S, Proto *f) {
   if (n != 0)  /* does it have debug information? */
     n = f->getUpvaluesSize();  /* must be this many */
   auto upvaluesSpan = f->getUpvaluesSpan();
-  for (i = 0; i < n; i++)
+  for (size_t i = 0; i < static_cast<size_t>(n); i++)
     loadString(S, f, upvaluesSpan[i].getNamePtr());
 }
 

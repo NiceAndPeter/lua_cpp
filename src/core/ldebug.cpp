@@ -96,9 +96,10 @@ int luaG_getfuncline (const Proto *f, int pc) {
   else {
     int basepc;
     int baseline = getbaseline(f, pc, &basepc);
-    while (basepc++ < pc) {  /* walk until given instruction */
-      lua_assert(lineInfoSpan[basepc] != ABSLINEINFO);
-      baseline += lineInfoSpan[basepc];  /* correct line */
+    /* Walk from basepc+1 to pc (inclusive), accumulating line deltas */
+    for (size_t i = static_cast<size_t>(basepc + 1); i <= static_cast<size_t>(pc); i++) {
+      lua_assert(lineInfoSpan[i] != ABSLINEINFO);
+      baseline += lineInfoSpan[i];  /* correct line */
     }
     return baseline;
   }
@@ -295,12 +296,12 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
 
 
 // Phase 115.2: Use span accessors
-static int nextline (const Proto *p, int currentline, int pc) {
+static int nextline (const Proto *p, int currentline, size_t pc) {
   auto lineInfoSpan = p->getDebugInfo().getLineInfoSpan();
   if (lineInfoSpan[pc] != ABSLINEINFO)
     return currentline + lineInfoSpan[pc];
   else
-    return luaG_getfuncline(p, pc);
+    return luaG_getfuncline(p, static_cast<int>(pc));
 }
 
 
@@ -317,7 +318,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
     api_incr_top(L);
     auto lineInfoSpan = p->getDebugInfo().getLineInfoSpan();
     if (!lineInfoSpan.empty()) {  /* proto with debug information? */
-      int i;
+      size_t i;
       TValue v;
       setbtvalue(&v);  /* boolean 'true' to be the value of all indices */
       if (!(p->getFlag() & PF_ISVARARG))  /* regular function? */
@@ -328,7 +329,7 @@ static void collectvalidlines (lua_State *L, Closure *f) {
         currentline = nextline(p, currentline, 0);
         i = 1;  /* skip first instruction (OP_VARARGPREP) */
       }
-      for (; i < static_cast<int>(lineInfoSpan.size()); i++) {  /* for each instruction */
+      for (; i < lineInfoSpan.size(); i++) {  /* for each instruction */
         currentline = nextline(p, currentline, i);  /* get its line */
         luaH_setint(L, t, currentline, &v);  /* table[line] = true */
       }
@@ -953,13 +954,14 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
     return 0;
   if (newpc - oldpc < MAXIWTHABS / 2) {  /* not too far apart? */
     int delta = 0;  /* line difference */
-    int pc = oldpc;
+    size_t pc = static_cast<size_t>(oldpc);
     for (;;) {
-      int lineinfo = lineInfoSpan[++pc];
+      ++pc;
+      int lineinfo = lineInfoSpan[pc];
       if (lineinfo == ABSLINEINFO)
         break;  /* cannot compute delta; fall through */
       delta += lineinfo;
-      if (pc == newpc)
+      if (static_cast<int>(pc) == newpc)
         return (delta != 0);  /* delta computed successfully */
     }
   }
