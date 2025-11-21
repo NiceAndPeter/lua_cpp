@@ -113,11 +113,12 @@ LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
 ** it results in multiple values.
 */
 int luaP_isOT (Instruction i) {
-  OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
+  InstructionView view(i);
+  OpCode op = static_cast<OpCode>(view.opcode());
   switch (op) {
     case OP_TAILCALL: return 1;
     default:
-      return testOTMode(op) && InstructionView(i).c() == 0;
+      return view.testOTMode() && view.c() == 0;
   }
 }
 
@@ -127,12 +128,13 @@ int luaP_isOT (Instruction i) {
 ** it accepts multiple results.
 */
 int luaP_isIT (Instruction i) {
-  OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
+  InstructionView view(i);
+  OpCode op = static_cast<OpCode>(view.opcode());
   switch (op) {
     case OP_SETLIST:
-      return testITMode(InstructionView(i).opcode()) && InstructionView(i).vb() == 0;
+      return view.testITMode() && view.vb() == 0;
     default:
-      return testITMode(InstructionView(i).opcode()) && InstructionView(i).b() == 0;
+      return view.testITMode() && view.b() == 0;
   }
 }
 

@@ -126,7 +126,7 @@ int FuncState::condjump(OpCode o, int A, int B, int C, int k) {
 */
 Instruction *FuncState::getjumpcontrol(int position) {
   Instruction *pi = &getProto()->getCode()[position];
-  if (position >= 1 && testTMode(InstructionView(*(pi-1)).opcode()))
+  if (position >= 1 && InstructionView(*(pi-1)).testTMode())
     return pi-1;
   else
     return pi;
@@ -663,9 +663,10 @@ void FuncState::codeABRK(OpCode o, int A, int B, expdesc *ec) {
 */
 void FuncState::negatecondition(expdesc *e) {
   Instruction *instr = getjumpcontrol(e->getInfo());
-  lua_assert(testTMode(InstructionView(*instr).opcode()) && InstructionView(*instr).opcode() != OP_TESTSET &&
-                                           InstructionView(*instr).opcode() != OP_TEST);
-  SETARG_k(*instr, static_cast<unsigned int>(InstructionView(*instr).k() ^ 1));
+  InstructionView view(*instr);
+  lua_assert(view.testTMode() && view.opcode() != OP_TESTSET &&
+                                  view.opcode() != OP_TEST);
+  SETARG_k(*instr, static_cast<unsigned int>(view.k() ^ 1));
 }
 
 /*
@@ -732,7 +733,7 @@ int FuncState::isKstr(expdesc *e) {
 /*
 ** Check whether expression 'e' is a literal integer.
 */
-static int isKint (expdesc *e) {
+static bool isKint (expdesc *e) {
   return (e->getKind() == VKINT && !hasjumps(e));
 }
 
@@ -740,7 +741,7 @@ static int isKint (expdesc *e) {
 ** Check whether expression 'e' is a literal integer in
 ** proper range to fit in register C
 */
-static int isCint (expdesc *e) {
+static bool isCint (expdesc *e) {
   return isKint(e) && (l_castS2U(e->getIntValue()) <= l_castS2U(MAXARG_C));
 }
 
@@ -748,7 +749,7 @@ static int isCint (expdesc *e) {
 ** Check whether expression 'e' is a literal integer in
 ** proper range to fit in register sC
 */
-static int isSCint (expdesc *e) {
+static bool isSCint (expdesc *e) {
   return isKint(e) && fitsC(e->getIntValue());
 }
 
@@ -756,20 +757,20 @@ static int isSCint (expdesc *e) {
 ** Check whether expression 'e' is a literal integer or float in
 ** proper range to fit in a register (sB or sC).
 */
-static int isSCnumber (expdesc *e, int *pi, int *isfloat) {
+static bool isSCnumber (expdesc *e, int *pi, int *isfloat) {
   lua_Integer i;
   if (e->getKind() == VKINT)
     i = e->getIntValue();
   else if (e->getKind() == VKFLT && luaV_flttointeger(e->getFloatValue(), &i, F2Imod::F2Ieq))
     *isfloat = 1;
   else
-    return 0;  /* not a number */
+    return false;  /* not a number */
   if (!hasjumps(e) && fitsC(i)) {
     *pi = int2sC(cast_int(i));
-    return 1;
+    return true;
   }
   else
-    return 0;
+    return false;
 }
 
 /*
@@ -777,7 +778,7 @@ static int isSCnumber (expdesc *e, int *pi, int *isfloat) {
 ** Bitwise operations need operands convertible to integers; division
 ** operations cannot have 0 as divisor.
 */
-static int validop (int op, TValue *v1, TValue *v2) {
+static bool validop (int op, TValue *v1, TValue *v2) {
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
     case LUA_OPSHL: case LUA_OPSHR: case LUA_OPBNOT: {  /* conversion errors */
@@ -787,7 +788,7 @@ static int validop (int op, TValue *v1, TValue *v2) {
     }
     case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
       return (nvalue(v2) != 0);
-    default: return 1;  /* everything else is valid */
+    default: return true;  /* everything else is valid */
   }
 }
 
@@ -1485,8 +1486,7 @@ int FuncState::getlabel() {
   return getPC();
 }
 
-void FuncState::prefix(int opr, expdesc *e, int line) {
-  UnOpr op = static_cast<UnOpr>(opr);
+void FuncState::prefix(UnOpr op, expdesc *e, int line) {
   expdesc ef;
   ef.setKind(VKINT);
   ef.setIntValue(0);
@@ -1495,7 +1495,7 @@ void FuncState::prefix(int opr, expdesc *e, int line) {
   dischargevars(e);
   switch (op) {
     case UnOpr::OPR_MINUS: case UnOpr::OPR_BNOT:  /* use 'ef' as fake 2nd operand */
-      if (constfolding(cast_int(opr + LUA_OPUNM), e, &ef))
+      if (constfolding(cast_int(op) + LUA_OPUNM, e, &ef))
         break;
       /* else */ /* FALLTHROUGH */
     case UnOpr::OPR_LEN:
@@ -1506,8 +1506,7 @@ void FuncState::prefix(int opr, expdesc *e, int line) {
   }
 }
 
-void FuncState::infix(int opr, expdesc *v) {
-  BinOpr op = static_cast<BinOpr>(opr);
+void FuncState::infix(BinOpr op, expdesc *v) {
   dischargevars(v);
   switch (op) {
     case BinOpr::OPR_AND: {
@@ -1551,10 +1550,9 @@ void FuncState::infix(int opr, expdesc *v) {
   }
 }
 
-void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
-  BinOpr op = static_cast<BinOpr>(opr);
+void FuncState::posfix(BinOpr op, expdesc *e1, expdesc *e2, int line) {
   dischargevars(e2);
-  if (foldbinop(op) && constfolding(cast_int(opr + LUA_OPADD), e1, e2))
+  if (foldbinop(op) && constfolding(cast_int(op) + LUA_OPADD, e1, e2))
     return;  /* done by folding */
   switch (op) {
     case BinOpr::OPR_AND: {

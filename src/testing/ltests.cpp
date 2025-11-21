@@ -303,19 +303,19 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
 ** continue to be visited in all collections, and therefore can point to
 ** new objects. They, and only they, are old but gray.)
 */
-static int testobjref1 (global_State *g, GCObject *f, GCObject *t) {
-  if (isdead(g,t)) return 0;
+static bool testobjref1 (global_State *g, GCObject *f, GCObject *t) {
+  if (isdead(g,t)) return false;
   if (g->isSweepPhase())
-    return 1;  /* no invariants */
+    return true;  /* no invariants */
   else if (g->getGCKind() != GCKind::GenerationalMinor)
     return !(isblack(f) && iswhite(t));  /* basic incremental invariant */
   else {  /* generational mode */
     if ((getage(f) == GCAge::Old && isblack(f)) && !isold(t))
-      return 0;
+      return false;
     if ((getage(f) == GCAge::Old1 || getage(f) == GCAge::Touched2) &&
          getage(t) == GCAge::New)
-      return 0;
-    return 1;
+      return false;
+    return true;
   }
 }
 
@@ -374,8 +374,8 @@ void lua_printvalue (TValue *v) {
 }
 
 
-static int testobjref (global_State *g, GCObject *f, GCObject *t) {
-  int r1 = testobjref1(g, f, t);
+static bool testobjref (global_State *g, GCObject *f, GCObject *t) {
+  bool r1 = testobjref1(g, f, t);
   if (!r1) {
     printf("%d(%02X) - ", static_cast<int>(g->getGCState()), g->getCurrentWhite());
     printobj(g, f);
