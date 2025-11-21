@@ -1649,6 +1649,14 @@ public:
   const Value* getArray() const noexcept { return array; }
   void setArray(Value* arr) noexcept { array = arr; }
 
+  // Phase 115.3: std::span accessors for array part
+  std::span<Value> getArraySpan() noexcept {
+    return std::span(array, asize);
+  }
+  std::span<const Value> getArraySpan() const noexcept {
+    return std::span(array, asize);
+  }
+
   Node* getNodeArray() noexcept { return node; }
   const Node* getNodeArray() const noexcept { return node; }
   void setNodeArray(Node* n) noexcept { node = n; }
