@@ -70,21 +70,10 @@ static inline Node* gnodelast(Table* h) noexcept {
 
 /*
 ** Get pointer to gclist field for different object types
+** (just forward to GCCore implementation)
 */
-static GCObject** getgclist(GCObject* o) {
-    switch (o->getType()) {
-        case LUA_VTABLE: return gco2t(o)->getGclistPtr();
-        case LUA_VLCL: return gco2lcl(o)->getGclistPtr();
-        case LUA_VCCL: return gco2ccl(o)->getGclistPtr();
-        case LUA_VTHREAD: return gco2th(o)->getGclistPtr();
-        case LUA_VPROTO: return gco2p(o)->getGclistPtr();
-        case LUA_VUSERDATA: {
-            Udata* u = gco2u(o);
-            lua_assert(u->getNumUserValues() > 0);
-            return u->getGclistPtr();
-        }
-        default: lua_assert(0); return 0;
-    }
+static inline GCObject** getgclist(GCObject* o) {
+    return GCCore::getgclist(o);
 }
 
 /*
