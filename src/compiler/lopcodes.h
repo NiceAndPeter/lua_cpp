@@ -7,6 +7,7 @@
 #ifndef lopcodes_h
 #define lopcodes_h
 
+#include <array>
 #include "llimits.h"
 #include "lobject.h"
 
@@ -548,7 +549,8 @@ inline constexpr int NUM_OPCODES = ((int)(OP_EXTRAARG) + 1);
 ** bit 7: instruction is an MM instruction (call a metamethod)
 */
 
-LUAI_DDEC(const lu_byte luaP_opmodes[NUM_OPCODES];)
+using OpModesArray = std::array<lu_byte, NUM_OPCODES>;
+LUAI_DDEC(const OpModesArray luaP_opmodes;)
 
 inline OpMode getOpMode(int m) noexcept {
 	return static_cast<OpMode>(luaP_opmodes[m] & 7);
