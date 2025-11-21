@@ -49,11 +49,11 @@
 ** For other objects: if really collected, cannot keep them; for objects
 ** being finalized, keep them in keys, but not in values.
 */
-static int iscleared(global_State* g, const GCObject* o) {
-    if (o == nullptr) return 0;  /* non-collectable value */
+static bool iscleared(global_State* g, const GCObject* o) {
+    if (o == nullptr) return false;  /* non-collectable value */
     else if (novariant(o->getType()) == LUA_TSTRING) {
         markobject(g, o);  /* strings are 'values', so are never weak */
-        return 0;
+        return false;
     }
     else return iswhite(o);
 }

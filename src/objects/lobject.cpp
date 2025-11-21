@@ -204,10 +204,10 @@ lu_byte luaO_hexavalue (int c) {
 }
 
 
-static int isneg (const char **s) {
-  if (**s == '-') { (*s)++; return 1; }
+static bool isneg (const char **s) {
+  if (**s == '-') { (*s)++; return true; }
   else if (**s == '+') (*s)++;
-  return 0;
+  return false;
 }
 
 

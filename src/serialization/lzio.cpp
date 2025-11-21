@@ -43,16 +43,16 @@ void luaZ_init (lua_State *L, ZIO *z, lua_Reader reader, void *data) {
 
 /* --------------------------------------------------------------- read --- */
 
-static int checkbuffer (ZIO *z) {
+static bool checkbuffer (ZIO *z) {
   if (z->n == 0) {  /* no bytes in buffer? */
     if (luaZ_fill(z) == EOZ)  /* try to read more */
-      return 0;  /* no more input */
+      return false;  /* no more input */
     else {
       z->n++;  /* luaZ_fill consumed first byte; put it back */
       z->p--;
     }
   }
-  return 1;  /* now buffer has something */
+  return true;  /* now buffer has something */
 }
 
 
