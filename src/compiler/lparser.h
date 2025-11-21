@@ -7,6 +7,7 @@
 #ifndef lparser_h
 #define lparser_h
 
+#include <span>
 #include "llimits.h"
 #include "lobject.h"
 #include "lopcodes.h"
@@ -275,6 +276,14 @@ public:
   inline Vardesc* actvarAllocateNew() {
     actvar_vec.resize(actvar_vec.size() + 1);
     return &actvar_vec.back();
+  }
+
+  /* Phase 116: std::span accessors for actvar array */
+  inline std::span<Vardesc> actvarGetSpan() noexcept {
+    return std::span(actvar_vec.data(), actvar_vec.size());
+  }
+  inline std::span<const Vardesc> actvarGetSpan() const noexcept {
+    return std::span(actvar_vec.data(), actvar_vec.size());
   }
 
   /* Legacy accessor interface for backward compatibility */
