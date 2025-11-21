@@ -595,10 +595,12 @@ LUALIB_API char *luaL_prepbuffsize (luaL_Buffer *B, size_t sz) {
 }
 
 
-LUALIB_API void luaL_addlstring (luaL_Buffer *B, const char *s, size_t l) {
+// Phase 115.1: std::span-based implementation
+LUALIB_API void luaL_addlstring (luaL_Buffer *B, std::span<const char> s) {
+  size_t l = s.size();
   if (l > 0) {  /* avoid 'std::copy_n' when 's' can be nullptr */
     char *b = prepbuffsize(B, l, -1);
-    std::copy_n(s, l, b);
+    std::copy_n(s.data(), l, b);
     luaL_addsize(B, l);
   }
 }

@@ -1797,7 +1797,14 @@ LUAI_FUNC void luaO_tostring (lua_State *L, TValue *obj);
 LUAI_FUNC const char *luaO_pushvfstring (lua_State *L, const char *fmt,
                                                        va_list argp);
 LUAI_FUNC const char *luaO_pushfstring (lua_State *L, const char *fmt, ...);
-LUAI_FUNC void luaO_chunkid (char *out, const char *source, size_t srclen);
+
+// Phase 115.1: std::span-based string utilities
+LUAI_FUNC void luaO_chunkid (std::span<char> out, std::span<const char> source);
+
+// C-style wrapper for compatibility
+inline void luaO_chunkid (char *out, const char *source, size_t srclen) {
+	luaO_chunkid(std::span(out, LUA_IDSIZE), std::span(source, srclen));
+}
 
 
 /*

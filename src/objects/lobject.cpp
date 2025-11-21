@@ -543,13 +543,15 @@ static const char *clearbuff (BuffFS *buff) {
 }
 
 
-static void addstr2buff (BuffFS *buff, const char *str, size_t slen) {
+// Phase 115.1: Updated to use std::span
+static void addstr2buff (BuffFS *buff, std::span<const char> str) {
+  size_t slen = str.size();
   size_t left = buff->buffsize - buff->blen;  /* space left in the buffer */
   if (buff->err)  /* do nothing else after an error */
     return;
   if (slen > left) {  /* new string doesn't fit into current buffer? */
     if (slen > ((MAX_SIZE/2) - buff->blen)) {  /* overflow? */
-      memcpy(buff->b + buff->blen, str, left);  /* copy what it can */
+      memcpy(buff->b + buff->blen, str.data(), left);  /* copy what it can */
       buff->blen = buff->buffsize;
       buff->err = 2;  /* doesn't add anything else */
       return;
@@ -571,7 +573,7 @@ static void addstr2buff (BuffFS *buff, const char *str, size_t slen) {
       buff->buffsize = newsize;  /* ...and its new size */
     }
   }
-  memcpy(buff->b + buff->blen, str, slen);  /* copy new content */
+  memcpy(buff->b + buff->blen, str.data(), slen);  /* copy new content */
   buff->blen += slen;
 }
 
@@ -582,7 +584,7 @@ static void addstr2buff (BuffFS *buff, const char *str, size_t slen) {
 static void addnum2buff (BuffFS *buff, TValue *num) {
   char numbuff[LUA_N2SBUFFSZ];
   unsigned len = luaO_tostringbuff(num, numbuff);
-  addstr2buff(buff, numbuff, len);
+  addstr2buff(buff, std::span(numbuff, len));
 }
 
 
@@ -594,17 +596,17 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
   const char *e;  /* points to next '%' */
   BuffFS buff(L);  /* holds last part of the result */
   while ((e = strchr(fmt, '%')) != nullptr) {
-    addstr2buff(&buff, fmt, ct_diff2sz(e - fmt));  /* add 'fmt' up to '%' */
+    addstr2buff(&buff, std::span(fmt, ct_diff2sz(e - fmt)));  /* add 'fmt' up to '%' */
     switch (*(e + 1)) {  /* conversion specifier */
       case 's': {  /* zero-terminated string */
         const char *s = va_arg(argp, char *);
         if (s == nullptr) s = "(null)";
-        addstr2buff(&buff, s, strlen(s));
+        addstr2buff(&buff, std::span(s, strlen(s)));
         break;
       }
       case 'c': {  /* an 'int' as a character */
         char c = cast_char(va_arg(argp, int));
-        addstr2buff(&buff, &c, sizeof(char));
+        addstr2buff(&buff, std::span(&c, 1));
         break;
       }
       case 'd': {  /* an 'int' */
@@ -629,28 +631,28 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
         char bf[LUA_N2SBUFFSZ];  /* enough space for '%p' */
         void *p = va_arg(argp, void *);
         int len = lua_pointer2str(bf, LUA_N2SBUFFSZ, p);
-        addstr2buff(&buff, bf, cast_uint(len));
+        addstr2buff(&buff, std::span(bf, cast_uint(len)));
         break;
       }
       case 'U': {  /* an 'unsigned long' as a UTF-8 sequence */
         char bf[UTF8BUFFSZ];
         unsigned long arg = va_arg(argp, unsigned long);
         int len = luaO_utf8esc(bf, static_cast<l_uint32>(arg));
-        addstr2buff(&buff, bf + UTF8BUFFSZ - len, cast_uint(len));
+        addstr2buff(&buff, std::span(bf + UTF8BUFFSZ - len, cast_uint(len)));
         break;
       }
       case '%': {
-        addstr2buff(&buff, "%", 1);
+        addstr2buff(&buff, std::span("%", 1));
         break;
       }
       default: {
-        addstr2buff(&buff, e, 2);  /* keep unknown format in the result */
+        addstr2buff(&buff, std::span(e, 2));  /* keep unknown format in the result */
         break;
       }
     }
     fmt = e + 2;  /* skip '%' and the specifier */
   }
-  addstr2buff(&buff, fmt, strlen(fmt));  /* rest of 'fmt' */
+  addstr2buff(&buff, std::span(fmt, strlen(fmt)));  /* rest of 'fmt' */
   return clearbuff(&buff);  /* empty buffer into a new string */
 }
 
@@ -673,45 +675,50 @@ const char *luaO_pushfstring (lua_State *L, const char *fmt, ...) {
 #define PRE	"[string \""
 #define POS	"\"]"
 
-inline void addstr(char*& a, const char* b, size_t l) noexcept {
-	std::copy_n(b, l, a);
-	a += l;
+// Phase 115.1: Updated to use std::span
+inline void addstr(std::span<char>& dest, std::span<const char> src) noexcept {
+	std::copy(src.begin(), src.end(), dest.begin());
+	dest = dest.subspan(src.size());
 }
 
-void luaO_chunkid (char *out, const char *source, size_t srclen) {
-  size_t bufflen = LUA_IDSIZE;  /* free space in buffer */
-  if (*source == '=') {  /* 'literal' source */
-    if (srclen <= bufflen)  /* small enough? */
-      std::copy_n(source + 1, srclen, out);
+// Phase 115.1: std::span-based chunk ID formatting
+void luaO_chunkid (std::span<char> out, std::span<const char> source) {
+  size_t bufflen = out.size();  /* free space in buffer */
+  size_t srclen = source.size();
+  if (!source.empty() && source[0] == '=') {  /* 'literal' source */
+    if (srclen <= bufflen) {  /* small enough? */
+      std::copy_n(source.data() + 1, srclen, out.data());
+    }
     else {  /* truncate it */
-      addstr(out, source + 1, bufflen - 1);
-      *out = '\0';
+      addstr(out, source.subspan(1, bufflen - 1));
+      out[0] = '\0';
     }
   }
-  else if (*source == '@') {  /* file name */
-    if (srclen <= bufflen)  /* small enough? */
-      std::copy_n(source + 1, srclen, out);
+  else if (!source.empty() && source[0] == '@') {  /* file name */
+    if (srclen <= bufflen) {  /* small enough? */
+      std::copy_n(source.data() + 1, srclen, out.data());
+    }
     else {  /* add '...' before rest of name */
-      addstr(out, RETS, LL(RETS));
+      addstr(out, std::span(RETS, LL(RETS)));
       bufflen -= LL(RETS);
-      std::copy_n(source + 1 + srclen - bufflen, bufflen, out);
+      std::copy_n(source.data() + 1 + srclen - bufflen, bufflen, out.data());
     }
   }
   else {  /* string; format as [string "source"] */
-    const char *nl = strchr(source, '\n');  /* find first new line (if any) */
-    addstr(out, PRE, LL(PRE));  /* add prefix */
+    const char *nl = strchr(source.data(), '\n');  /* find first new line (if any) */
+    addstr(out, std::span(PRE, LL(PRE)));  /* add prefix */
     bufflen -= LL(PRE RETS POS) + 1;  /* save space for prefix+suffix+'\0' */
     if (srclen < bufflen && nl == nullptr) {  /* small one-line source? */
-      addstr(out, source, srclen);  /* keep it */
+      addstr(out, source);  /* keep it */
     }
     else {
       if (nl != nullptr)
-        srclen = ct_diff2sz(nl - source);  /* stop at first newline */
+        srclen = ct_diff2sz(nl - source.data());  /* stop at first newline */
       if (srclen > bufflen) srclen = bufflen;
-      addstr(out, source, srclen);
-      addstr(out, RETS, LL(RETS));
+      addstr(out, source.subspan(0, srclen));
+      addstr(out, std::span(RETS, LL(RETS)));
     }
-    std::copy_n(POS, LL(POS) + 1, out);
+    std::copy_n(POS, LL(POS) + 1, out.data());
   }
 }
 

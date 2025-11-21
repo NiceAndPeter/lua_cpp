@@ -61,21 +61,21 @@ static int currentpc (CallInfo *ci) {
 ** value for MAXIWTHABS or smaller. (Previous releases use a little
 ** smaller value.)
 */
+// Phase 115.2: Use span accessors from Phase 112
 static int getbaseline (const Proto *f, int pc, int *basepc) {
-  if (f->getAbsLineInfoSize() == 0 || pc < f->getAbsLineInfo()[0].getPC()) {
+  auto absLineInfoSpan = f->getDebugInfo().getAbsLineInfoSpan();
+  if (absLineInfoSpan.empty() || pc < absLineInfoSpan[0].getPC()) {
     *basepc = -1;  /* start from the beginning */
     return f->getLineDefined();
   }
   else {
     /* Binary search for the last AbsLineInfo with PC <= pc */
-    const AbsLineInfo* absLineInfo = f->getAbsLineInfo();
-    int size = f->getAbsLineInfoSize();
     /* std::upper_bound finds first element with PC > pc, so we go back one */
-    auto it = std::upper_bound(absLineInfo, absLineInfo + size, pc,
+    auto it = std::upper_bound(absLineInfoSpan.begin(), absLineInfoSpan.end(), pc,
                                [](int target_pc, const AbsLineInfo& info) {
                                  return target_pc < info.getPC();
                                });
-    lua_assert(it != absLineInfo);  /* we know there's at least one element with PC <= pc */
+    lua_assert(it != absLineInfoSpan.begin());  /* we know there's at least one element with PC <= pc */
     --it;  /* go back to last element with PC <= pc */
     *basepc = it->getPC();
     return it->getLine();
@@ -88,15 +88,17 @@ static int getbaseline (const Proto *f, int pc, int *basepc) {
 ** first gets a base line and from there does the increments until
 ** the desired instruction.
 */
+// Phase 115.2: Use span accessors
 int luaG_getfuncline (const Proto *f, int pc) {
-  if (f->getLineInfo() == nullptr)  /* no debug information? */
+  auto lineInfoSpan = f->getDebugInfo().getLineInfoSpan();
+  if (lineInfoSpan.empty())  /* no debug information? */
     return -1;
   else {
     int basepc;
     int baseline = getbaseline(f, pc, &basepc);
     while (basepc++ < pc) {  /* walk until given instruction */
-      lua_assert(f->getLineInfo()[basepc] != ABSLINEINFO);
-      baseline += f->getLineInfo()[basepc];  /* correct line */
+      lua_assert(lineInfoSpan[basepc] != ABSLINEINFO);
+      baseline += lineInfoSpan[basepc];  /* correct line */
     }
     return baseline;
   }
@@ -292,9 +294,11 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
 }
 
 
+// Phase 115.2: Use span accessors
 static int nextline (const Proto *p, int currentline, int pc) {
-  if (p->getLineInfo()[pc] != ABSLINEINFO)
-    return currentline + p->getLineInfo()[pc];
+  auto lineInfoSpan = p->getDebugInfo().getLineInfoSpan();
+  if (lineInfoSpan[pc] != ABSLINEINFO)
+    return currentline + lineInfoSpan[pc];
   else
     return luaG_getfuncline(p, pc);
 }
@@ -311,18 +315,20 @@ static void collectvalidlines (lua_State *L, Closure *f) {
     Table *t = luaH_new(L);  /* new table to store active lines */
     sethvalue2s(L, L->getTop().p, t);  /* push it on stack */
     api_incr_top(L);
-    if (p->getLineInfo() != nullptr) {  /* proto with debug information? */
+    auto lineInfoSpan = p->getDebugInfo().getLineInfoSpan();
+    if (!lineInfoSpan.empty()) {  /* proto with debug information? */
       int i;
       TValue v;
       setbtvalue(&v);  /* boolean 'true' to be the value of all indices */
       if (!(p->getFlag() & PF_ISVARARG))  /* regular function? */
         i = 0;  /* consider all instructions */
       else {  /* vararg function */
-        lua_assert(InstructionView(p->getCode()[0]).opcode() == OP_VARARGPREP);
+        auto codeSpan = p->getCodeSpan();
+        lua_assert(InstructionView(codeSpan[0]).opcode() == OP_VARARGPREP);
         currentline = nextline(p, currentline, 0);
         i = 1;  /* skip first instruction (OP_VARARGPREP) */
       }
-      for (; i < p->getLineInfoSize(); i++) {  /* for each instruction */
+      for (; i < static_cast<int>(lineInfoSpan.size()); i++) {  /* for each instruction */
         currentline = nextline(p, currentline, i);  /* get its line */
         luaH_setint(L, t, currentline, &v);  /* table[line] = true */
       }
@@ -940,14 +946,16 @@ l_noret luaG_runerror (lua_State *L, const char *fmt, ...) {
 ** too far apart, there is a good chance of a ABSLINEINFO in the way,
 ** so it goes directly to 'luaG_getfuncline'.
 */
+// Phase 115.2: Use span accessors
 static int changedline (const Proto *p, int oldpc, int newpc) {
-  if (p->getLineInfo() == nullptr)  /* no debug information? */
+  auto lineInfoSpan = p->getDebugInfo().getLineInfoSpan();
+  if (lineInfoSpan.empty())  /* no debug information? */
     return 0;
   if (newpc - oldpc < MAXIWTHABS / 2) {  /* not too far apart? */
     int delta = 0;  /* line difference */
     int pc = oldpc;
     for (;;) {
-      int lineinfo = p->getLineInfo()[++pc];
+      int lineinfo = lineInfoSpan[++pc];
       if (lineinfo == ABSLINEINFO)
         break;  /* cannot compute delta; fall through */
       delta += lineinfo;
