@@ -91,10 +91,11 @@ short FuncState::registerlocalvar(TString *varname) {
   int oldsize = proto->getLocVarsSize();
   luaM_growvector(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
                   LocVar, SHRT_MAX, "local variables");
-  while (oldsize < proto->getLocVarsSize())
-    proto->getLocVars()[oldsize++].setVarName(nullptr);
-  proto->getLocVars()[getNumDebugVars()].setVarName(varname);
-  proto->getLocVars()[getNumDebugVars()].setStartPC(getPC());
+  auto locVarsSpan = proto->getDebugInfo().getLocVarsSpan();
+  while (oldsize < static_cast<int>(locVarsSpan.size()))
+    locVarsSpan[oldsize++].setVarName(nullptr);
+  locVarsSpan[getNumDebugVars()].setVarName(varname);
+  locVarsSpan[getNumDebugVars()].setStartPC(getPC());
   luaC_objbarrier(getLexState()->getLuaState(), proto, varname);
   return postIncrementNumDebugVars();
 }
@@ -181,10 +182,9 @@ void FuncState::removevars(int tolevel) {
 ** with the given 'name'.
 */
 int FuncState::searchupvalue(TString *name) {
-  int i;
-  Upvaldesc *up = getProto()->getUpvalues();
-  for (i = 0; i < getNumUpvalues(); i++) {
-    if (eqstr(up[i].getName(), name)) return i;
+  auto upvaluesSpan = getProto()->getUpvaluesSpan();
+  for (size_t i = 0; i < static_cast<size_t>(getNumUpvalues()); i++) {
+    if (eqstr(upvaluesSpan[i].getName(), name)) return static_cast<int>(i);
   }
   return -1;  /* not found */
 }
@@ -196,9 +196,10 @@ Upvaldesc *FuncState::allocupvalue() {
   checklimit(getNumUpvalues() + 1, MAXUPVAL, "upvalues");
   luaM_growvector(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
                   Upvaldesc, MAXUPVAL, "upvalues");
-  while (oldsize < proto->getUpvaluesSize())
-    proto->getUpvalues()[oldsize++].setName(nullptr);
-  return &proto->getUpvalues()[getNumUpvaluesRef()++];
+  auto upvaluesSpan = proto->getUpvaluesSpan();
+  while (oldsize < static_cast<int>(upvaluesSpan.size()))
+    upvaluesSpan[oldsize++].setName(nullptr);
+  return &upvaluesSpan[getNumUpvaluesRef()++];
 }
 
 

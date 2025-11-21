@@ -135,18 +135,19 @@ inline constexpr int MAXTAGLOOP = 2000;
 ** its upvalues.
 */
 void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
-  int nup = p->getUpvaluesSize();
-  Upvaldesc *uv = p->getUpvalues();
-  int i;
+  auto upvaluesSpan = p->getUpvaluesSpan();
+  int nup = static_cast<int>(upvaluesSpan.size());
+  int i = 0;
   LClosure *ncl = LClosure::create(this, nup);
   ncl->setProto(p);
   setclLvalue2s(this, ra, ncl);  /* anchor new closure in stack */
-  for (i = 0; i < nup; i++) {  /* fill in its upvalues */
-    if (uv[i].isInStack())  /* upvalue refers to local variable? */
-      ncl->setUpval(i, luaF_findupval(this, base + uv[i].getIndex()));
+  for (const auto& uv : upvaluesSpan) {  /* fill in its upvalues */
+    if (uv.isInStack())  /* upvalue refers to local variable? */
+      ncl->setUpval(i, luaF_findupval(this, base + uv.getIndex()));
     else  /* get upvalue from enclosing function */
-      ncl->setUpval(i, encup[uv[i].getIndex()]);
+      ncl->setUpval(i, encup[uv.getIndex()]);
     luaC_objbarrier(this, ncl, ncl->getUpval(i));
+    i++;
   }
 }
 

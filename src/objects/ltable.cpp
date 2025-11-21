@@ -1184,12 +1184,12 @@ static int finishnodeset (Table *t, TValue *slot, TValue *val) {
 }
 
 
-static int rawfinishnodeset (TValue *slot, TValue *val) {
+static bool rawfinishnodeset (TValue *slot, TValue *val) {
   if (isabstkey(slot))
-    return 0;  /* no slot with that key */
+    return false;  /* no slot with that key */
   else {
     *slot = *val;
-    return 1;  /* success */
+    return true;  /* success */
   }
 }
 
@@ -1522,7 +1522,7 @@ void Table::setInt(lua_State* L, lua_Integer key, TValue* value) {
   if (ik > 0)
     obj2arr(this, ik - 1, value);
   else {
-    int ok = rawfinishnodeset(getintfromhash(this, key), value);
+    bool ok = rawfinishnodeset(getintfromhash(this, key), value);
     if (!ok) {
       TValue k;
       setivalue(&k, key);
