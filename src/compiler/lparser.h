@@ -577,11 +577,10 @@ public:
   void patchtohere(int list);
   void concat(int *l1, int l2);
   int getlabel();
-  // Note: prefix, infix, posfix use UnOpr/BinOpr types from lcode.h
-  // We use int here to avoid circular dependency, will cast in implementation
-  void prefix(int op, expdesc *v, int line);
-  void infix(int op, expdesc *v);
-  void posfix(int op, expdesc *v1, expdesc *v2, int line);
+  // Operator functions use strongly-typed enum classes for type safety
+  void prefix(UnOpr op, expdesc *v, int line);
+  void infix(BinOpr op, expdesc *v);
+  void posfix(BinOpr op, expdesc *v1, expdesc *v2, int line);
   void settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize);
   void setlist(int base, int nelems, int tostore);
   void finish();

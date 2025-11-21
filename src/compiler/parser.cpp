@@ -879,7 +879,7 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
     int line = ls->getLineNumber();
     ls->nextToken();  /* skip operator */
     subexpr(v, UNARY_PRIORITY);
-    fs->prefix(static_cast<int>(uop), v, line);
+    fs->prefix(uop, v, line);
   }
   else simpleexp(v);
   /* expand while operators have priorities higher than 'limit' */
@@ -889,10 +889,10 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
     BinOpr nextop;
     int line = ls->getLineNumber();
     ls->nextToken();  /* skip operator */
-    fs->infix(static_cast<int>(op), v);
+    fs->infix(op, v);
     /* read sub-expression with higher priority */
     nextop = subexpr(&v2, priority[static_cast<int>(op)].right);
-    fs->posfix(static_cast<int>(op), v, &v2, line);
+    fs->posfix(op, v, &v2, line);
     op = nextop;
   }
   leavelevel(ls);

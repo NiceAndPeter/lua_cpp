@@ -1485,8 +1485,7 @@ int FuncState::getlabel() {
   return getPC();
 }
 
-void FuncState::prefix(int opr, expdesc *e, int line) {
-  UnOpr op = static_cast<UnOpr>(opr);
+void FuncState::prefix(UnOpr op, expdesc *e, int line) {
   expdesc ef;
   ef.setKind(VKINT);
   ef.setIntValue(0);
@@ -1495,7 +1494,7 @@ void FuncState::prefix(int opr, expdesc *e, int line) {
   dischargevars(e);
   switch (op) {
     case UnOpr::OPR_MINUS: case UnOpr::OPR_BNOT:  /* use 'ef' as fake 2nd operand */
-      if (constfolding(cast_int(opr + LUA_OPUNM), e, &ef))
+      if (constfolding(cast_int(op) + LUA_OPUNM, e, &ef))
         break;
       /* else */ /* FALLTHROUGH */
     case UnOpr::OPR_LEN:
@@ -1506,8 +1505,7 @@ void FuncState::prefix(int opr, expdesc *e, int line) {
   }
 }
 
-void FuncState::infix(int opr, expdesc *v) {
-  BinOpr op = static_cast<BinOpr>(opr);
+void FuncState::infix(BinOpr op, expdesc *v) {
   dischargevars(v);
   switch (op) {
     case BinOpr::OPR_AND: {
@@ -1551,10 +1549,9 @@ void FuncState::infix(int opr, expdesc *v) {
   }
 }
 
-void FuncState::posfix(int opr, expdesc *e1, expdesc *e2, int line) {
-  BinOpr op = static_cast<BinOpr>(opr);
+void FuncState::posfix(BinOpr op, expdesc *e1, expdesc *e2, int line) {
   dischargevars(e2);
-  if (foldbinop(op) && constfolding(cast_int(opr + LUA_OPADD), e1, e2))
+  if (foldbinop(op) && constfolding(cast_int(op) + LUA_OPADD, e1, e2))
     return;  /* done by folding */
   switch (op) {
     case BinOpr::OPR_AND: {
