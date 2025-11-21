@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstddef>
 #include <cstring>
@@ -66,14 +67,18 @@ static int getbaseline (const Proto *f, int pc, int *basepc) {
     return f->getLineDefined();
   }
   else {
-    int i = pc / MAXIWTHABS - 1;  /* get an estimate */
-    /* estimate must be a lower bound of the correct base */
-    lua_assert(i < 0 ||
-              (i < f->getAbsLineInfoSize() && f->getAbsLineInfo()[i].getPC() <= pc));
-    while (i + 1 < f->getAbsLineInfoSize() && pc >= f->getAbsLineInfo()[i + 1].getPC())
-      i++;  /* low estimate; adjust it */
-    *basepc = f->getAbsLineInfo()[i].getPC();
-    return f->getAbsLineInfo()[i].getLine();
+    /* Binary search for the last AbsLineInfo with PC <= pc */
+    const AbsLineInfo* absLineInfo = f->getAbsLineInfo();
+    int size = f->getAbsLineInfoSize();
+    /* std::upper_bound finds first element with PC > pc, so we go back one */
+    auto it = std::upper_bound(absLineInfo, absLineInfo + size, pc,
+                               [](int target_pc, const AbsLineInfo& info) {
+                                 return target_pc < info.getPC();
+                               });
+    lua_assert(it != absLineInfo);  /* we know there's at least one element with PC <= pc */
+    --it;  /* go back to last element with PC <= pc */
+    *basepc = it->getPC();
+    return it->getLine();
   }
 }
 
@@ -690,13 +695,12 @@ static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
 ** region boundaries (undefined behavior in ISO C).
 */
 static int instack (CallInfo *ci, const TValue *o) {
-  int pos;
   StkId base = ci->funcRef().p + 1;
-  for (pos = 0; base + pos < ci->topRef().p; pos++) {
-    if (o == s2v(base + pos))
-      return pos;
-  }
-  return -1;  /* not found */
+  StkId end = ci->topRef().p;
+  auto it = std::find_if(base, end, [o](const StackValue& sv) {
+    return o == s2v(&sv);
+  });
+  return (it != end) ? static_cast<int>(it - base) : -1;  /* return position or -1 if not found */
 }
 
 

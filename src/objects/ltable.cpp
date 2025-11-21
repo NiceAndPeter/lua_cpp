@@ -726,7 +726,6 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     t->setDummy();  /* signal that it is using dummy node */
   }
   else {
-    unsigned int i;
     unsigned int lsize = luaO_ceillog2(size);
     if (lsize > MAXHBITS || (1u << lsize) > MAXHSIZE)
       luaG_runerror(L, "table overflow");
@@ -736,7 +735,7 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     t->setNodeArray(nodes);
     t->setLsizenode(cast_byte(lsize));
     t->setNoDummy();
-    for (i = 0; i < size; i++) {
+    for (unsigned int i = 0; i < size; i++) {
       Node *n = gnode(t, i);
       gnext(n) = 0;
       n->setKeyNil();

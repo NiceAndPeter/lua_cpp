@@ -67,8 +67,9 @@ unsigned luaS_hashlongstr (TString *ts) {
 
 static void tablerehash (TString **vect, unsigned int osize, unsigned int nsize) {
   unsigned int i;
-  for (i = osize; i < nsize; i++)  /* clear new elements */
-    vect[i] = NULL;
+  /* clear new elements (only when growing) */
+  if (nsize > osize)
+    std::fill_n(vect + osize, nsize - osize, nullptr);
   for (i = 0; i < osize; i++) {  /* rehash old part of the array */
     TString *p = vect[i];
     vect[i] = NULL;
