@@ -1,7 +1,15 @@
+# ⚠️ PARTIALLY COMPLETE - Aggressive Macro Elimination Plan
+
+**Status**: ⚠️ **ONGOING** - lvm.cpp macros mostly done, ~75 remain in other files
+**Last Updated**: November 2025
+**Remaining**: lopcodes.h, llimits.h, lctype.h macros
+
+---
+
 # AGGRESSIVE MACRO ELIMINATION PLAN - lvm.cpp
 
-**Date:** 2025-11-17  
-**Goal:** Convert ALL 36 remaining macros to modern C++  
+**Date:** 2025-11-17
+**Goal:** Convert ALL 36 remaining macros to modern C++
 **Timeline:** 8-12 hours total  
 **Risk Level:** MEDIUM to HIGH (performance-critical code)
 
