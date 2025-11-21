@@ -933,24 +933,24 @@ public:
 
   /* Phase 112: std::span accessors for debug info arrays */
   inline std::span<ls_byte> getLineInfoSpan() noexcept {
-    return std::span(lineinfo, sizelineinfo);
+    return std::span(lineinfo, static_cast<size_t>(sizelineinfo));
   }
   inline std::span<const ls_byte> getLineInfoSpan() const noexcept {
-    return std::span(lineinfo, sizelineinfo);
+    return std::span(lineinfo, static_cast<size_t>(sizelineinfo));
   }
 
   inline std::span<AbsLineInfo> getAbsLineInfoSpan() noexcept {
-    return std::span(abslineinfo, sizeabslineinfo);
+    return std::span(abslineinfo, static_cast<size_t>(sizeabslineinfo));
   }
   inline std::span<const AbsLineInfo> getAbsLineInfoSpan() const noexcept {
-    return std::span(abslineinfo, sizeabslineinfo);
+    return std::span(abslineinfo, static_cast<size_t>(sizeabslineinfo));
   }
 
   inline std::span<LocVar> getLocVarsSpan() noexcept {
-    return std::span(locvars, sizelocvars);
+    return std::span(locvars, static_cast<size_t>(sizelocvars));
   }
   inline std::span<const LocVar> getLocVarsSpan() const noexcept {
-    return std::span(locvars, sizelocvars);
+    return std::span(locvars, static_cast<size_t>(sizelocvars));
   }
 };
 
@@ -1034,31 +1034,31 @@ public:
 
   /* Phase 112: std::span accessors for arrays */
   inline std::span<Instruction> getCodeSpan() noexcept {
-    return std::span(code, sizecode);
+    return std::span(code, static_cast<size_t>(sizecode));
   }
   inline std::span<const Instruction> getCodeSpan() const noexcept {
-    return std::span(code, sizecode);
+    return std::span(code, static_cast<size_t>(sizecode));
   }
 
   inline std::span<TValue> getConstantsSpan() noexcept {
-    return std::span(k, sizek);
+    return std::span(k, static_cast<size_t>(sizek));
   }
   inline std::span<const TValue> getConstantsSpan() const noexcept {
-    return std::span(k, sizek);
+    return std::span(k, static_cast<size_t>(sizek));
   }
 
   inline std::span<Proto*> getProtosSpan() noexcept {
-    return std::span(p, sizep);
+    return std::span(p, static_cast<size_t>(sizep));
   }
   inline std::span<Proto* const> getProtosSpan() const noexcept {
-    return std::span(p, sizep);
+    return std::span(p, static_cast<size_t>(sizep));
   }
 
   inline std::span<Upvaldesc> getUpvaluesSpan() noexcept {
-    return std::span(upvalues, sizeupvalues);
+    return std::span(upvalues, static_cast<size_t>(sizeupvalues));
   }
   inline std::span<const Upvaldesc> getUpvaluesSpan() const noexcept {
-    return std::span(upvalues, sizeupvalues);
+    return std::span(upvalues, static_cast<size_t>(sizeupvalues));
   }
 
   inline Proto** getProtos() const noexcept { return p; }

@@ -244,7 +244,7 @@ static void dumpDebug (DumpState *D, const Proto *f) {
   auto locvars = f->getDebugInfo().getLocVarsSpan();
   n = (D->strip) ? 0 : static_cast<int>(locvars.size());
   dumpInt(D, n);
-  for (const auto& lv : locvars.subspan(0, n)) {
+  for (const auto& lv : locvars.subspan(0, static_cast<size_t>(n))) {
     dumpString(D, lv.getVarName());
     dumpInt(D, lv.getStartPC());
     dumpInt(D, lv.getEndPC());
@@ -252,7 +252,7 @@ static void dumpDebug (DumpState *D, const Proto *f) {
   auto upvalues = f->getUpvaluesSpan();
   n = (D->strip) ? 0 : static_cast<int>(upvalues.size());
   dumpInt(D, n);
-  for (const auto& uv : upvalues.subspan(0, n)) {
+  for (const auto& uv : upvalues.subspan(0, static_cast<size_t>(n))) {
     dumpString(D, uv.getName());
   }
 }
