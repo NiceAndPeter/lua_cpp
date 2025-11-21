@@ -60,7 +60,7 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
     }
     else {  /* 't' is a table */
       tm = fasttm(L, hvalue(t)->getMetatable(), TMS::TM_INDEX);  /* table's metamethod */
-      if (tm == NULL) {  /* no metamethod? */
+      if (tm == nullptr) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
         return LUA_VNIL;
       }
@@ -109,7 +109,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
     if (hres != HNOTATABLE) {  /* is 't' a table? */
       Table *h = hvalue(t);  /* save 't' table */
       tm = fasttm(L, h->getMetatable(), TMS::TM_NEWINDEX);  /* get metamethod */
-      if (tm == NULL) {  /* no metamethod? */
+      if (tm == nullptr) {  /* no metamethod? */
         sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */
         L->getStackSubsystem().push();  /* assume EXTRA_STACK */
         luaH_finishset(L, h, key, val, hres);  /* set new value */

@@ -647,7 +647,7 @@ static int math_randomseed (lua_State *L) {
 static const luaL_Reg randfuncs[] = {
   {"random", math_random},
   {"randomseed", math_randomseed},
-  {NULL, NULL}
+  {nullptr, nullptr}
 };
 
 
@@ -736,13 +736,13 @@ static const luaL_Reg mathlib[] = {
   {"log10", math_log10},
 #endif
   /* placeholders */
-  {"random", NULL},
-  {"randomseed", NULL},
-  {"pi", NULL},
-  {"huge", NULL},
-  {"maxinteger", NULL},
-  {"mininteger", NULL},
-  {NULL, NULL}
+  {"random", nullptr},
+  {"randomseed", nullptr},
+  {"pi", nullptr},
+  {"huge", nullptr},
+  {"maxinteger", nullptr},
+  {"mininteger", nullptr},
+  {nullptr, nullptr}
 };
 
 

@@ -55,7 +55,7 @@ void GCFinalizer::checkSizes(lua_State* L, global_State* g) {
 ** Find last 'next' field in list 'p' (to add elements at its end).
 */
 GCObject** GCFinalizer::findlast(GCObject** p) {
-    while (*p != NULL)
+    while (*p != nullptr)
         p = (*p)->getNextPtr();
     return p;
 }
@@ -165,7 +165,7 @@ void GCFinalizer::GCTM(lua_State* L) {
         L->getStackSubsystem().setSlot(L->getTop().p, &v);  /* ... and its argument */
         L->getStackSubsystem().push();
         L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
-        status = L->pCall(dothecall, NULL, L->saveStack(L->getTop().p - 2), 0);
+        status = L->pCall(dothecall, nullptr, L->saveStack(L->getTop().p - 2), 0);
         L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
         L->setAllowHook(oldah);  /* restore hooks */
         g->setGCStp(oldgcstp);  /* restore state */
@@ -188,7 +188,7 @@ void GCFinalizer::GCTM(lua_State* L) {
 ** Move all unreachable objects (or 'all' objects) that need
 ** finalization from list 'finobj' to list 'tobefnz' (to be finalized).
 ** (Note that objects after 'finobjold1' cannot be white, so they
-** don't need to be traversed. In incremental mode, 'finobjold1' is NULL,
+** don't need to be traversed. In incremental mode, 'finobjold1' is nullptr,
 ** so the whole list is traversed.)
 */
 void GCFinalizer::separatetobefnz(global_State* g, int all) {

@@ -73,14 +73,14 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
 ** 'p': pointer to pointer to start of list
 ** 'countin': maximum number of objects to sweep (for incremental collection)
 **
-** Returns: pointer to where sweeping stopped (NULL if list exhausted)
+** Returns: pointer to where sweeping stopped (nullptr if list exhausted)
 */
 GCObject** GCSweeping::sweeplist(lua_State* L, GCObject** p, l_mem countin) {
     global_State* g = G(L);
     lu_byte ow = otherwhite(g);
     lu_byte white = g->getWhite();  /* current white */
 
-    while (*p != NULL && countin-- > 0) {
+    while (*p != nullptr && countin-- > 0) {
         GCObject* curr = *p;
         lu_byte marked = curr->getMarked();
 
@@ -96,7 +96,7 @@ GCObject** GCSweeping::sweeplist(lua_State* L, GCObject** p, l_mem countin) {
         }
     }
 
-    return (*p == NULL) ? NULL : p;
+    return (*p == nullptr) ? nullptr : p;
 }
 
 
@@ -128,7 +128,7 @@ void GCSweeping::sweep2old(lua_State* L, GCObject** p) {
     GCObject* curr;
     global_State* g = G(L);
 
-    while ((curr = *p) != NULL) {
+    while ((curr = *p) != nullptr) {
         if (iswhite(curr)) {  /* is 'curr' dead? */
             lua_assert(isdead(g, curr));
             *p = curr->getNext();  /* remove 'curr' from list */
@@ -198,7 +198,7 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State* g, GCObject** p,
                 setage(curr, nextage[static_cast<size_t>(age)]);
                 if (getage(curr) == GCAge::Old1) {
                     addedold += objsize(curr);  /* bytes becoming old */
-                    if (*pfirstold1 == NULL)
+                    if (*pfirstold1 == nullptr)
                         *pfirstold1 = curr;  /* first OLD1 object in the list */
                 }
             }
@@ -224,7 +224,7 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State* g, GCObject** p,
 void GCSweeping::entersweep(lua_State* L) {
     global_State* g = G(L);
     g->setGCState(GCState::SweepAllGC);
-    lua_assert(g->getSweepGC() == NULL);
+    lua_assert(g->getSweepGC() == nullptr);
     g->setSweepGC(sweeptolive(L, g->getAllGCPtr()));
 }
 

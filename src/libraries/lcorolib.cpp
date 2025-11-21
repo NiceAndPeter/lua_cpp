@@ -211,7 +211,7 @@ static const luaL_Reg co_funcs[] = {
   {"yield", luaB_yield},
   {"isyieldable", luaB_yieldable},
   {"close", luaB_close},
-  {NULL, NULL}
+  {nullptr, nullptr}
 };
 
 

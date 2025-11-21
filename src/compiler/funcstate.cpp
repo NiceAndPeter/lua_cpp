@@ -92,7 +92,7 @@ short FuncState::registerlocalvar(TString *varname) {
   luaM_growvector(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
                   LocVar, SHRT_MAX, "local variables");
   while (oldsize < proto->getLocVarsSize())
-    proto->getLocVars()[oldsize++].setVarName(NULL);
+    proto->getLocVars()[oldsize++].setVarName(nullptr);
   proto->getLocVars()[getNumDebugVars()].setVarName(varname);
   proto->getLocVars()[getNumDebugVars()].setStartPC(getPC());
   luaC_objbarrier(getLexState()->getLuaState(), proto, varname);
@@ -140,7 +140,7 @@ lu_byte FuncState::nvarstack() {
 LocVar *FuncState::localdebuginfo(int vidx) {
   Vardesc *vd = getlocalvardesc(vidx);
   if (!vd->isInReg())
-    return NULL;  /* no debug info. for constants */
+    return nullptr;  /* no debug info. for constants */
   else {
     int idx = vd->vd.pidx;
     lua_assert(idx < getNumDebugVars());
@@ -197,7 +197,7 @@ Upvaldesc *FuncState::allocupvalue() {
   luaM_growvector(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
                   Upvaldesc, MAXUPVAL, "upvalues");
   while (oldsize < proto->getUpvaluesSize())
-    proto->getUpvalues()[oldsize++].setName(NULL);
+    proto->getUpvalues()[oldsize++].setName(nullptr);
   return &proto->getUpvalues()[getNumUpvaluesRef()++];
 }
 
@@ -238,7 +238,7 @@ int FuncState::searchvar(TString *n, expdesc *var) {
   for (i = cast_int(getNumActiveVars()) - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(i);
     if (vd->isGlobal()) {  /* global declaration? */
-      if (vd->vd.name == NULL) {  /* collective declaration? */
+      if (vd->vd.name == nullptr) {  /* collective declaration? */
         if (var->getInfo() < 0)  /* no previous collective declaration? */
           var->setInfo(getFirstLocal() + i);  /* this is the first one */
       }
@@ -301,7 +301,7 @@ void FuncState::singlevaraux(TString *n, expdesc *var, int base) {
   else {  /* not found at current level; try upvalues */
     int idx = searchupvalue(n);  /* try existing upvalues */
     if (idx < 0) {  /* not found? */
-      if (getPrev() != NULL)  /* more levels? */
+      if (getPrev() != nullptr)  /* more levels? */
         getPrev()->singlevaraux(n, var, 0);  /* try upper levels */
       if (var->getKind() == VLOCAL || var->getKind() == VUPVAL)  /* local or upvalue? */
         idx = newupvalue(n, var);  /* will be a new upvalue */
@@ -329,7 +329,7 @@ void FuncState::solvegotos(BlockCnt *blockCnt) {
     Labeldesc *gt = &(*gl)[igt];
     /* search for a matching label in the current block */
     Labeldesc *lb = lexState->findlabel(gt->name, blockCnt->firstlabel);
-    if (lb != NULL)  /* found a match? */
+    if (lb != nullptr)  /* found a match? */
       lexState->closegoto(this, igt, lb, blockCnt->upval);  /* close and remove goto */
     else {  /* adjust 'goto' for outer block */
       /* block has variables to be closed and goto escapes the scope of
@@ -351,7 +351,7 @@ void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
   blk->firstgoto = getLexState()->getDyndata()->gt.getN();
   blk->upval = 0;
   /* inherit 'insidetbc' from enclosing block */
-  blk->insidetbc = (getBlock() != NULL && getBlock()->insidetbc);
+  blk->insidetbc = (getBlock() != nullptr && getBlock()->insidetbc);
   blk->previous = getBlock();  /* link block in function's block list */
   setBlock(blk);
   lua_assert(getFreeReg() == luaY_nvarstack(this));
@@ -370,7 +370,7 @@ void FuncState::leaveblock() {
   if (blk->isloop == 2)  /* has to fix pending breaks? */
     lexstate->createlabel(this, lexstate->getBreakName(), 0, 0);
   solvegotos(blk);
-  if (blk->previous == NULL) {  /* was it the last block? */
+  if (blk->previous == nullptr) {  /* was it the last block? */
     if (blk->firstgoto < lexstate->getDyndata()->gt.getN())  /* still pending gotos? */
       lexstate->undefgoto(this, &lexstate->getDyndata()->gt[blk->firstgoto]);  /* error */
   }

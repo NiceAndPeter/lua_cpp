@@ -50,7 +50,7 @@ inline void dumpVector(DumpState* D, const T* v, size_t n) {
 
 /*
 ** Dump the block of memory pointed by 'b' with given 'size'.
-** 'b' should not be NULL, except for the last call signaling the end
+** 'b' should not be nullptr, except for the last call signaling the end
 ** of the dump.
 */
 static void dumpBlock (DumpState *D, const void *b, size_t size) {
@@ -139,14 +139,14 @@ static void dumpInteger (DumpState *D, lua_Integer x) {
 
 
 /*
-** Dump a String. First dump its "size": size==0 means NULL;
+** Dump a String. First dump its "size": size==0 means nullptr;
 ** size==1 is followed by an index and means "reuse saved string with
 ** that index"; size>=2 is followed by the string contents with real
 ** size==size-2 and means that string, which will be saved with
 ** the next available index.
 */
 static void dumpString (DumpState *D, TString *ts) {
-  if (ts == NULL)
+  if (ts == nullptr)
     dumpSize(D, 0);
   else {
     TValue idx;
@@ -175,7 +175,7 @@ static void dumpCode (DumpState *D, const Proto *f) {
   auto code = f->getCodeSpan();
   dumpInt(D, static_cast<int>(code.size()));
   dumpAlign(D, sizeof(code[0]));
-  lua_assert(code.data() != NULL);
+  lua_assert(code.data() != nullptr);
   dumpVector(D, code.data(), cast_uint(code.size()));
 }
 
@@ -231,7 +231,7 @@ static void dumpDebug (DumpState *D, const Proto *f) {
   auto lineinfo = f->getDebugInfo().getLineInfoSpan();
   n = (D->strip) ? 0 : static_cast<int>(lineinfo.size());
   dumpInt(D, n);
-  if (lineinfo.data() != NULL)
+  if (lineinfo.data() != nullptr)
     dumpVector(D, lineinfo.data(), cast_uint(n));
   auto abslineinfo = f->getDebugInfo().getAbsLineInfoSpan();
   n = (D->strip) ? 0 : static_cast<int>(abslineinfo.size());
@@ -268,7 +268,7 @@ static void dumpFunction (DumpState *D, const Proto *f) {
   dumpConstants(D, f);
   dumpUpvalues(D, f);
   dumpProtos(D, f);
-  dumpString(D, D->strip ? NULL : f->getSource());
+  dumpString(D, D->strip ? nullptr : f->getSource());
   dumpDebug(D, f);
 }
 
@@ -308,7 +308,7 @@ int luaU_dump (lua_State *L, const Proto *f, lua_Writer w, void *data,
   dumpHeader(&D);
   dumpByte(&D, f->getUpvaluesSize());
   dumpFunction(&D, f);
-  dumpBlock(&D, NULL, 0);  /* signal end of dump */
+  dumpBlock(&D, nullptr, 0);  /* signal end of dump */
   return D.status;
 }
 

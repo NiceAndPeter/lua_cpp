@@ -285,7 +285,7 @@ static lua_Number lua_strx2number (const char *s, char **endptr) {
 #endif
 
 /*
-** Convert string 's' to a Lua number (put in 'result'). Return NULL on
+** Convert string 's' to a Lua number (put in 'result'). Return nullptr on
 ** fail or the address of the ending '\0' on success. ('mode' == 'x')
 ** means a hexadecimal numeral.
 */
@@ -293,9 +293,9 @@ static const char *l_str2dloc (const char *s, lua_Number *result, int mode) {
   char *endptr;
   *result = (mode == 'x') ? lua_strx2number(s, &endptr)  /* try to convert */
                           : lua_str2number(s, &endptr);
-  if (endptr == s) return NULL;  /* nothing recognized? */
+  if (endptr == s) return nullptr;  /* nothing recognized? */
   while (lisspace(cast_uchar(*endptr))) endptr++;  /* skip trailing spaces */
-  return (*endptr == '\0') ? endptr : NULL;  /* OK iff no trailing chars */
+  return (*endptr == '\0') ? endptr : nullptr;  /* OK iff no trailing chars */
 }
 
 
@@ -317,17 +317,17 @@ static const char *l_str2d (const char *s, lua_Number *result) {
   const char *pmode = strpbrk(s, ".xXnN");  /* look for special chars */
   int mode = pmode ? ltolower(cast_uchar(*pmode)) : 0;
   if (mode == 'n')  /* reject 'inf' and 'nan' */
-    return NULL;
+    return nullptr;
   endptr = l_str2dloc(s, result, mode);  /* try to convert */
-  if (endptr == NULL) {  /* failed? may be a different locale */
+  if (endptr == nullptr) {  /* failed? may be a different locale */
     char buff[L_MAXLENNUM + 1];
     const char *pdot = strchr(s, '.');
-    if (pdot == NULL || strlen(s) > L_MAXLENNUM)
-      return NULL;  /* string too long or no dot; fail */
+    if (pdot == nullptr || strlen(s) > L_MAXLENNUM)
+      return nullptr;  /* string too long or no dot; fail */
     strcpy(buff, s);  /* copy string to buffer */
     buff[pdot - s] = lua_getlocaledecpoint();  /* correct decimal point */
     endptr = l_str2dloc(buff, result, mode);  /* try again */
-    if (endptr != NULL)
+    if (endptr != nullptr)
       endptr = s + (endptr - buff);  /* make relative to 's' */
   }
   return endptr;
@@ -355,13 +355,13 @@ static const char *l_str2int (const char *s, lua_Integer *result) {
     for (; lisdigit(cast_uchar(*s)); s++) {
       int d = *s - '0';
       if (a >= MAXBY10 && (a > MAXBY10 || d > MAXLASTD + neg))  /* overflow? */
-        return NULL;  /* do not accept it (as integer) */
+        return nullptr;  /* do not accept it (as integer) */
       a = a * 10 + cast_uint(d);
       empty = 0;
     }
   }
   while (lisspace(cast_uchar(*s))) s++;  /* skip trailing spaces */
-  if (empty || *s != '\0') return NULL;  /* something wrong in the numeral */
+  if (empty || *s != '\0') return nullptr;  /* something wrong in the numeral */
   else {
     *result = l_castU2S((neg) ? 0u - a : a);
     return s;
@@ -372,10 +372,10 @@ static const char *l_str2int (const char *s, lua_Integer *result) {
 size_t luaO_str2num (const char *s, TValue *o) {
   lua_Integer i; lua_Number n;
   const char *e;
-  if ((e = l_str2int(s, &i)) != NULL) {  /* try as an integer */
+  if ((e = l_str2int(s, &i)) != nullptr) {  /* try as an integer */
     setivalue(o, i);
   }
-  else if ((e = l_str2d(s, &n)) != NULL) {  /* else try as a float */
+  else if ((e = l_str2d(s, &n)) != nullptr) {  /* else try as a float */
     setfltvalue(o, n);
   }
   else
@@ -429,7 +429,7 @@ static int tostringbuffFloat (lua_Number n, char *buff) {
   /* first conversion */
   int len = l_sprintf(buff, LUA_N2SBUFFSZ, LUA_NUMBER_FMT,
                             (LUAI_UACNUMBER)n);
-  lua_Number check = lua_str2number(buff, NULL);  /* read it back */
+  lua_Number check = lua_str2number(buff, nullptr);  /* read it back */
   if (check != n) {  /* not enough precision? */
     /* convert again with more precision */
     len = l_sprintf(buff, LUA_N2SBUFFSZ, LUA_NUMBER_FMT_N,
@@ -534,7 +534,7 @@ static const char *clearbuff (BuffFS *buff) {
   lua_State *L = buff->L;
   const char *res;
   if (L->rawRunProtected( pushbuff, buff) != LUA_OK)  /* errors? */
-    res = NULL;  /* error message is on the top of the stack */
+    res = nullptr;  /* error message is on the top of the stack */
   else
     res = getstr(tsvalue(s2v(L->getTop().p - 1)));
   if (buff->b != buff->space)  /* using dynamic buffer? */
@@ -558,10 +558,10 @@ static void addstr2buff (BuffFS *buff, const char *str, size_t slen) {
       size_t newsize = buff->buffsize + slen;  /* limited to MAX_SIZE/2 */
       char *newb =
         (buff->b == buff->space)  /* still using static space? */
-        ? luaM_reallocvector(buff->L, NULL, 0, newsize, char)
+        ? luaM_reallocvector(buff->L, nullptr, 0, newsize, char)
         : luaM_reallocvector(buff->L, buff->b, buff->buffsize, newsize,
                                                                char);
-      if (newb == NULL) {  /* allocation error? */
+      if (newb == nullptr) {  /* allocation error? */
         buff->err = 1;  /* signal a memory error */
         return;
       }
@@ -593,12 +593,12 @@ static void addnum2buff (BuffFS *buff, TValue *num) {
 const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
   const char *e;  /* points to next '%' */
   BuffFS buff(L);  /* holds last part of the result */
-  while ((e = strchr(fmt, '%')) != NULL) {
+  while ((e = strchr(fmt, '%')) != nullptr) {
     addstr2buff(&buff, fmt, ct_diff2sz(e - fmt));  /* add 'fmt' up to '%' */
     switch (*(e + 1)) {  /* conversion specifier */
       case 's': {  /* zero-terminated string */
         const char *s = va_arg(argp, char *);
-        if (s == NULL) s = "(null)";
+        if (s == nullptr) s = "(null)";
         addstr2buff(&buff, s, strlen(s));
         break;
       }
@@ -661,7 +661,7 @@ const char *luaO_pushfstring (lua_State *L, const char *fmt, ...) {
   va_start(argp, fmt);
   msg = luaO_pushvfstring(L, fmt, argp);
   va_end(argp);
-  if (msg == NULL)  /* error? */
+  if (msg == nullptr)  /* error? */
     L->doThrow( LUA_ERRMEM);
   return msg;
 }
@@ -701,11 +701,11 @@ void luaO_chunkid (char *out, const char *source, size_t srclen) {
     const char *nl = strchr(source, '\n');  /* find first new line (if any) */
     addstr(out, PRE, LL(PRE));  /* add prefix */
     bufflen -= LL(PRE RETS POS) + 1;  /* save space for prefix+suffix+'\0' */
-    if (srclen < bufflen && nl == NULL) {  /* small one-line source? */
+    if (srclen < bufflen && nl == nullptr) {  /* small one-line source? */
       addstr(out, source, srclen);  /* keep it */
     }
     else {
-      if (nl != NULL)
+      if (nl != nullptr)
         srclen = ct_diff2sz(nl - source);  /* stop at first newline */
       if (srclen > bufflen) srclen = bufflen;
       addstr(out, source, srclen);

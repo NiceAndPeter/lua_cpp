@@ -127,7 +127,7 @@ LUA_API void *debug_realloc (void *ud, void *block,
 
 
 #define luaL_newstate()  \
-	lua_newstate(debug_realloc, &l_memcontrol, luaL_makeseed(NULL))
+	lua_newstate(debug_realloc, &l_memcontrol, luaL_makeseed(nullptr))
 #define luai_openlibs(L)  \
   {  luaL_openlibs(L); \
      luaL_requiref(L, "T", luaB_opentests, 1); \

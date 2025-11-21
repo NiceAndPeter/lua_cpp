@@ -96,7 +96,7 @@ static const char *const opnames[] = {
   "VARARG",
   "VARARGPREP",
   "EXTRAARG",
-  NULL
+  nullptr
 };
 
 #endif

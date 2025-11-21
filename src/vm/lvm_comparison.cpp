@@ -185,7 +185,7 @@ int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
 
 /*
 ** Main operation for equality of Lua values; return 't1 == t2'.
-** L == NULL means raw equality (no metamethods)
+** L == nullptr means raw equality (no metamethods)
 */
 int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
   const TValue *tm;
@@ -232,17 +232,17 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
         return luaS_eqstr(tsvalue(t1), tsvalue(t2));
       case LUA_VUSERDATA: {
         if (uvalue(t1) == uvalue(t2)) return 1;
-        else if (L == NULL) return 0;
+        else if (L == nullptr) return 0;
         tm = fasttm(L, uvalue(t1)->getMetatable(), TMS::TM_EQ);
-        if (tm == NULL)
+        if (tm == nullptr)
           tm = fasttm(L, uvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
       case LUA_VTABLE: {
         if (hvalue(t1) == hvalue(t2)) return 1;
-        else if (L == NULL) return 0;
+        else if (L == nullptr) return 0;
         tm = fasttm(L, hvalue(t1)->getMetatable(), TMS::TM_EQ);
-        if (tm == NULL)
+        if (tm == nullptr)
           tm = fasttm(L, hvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
@@ -251,7 +251,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
       default:  /* functions and threads */
         return (gcvalue(t1) == gcvalue(t2));
     }
-    if (tm == NULL)  /* no TM? */
+    if (tm == nullptr)  /* no TM? */
       return 0;  /* objects are different */
     else {
       int tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */

@@ -28,8 +28,8 @@
 // Constructor
 CClosure::CClosure(int nupvals) {
   nupvalues = cast_byte(nupvals);
-  gclist = NULL;
-  f = NULL;
+  gclist = nullptr;
+  f = nullptr;
   // upvalue array initialized by caller if needed
 }
 
@@ -44,9 +44,9 @@ CClosure* CClosure::create(lua_State* L, int nupvals) {
 // Constructor
 LClosure::LClosure(int nupvals) {
   nupvalues = cast_byte(nupvals);
-  gclist = NULL;
-  p = NULL;
-  // Initialize upvals array to NULL
+  gclist = nullptr;
+  p = nullptr;
+  // Initialize upvals array to nullptr
   std::fill_n(upvals, nupvals, nullptr);
 }
 
@@ -111,8 +111,8 @@ static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
 UpVal *luaF_findupval (lua_State *L, StkId level) {
   UpVal **pp = L->getOpenUpvalPtr();
   UpVal *p;
-  lua_assert(L->isInTwups() || L->getOpenUpval() == NULL);
-  while ((p = *pp) != NULL && p->getLevel() >= level) {  /* search for it */
+  lua_assert(L->isInTwups() || L->getOpenUpval() == nullptr);
+  while ((p = *pp) != nullptr && p->getLevel() >= level) {  /* search for it */
     lua_assert(!isdead(G(L), p));
     if (p->getLevel() == level)  /* corresponding upvalue? */
       return p;  /* return it */
@@ -134,7 +134,7 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
   const TValue *tm = luaT_gettmbyobj(L, obj, TMS::TM_CLOSE);
   L->getStackSubsystem().setSlot(top++, tm);  /* will call metamethod... */
   L->getStackSubsystem().setSlot(top++, obj);  /* with 'self' as the 1st argument */
-  if (err != NULL)  /* if there was an error... */
+  if (err != nullptr)  /* if there was an error... */
     L->getStackSubsystem().setSlot(top++, err);  /* then error object will be 2nd argument */
   L->getStackSubsystem().setTopPtr(top);  /* add function and arguments */
   if (yy)
@@ -152,8 +152,8 @@ static void checkclosemth (lua_State *L, StkId level) {
   const TValue *tm = luaT_gettmbyobj(L, s2v(level), TMS::TM_CLOSE);
   if (ttisnil(tm)) {  /* no metamethod? */
     int idx = cast_int(level - L->getCI()->funcRef().p);  /* variable index */
-    const char *vname = luaG_findlocal(L, L->getCI(), idx, NULL);
-    if (vname == NULL) vname = "?";
+    const char *vname = luaG_findlocal(L, L->getCI(), idx, nullptr);
+    if (vname == nullptr) vname = "?";
     luaG_runerror(L, "variable '%s' got a non-closable value", vname);
   }
 }
@@ -175,7 +175,7 @@ static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
       L->getStackSubsystem().setTopPtr(level + 1);  /* call will be at this level */
       /* FALLTHROUGH */
     case CLOSEKTOP:  /* don't need to change top */
-      errobj = NULL;  /* no error object */
+      errobj = nullptr;  /* no error object */
       break;
     default:  /* 'luaD_seterrorobj' will set top to level + 2 */
       errobj = s2v(level + 1);  /* error object goes after 'uv' */
@@ -224,7 +224,7 @@ void luaF_unlinkupval (UpVal *uv) {
 */
 void luaF_closeupval (lua_State *L, StkId level) {
   UpVal *uv;
-  while ((uv = L->getOpenUpval()) != NULL && uv->getLevel() >= level) {
+  while ((uv = L->getOpenUpval()) != nullptr && uv->getLevel() >= level) {
     TValue *slot = uv->getValueSlot();  /* new position for value */
     lua_assert(uv->getLevel() < L->getTop().p);
     luaF_unlinkupval(uv);  /* remove upvalue from 'openupval' list */
@@ -316,7 +316,7 @@ void luaF_freeproto (lua_State *L, Proto *f) {
 
 /*
 ** Look for n-th local variable at line 'line' in function 'func'.
-** Returns NULL if not found.
+** Returns nullptr if not found.
 */
 const char* Proto::getLocalName(int local_number, int pc) const {
   int i;
@@ -327,7 +327,7 @@ const char* Proto::getLocalName(int local_number, int pc) const {
         return getstr(getLocVars()[i].getVarName());
     }
   }
-  return NULL;  /* not found */
+  return nullptr;  /* not found */
 }
 
 const char *luaF_getlocalname (const Proto *f, int local_number, int pc) {

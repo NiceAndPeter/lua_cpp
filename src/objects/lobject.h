@@ -147,7 +147,7 @@ constexpr bool TValue::isEmpty() const noexcept { return isNil(); }
 
 
 /* macro defining a value corresponding to an absent key */
-#define ABSTKEYCONSTANT		{NULL}, LUA_VABSTKEY
+#define ABSTKEYCONSTANT		{nullptr}, LUA_VABSTKEY
 
 
 /* mark an entry as empty */
@@ -1565,7 +1565,7 @@ public:
   }
 
   inline GCObject* getKeyGCOrNull() const noexcept {
-    return isKeyCollectable() ? u.key_val.gc : NULL;
+    return isKeyCollectable() ? u.key_val.gc : nullptr;
   }
 
   // Key setters
@@ -1778,7 +1778,7 @@ inline constexpr int UTF8BUFFSZ = 8;
   { va_start(argp, fmt); \
   msg = luaO_pushvfstring(L, fmt, argp); \
   va_end(argp); \
-  if (msg == NULL) (L)->doThrow(LUA_ERRMEM);  /* only after 'va_end' */ }
+  if (msg == nullptr) (L)->doThrow(LUA_ERRMEM);  /* only after 'va_end' */ }
 
 
 LUAI_FUNC int luaO_utf8esc (char *buff, l_uint32 x);

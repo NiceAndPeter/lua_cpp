@@ -36,7 +36,7 @@ static const luaL_Reg stdlibs[] = {
   {LUA_STRLIBNAME, luaopen_string},
   {LUA_TABLIBNAME, luaopen_table},
   {LUA_UTF8LIBNAME, luaopen_utf8},
-  {NULL, NULL}
+  {nullptr, nullptr}
 };
 
 
@@ -47,7 +47,7 @@ LUALIB_API void luaL_openselectedlibs (lua_State *L, int load, int preload) {
   int mask;
   const luaL_Reg *lib;
   luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
-  for (lib = stdlibs, mask = 1; lib->name != NULL; lib++, mask <<= 1) {
+  for (lib = stdlibs, mask = 1; lib->name != nullptr; lib++, mask <<= 1) {
     if (load & mask) {  /* selected? */
       luaL_requiref(L, lib->name, lib->func, 1);  /* require library */
       lua_pop(L, 1);  /* remove result from the stack */
