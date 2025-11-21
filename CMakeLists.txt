@@ -112,6 +112,12 @@ endif()
 # Link Time Optimization
 if(LUA_ENABLE_LTO)
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+    # LTO can be aggressive about strict aliasing - Lua uses type punning extensively
+    # so we need to disable strict aliasing optimization to ensure correctness
+    add_compile_options(-fno-strict-aliasing)
+    add_link_options(-fno-strict-aliasing)
+    # Use fat LTO objects to avoid some LTO bugs
+    add_compile_options(-ffat-lto-objects)
 endif()
 
 # Source files organized by subdirectory
