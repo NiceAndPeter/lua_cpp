@@ -65,16 +65,16 @@ inline bool eqshrstr(const TString* a, const TString* b) noexcept {
 }
 
 
-// Phase 115.1: std::span-based string functions (internal C++ API)
-LUAI_FUNC unsigned luaS_hash (std::span<const char> str, unsigned seed);
-LUAI_FUNC TString *luaS_newlstr (lua_State *L, std::span<const char> str);
+// Phase 115.1: Primary implementations use pointer+size for performance
+LUAI_FUNC unsigned luaS_hash (const char *str, size_t l, unsigned seed);
+LUAI_FUNC TString *luaS_newlstr (lua_State *L, const char *str, size_t l);
 
-// C-style wrappers for compatibility (forward to span versions)
-inline unsigned luaS_hash (const char *str, size_t l, unsigned seed) {
-	return luaS_hash(std::span(str, l), seed);
+// std::span overloads (inline wrappers for convenience)
+inline unsigned luaS_hash (std::span<const char> str, unsigned seed) {
+	return luaS_hash(str.data(), str.size(), seed);
 }
-inline TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
-	return luaS_newlstr(L, std::span(str, l));
+inline TString *luaS_newlstr (lua_State *L, std::span<const char> str) {
+	return luaS_newlstr(L, str.data(), str.size());
 }
 
 LUAI_FUNC unsigned luaS_hashlongstr (TString *ts);

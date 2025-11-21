@@ -52,11 +52,11 @@ int luaS_eqstr (TString *a, TString *b) {
 }
 
 
-// Phase 115.1: std::span-based hash function
-unsigned luaS_hash (std::span<const char> str, unsigned seed) {
-  unsigned int h = seed ^ cast_uint(str.size());
-  for (size_t i = str.size(); i > 0; i--)
-    h ^= ((h<<5) + (h>>2) + cast_byte(str[i - 1]));
+// Phase 115.1: Pointer-based implementation for performance
+unsigned luaS_hash (const char *str, size_t l, unsigned seed) {
+  unsigned int h = seed ^ cast_uint(l);
+  for (; l > 0; l--)
+    h ^= ((h<<5) + (h>>2) + cast_byte(str[l - 1]));
   return h;
 }
 
@@ -248,19 +248,17 @@ static void growstrtab (lua_State *L, stringtable *tb) {
 
 /*
 ** Checks whether short string exists and reuses it or creates a new one.
-** Phase 115.1: Updated to use std::span
 */
-static TString *internshrstr (lua_State *L, std::span<const char> str) {
+static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   TString *ts;
   global_State *g = G(L);
   stringtable *tb = g->getStringTable();
-  unsigned int h = luaS_hash(str, g->getSeed());
+  unsigned int h = luaS_hash(str, l, g->getSeed());
   TString **list = &tb->getHash()[lmod(h, tb->getSize())];
-  size_t l = str.size();
-  lua_assert(str.data() != nullptr);  /* otherwise 'memcmp'/'memcpy' are undefined */
+  lua_assert(str != nullptr);  /* otherwise 'memcmp'/'memcpy' are undefined */
   for (ts = *list; ts != nullptr; ts = ts->getNext()) {
     if (l == cast_uint(ts->getShrlen()) &&
-        (memcmp(str.data(), getshrstr(ts), l * sizeof(char)) == 0)) {
+        (memcmp(str, getshrstr(ts), l * sizeof(char)) == 0)) {
       /* found! */
       if (isdead(g, ts))  /* dead (but not collected yet)? */
         changewhite(ts);  /* resurrect it */
@@ -276,7 +274,7 @@ static TString *internshrstr (lua_State *L, std::span<const char> str) {
   ts = createstrobj(L, allocsize, LUA_VSHRSTR, h);
   ts->setShrlen(static_cast<ls_byte>(l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
-  std::copy_n(str.data(), l, getshrstr(ts));
+  std::copy_n(str, l, getshrstr(ts));
   ts->setNext(*list);
   *list = ts;
   tb->incrementNumElements();
@@ -286,18 +284,16 @@ static TString *internshrstr (lua_State *L, std::span<const char> str) {
 
 /*
 ** new string (with explicit length)
-** Phase 115.1: Updated to use std::span
 */
-TString *luaS_newlstr (lua_State *L, std::span<const char> str) {
-  size_t l = str.size();
+TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
   if (l <= LUAI_MAXSHORTLEN)  /* short string? */
-    return internshrstr(L, str);
+    return internshrstr(L, str, l);
   else {
     TString *ts;
     if (l_unlikely(l * sizeof(char) >= (MAX_SIZE - sizeof(TString))))
       luaM_toobig(L);
     ts = luaS_createlngstrobj(L, l);
-    std::copy_n(str.data(), l, getlngstr(ts));
+    std::copy_n(str, l, getlngstr(ts));
     return ts;
   }
 }
@@ -401,12 +397,11 @@ TString *luaS_newextlstr (lua_State *L,
 ** TString method implementations
 */
 
-// Phase 115.1: Updated to use std::span
 unsigned TString::hashLongStr() {
   lua_assert(getType() == LUA_VLNGSTR);
   if (getExtra() == 0) {  /* no hash? */
     size_t len = getLnglen();
-    setHash(luaS_hash(std::span(getlngstr(this), len), getHash()));
+    setHash(luaS_hash(getlngstr(this), len, getHash()));
     setExtra(1);  /* now it has its hash */
   }
   return getHash();
@@ -431,14 +426,13 @@ void TString::remove(lua_State* L) {
 }
 
 // Phase 25a: Convert luaS_normstr to TString method
-// Phase 115.1: Updated to use std::span
 TString* TString::normalize(lua_State* L) {
   size_t len = u.lnglen;
   if (len > LUAI_MAXSHORTLEN)
     return this;  /* long string; keep the original */
   else {
     const char *str = getlngstr(this);
-    return internshrstr(L, std::span(str, len));
+    return internshrstr(L, str, len);
   }
 }
 
