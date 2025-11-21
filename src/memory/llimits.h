@@ -77,6 +77,31 @@ inline constexpr bool ispow2(T x) noexcept {
 }
 
 
+/*
+** Safe multiplication helpers - check for overflow before multiplication
+** These functions return true if the multiplication would overflow
+*/
+
+/* Check if multiplication a * b would overflow size_t */
+inline constexpr bool wouldMultiplyOverflow(size_t a, size_t b) noexcept {
+	if (a == 0 || b == 0)
+		return false;
+	return a > MAX_SIZET / b;
+}
+
+/* Check if multiplication a * b would overflow for a specific type size */
+inline constexpr bool wouldSizeMultiplyOverflow(size_t count, size_t elemSize) noexcept {
+	return wouldMultiplyOverflow(count, elemSize);
+}
+
+/* Safe multiplication - returns 0 on overflow (for allocation failure path) */
+inline constexpr size_t safeMul(size_t a, size_t b) noexcept {
+	if (wouldMultiplyOverflow(a, b))
+		return 0;
+	return a * b;
+}
+
+
 /* number of chars of a literal string without the ending \0 */
 template<size_t N>
 inline constexpr size_t LL(const char (&)[N]) noexcept {

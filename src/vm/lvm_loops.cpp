@@ -88,8 +88,15 @@ int lua_State::forPrep(StkId ra) {
       }
       else {  /* step < 0; descending loop */
         count = l_castS2U(init) - l_castS2U(limit);
-        /* 'step+1' avoids negating 'mininteger' */
-        count /= l_castS2U(-(step + 1)) + 1u;
+        /* Handle LUA_MININTEGER edge case explicitly */
+        if (l_unlikely(step == LUA_MININTEGER)) {
+          /* For step == LUA_MININTEGER, count should be divided by max value */
+          count /= l_castS2U(LUA_MAXINTEGER) + 1u;
+        }
+        else {
+          /* 'step+1' avoids negating 'mininteger' in normal case */
+          count /= l_castS2U(-(step + 1)) + 1u;
+        }
       }
       /* use 'chgivalue' for places that for sure had integers */
       chgivalue(s2v(ra), l_castU2S(count));  /* change init to count */

@@ -1631,6 +1631,7 @@ static int str_pack (lua_State *L) {
       case Kint: {  /* signed integers */
         lua_Integer n = luaL_checkinteger(L, arg);
         if (size < SZINT) {  /* need overflow check? */
+          lua_assert(size > 0);  /* ensure size > 0 to avoid negative shift */
           lua_Integer lim = (lua_Integer)1 << ((size * NB) - 1);
           luaL_argcheck(L, -lim <= n && n < lim, arg, "integer overflow");
         }
@@ -1639,9 +1640,11 @@ static int str_pack (lua_State *L) {
       }
       case Kuint: {  /* unsigned integers */
         lua_Integer n = luaL_checkinteger(L, arg);
-        if (size < SZINT)  /* need overflow check? */
+        if (size < SZINT) {  /* need overflow check? */
+          lua_assert(size > 0);  /* ensure size > 0 to avoid negative shift */
           luaL_argcheck(L, (lua_Unsigned)n < ((lua_Unsigned)1 << (size * NB)),
                            arg, "unsigned overflow");
+        }
         packint(&b, (lua_Unsigned)n, h.islittle, cast_uint(size), 0);
         break;
       }
