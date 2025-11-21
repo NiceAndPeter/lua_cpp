@@ -303,8 +303,25 @@ int LuaStack::grow(lua_State* L, int n, int raiseerror) {
     return 0;  /* if not 'raiseerror', just signal it */
   }
   else if (n < MAXSTACK) {  /* avoids arithmetic overflows */
-    int newsize = size + (size >> 1);  /* tentative new size (size * 1.5) */
-    int needed = cast_int(top.p - stack.p) + n;
+    int newsize;
+    /* Check for overflow in size * 1.5 calculation */
+    if (size > INT_MAX / 3 * 2) {
+      /* size + (size >> 1) could overflow, use MAXSTACK */
+      newsize = MAXSTACK;
+    } else {
+      newsize = size + (size >> 1);  /* tentative new size (size * 1.5) */
+    }
+
+    /* Safe calculation of needed space */
+    ptrdiff_t stack_used = top.p - stack.p;
+    lua_assert(stack_used >= 0 && stack_used <= INT_MAX);
+    int needed;
+    if (stack_used > INT_MAX - n) {
+      /* needed calculation would overflow, use MAXSTACK */
+      needed = MAXSTACK;
+    } else {
+      needed = cast_int(stack_used) + n;
+    }
 
     if (newsize > MAXSTACK)  /* cannot cross the limit */
       newsize = MAXSTACK;

@@ -34,8 +34,10 @@
 /*
 ** Computes ceil(log2(x)), which is the smallest integer n such that
 ** x <= (1 << n).
+** Precondition: x > 0 (ceil(log2(0)) is undefined)
 */
 lu_byte luaO_ceillog2 (unsigned int x) {
+  lua_assert(x > 0);  /* ceil(log2(0)) is undefined */
   static const lu_byte log_2[256] = {  /* log_2[i - 1] = ceil(log2(i)) */
     0,1,2,2,3,3,3,3,4,4,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,
     6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,
