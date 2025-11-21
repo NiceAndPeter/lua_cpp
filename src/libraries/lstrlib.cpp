@@ -420,8 +420,8 @@ static const char *classend (MatchState *ms, const char *p) {
 }
 
 
-static int match_class (int c, int cl) {
-  int res;
+static bool match_class (int c, int cl) {
+  bool res;
   switch (tolower(cl)) {
     case 'a' : res = isalpha(c); break;
     case 'c' : res = iscntrl(c); break;
@@ -440,10 +440,10 @@ static int match_class (int c, int cl) {
 }
 
 
-static int matchbracketclass (int c, const char *p, const char *ec) {
-  int sig = 1;
+static bool matchbracketclass (int c, const char *p, const char *ec) {
+  bool sig = true;
   if (*(p+1) == '^') {
-    sig = 0;
+    sig = false;
     p++;  /* skip the '^' */
   }
   while (++p < ec) {
@@ -463,14 +463,14 @@ static int matchbracketclass (int c, const char *p, const char *ec) {
 }
 
 
-static int singlematch (MatchState *ms, const char *s, const char *p,
+static bool singlematch (MatchState *ms, const char *s, const char *p,
                         const char *ep) {
   if (s >= ms->src_end)
-    return 0;
+    return false;
   else {
     int c = cast_uchar(*s);
     switch (*p) {
-      case '.': return 1;  /* matches any char */
+      case '.': return true;  /* matches any char */
       case L_ESC: return match_class(c, cast_uchar(*(p+1)));
       case '[': return matchbracketclass(c, p, ep-1);
       default:  return (cast_uchar(*p) == c);
