@@ -15,6 +15,9 @@
 #include "luaconf.h"
 #include "lua.h"
 
+#ifdef __cplusplus
+#include <span>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -268,6 +271,17 @@ typedef struct luaL_Stream {
 
 
 #ifdef __cplusplus
+}
+#endif
+
+/* Phase 115.1: C++ std::span overloads (outside extern "C") */
+#ifdef __cplusplus
+// std::span-based buffer functions (internal C++ API)
+LUALIB_API void luaL_addlstring (luaL_Buffer *B, std::span<const char> s);
+
+// C-style wrapper for compatibility (inline, calls span version)
+inline void luaL_addlstring (luaL_Buffer *B, const char *s, size_t l) {
+	luaL_addlstring(B, std::span(s, l));
 }
 #endif
 

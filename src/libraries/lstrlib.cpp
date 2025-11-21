@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <span>
 
 #include "lua.h"
 
@@ -665,8 +666,13 @@ static const char *match (MatchState *ms, const char *s, const char *p) {
 
 
 
-static const char *lmemfind (const char *s1, size_t l1,
-                               const char *s2, size_t l2) {
+// Phase 115.1: std::span-based string search
+static const char *lmemfind (std::span<const char> haystack,
+                               std::span<const char> needle) {
+  size_t l1 = haystack.size();
+  size_t l2 = needle.size();
+  const char *s1 = haystack.data();
+  const char *s2 = needle.data();
   if (l2 == 0) return s1;  /* empty strings are everywhere */
   else if (l2 > l1) return nullptr;  /* avoids a negative 'l1' */
   else {
@@ -739,24 +745,28 @@ static int push_captures (MatchState *ms, const char *s, const char *e) {
 
 
 /* check whether pattern has no special characters */
-static int nospecials (const char *p, size_t l) {
+// Phase 115.1: Updated to use std::span
+static bool nospecials (std::span<const char> pattern) {
+  const char *p = pattern.data();
+  size_t l = pattern.size();
   size_t upto = 0;
   do {
     if (strpbrk(p + upto, SPECIALS))
-      return 0;  /* pattern has a special character */
+      return false;  /* pattern has a special character */
     upto += strlen(p + upto) + 1;  /* may have more after \0 */
   } while (upto <= l);
-  return 1;  /* no special chars found */
+  return true;  /* no special chars found */
 }
 
 
+// Phase 115.1: Updated to use std::span
 static void prepstate (MatchState *ms, lua_State *L,
-                       const char *s, size_t ls, const char *p, size_t lp) {
+                       std::span<const char> source, std::span<const char> pattern) {
   ms->L = L;
   ms->matchdepth = MAXCCALLS;
-  ms->src_init = s;
-  ms->src_end = s + ls;
-  ms->p_end = p + lp;
+  ms->src_init = source.data();
+  ms->src_end = source.data() + source.size();
+  ms->p_end = pattern.data() + pattern.size();
 }
 
 
@@ -776,9 +786,9 @@ static int str_find_aux (lua_State *L, int find) {
     return 1;
   }
   /* explicit request or no special characters? */
-  if (find && (lua_toboolean(L, 4) || nospecials(p, lp))) {
+  if (find && (lua_toboolean(L, 4) || nospecials(std::span(p, lp)))) {
     /* do a plain search */
-    const char *s2 = lmemfind(s + init, ls - init, p, lp);
+    const char *s2 = lmemfind(std::span(s + init, ls - init), std::span(p, lp));
     if (s2) {
       lua_pushinteger(L, ct_diff2S(s2 - s) + 1);
       lua_pushinteger(L, cast_st2S(ct_diff2sz(s2 - s) + lp));
@@ -792,7 +802,7 @@ static int str_find_aux (lua_State *L, int find) {
     if (anchor) {
       p++; lp--;  /* skip anchor character */
     }
-    prepstate(&ms, L, s, ls, p, lp);
+    prepstate(&ms, L, std::span(s, ls), std::span(p, lp));
     do {
       const char *res;
       reprepstate(&ms);
@@ -857,7 +867,7 @@ static int gmatch (lua_State *L) {
   gm = (GMatchState *)lua_newuserdatauv(L, sizeof(GMatchState), 0);
   if (init > ls)  /* start after string's end? */
     init = ls + 1;  /* avoid overflows in 's + init' */
-  prepstate(&gm->ms, L, s, ls, p, lp);
+  prepstate(&gm->ms, L, std::span(s, ls), std::span(p, lp));
   gm->src = s + init; gm->p = p; gm->lastmatch = nullptr;
   lua_pushcclosure(L, gmatch_aux, 3);
   return 1;
@@ -955,7 +965,7 @@ static int str_gsub (lua_State *L) {
   if (anchor) {
     p++; lp--;  /* skip anchor character */
   }
-  prepstate(&ms, L, src, srcl, p, lp);
+  prepstate(&ms, L, std::span(src, srcl), std::span(p, lp));
   while (n < max_s) {
     const char *e;
     reprepstate(&ms);  /* (re)prepare state for new match */

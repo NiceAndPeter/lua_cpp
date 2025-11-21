@@ -7,6 +7,8 @@
 #ifndef lstring_h
 #define lstring_h
 
+#include <span>
+
 #include "lgc.h"
 #include "lobject.h"
 #include "lstate.h"
@@ -63,7 +65,18 @@ inline bool eqshrstr(const TString* a, const TString* b) noexcept {
 }
 
 
-LUAI_FUNC unsigned luaS_hash (const char *str, size_t l, unsigned seed);
+// Phase 115.1: std::span-based string functions (internal C++ API)
+LUAI_FUNC unsigned luaS_hash (std::span<const char> str, unsigned seed);
+LUAI_FUNC TString *luaS_newlstr (lua_State *L, std::span<const char> str);
+
+// C-style wrappers for compatibility (forward to span versions)
+inline unsigned luaS_hash (const char *str, size_t l, unsigned seed) {
+	return luaS_hash(std::span(str, l), seed);
+}
+inline TString *luaS_newlstr (lua_State *L, const char *str, size_t l) {
+	return luaS_newlstr(L, std::span(str, l));
+}
+
 LUAI_FUNC unsigned luaS_hashlongstr (TString *ts);
 LUAI_FUNC int luaS_eqstr (TString *a, TString *b);
 LUAI_FUNC void luaS_resize (lua_State *L, unsigned int newsize);
@@ -72,7 +85,6 @@ LUAI_FUNC void luaS_init (lua_State *L);
 /* Phase 26: Removed luaS_remove - now TString::remove() method */
 LUAI_FUNC Udata *luaS_newudata (lua_State *L, size_t s,
                                               unsigned short nuvalue);
-LUAI_FUNC TString *luaS_newlstr (lua_State *L, const char *str, size_t l);
 LUAI_FUNC TString *luaS_new (lua_State *L, const char *str);
 LUAI_FUNC TString *luaS_createlngstrobj (lua_State *L, size_t l);
 LUAI_FUNC TString *luaS_newextlstr (lua_State *L,
