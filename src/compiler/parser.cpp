@@ -412,10 +412,11 @@ Proto *Parser::addprototype() {
   if (funcstate->getNP() >= proto->getProtosSize()) {
     int oldsize = proto->getProtosSize();
     luaM_growvector(state, proto->getProtosRef(), funcstate->getNP(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
-    while (oldsize < proto->getProtosSize())
-      proto->getProtos()[oldsize++] = nullptr;
+    auto protosSpan = proto->getProtosSpan();
+    while (oldsize < static_cast<int>(protosSpan.size()))
+      protosSpan[oldsize++] = nullptr;
   }
-  proto->getProtos()[funcstate->getNPRef()++] = clp = luaF_newproto(state);
+  proto->getProtosSpan()[funcstate->getNPRef()++] = clp = luaF_newproto(state);
   luaC_objbarrier(state, proto, clp);
   return clp;
 }

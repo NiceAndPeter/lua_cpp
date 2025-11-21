@@ -319,9 +319,10 @@ int FuncState::addk(Proto *proto, TValue *v) {
   int oldsize = proto->getConstantsSize();
   int k = getNK();
   luaM_growvector(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
-  while (oldsize < proto->getConstantsSize())
-    setnilvalue(&proto->getConstants()[oldsize++]);
-  proto->getConstants()[k] = *v;
+  auto constantsSpan = proto->getConstantsSpan();
+  while (oldsize < static_cast<int>(constantsSpan.size()))
+    setnilvalue(&constantsSpan[oldsize++]);
+  constantsSpan[k] = *v;
   incrementNK();
   luaC_barrier(L, proto, v);
   return k;
@@ -1071,10 +1072,10 @@ void FuncState::codeconcat(expdesc *e1, expdesc *e2, int line) {
 ** return the final target of a jump (skipping jumps to jumps)
 */
 int FuncState::finaltarget(int i) {
-  Instruction *code = getProto()->getCode();
+  auto codeSpan = getProto()->getCodeSpan();
   int count;
   for (count = 0; count < 100; count++) {  /* avoid infinite loops */
-    Instruction instr = code[i];
+    Instruction instr = codeSpan[i];
     if (InstructionView(instr).opcode() != OP_JMP)
       break;
     else
@@ -1654,8 +1655,9 @@ void FuncState::setlist(int base, int nelems, int tostore) {
 void FuncState::finish() {
   int i;
   Proto *p = getProto();
+  auto codeSpan = p->getCodeSpan();
   for (i = 0; i < getPC(); i++) {
-    Instruction *instr = &p->getCode()[i];
+    Instruction *instr = &codeSpan[i];
     /* avoid "not used" warnings when assert is off (for 'onelua.c') */
     (void)luaP_isOT; (void)luaP_isIT;
     lua_assert(i == 0 || luaP_isOT(*(instr - 1)) == luaP_isIT(*instr));
