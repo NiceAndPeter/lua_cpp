@@ -116,12 +116,12 @@ public:
 
   /* Convert stack pointer to offset from base */
   inline ptrdiff_t save(StkId pt) const noexcept {
-    return cast_charp(pt) - cast_charp(stack.p);
+    return pt - stack.p;  /* direct pointer arithmetic, no char* round-trip */
   }
 
   /* Convert offset to stack pointer */
   inline StkId restore(ptrdiff_t n) const noexcept {
-    return reinterpret_cast<StkId>(cast_charp(stack.p) + n);
+    return stack.p + n;  /* direct pointer arithmetic, safe with LTO */
   }
 
   /*

@@ -58,10 +58,14 @@ void luaV_concat (lua_State *L, int total) {
     StkId top = L->getTop().p;
     int n = 2;  /* number of elements handled in this pass (at least 2) */
     if (!(ttisstring(s2v(top - 2)) || cvt2str(s2v(top - 2))) ||
-        !tostring(L, s2v(top - 1)))
+        !tostring(L, s2v(top - 1))) {
       luaT_tryconcatTM(L);  /* may invalidate 'top' */
-    else if (isemptystr(s2v(top - 1)))  /* second operand is empty? */
+      top = L->getTop().p;  /* recapture after potential GC */
+    }
+    else if (isemptystr(s2v(top - 1))) {  /* second operand is empty? */
       cast_void(tostring(L, s2v(top - 2)));  /* result is first operand */
+      top = L->getTop().p;  /* recapture after potential GC */
+    }
     else if (isemptystr(s2v(top - 2))) {  /* first operand is empty string? */
       *s2v(top - 2) = *s2v(top - 1);  /* result is second op. (operator=) */
     }
@@ -71,6 +75,7 @@ void luaV_concat (lua_State *L, int total) {
       TString *ts;
       /* collect total length and number of strings */
       for (n = 1; n < total && tostring(L, s2v(top - n - 1)); n++) {
+        top = L->getTop().p;  /* recapture after tostring() which can trigger GC */
         size_t l = tsslen(tsvalue(s2v(top - n - 1)));
         if (l_unlikely(l >= MAX_SIZE - sizeof(TString) - tl)) {
           L->getStackSubsystem().setTopPtr(top - total);  /* pop strings to avoid wasting stack */
@@ -82,9 +87,11 @@ void luaV_concat (lua_State *L, int total) {
         char buff[LUAI_MAXSHORTLEN];
         copy2buff(top, n, buff);  /* copy strings to buffer */
         ts = luaS_newlstr(L, buff, tl);
+        top = L->getTop().p;  /* recapture after potential GC */
       }
       else {  /* long string; copy strings directly to final result */
         ts = luaS_createlngstrobj(L, tl);
+        top = L->getTop().p;  /* recapture after potential GC */
         copy2buff(top, n, getlngstr(ts));
       }
       setsvalue2s(L, top - n, ts);  /* create result */
