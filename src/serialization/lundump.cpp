@@ -191,9 +191,10 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
 }
 
 
+// Phase 115.2: Use span accessors
 static void loadCode (LoadState *S, Proto *f) {
   int n = loadInt(S);
-  loadAlign(S, sizeof(f->getCode()[0]));
+  loadAlign(S, sizeof(Instruction));
   if (S->fixed) {
     f->setCode(getaddr(S, n, Instruction));
     f->setCodeSize(n);
@@ -201,7 +202,8 @@ static void loadCode (LoadState *S, Proto *f) {
   else {
     f->setCode(luaM_newvectorchecked(S->L, n, Instruction));
     f->setCodeSize(n);
-    loadVector(S, f->getCode(), static_cast<size_t>(n));
+    auto codeSpan = f->getCodeSpan();  // Get span after allocation
+    loadVector(S, codeSpan.data(), codeSpan.size());
   }
 }
 
@@ -209,16 +211,18 @@ static void loadCode (LoadState *S, Proto *f) {
 static void loadFunction(LoadState *S, Proto *f);
 
 
+// Phase 115.2: Use span accessors
 static void loadConstants (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
   f->setConstants(luaM_newvectorchecked(S->L, n, TValue));
   f->setConstantsSize(n);
-  std::for_each_n(f->getConstants(), n, [](TValue& v) {
+  auto constantsSpan = f->getConstantsSpan();
+  for (TValue& v : constantsSpan) {
     setnilvalue(&v);
-  });
+  }
   for (i = 0; i < n; i++) {
-    TValue *o = &f->getConstants()[i];
+    TValue *o = &constantsSpan[i];
     int t = loadByte(S);
     switch (t) {
       case LUA_VNIL:
@@ -272,23 +276,26 @@ static void loadProtos (LoadState *S, Proto *f) {
 ** the creation of the error message can call an emergency collection;
 ** in that case all prototypes must be consistent for the GC.
 */
+// Phase 115.2: Use span accessors
 static void loadUpvalues (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
   f->setUpvalues(luaM_newvectorchecked(S->L, n, Upvaldesc));
   f->setUpvaluesSize(n);
+  auto upvaluesSpan = f->getUpvaluesSpan();
   /* make array valid for GC */
-  std::for_each_n(f->getUpvalues(), n, [](Upvaldesc& uv) {
+  for (Upvaldesc& uv : upvaluesSpan) {
     uv.setName(nullptr);
-  });
+  }
   for (i = 0; i < n; i++) {  /* following calls can raise errors */
-    f->getUpvalues()[i].setInStack(loadByte(S));
-    f->getUpvalues()[i].setIndex(loadByte(S));
-    f->getUpvalues()[i].setKind(loadByte(S));
+    upvaluesSpan[i].setInStack(loadByte(S));
+    upvaluesSpan[i].setIndex(loadByte(S));
+    upvaluesSpan[i].setKind(loadByte(S));
   }
 }
 
 
+// Phase 115.2: Use span accessors
 static void loadDebug (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
@@ -299,7 +306,8 @@ static void loadDebug (LoadState *S, Proto *f) {
   else {
     f->setLineInfo(luaM_newvectorchecked(S->L, n, ls_byte));
     f->setLineInfoSize(n);
-    loadVector(S, f->getLineInfo(), static_cast<size_t>(n));
+    auto lineInfoSpan = f->getDebugInfo().getLineInfoSpan();
+    loadVector(S, lineInfoSpan.data(), lineInfoSpan.size());
   }
   n = loadInt(S);
   if (n > 0) {
@@ -311,25 +319,28 @@ static void loadDebug (LoadState *S, Proto *f) {
     else {
       f->setAbsLineInfo(luaM_newvectorchecked(S->L, n, AbsLineInfo));
       f->setAbsLineInfoSize(n);
-      loadVector(S, f->getAbsLineInfo(), static_cast<size_t>(n));
+      auto absLineInfoSpan = f->getDebugInfo().getAbsLineInfoSpan();
+      loadVector(S, absLineInfoSpan.data(), absLineInfoSpan.size());
     }
   }
   n = loadInt(S);
   f->setLocVars(luaM_newvectorchecked(S->L, n, LocVar));
   f->setLocVarsSize(n);
-  std::for_each_n(f->getLocVars(), n, [](LocVar& lv) {
+  auto locVarsSpan = f->getDebugInfo().getLocVarsSpan();
+  for (LocVar& lv : locVarsSpan) {
     lv.setVarName(nullptr);
-  });
+  }
   for (i = 0; i < n; i++) {
-    loadString(S, f, f->getLocVars()[i].getVarNamePtr());
-    f->getLocVars()[i].setStartPC(loadInt(S));
-    f->getLocVars()[i].setEndPC(loadInt(S));
+    loadString(S, f, locVarsSpan[i].getVarNamePtr());
+    locVarsSpan[i].setStartPC(loadInt(S));
+    locVarsSpan[i].setEndPC(loadInt(S));
   }
   n = loadInt(S);
   if (n != 0)  /* does it have debug information? */
     n = f->getUpvaluesSize();  /* must be this many */
+  auto upvaluesSpan = f->getUpvaluesSpan();
   for (i = 0; i < n; i++)
-    loadString(S, f, f->getUpvalues()[i].getNamePtr());
+    loadString(S, f, upvaluesSpan[i].getNamePtr());
 }
 
 
