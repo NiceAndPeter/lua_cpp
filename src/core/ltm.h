@@ -8,6 +8,7 @@
 #define ltm_h
 
 
+#include <array>
 #include "lobject.h"
 
 
@@ -78,7 +79,8 @@ struct lua_State;
 inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept;
 inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept;
 
-LUAI_DDEC(const char *const luaT_typenames_[LUA_TOTALTYPES];)
+using TypeNamesArray = std::array<const char*, LUA_TOTALTYPES>;
+LUAI_DDEC(const TypeNamesArray luaT_typenames_;)
 
 inline const char* ttypename(int x) noexcept {
 	return luaT_typenames_[x + 1];

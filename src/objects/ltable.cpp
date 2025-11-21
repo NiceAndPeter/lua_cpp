@@ -371,7 +371,7 @@ static inline Node *mainpositionfromnode (const Table *t, Node *nd) {
 ** anything.  (In particular, 'next' will return some other valid item
 ** on the table or nil.)
 */
-static int equalkey (const TValue *k1, const Node *n2, int deadok) {
+static bool equalkey (const TValue *k1, const Node *n2, int deadok) {
   if (rawtt(k1) != n2->getKeyType()) {  /* not the same variants? */
     if (n2->isKeyShrStr() && ttislngstring(k1)) {
       /* an external string can be equal to a short-string key */
@@ -382,12 +382,12 @@ static int equalkey (const TValue *k1, const Node *n2, int deadok) {
       return gcvalue(k1) == gcvalueraw(n2->getKeyValue());
    }
    else
-     return 0;  /* otherwise, different variants cannot be equal */
+     return false;  /* otherwise, different variants cannot be equal */
   }
   else {  /* equal variants */
     switch (n2->getKeyType()) {
       case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE:
-        return 1;
+        return true;
       case LUA_VNUMINT:
         return (ivalue(k1) == n2->getKeyIntValue());
       case LUA_VNUMFLT:
@@ -1132,7 +1132,7 @@ static TValue *getintfromhash (Table *t, lua_Integer key) {
 }
 
 
-static int hashkeyisempty (Table *t, lua_Unsigned key) {
+static bool hashkeyisempty (Table *t, lua_Unsigned key) {
   const TValue *val = getintfromhash(t, l_castU2S(key));
   return isempty(val);
 }

@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <array>
 #include <cstring>
 
 #include "lua.h"
@@ -27,7 +28,7 @@
 
 static const char udatatypename[] = "userdata";
 
-LUAI_DDEF const char *const luaT_typenames_[LUA_TOTALTYPES] = {
+LUAI_DDEF const TypeNamesArray luaT_typenames_ = {
   "no value",
   "nil", "boolean", udatatypename, "number",
   "string", "table", "function", udatatypename, "thread",
@@ -36,7 +37,7 @@ LUAI_DDEF const char *const luaT_typenames_[LUA_TOTALTYPES] = {
 
 
 void luaT_init (lua_State *L) {
-  static const char *const luaT_eventname[] = {  /* ORDER TM */
+  static constexpr std::array<const char*, 25> luaT_eventname = {  /* ORDER TM */
     "__index", "__newindex",
     "__gc", "__mode", "__len", "__eq",
     "__add", "__sub", "__mul", "__mod", "__pow",

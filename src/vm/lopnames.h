@@ -7,12 +7,13 @@
 #if !defined(lopnames_h)
 #define lopnames_h
 
+#include <array>
 #include <cstddef>
 
 
 /* ORDER OP */
 
-static const char *const opnames[] = {
+static constexpr std::array<const char*, 84> opnames = {
   "MOVE",
   "LOADI",
   "LOADF",

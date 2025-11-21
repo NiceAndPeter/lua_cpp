@@ -10,6 +10,7 @@
 #include "lprefix.h"
 
 
+#include <array>
 #include "lopcodes.h"
 
 
@@ -19,7 +20,7 @@
 
 /* ORDER OP */
 
-LUAI_DDEF const lu_byte luaP_opmodes[NUM_OPCODES] = {
+LUAI_DDEF const OpModesArray luaP_opmodes = {
 /*       MM OT IT T  A  mode		   opcode  */
   opmode(0, 0, 0, 0, 1, OpMode::iABC)		/* OP_MOVE */
  ,opmode(0, 0, 0, 0, 1, OpMode::iAsBx)		/* OP_LOADI */
