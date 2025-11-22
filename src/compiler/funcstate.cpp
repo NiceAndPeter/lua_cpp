@@ -26,6 +26,7 @@
 #include "lstate.h"
 #include "lstring.h"
 #include "ltable.h"
+#include "../memory/lgc.h"
 
 
 /* because all strings are unified by the scanner, the parser
