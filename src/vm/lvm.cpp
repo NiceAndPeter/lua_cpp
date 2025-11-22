@@ -603,12 +603,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     int imm = InstructionView(i).sc();
     if (ttisinteger(v1)) {
       lua_Integer iv1 = ivalue(v1);
-      pc++; setivalue(ra, iop(L, iv1, imm));
+      pc++; ra->setInt(iop(L, iv1, imm));
     }
     else if (ttisfloat(v1)) {
       lua_Number nb = fltvalue(v1);
       lua_Number fimm = cast_num(imm);
-      pc++; setfltvalue(ra, fop(L, nb, fimm));
+      pc++; ra->setFloat(fop(L, nb, fimm));
     }
   };
 
@@ -617,7 +617,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     lua_Number n1, n2;
     if (tonumberns(v1, n1) && tonumberns(v2, n2)) {
       StkId ra = RA(i);
-      pc++; setfltvalue(s2v(ra), fop(L, n1, n2));
+      pc++; s2v(ra)->setFloat(fop(L, n1, n2));
     }
   };
 
@@ -642,7 +642,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       StkId ra = RA(i);
       lua_Integer i1 = ivalue(v1);
       lua_Integer i2 = ivalue(v2);
-      pc++; setivalue(s2v(ra), iop(L, i1, i2));
+      pc++; s2v(ra)->setInt(iop(L, i1, i2));
     }
     else {
       op_arithf_aux(v1, v2, fop, i);
@@ -672,7 +672,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     lua_Integer i2 = ivalue(v2);
     if (tointegerns(v1, &i1)) {
       StkId ra = RA(i);
-      pc++; setivalue(s2v(ra), op(i1, i2));
+      pc++; s2v(ra)->setInt(op(i1, i2));
     }
   };
 
@@ -683,7 +683,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     lua_Integer i1, i2;
     if (tointegerns(v1, &i1) && tointegerns(v2, &i2)) {
       StkId ra = RA(i);
-      pc++; setivalue(s2v(ra), op(i1, i2));
+      pc++; s2v(ra)->setInt(op(i1, i2));
     }
   };
 
@@ -768,13 +768,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       vmcase(OP_LOADI) {
         StkId ra = RA(i);
         lua_Integer b = InstructionView(i).sbx();
-        setivalue(s2v(ra), b);
+        s2v(ra)->setInt(b);
         vmbreak;
       }
       vmcase(OP_LOADF) {
         StkId ra = RA(i);
         int b = InstructionView(i).sbx();
-        setfltvalue(s2v(ra), cast_num(b));
+        s2v(ra)->setFloat(cast_num(b));
         vmbreak;
       }
       vmcase(OP_LOADK) {
@@ -859,7 +859,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         luaV_fastgeti(rb, c, s2v(ra), tag);
         if (tagisempty(tag)) {
           TValue key;
-          setivalue(&key, c);
+          key.setInt(c);
           Protect([&]() { luaV_finishget(L, rb, &key, ra, tag); });
         }
         vmbreak;
@@ -915,7 +915,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           luaV_finishfastset(L, s2v(ra), rc);
         else {
           TValue key;
-          setivalue(&key, b);
+          key.setInt(b);
           Protect([&]() { luaV_finishset(L, s2v(ra), &key, rc, hres); });
         }
         vmbreak;
@@ -1018,7 +1018,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         int ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
-          pc++; setivalue(s2v(ra), luaV_shiftl(ic, ib));
+          pc++; s2v(ra)->setInt(luaV_shiftl(ic, ib));
         }
         vmbreak;
       }
@@ -1028,7 +1028,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         int ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
-          pc++; setivalue(s2v(ra), luaV_shiftl(ib, -ic));
+          pc++; s2v(ra)->setInt(luaV_shiftl(ib, -ic));
         }
         vmbreak;
       }
@@ -1118,10 +1118,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         lua_Number nb;
         if (ttisinteger(rb)) {
           lua_Integer ib = ivalue(rb);
-          setivalue(s2v(ra), intop(-, 0, ib));
+          s2v(ra)->setInt(intop(-, 0, ib));
         }
         else if (tonumberns(rb, nb)) {
-          setfltvalue(s2v(ra), luai_numunm(L, nb));
+          s2v(ra)->setFloat(luai_numunm(L, nb));
         }
         else
           Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_UNM); });
@@ -1132,7 +1132,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = vRB(i);
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
-          setivalue(s2v(ra), intop(^, ~l_castS2U(0), ib));
+          s2v(ra)->setInt(intop(^, ~l_castS2U(0), ib));
         }
         else
           Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_BNOT); });
@@ -1368,9 +1368,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           if (count > 0) {  /* still more iterations? */
             lua_Integer step = ivalue(s2v(ra + 1));
             lua_Integer idx = ivalue(s2v(ra + 2));  /* control variable */
-            chgivalue(s2v(ra), l_castU2S(count - 1));  /* update counter */
+            s2v(ra)->changeInt(l_castU2S(count - 1));  /* update counter */
             idx = intop(+, idx, step);  /* add step to index */
-            chgivalue(s2v(ra + 2), idx);  /* update control variable */
+            s2v(ra + 2)->changeInt(idx);  /* update control variable */
             pc -= InstructionView(i).bx();  /* jump back */
           }
         }

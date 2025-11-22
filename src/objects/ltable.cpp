@@ -497,7 +497,7 @@ int luaH_next (lua_State *L, Table *t, StkId key) {
   for (; i < asize; i++) {  /* try first array part */
     lu_byte tag = *t->getArrayTag(i);
     if (!tagisempty(tag)) {  /* a non-empty entry? */
-      setivalue(s2v(key), cast_int(i) + 1);
+      s2v(key)->setInt(cast_int(i) + 1);
       farr2val(t, i, tag, s2v(key + 1));
       return 1;
     }
@@ -816,7 +816,7 @@ static void reinsertOldSlice (Table *t, unsigned oldasize,
     lu_byte tag = *t->getArrayTag(i);
     if (!tagisempty(tag)) {  /* a non-empty entry? */
       TValue key, aux;
-      setivalue(&key, l_castU2S(i) + 1);  /* make the key */
+      key.setInt(l_castU2S(i) + 1);  /* make the key */
       farr2val(t, i, tag, &aux);  /* copy value into 'aux' */
       insertkey(t, &key, &aux);  /* insert entry into the hash part */
     }
@@ -1513,7 +1513,7 @@ void Table::setInt(lua_State* L, lua_Integer key, TValue* value) {
     bool ok = rawfinishnodeset(getintfromhash(this, key), value);
     if (!ok) {
       TValue k;
-      setivalue(&k, key);
+      k.setInt(key);
       luaH_newkey(L, this, &k, value);
     }
   }
@@ -1529,7 +1529,7 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
       lua_Number f = fltvalue(key);
       lua_Integer k;
       if (luaV_flttointeger(f, &k, F2Imod::F2Ieq)) {
-        setivalue(&aux, k);  /* key is equal to an integer */
+        aux.setInt(k);  /* key is equal to an integer */
         key = &aux;  /* insert it as an integer */
       }
       else if (l_unlikely(luai_numisnan(f)))

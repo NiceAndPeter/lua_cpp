@@ -112,15 +112,15 @@ void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
       Table *h = hvalue(rb);
       tm = fasttm(L, h->getMetatable(), TMS::TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
-      setivalue(s2v(ra), l_castU2S(luaH_getn(L, h)));  /* else primitive len */
+      s2v(ra)->setInt(l_castU2S(luaH_getn(L, h)));  /* else primitive len */
       return;
     }
     case LUA_VSHRSTR: {
-      setivalue(s2v(ra), static_cast<lua_Integer>(tsvalue(rb)->length()));
+      s2v(ra)->setInt(static_cast<lua_Integer>(tsvalue(rb)->length()));
       return;
     }
     case LUA_VLNGSTR: {
-      setivalue(s2v(ra), cast_st2S(tsvalue(rb)->getLnglen()));
+      s2v(ra)->setInt(cast_st2S(tsvalue(rb)->getLnglen()));
       return;
     }
     default: {  /* try metamethod */

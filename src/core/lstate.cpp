@@ -367,7 +367,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   g->setGCTotalBytes(sizeof(global_State));
   g->setGCMarked(0);
   g->setGCDebt(0);
-  setivalue(g->getNilValue(), 0);  /* to signal that state is not yet built */
+  g->getNilValue()->setInt(0);  /* to signal that state is not yet built */
   setgcparam(g, PAUSE, LUAI_GCPAUSE);
   setgcparam(g, STEPMUL, LUAI_GCMUL);
   setgcparam(g, STEPSIZE, LUAI_GCSTEPSIZE);
