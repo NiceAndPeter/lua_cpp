@@ -443,7 +443,7 @@ void freeobj (lua_State *L, GCObject *o) {
       if (ts->getShrlen() == LSTRMEM)  /* must free external string? */
         (*ts->getFalloc())(ts->getUserData(), ts->getContentsField(), ts->getLnglen() + 1, 0);
       ts->~TString();  // Call destructor
-      luaM_freemem(L, ts, luaS_sizelngstr(ts->getLnglen(), ts->getShrlen()));
+      luaM_freemem(L, ts, TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen()));
       break;
     }
     default: lua_assert(0);

@@ -59,7 +59,7 @@ l_mem GCCore::objsize(GCObject* o) {
         }
         case LUA_VLNGSTR: {
             TString* ts = gco2ts(o);
-            res = luaS_sizelngstr(ts->getLnglen(), ts->getShrlen());
+            res = TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen());
             break;
         }
         case LUA_VUPVAL: {

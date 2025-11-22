@@ -297,7 +297,7 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
 /* raise a stack error while running the message handler */
 // Convert to lua_State method
 l_noret lua_State::errorError() {
-  TString *msg = luaS_newliteral(this, "error in error handling");
+  TString *msg = TString::create(this, "error in error handling", 23);
   setsvalue2s(this, getTop().p, msg);
   getStackSubsystem().push();  /* assume EXTRA_STACK */
   doThrow(LUA_ERRERR);
@@ -826,7 +826,7 @@ CallInfo* lua_State::findPCall() {
 static int resume_error (lua_State *L, const char *msg, int narg) {
   api_checkpop(L, narg);
   L->getStackSubsystem().popN(narg);  /* remove args from the stack */
-  setsvalue2s(L, L->getTop().p, luaS_new(L, msg));  /* push error message */
+  setsvalue2s(L, L->getTop().p, TString::create(L, msg));  /* push error message */
   api_incr_top(L);
   lua_unlock(L);
   return LUA_ERRRUN;

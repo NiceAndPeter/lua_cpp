@@ -323,7 +323,7 @@ static Node *mainpositionTV (const Table *t, const TValue *key) {
     }
     case LUA_VLNGSTR: {
       TString *ts = tsvalue(key);
-      return hashpow2(t, luaS_hashlongstr(ts));
+      return hashpow2(t, ts->hashLongStr());
     }
     case LUA_VFALSE:
       return hashboolean(t, 0);
@@ -375,7 +375,7 @@ static bool equalkey (const TValue *k1, const Node *n2, int deadok) {
   if (rawtt(k1) != n2->getKeyType()) {  /* not the same variants? */
     if (n2->isKeyShrStr() && ttislngstring(k1)) {
       /* an external string can be equal to a short-string key */
-      return luaS_eqstr(tsvalue(k1), n2->getKeyStrValue());
+      return tsvalue(k1)->equals(n2->getKeyStrValue());
     }
     else if (deadok && n2->isKeyDead() && iscollectable(k1)) {
       /* a collectable value can be equal to a dead key */
@@ -397,7 +397,7 @@ static bool equalkey (const TValue *k1, const Node *n2, int deadok) {
       case LUA_VLCF:
         return fvalue(k1) == fvalueraw(n2->getKeyValue());
       case ctb(LUA_VLNGSTR):
-        return luaS_eqstr(tsvalue(k1), n2->getKeyStrValue());
+        return tsvalue(k1)->equals(n2->getKeyStrValue());
       default:
         return gcvalue(k1) == gcvalueraw(n2->getKeyValue());
     }

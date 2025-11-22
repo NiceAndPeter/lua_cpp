@@ -48,7 +48,7 @@ void luaT_init (lua_State *L) {
   };
   int i;
   for (i=0; i<static_cast<int>(TMS::TM_N); i++) {
-    G(L)->setTMName(i, luaS_new(L, luaT_eventname[i]));
+    G(L)->setTMName(i, TString::create(L, luaT_eventname[i]));
     obj2gco(G(L)->getTMName(i))->fix(L);  /* never collect these names */
   }
 }
@@ -93,7 +93,7 @@ const char *luaT_objtypename (lua_State *L, const TValue *o) {
   Table *mt;
   if ((ttistable(o) && (mt = hvalue(o)->getMetatable()) != nullptr) ||
       (ttisfulluserdata(o) && (mt = uvalue(o)->getMetatable()) != nullptr)) {
-    const TValue *name = luaH_Hgetshortstr(mt, luaS_new(L, "__name"));
+    const TValue *name = luaH_Hgetshortstr(mt, TString::create(L, "__name"));
     if (ttisstring(name))  /* is '__name' a string? */
       return getstr(tsvalue(name));  /* use it as type name */
   }

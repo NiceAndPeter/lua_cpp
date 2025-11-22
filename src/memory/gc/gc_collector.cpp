@@ -73,7 +73,7 @@ void GCCollector::atomic(lua_State* L) {
   /* clear values from resurrected weak tables */
   GCWeak::clearbyvalues(g, g->getWeak(), origweak);
   GCWeak::clearbyvalues(g, g->getAllWeak(), origall);
-  luaS_clearcache(g);
+  TString::clearCache(g);
   g->setCurrentWhite(cast_byte(otherwhite(g)));  /* flip current white */
   lua_assert(g->getGray() == nullptr);
 }

@@ -214,7 +214,7 @@ static void f_luaopen (lua_State *L, void *ud) {
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
   init_registry(L, g);
-  luaS_init(L);
+  TString::init(L);
   luaT_init(L);
   luaX_init(L);
   g->setGCStp(0);  /* allow gc */

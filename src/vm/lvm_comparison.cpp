@@ -209,7 +209,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
         /* compare two strings with different variants: they can be
            equal when one string is a short string and the other is
            an external string  */
-        return luaS_eqstr(tsvalue(t1), tsvalue(t2));
+        return tsvalue(t1)->equals(tsvalue(t2));
       }
       default:
         /* only numbers (integer/float) and strings (long/short) can have
@@ -229,7 +229,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
       case LUA_VSHRSTR:
         return eqshrstr(tsvalue(t1), tsvalue(t2));
       case LUA_VLNGSTR:
-        return luaS_eqstr(tsvalue(t1), tsvalue(t2));
+        return tsvalue(t1)->equals(tsvalue(t2));
       case LUA_VUSERDATA: {
         if (uvalue(t1) == uvalue(t2)) return 1;
         else if (L == nullptr) return 0;
