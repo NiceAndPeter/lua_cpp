@@ -191,13 +191,13 @@ void FuncState::patchlistaux(int list, int vtarget, int reg, int dtarget) {
 void FuncState::savelineinfo(Proto *proto, int line) {
   auto linedif = line - getPreviousLine();
   auto pcval = getPC() - 1;  /* last instruction coded */
-  if (abs(linedif) >= LIMLINEDIFF || postIncrementInstructionsWithAbs() >= MAXIWTHABS) {
-    luaM_growvector(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNAbsLineInfo(),
+  if (abs(linedif) >= LIMLINEDIFF || postIncrementInstructionsSinceAbsoluteLineInfo() >= MAXIWTHABS) {
+    luaM_growvector(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNumberOfAbsoluteLineInfo(),
                     proto->getAbsLineInfoSizeRef(), AbsLineInfo, std::numeric_limits<int>::max(), "lines");
-    proto->getAbsLineInfo()[getNAbsLineInfo()].setPC(pcval);
-    proto->getAbsLineInfo()[postIncrementNAbsLineInfo()].setLine(line);
+    proto->getAbsLineInfo()[getNumberOfAbsoluteLineInfo()].setPC(pcval);
+    proto->getAbsLineInfo()[postIncrementNumberOfAbsoluteLineInfo()].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
-    setInstructionsWithAbs(1);  /* restart counter */
+    setInstructionsSinceAbsoluteLineInfo(1);  /* restart counter */
   }
   luaM_growvector(getLexState()->getLuaState(), proto->getLineInfoRef(), pcval, proto->getLineInfoSizeRef(), ls_byte,
                   std::numeric_limits<int>::max(), "opcodes");
@@ -216,12 +216,12 @@ void FuncState::removelastlineinfo() {
   auto pcval = getPC() - 1;  /* last instruction coded */
   if (proto->getLineInfo()[pcval] != ABSLINEINFO) {  /* relative line info? */
     setPreviousLine(getPreviousLine() - proto->getLineInfo()[pcval]);  /* correct last line saved */
-    decrementInstructionsWithAbs();  /* undo previous increment */
+    decrementInstructionsSinceAbsoluteLineInfo();  /* undo previous increment */
   }
   else {  /* absolute line information */
-    lua_assert(proto->getAbsLineInfo()[getNAbsLineInfo() - 1].getPC() == pcval);
-    decrementNAbsLineInfo();  /* remove it */
-    setInstructionsWithAbs(MAXIWTHABS + 1);  /* force next line info to be absolute */
+    lua_assert(proto->getAbsLineInfo()[getNumberOfAbsoluteLineInfo() - 1].getPC() == pcval);
+    decrementNumberOfAbsoluteLineInfo();  /* remove it */
+    setInstructionsSinceAbsoluteLineInfo(MAXIWTHABS + 1);  /* force next line info to be absolute */
   }
 }
 
@@ -317,13 +317,13 @@ void FuncState::freeExpressions(expdesc *e1, expdesc *e2) {
 int FuncState::addk(Proto *proto, TValue *v) {
   lua_State *L = getLexState()->getLuaState();
   auto oldsize = proto->getConstantsSize();
-  auto k = getNK();
+  auto k = getNumberOfConstants();
   luaM_growvector(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
   auto constantsSpan = proto->getConstantsSpan();
   while (oldsize < static_cast<int>(constantsSpan.size()))
     setnilvalue(&constantsSpan[oldsize++]);
   constantsSpan[k] = *v;
-  incrementNK();
+  incrementNumberOfConstants();
   luaC_barrier(L, proto, v);
   return k;
 }

@@ -409,14 +409,14 @@ Proto *Parser::addprototype() {
   lua_State *state = ls->getLuaState();
   FuncState *funcstate = fs;
   Proto *proto = funcstate->getProto();  /* prototype of current function */
-  if (funcstate->getNP() >= proto->getProtosSize()) {
+  if (funcstate->getNumberOfNestedPrototypes() >= proto->getProtosSize()) {
     auto oldsize = proto->getProtosSize();
-    luaM_growvector(state, proto->getProtosRef(), funcstate->getNP(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
+    luaM_growvector(state, proto->getProtosRef(), funcstate->getNumberOfNestedPrototypes(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
     auto protosSpan = proto->getProtosSpan();
     while (oldsize < static_cast<int>(protosSpan.size()))
       protosSpan[oldsize++] = nullptr;
   }
-  proto->getProtosSpan()[funcstate->getNPRef()++] = clp = luaF_newproto(state);
+  proto->getProtosSpan()[funcstate->getNumberOfNestedPrototypesRef()++] = clp = luaF_newproto(state);
   luaC_objbarrier(state, proto, clp);
   return clp;
 }
@@ -431,7 +431,7 @@ Proto *Parser::addprototype() {
 */
 void Parser::codeclosure( expdesc *v) {
   FuncState *funcstate = fs->getPrev();
-  v->init(VRELOC, funcstate->codeABx(OP_CLOSURE, 0, funcstate->getNP() - 1));
+  v->init(VRELOC, funcstate->codeABx(OP_CLOSURE, 0, funcstate->getNumberOfNestedPrototypes() - 1));
   funcstate->exp2nextreg(v);  /* fix it at the last register */
 }
 
@@ -444,12 +444,12 @@ void Parser::open_func(FuncState *funcstate, BlockCnt *bl) {
   setFuncState(funcstate);
   funcstate->setPC(0);
   funcstate->setPreviousLine(f->getLineDefined());
-  funcstate->setInstructionsWithAbs(0);
+  funcstate->setInstructionsSinceAbsoluteLineInfo(0);
   funcstate->setLastTarget(0);
   funcstate->setFreeReg(0);
-  funcstate->setNK(0);
-  funcstate->setNAbsLineInfo(0);
-  funcstate->setNP(0);
+  funcstate->setNumberOfConstants(0);
+  funcstate->setNumberOfAbsoluteLineInfo(0);
+  funcstate->setNumberOfNestedPrototypes(0);
   funcstate->setNumUpvalues(0);
   funcstate->setNumDebugVars(0);
   funcstate->setNumActiveVars(0);
@@ -478,9 +478,9 @@ void Parser::close_func() {
   luaM_shrinkvector(state, f->getCodeRef(), f->getCodeSizeRef(), funcstate->getPC(), Instruction);
   luaM_shrinkvector(state, f->getLineInfoRef(), f->getLineInfoSizeRef(), funcstate->getPC(), ls_byte);
   luaM_shrinkvector(state, f->getAbsLineInfoRef(), f->getAbsLineInfoSizeRef(),
-                       funcstate->getNAbsLineInfo(), AbsLineInfo);
-  luaM_shrinkvector(state, f->getConstantsRef(), f->getConstantsSizeRef(), funcstate->getNK(), TValue);
-  luaM_shrinkvector(state, f->getProtosRef(), f->getProtosSizeRef(), funcstate->getNP(), Proto *);
+                       funcstate->getNumberOfAbsoluteLineInfo(), AbsLineInfo);
+  luaM_shrinkvector(state, f->getConstantsRef(), f->getConstantsSizeRef(), funcstate->getNumberOfConstants(), TValue);
+  luaM_shrinkvector(state, f->getProtosRef(), f->getProtosSizeRef(), funcstate->getNumberOfNestedPrototypes(), Proto *);
   luaM_shrinkvector(state, f->getLocVarsRef(), f->getLocVarsSizeRef(), funcstate->getNumDebugVars(), LocVar);
   luaM_shrinkvector(state, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), funcstate->getNumUpvalues(), Upvaldesc);
   setFuncState(funcstate->getPrev());

@@ -319,40 +319,40 @@ private:
   int pc;              /* Program counter (next instruction) */
   int lasttarget;      /* Label of last 'jump label' */
   int previousline;    /* Last line saved in lineinfo */
-  int nabslineinfo;    /* Number of absolute line info entries */
-  lu_byte iwthabs;     /* Instructions since last absolute line info */
+  int numberOfAbsoluteLineInfo;    /* Number of absolute line info entries */
+  lu_byte instructionsSinceAbsoluteLineInfo;     /* Instructions since last absolute line info */
 
 public:
   /* Inline accessors for reading */
   int getPC() const noexcept { return pc; }
   int getLastTarget() const noexcept { return lasttarget; }
   int getPreviousLine() const noexcept { return previousline; }
-  int getNAbsLineInfo() const noexcept { return nabslineinfo; }
-  lu_byte getInstructionsWithAbs() const noexcept { return iwthabs; }
+  int getNumberOfAbsoluteLineInfo() const noexcept { return numberOfAbsoluteLineInfo; }
+  lu_byte getInstructionsSinceAbsoluteLineInfo() const noexcept { return instructionsSinceAbsoluteLineInfo; }
 
   /* Setters */
   void setPC(int pc_) noexcept { pc = pc_; }
   void setLastTarget(int lasttarget_) noexcept { lasttarget = lasttarget_; }
   void setPreviousLine(int previousline_) noexcept { previousline = previousline_; }
-  void setNAbsLineInfo(int nabslineinfo_) noexcept { nabslineinfo = nabslineinfo_; }
-  void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
+  void setNumberOfAbsoluteLineInfo(int numberOfAbsoluteLineInfo_) noexcept { numberOfAbsoluteLineInfo = numberOfAbsoluteLineInfo_; }
+  void setInstructionsSinceAbsoluteLineInfo(lu_byte instructionsSinceAbsoluteLineInfo_) noexcept { instructionsSinceAbsoluteLineInfo = instructionsSinceAbsoluteLineInfo_; }
 
   /* Increment/decrement methods */
   void incrementPC() noexcept { pc++; }
   void decrementPC() noexcept { pc--; }
   int postIncrementPC() noexcept { return pc++; }
-  void incrementNAbsLineInfo() noexcept { nabslineinfo++; }
-  void decrementNAbsLineInfo() noexcept { nabslineinfo--; }
-  int postIncrementNAbsLineInfo() noexcept { return nabslineinfo++; }
-  lu_byte postIncrementInstructionsWithAbs() noexcept { return iwthabs++; }
-  void decrementInstructionsWithAbs() noexcept { iwthabs--; }
+  void incrementNumberOfAbsoluteLineInfo() noexcept { numberOfAbsoluteLineInfo++; }
+  void decrementNumberOfAbsoluteLineInfo() noexcept { numberOfAbsoluteLineInfo--; }
+  int postIncrementNumberOfAbsoluteLineInfo() noexcept { return numberOfAbsoluteLineInfo++; }
+  lu_byte postIncrementInstructionsSinceAbsoluteLineInfo() noexcept { return instructionsSinceAbsoluteLineInfo++; }
+  void decrementInstructionsSinceAbsoluteLineInfo() noexcept { instructionsSinceAbsoluteLineInfo--; }
 
   /* Reference accessors for compound assignments */
   int& getPCRef() noexcept { return pc; }
   int& getLastTargetRef() noexcept { return lasttarget; }
   int& getPreviousLineRef() noexcept { return previousline; }
-  int& getNAbsLineInfoRef() noexcept { return nabslineinfo; }
-  lu_byte& getInstructionsWithAbsRef() noexcept { return iwthabs; }
+  int& getNumberOfAbsoluteLineInfoRef() noexcept { return numberOfAbsoluteLineInfo; }
+  lu_byte& getInstructionsSinceAbsoluteLineInfoRef() noexcept { return instructionsSinceAbsoluteLineInfo; }
 };
 
 
@@ -360,21 +360,21 @@ public:
 class ConstantPool {
 private:
   Table *cache;        /* Cache for constant deduplication */
-  int count;           /* Number of constants in proto */
+  int numberOfConstants;           /* Number of constants in proto */
 
 public:
   /* Inline accessors */
   Table* getCache() const noexcept { return cache; }
-  int getCount() const noexcept { return count; }
+  int getNumberOfConstants() const noexcept { return numberOfConstants; }
 
   void setCache(Table* cache_) noexcept { cache = cache_; }
-  void setCount(int count_) noexcept { count = count_; }
+  void setNumberOfConstants(int numberOfConstants_) noexcept { numberOfConstants = numberOfConstants_; }
 
   /* Increment */
-  void incrementCount() noexcept { count++; }
+  void incrementNumberOfConstants() noexcept { numberOfConstants++; }
 
   /* Reference accessor */
-  int& getCountRef() noexcept { return count; }
+  int& getNumberOfConstantsRef() noexcept { return numberOfConstants; }
 };
 
 
@@ -453,7 +453,7 @@ private:
   class FuncState *prev;  /* enclosing function */
   class LexState *ls;  /* lexical state */
   struct BlockCnt *bl;  /* chain of current blocks */
-  int np;  /* number of elements in 'p' (nested functions) */
+  int numberOfNestedPrototypes;  /* number of elements in 'p' (nested functions) */
 
   /* Subsystems (SRP refactoring) */
   CodeBuffer codeBuffer;           /* Bytecode generation & line info */
@@ -468,15 +468,15 @@ public:
   inline FuncState* getPrev() const noexcept { return prev; }
   inline class LexState* getLexState() const noexcept { return ls; }
   inline struct BlockCnt* getBlock() const noexcept { return bl; }
-  inline int getNP() const noexcept { return np; }
+  inline int getNumberOfNestedPrototypes() const noexcept { return numberOfNestedPrototypes; }
 
   inline void setProto(Proto* proto) noexcept { f = proto; }
   inline void setPrev(FuncState* prev_) noexcept { prev = prev_; }
   inline void setLexState(class LexState* ls_) noexcept { ls = ls_; }
   inline void setBlock(struct BlockCnt* bl_) noexcept { bl = bl_; }
-  inline void setNP(int np_) noexcept { np = np_; }
-  inline void incrementNP() noexcept { np++; }
-  inline int& getNPRef() noexcept { return np; }
+  inline void setNumberOfNestedPrototypes(int numberOfNestedPrototypes_) noexcept { numberOfNestedPrototypes = numberOfNestedPrototypes_; }
+  inline void incrementNumberOfNestedPrototypes() noexcept { numberOfNestedPrototypes++; }
+  inline int& getNumberOfNestedPrototypesRef() noexcept { return numberOfNestedPrototypes; }
 
   /* Subsystem access methods (for direct subsystem manipulation) */
   inline CodeBuffer& getCodeBuffer() noexcept { return codeBuffer; }
@@ -494,38 +494,38 @@ public:
   inline int getPC() const noexcept { return codeBuffer.getPC(); }
   inline int getLastTarget() const noexcept { return codeBuffer.getLastTarget(); }
   inline int getPreviousLine() const noexcept { return codeBuffer.getPreviousLine(); }
-  inline int getNAbsLineInfo() const noexcept { return codeBuffer.getNAbsLineInfo(); }
-  inline lu_byte getInstructionsWithAbs() const noexcept { return codeBuffer.getInstructionsWithAbs(); }
+  inline int getNumberOfAbsoluteLineInfo() const noexcept { return codeBuffer.getNumberOfAbsoluteLineInfo(); }
+  inline lu_byte getInstructionsSinceAbsoluteLineInfo() const noexcept { return codeBuffer.getInstructionsSinceAbsoluteLineInfo(); }
 
   inline void setPC(int pc_) noexcept { codeBuffer.setPC(pc_); }
   inline void setLastTarget(int lasttarget_) noexcept { codeBuffer.setLastTarget(lasttarget_); }
   inline void setPreviousLine(int previousline_) noexcept { codeBuffer.setPreviousLine(previousline_); }
-  inline void setNAbsLineInfo(int nabslineinfo_) noexcept { codeBuffer.setNAbsLineInfo(nabslineinfo_); }
-  inline void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { codeBuffer.setInstructionsWithAbs(iwthabs_); }
+  inline void setNumberOfAbsoluteLineInfo(int numberOfAbsoluteLineInfo_) noexcept { codeBuffer.setNumberOfAbsoluteLineInfo(numberOfAbsoluteLineInfo_); }
+  inline void setInstructionsSinceAbsoluteLineInfo(lu_byte instructionsSinceAbsoluteLineInfo_) noexcept { codeBuffer.setInstructionsSinceAbsoluteLineInfo(instructionsSinceAbsoluteLineInfo_); }
 
   inline void incrementPC() noexcept { codeBuffer.incrementPC(); }
   inline void decrementPC() noexcept { codeBuffer.decrementPC(); }
   inline int postIncrementPC() noexcept { return codeBuffer.postIncrementPC(); }
-  inline void incrementNAbsLineInfo() noexcept { codeBuffer.incrementNAbsLineInfo(); }
-  inline void decrementNAbsLineInfo() noexcept { codeBuffer.decrementNAbsLineInfo(); }
-  inline int postIncrementNAbsLineInfo() noexcept { return codeBuffer.postIncrementNAbsLineInfo(); }
-  inline lu_byte postIncrementInstructionsWithAbs() noexcept { return codeBuffer.postIncrementInstructionsWithAbs(); }
-  inline void decrementInstructionsWithAbs() noexcept { codeBuffer.decrementInstructionsWithAbs(); }
+  inline void incrementNumberOfAbsoluteLineInfo() noexcept { codeBuffer.incrementNumberOfAbsoluteLineInfo(); }
+  inline void decrementNumberOfAbsoluteLineInfo() noexcept { codeBuffer.decrementNumberOfAbsoluteLineInfo(); }
+  inline int postIncrementNumberOfAbsoluteLineInfo() noexcept { return codeBuffer.postIncrementNumberOfAbsoluteLineInfo(); }
+  inline lu_byte postIncrementInstructionsSinceAbsoluteLineInfo() noexcept { return codeBuffer.postIncrementInstructionsSinceAbsoluteLineInfo(); }
+  inline void decrementInstructionsSinceAbsoluteLineInfo() noexcept { codeBuffer.decrementInstructionsSinceAbsoluteLineInfo(); }
 
   inline int& getPCRef() noexcept { return codeBuffer.getPCRef(); }
   inline int& getLastTargetRef() noexcept { return codeBuffer.getLastTargetRef(); }
   inline int& getPreviousLineRef() noexcept { return codeBuffer.getPreviousLineRef(); }
-  inline int& getNAbsLineInfoRef() noexcept { return codeBuffer.getNAbsLineInfoRef(); }
-  inline lu_byte& getInstructionsWithAbsRef() noexcept { return codeBuffer.getInstructionsWithAbsRef(); }
+  inline int& getNumberOfAbsoluteLineInfoRef() noexcept { return codeBuffer.getNumberOfAbsoluteLineInfoRef(); }
+  inline lu_byte& getInstructionsSinceAbsoluteLineInfoRef() noexcept { return codeBuffer.getInstructionsSinceAbsoluteLineInfoRef(); }
 
   /* Delegating accessors for ConstantPool */
   inline Table* getKCache() const noexcept { return constantPool.getCache(); }
-  inline int getNK() const noexcept { return constantPool.getCount(); }
+  inline int getNumberOfConstants() const noexcept { return constantPool.getNumberOfConstants(); }
 
   inline void setKCache(Table* kcache_) noexcept { constantPool.setCache(kcache_); }
-  inline void setNK(int nk_) noexcept { constantPool.setCount(nk_); }
-  inline void incrementNK() noexcept { constantPool.incrementCount(); }
-  inline int& getNKRef() noexcept { return constantPool.getCountRef(); }
+  inline void setNumberOfConstants(int numberOfConstants_) noexcept { constantPool.setNumberOfConstants(numberOfConstants_); }
+  inline void incrementNumberOfConstants() noexcept { constantPool.incrementNumberOfConstants(); }
+  inline int& getNumberOfConstantsRef() noexcept { return constantPool.getNumberOfConstantsRef(); }
 
   /* Delegating accessors for VariableScope */
   inline int getFirstLocal() const noexcept { return variableScope.getFirstLocal(); }
