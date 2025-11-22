@@ -52,6 +52,7 @@ constexpr bool TValue::isNil() const noexcept { return checktype(this, LUA_TNIL)
 ** simpler to just test whether the value is nil.
 */
 constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL; }
+constexpr bool tagisempty(LuaT tag) noexcept { return novariant(tag) == LUA_TNIL; }
 
 
 /* macro to test for a standard nil */

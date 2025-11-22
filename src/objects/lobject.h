@@ -487,7 +487,7 @@ inline bool operator!=(const TString& l, const TString& r) noexcept {
 
 // Phase 88: Convert luaH_fastgeti and luaH_fastseti macros to inline functions
 // These are hot-path table access functions used throughout the VM
-inline void luaH_fastgeti(Table* t, lua_Integer k, TValue* res, lu_byte& tag) noexcept {
+inline void luaH_fastgeti(Table* t, lua_Integer k, TValue* res, LuaT& tag) noexcept {
 	Table* h = t;
 	lua_Unsigned u = l_castS2U(k) - 1u;
 	if (u < h->arraySize()) {
@@ -504,7 +504,7 @@ inline void luaH_fastseti(Table* t, lua_Integer k, TValue* val, int& hres) noexc
 	Table* h = t;
 	lua_Unsigned u = l_castS2U(k) - 1u;
 	if (u < h->arraySize()) {
-		lu_byte* tag = h->getArrayTag(u);
+		LuaT* tag = h->getArrayTag(u);
 		if (checknoTM(h->getMetatable(), TMS::TM_NEWINDEX) || !tagisempty(*tag)) {
 			fval2arr(h, u, tag, val);
 			hres = HOK;

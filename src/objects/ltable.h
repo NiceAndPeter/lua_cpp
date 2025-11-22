@@ -44,8 +44,8 @@ private:
   union {
     struct {
       Value value_;  /* value */
-      lu_byte tt_;   /* value type tag */
-      lu_byte key_tt;  /* key type */
+      LuaT tt_;   /* value type tag */
+      LuaT key_tt;  /* key type */
       int next;  /* for chaining */
       Value key_val;  /* key value */
     } u;
@@ -54,10 +54,10 @@ private:
 
 public:
   // Default constructor
-  constexpr Node() noexcept : u{{0}, static_cast<lu_byte>(LuaT::NIL), LUA_TNIL, 0, {0}} {}
+  constexpr Node() noexcept : u{{0}, LuaT::NIL, static_cast<LuaT>(LUA_TNIL), 0, {0}} {}
 
   // Constructor for initializing with explicit values
-  constexpr Node(Value val, lu_byte val_tt, lu_byte key_tt, int next_val, Value key_val) noexcept
+  constexpr Node(Value val, LuaT val_tt, LuaT key_tt, int next_val, Value key_val) noexcept
     : u{val, val_tt, key_tt, next_val, key_val} {}
 
   // Copy assignment operator (needed because union contains TValue with user-declared operator=)
@@ -76,8 +76,8 @@ public:
   void setNext(int n) noexcept { u.next = n; }
 
   // Key type access
-  lu_byte getKeyType() const noexcept { return u.key_tt; }
-  void setKeyType(lu_byte tt) noexcept { u.key_tt = tt; }
+  LuaT getKeyType() const noexcept { return u.key_tt; }
+  void setKeyType(LuaT tt) noexcept { u.key_tt = tt; }
 
   // Key value access
   const Value& getKeyValue() const noexcept { return u.key_val; }
@@ -86,23 +86,23 @@ public:
 
   // Key type checks
   bool isKeyNil() const noexcept {
-    return u.key_tt == LUA_TNIL;
+    return novariant(u.key_tt) == LUA_TNIL;
   }
 
   bool isKeyInteger() const noexcept {
-    return u.key_tt == LUA_VNUMINT;
+    return u.key_tt == LuaT::NUMINT;
   }
 
   bool isKeyShrStr() const noexcept {
-    return u.key_tt == ctb(LUA_VSHRSTR);
+    return u.key_tt == ctb(LuaT::SHRSTR);
   }
 
   bool isKeyDead() const noexcept {
-    return u.key_tt == LUA_TDEADKEY;
+    return novariant(u.key_tt) == LUA_TDEADKEY;
   }
 
   bool isKeyCollectable() const noexcept {
-    return (u.key_tt & BIT_ISCOLLECTABLE) != 0;
+    return (static_cast<int>(u.key_tt) & BIT_ISCOLLECTABLE) != 0;
   }
 
   // Key value getters (typed)
@@ -124,11 +124,11 @@ public:
 
   // Key setters
   void setKeyNil() noexcept {
-    u.key_tt = LUA_TNIL;
+    u.key_tt = LuaT::NIL;
   }
 
   void setKeyDead() noexcept {
-    u.key_tt = LUA_TDEADKEY;
+    u.key_tt = static_cast<LuaT>(LUA_TDEADKEY);
   }
 
   // Copy TValue to key
@@ -244,12 +244,12 @@ public:
     return static_cast<const unsigned int*>(static_cast<const void*>(array));
   }
 
-  lu_byte* getArrayTag(lua_Unsigned k) noexcept {
-    return static_cast<lu_byte*>(static_cast<void*>(array)) + sizeof(unsigned) + k;
+  LuaT* getArrayTag(lua_Unsigned k) noexcept {
+    return reinterpret_cast<LuaT*>(static_cast<lu_byte*>(static_cast<void*>(array)) + sizeof(unsigned) + k);
   }
 
-  const lu_byte* getArrayTag(lua_Unsigned k) const noexcept {
-    return static_cast<const lu_byte*>(static_cast<const void*>(array)) + sizeof(unsigned) + k;
+  const LuaT* getArrayTag(lua_Unsigned k) const noexcept {
+    return reinterpret_cast<const LuaT*>(static_cast<const lu_byte*>(static_cast<const void*>(array)) + sizeof(unsigned) + k);
   }
 
   Value* getArrayVal(lua_Unsigned k) noexcept {
@@ -269,10 +269,10 @@ public:
   const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
 
   // Method declarations (implemented in ltable.cpp)
-  lu_byte get(const TValue* key, TValue* res);
-  lu_byte getInt(lua_Integer key, TValue* res);
-  lu_byte getShortStr(TString* key, TValue* res);
-  lu_byte getStr(TString* key, TValue* res);
+  LuaT get(const TValue* key, TValue* res);
+  LuaT getInt(lua_Integer key, TValue* res);
+  LuaT getShortStr(TString* key, TValue* res);
+  LuaT getStr(TString* key, TValue* res);
   TValue* HgetShortStr(TString* key);
 
   int pset(const TValue* key, TValue* val);
@@ -432,20 +432,20 @@ inline void obj2arr(Table* h, lua_Unsigned k, const TValue* val) noexcept {
 ** following inline functions also move TValues to/from arrays, but receive the
 ** precomputed tag value or address as an extra argument.
 */
-inline void farr2val(const Table* h, lua_Unsigned k, lu_byte tag, TValue* res) noexcept {
+inline void farr2val(const Table* h, lua_Unsigned k, LuaT tag, TValue* res) noexcept {
   res->setType(tag);
   res->valueField() = *h->getArrayVal(k);
 }
 
-inline void fval2arr(Table* h, lua_Unsigned k, lu_byte* tag, const TValue* val) noexcept {
+inline void fval2arr(Table* h, lua_Unsigned k, LuaT* tag, const TValue* val) noexcept {
   *tag = val->getType();
   *h->getArrayVal(k) = val->getValue();
 }
 
-LUAI_FUNC lu_byte luaH_get (Table *t, const TValue *key, TValue *res);
-LUAI_FUNC lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res);
-LUAI_FUNC lu_byte luaH_getstr (Table *t, TString *key, TValue *res);
-LUAI_FUNC lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res);
+LUAI_FUNC LuaT luaH_get (Table *t, const TValue *key, TValue *res);
+LUAI_FUNC LuaT luaH_getshortstr (Table *t, TString *key, TValue *res);
+LUAI_FUNC LuaT luaH_getstr (Table *t, TString *key, TValue *res);
+LUAI_FUNC LuaT luaH_getint (Table *t, lua_Integer key, TValue *res);
 
 /* Special get for metamethods */
 LUAI_FUNC const TValue *luaH_Hgetshortstr (Table *t, TString *key);
