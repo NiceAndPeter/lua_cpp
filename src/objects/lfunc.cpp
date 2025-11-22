@@ -26,10 +26,8 @@
 
 
 // Constructor
-CClosure::CClosure(int nupvals) {
-  nupvalues = cast_byte(nupvals);
-  gclist = nullptr;
-  f = nullptr;
+CClosure::CClosure(int nupvals)
+  : nupvalues(cast_byte(nupvals)), gclist(nullptr), f(nullptr) {
   // upvalue array initialized by caller if needed
 }
 
@@ -42,10 +40,8 @@ CClosure* CClosure::create(lua_State* L, int nupvals) {
 
 
 // Constructor
-LClosure::LClosure(int nupvals) {
-  nupvalues = cast_byte(nupvals);
-  gclist = nullptr;
-  p = nullptr;
+LClosure::LClosure(int nupvals)
+  : nupvalues(cast_byte(nupvals)), gclist(nullptr), p(nullptr) {
   // Initialize upvals array to nullptr
   std::fill_n(upvals, nupvals, nullptr);
 }

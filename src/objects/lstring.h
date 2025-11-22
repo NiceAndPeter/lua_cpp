@@ -78,11 +78,8 @@ public:
   // Phase 50: Constructor - initializes only fields common to both short and long strings
   // For short strings: only fields up to 'u' exist (contents/falloc/ud are overlay for string data)
   // For long strings: all fields exist
-  TString() noexcept {
-    extra = 0;
-    shrlen = 0;
-    hash = 0;
-    u.lnglen = 0;  // Zero-initialize union
+  TString() noexcept
+    : extra(0), shrlen(0), hash(0), u{0} {
     // Note: contents, falloc, ud are NOT initialized here!
     // They will be initialized by the caller only for long strings.
   }

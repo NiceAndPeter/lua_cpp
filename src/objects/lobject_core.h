@@ -364,11 +364,8 @@ private:
 
 public:
   // Phase 50: Constructor - initializes all fields to safe defaults
-  Udata() noexcept {
-    nuvalue = 0;
-    len = 0;
-    metatable = nullptr;
-    gclist = nullptr;
+  Udata() noexcept
+    : nuvalue(0), len(0), metatable(nullptr), gclist(nullptr) {
     // Note: uv array will be initialized by caller if needed
   }
 
