@@ -276,16 +276,8 @@ public:
 };
 
 
-/* Access to TValue's internal value union */
-constexpr Value& val_(TValue* o) noexcept { return o->valueField(); }
-constexpr const Value& val_(const TValue* o) noexcept { return o->valueField(); }
-constexpr Value& valraw(TValue* o) noexcept { return val_(o); }
-constexpr const Value& valraw(const TValue* o) noexcept { return val_(o); }
-
-
 /* raw type tag of a TValue */
 constexpr LuaT rawtt(const TValue* o) noexcept { return o->getType(); }
-constexpr lu_byte rawtt_byte(const TValue* o) noexcept { return o->getRawType(); }  /* for legacy code */
 
 /* tag with no variants (bits 0-3) */
 constexpr int novariant(int t) noexcept { return (t & 0x0F); }
@@ -296,7 +288,6 @@ constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
 constexpr LuaT withvariant(LuaT t) noexcept { return static_cast<LuaT>(static_cast<int>(t) & 0x3F); }
 
 constexpr LuaT ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
-constexpr lu_byte ttypetag_byte(const TValue* o) noexcept { return static_cast<lu_byte>(withvariant(rawtt(o))); }  /* for legacy code */
 
 /* type of a TValue */
 constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
@@ -307,7 +298,6 @@ constexpr LuaT TValue::typeTag() const noexcept { return withvariant(tt_); }
 
 /* Macros to test type */
 constexpr bool checktag(const TValue* o, LuaT t) noexcept { return rawtt(o) == t; }
-constexpr bool checktag(const TValue* o, lu_byte t) noexcept { return rawtt(o) == static_cast<LuaT>(t); }  /* overload for raw bytes */
 constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
 
 /* Bit mark for collectable types */
@@ -315,7 +305,6 @@ inline constexpr int BIT_ISCOLLECTABLE = (1 << 6);
 
 /* mark a tag as collectable */
 constexpr LuaT ctb(LuaT t) noexcept { return static_cast<LuaT>(static_cast<int>(t) | BIT_ISCOLLECTABLE); }
-constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCOLLECTABLE); }  /* overload for base types */
 
 
 /* Macros for internal tests */
@@ -327,7 +316,6 @@ constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCO
 
 /* set a value's tag */
 inline void settt_(TValue* o, LuaT t) noexcept { o->setType(t); }
-inline void settt_(TValue* o, lu_byte t) noexcept { o->setType(t); }  /* overload for raw bytes */
 
 
 #endif
