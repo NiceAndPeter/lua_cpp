@@ -35,44 +35,67 @@ inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
 ** ===================================================================
 */
 
-/* Nil variants */
-inline constexpr int LUA_VNIL = makevariant(LUA_TNIL, 0);
-inline constexpr int LUA_VEMPTY = makevariant(LUA_TNIL, 1);
-inline constexpr int LUA_VABSTKEY = makevariant(LUA_TNIL, 2);
-inline constexpr int LUA_VNOTABLE = makevariant(LUA_TNIL, 3);
+enum class LuaT : int {
+  /* Nil variants */
+  NIL = makevariant(LUA_TNIL, 0),
+  EMPTY = makevariant(LUA_TNIL, 1),
+  ABSTKEY = makevariant(LUA_TNIL, 2),
+  NOTABLE = makevariant(LUA_TNIL, 3),
 
-/* Boolean variants */
-inline constexpr int LUA_VFALSE = makevariant(LUA_TBOOLEAN, 0);
-inline constexpr int LUA_VTRUE = makevariant(LUA_TBOOLEAN, 1);
+  /* Boolean variants */
+  VFALSE = makevariant(LUA_TBOOLEAN, 0),
+  VTRUE = makevariant(LUA_TBOOLEAN, 1),
 
-/* Number variants */
-inline constexpr int LUA_VNUMINT = makevariant(LUA_TNUMBER, 0);  /* integer numbers */
-inline constexpr int LUA_VNUMFLT = makevariant(LUA_TNUMBER, 1);  /* float numbers */
+  /* Number variants */
+  NUMINT = makevariant(LUA_TNUMBER, 0),  /* integer numbers */
+  NUMFLT = makevariant(LUA_TNUMBER, 1),  /* float numbers */
 
-/* String variants */
-inline constexpr int LUA_VSHRSTR = makevariant(LUA_TSTRING, 0);  /* short strings */
-inline constexpr int LUA_VLNGSTR = makevariant(LUA_TSTRING, 1);  /* long strings */
+  /* String variants */
+  SHRSTR = makevariant(LUA_TSTRING, 0),  /* short strings */
+  LNGSTR = makevariant(LUA_TSTRING, 1),  /* long strings */
 
-/* Table variant */
-inline constexpr int LUA_VTABLE = makevariant(LUA_TTABLE, 0);
+  /* Table variant */
+  TABLE = makevariant(LUA_TTABLE, 0),
 
-/* Function variants */
-inline constexpr int LUA_VLCL = makevariant(LUA_TFUNCTION, 0);  /* Lua closure */
-inline constexpr int LUA_VLCF = makevariant(LUA_TFUNCTION, 1);  /* light C function */
-inline constexpr int LUA_VCCL = makevariant(LUA_TFUNCTION, 2);  /* C closure */
+  /* Function variants */
+  LCL = makevariant(LUA_TFUNCTION, 0),  /* Lua closure */
+  LCF = makevariant(LUA_TFUNCTION, 1),  /* light C function */
+  CCL = makevariant(LUA_TFUNCTION, 2),  /* C closure */
 
-/* Userdata variants */
-inline constexpr int LUA_VLIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0);
-inline constexpr int LUA_VUSERDATA = makevariant(LUA_TUSERDATA, 0);
+  /* Userdata variants */
+  LIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0),
+  USERDATA = makevariant(LUA_TUSERDATA, 0),
 
-/* Thread variant */
-inline constexpr int LUA_VTHREAD = makevariant(LUA_TTHREAD, 0);
+  /* Thread variant */
+  THREAD = makevariant(LUA_TTHREAD, 0),
 
-/* Upvalue variant (collectable non-value) */
-inline constexpr int LUA_VUPVAL = makevariant(LUA_TUPVAL, 0);
+  /* Upvalue variant (collectable non-value) */
+  UPVAL = makevariant(LUA_TUPVAL, 0),
 
-/* Proto variant (collectable non-value) */
-inline constexpr int LUA_VPROTO = makevariant(LUA_TPROTO, 0);
+  /* Proto variant (collectable non-value) */
+  PROTO = makevariant(LUA_TPROTO, 0)
+};
+
+/* Backward compatibility constants (to be removed after migration) */
+inline constexpr int LUA_VNIL = static_cast<int>(LuaT::NIL);
+inline constexpr int LUA_VEMPTY = static_cast<int>(LuaT::EMPTY);
+inline constexpr int LUA_VABSTKEY = static_cast<int>(LuaT::ABSTKEY);
+inline constexpr int LUA_VNOTABLE = static_cast<int>(LuaT::NOTABLE);
+inline constexpr int LUA_VFALSE = static_cast<int>(LuaT::VFALSE);
+inline constexpr int LUA_VTRUE = static_cast<int>(LuaT::VTRUE);
+inline constexpr int LUA_VNUMINT = static_cast<int>(LuaT::NUMINT);
+inline constexpr int LUA_VNUMFLT = static_cast<int>(LuaT::NUMFLT);
+inline constexpr int LUA_VSHRSTR = static_cast<int>(LuaT::SHRSTR);
+inline constexpr int LUA_VLNGSTR = static_cast<int>(LuaT::LNGSTR);
+inline constexpr int LUA_VTABLE = static_cast<int>(LuaT::TABLE);
+inline constexpr int LUA_VLCL = static_cast<int>(LuaT::LCL);
+inline constexpr int LUA_VLCF = static_cast<int>(LuaT::LCF);
+inline constexpr int LUA_VCCL = static_cast<int>(LuaT::CCL);
+inline constexpr int LUA_VLIGHTUSERDATA = static_cast<int>(LuaT::LIGHTUSERDATA);
+inline constexpr int LUA_VUSERDATA = static_cast<int>(LuaT::USERDATA);
+inline constexpr int LUA_VTHREAD = static_cast<int>(LuaT::THREAD);
+inline constexpr int LUA_VUPVAL = static_cast<int>(LuaT::UPVAL);
+inline constexpr int LUA_VPROTO = static_cast<int>(LuaT::PROTO);
 
 /* }================================================================== */
 
