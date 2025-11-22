@@ -41,12 +41,12 @@ class global_State;
 */
 
 constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
-constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
-constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
+constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LuaT::SHRSTR)); }
+constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LuaT::LNGSTR)); }
 
 constexpr bool TValue::isString() const noexcept { return checktype(this, LUA_TSTRING); }
-constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LUA_VSHRSTR)); }
-constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LUA_VLNGSTR)); }
+constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LuaT::SHRSTR)); }
+constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LuaT::LNGSTR)); }
 
 inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 
@@ -302,7 +302,7 @@ inline bool isreserved(const TString* s) noexcept {
 ** equality for short strings, which are always internalized
 */
 inline bool eqshrstr(const TString* a, const TString* b) noexcept {
-	return check_exp((a)->getType() == LUA_VSHRSTR, (a) == (b));
+	return check_exp((a)->getType() == LuaT::SHRSTR, (a) == (b));
 }
 
 

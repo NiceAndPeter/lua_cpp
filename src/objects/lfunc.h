@@ -25,15 +25,15 @@ typedef union StackValue *StkId;
 */
 
 constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
-constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
-constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF); }
-constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
+constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LuaT::LCL)); }
+constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LuaT::LCF); }
+constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LuaT::CCL)); }
 constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
 
 constexpr bool TValue::isFunction() const noexcept { return checktype(this, LUA_TFUNCTION); }
-constexpr bool TValue::isLClosure() const noexcept { return checktag(this, ctb(LUA_VLCL)); }
-constexpr bool TValue::isLightCFunction() const noexcept { return checktag(this, LUA_VLCF); }
-constexpr bool TValue::isCClosure() const noexcept { return checktag(this, ctb(LUA_VCCL)); }
+constexpr bool TValue::isLClosure() const noexcept { return checktag(this, ctb(LuaT::LCL)); }
+constexpr bool TValue::isLightCFunction() const noexcept { return checktag(this, LuaT::LCF); }
+constexpr bool TValue::isCClosure() const noexcept { return checktag(this, ctb(LuaT::CCL)); }
 constexpr bool TValue::isClosure() const noexcept { return isLClosure() || isCClosure(); }
 
 inline constexpr bool isLfunction(const TValue* o) noexcept {

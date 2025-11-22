@@ -97,28 +97,28 @@ constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 ** TValue member function implementations
 ** These must be defined here after all type constants are available
 */
-inline void TValue::setNil() noexcept { tt_ = LUA_VNIL; }
-inline void TValue::setFalse() noexcept { tt_ = LUA_VFALSE; }
-inline void TValue::setTrue() noexcept { tt_ = LUA_VTRUE; }
+inline void TValue::setNil() noexcept { setType(LuaT::NIL); }
+inline void TValue::setFalse() noexcept { setType(LuaT::VFALSE); }
+inline void TValue::setTrue() noexcept { setType(LuaT::VTRUE); }
 
 inline void TValue::setInt(lua_Integer i) noexcept {
   value_.i = i;
-  tt_ = LUA_VNUMINT;
+  setType(LuaT::NUMINT);
 }
 
 inline void TValue::setFloat(lua_Number n) noexcept {
   value_.n = n;
-  tt_ = LUA_VNUMFLT;
+  setType(LuaT::NUMFLT);
 }
 
 inline void TValue::setPointer(void* p) noexcept {
   value_.p = p;
-  tt_ = LUA_VLIGHTUSERDATA;
+  setType(LuaT::LIGHTUSERDATA);
 }
 
 inline void TValue::setFunction(lua_CFunction f) noexcept {
   value_.f = f;
-  tt_ = LUA_VLCF;
+  setType(LuaT::LCF);
 }
 
 inline void TValue::setString(lua_State* L, TString* s) noexcept {
@@ -129,31 +129,31 @@ inline void TValue::setString(lua_State* L, TString* s) noexcept {
 
 inline void TValue::setUserdata(lua_State* L, Udata* u) noexcept {
   value_.gc = reinterpret_cast<GCObject*>(u);
-  tt_ = ctb(LUA_VUSERDATA);
+  tt_ = ctb(LuaT::USERDATA);
   (void)L;
 }
 
 inline void TValue::setTable(lua_State* L, Table* t) noexcept {
   value_.gc = reinterpret_cast<GCObject*>(t);
-  tt_ = ctb(LUA_VTABLE);
+  tt_ = ctb(LuaT::TABLE);
   (void)L;
 }
 
 inline void TValue::setLClosure(lua_State* L, LClosure* cl) noexcept {
   value_.gc = reinterpret_cast<GCObject*>(cl);
-  tt_ = ctb(LUA_VLCL);
+  tt_ = ctb(LuaT::LCL);
   (void)L;
 }
 
 inline void TValue::setCClosure(lua_State* L, CClosure* cl) noexcept {
   value_.gc = reinterpret_cast<GCObject*>(cl);
-  tt_ = ctb(LUA_VCCL);
+  tt_ = ctb(LuaT::CCL);
   (void)L;
 }
 
 inline void TValue::setThread(lua_State* L, lua_State* th) noexcept {
   value_.gc = reinterpret_cast<GCObject*>(th);
-  tt_ = ctb(LUA_VTHREAD);
+  tt_ = ctb(LuaT::THREAD);
   (void)L;
 }
 
@@ -379,17 +379,17 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 	else if (ttypetag(&l) != ttypetag(&r)) {
 		/* Different variants - only numbers and strings can be equal across variants */
 		switch (ttypetag(&l)) {
-			case LUA_VNUMINT: {  /* int == float? */
+			case LuaT::NUMINT: {  /* int == float? */
 				lua_Integer i2;
 				return (luaV_flttointeger(fltvalue(&r), &i2, F2Imod::F2Ieq) &&
 				        ivalue(&l) == i2);
 			}
-			case LUA_VNUMFLT: {  /* float == int? */
+			case LuaT::NUMFLT: {  /* float == int? */
 				lua_Integer i1;
 				return (luaV_flttointeger(fltvalue(&l), &i1, F2Imod::F2Ieq) &&
 				        i1 == ivalue(&r));
 			}
-			case LUA_VSHRSTR: case LUA_VLNGSTR: {
+			case LuaT::SHRSTR: case LuaT::LNGSTR: {
 				/* Compare strings with different variants */
 				return tsvalue(&l)->equals(tsvalue(&r));
 			}
@@ -399,21 +399,21 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 	}
 	else {  /* same variant */
 		switch (ttypetag(&l)) {
-			case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE:
+			case LuaT::NIL: case LuaT::VFALSE: case LuaT::VTRUE:
 				return true;
-			case LUA_VNUMINT:
+			case LuaT::NUMINT:
 				return ivalue(&l) == ivalue(&r);
-			case LUA_VNUMFLT:
+			case LuaT::NUMFLT:
 				return fltvalue(&l) == fltvalue(&r);
-			case LUA_VLIGHTUSERDATA:
+			case LuaT::LIGHTUSERDATA:
 				return pvalue(&l) == pvalue(&r);
-			case LUA_VSHRSTR:
+			case LuaT::SHRSTR:
 				return eqshrstr(tsvalue(&l), tsvalue(&r));
-			case LUA_VLNGSTR:
+			case LuaT::LNGSTR:
 				return tsvalue(&l)->equals(tsvalue(&r));
-			case LUA_VUSERDATA:
+			case LuaT::USERDATA:
 				return uvalue(&l) == uvalue(&r);
-			case LUA_VLCF:
+			case LuaT::LCF:
 				return fvalue(&l) == fvalue(&r);
 			default:  /* other collectable types (tables, closures, threads) */
 				return gcvalue(&l) == gcvalue(&r);

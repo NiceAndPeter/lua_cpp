@@ -24,9 +24,9 @@ typedef union StackValue *StkId;
 ** Note: LUA_VTABLE now defined in ltvalue.h
 */
 
-constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
+constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LuaT::TABLE)); }
 
-constexpr bool TValue::isTable() const noexcept { return checktag(this, ctb(LUA_VTABLE)); }
+constexpr bool TValue::isTable() const noexcept { return checktag(this, ctb(LuaT::TABLE)); }
 
 inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
 
@@ -54,7 +54,7 @@ private:
 
 public:
   // Default constructor
-  constexpr Node() noexcept : u{{0}, LUA_VNIL, LUA_TNIL, 0, {0}} {}
+  constexpr Node() noexcept : u{{0}, static_cast<lu_byte>(LuaT::NIL), LUA_TNIL, 0, {0}} {}
 
   // Constructor for initializing with explicit values
   constexpr Node(Value val, lu_byte val_tt, lu_byte key_tt, int next_val, Value key_val) noexcept
