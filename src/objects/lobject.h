@@ -17,22 +17,18 @@
 #include "lua.h"
 #include "ltvalue.h"  /* TValue class */
 
+/* Include focused headers */
+#include "lobject_core.h"  /* GCObject, GCBase<T>, Udata */
+#include "lstring.h"       /* TString */
+#include "lproto.h"        /* Proto */
+#include "lfunc.h"         /* UpVal, CClosure, LClosure */
+#include "ltable.h"        /* Table, Node - after lstring/lproto/lfunc for dependencies */
+
+/* Include ltm.h for tag method support needed by ltable.h inline functions */
+#include "../core/ltm.h"   /* TMS enum, checknoTM function */
+
 /* Forward declarations */
 enum class GCAge : lu_byte;
-
-/*
-** Extra types for collectable non-values
-*/
-inline constexpr int LUA_TUPVAL = LUA_NUMTYPES;      /* upvalues */
-inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
-inline constexpr int LUA_TDEADKEY = (LUA_NUMTYPES+2);  /* removed keys in tables */
-
-
-
-/*
-** number of all possible types (including LUA_TNONE but excluding DEADKEY)
-*/
-inline constexpr int LUA_TOTALTYPES = (LUA_TPROTO + 2);
 
 
 /*
@@ -209,144 +205,6 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 /* }================================================================== */
 
 
-/*
-** {==================================================================
-** Collectable Objects
-** ===================================================================
-*/
-
-/*
-** CommonHeader macro deprecated - GC objects now inherit from GCBase
-*/
-
-
-/* Common type for all collectable objects */
-class GCObject {
-protected:
-  mutable GCObject* next;     /* GC list linkage (mutable for GC bookkeeping) */
-  lu_byte tt;                  /* Type tag (immutable) */
-  mutable lu_byte marked;      /* GC mark bits (mutable for GC bookkeeping) */
-
-public:
-  // Inline accessors
-  GCObject* getNext() const noexcept { return next; }
-  void setNext(GCObject* n) const noexcept { next = n; }  /* const - next is mutable */
-  // Pointer-to-pointer for efficient GC list manipulation (allows in-place removal)
-  GCObject** getNextPtr() const noexcept { return &next; }  /* const - next is mutable */
-  lu_byte getType() const noexcept { return tt; }
-  void setType(lu_byte t) noexcept { tt = t; }
-  lu_byte getMarked() const noexcept { return marked; }
-  void setMarked(lu_byte m) const noexcept { marked = m; }  /* const - marked is mutable */
-  bool isMarked() const noexcept { return marked != 0; }
-
-  // Marked field bit manipulation methods (const - marked is mutable)
-  void setMarkedBit(int bit) const noexcept {
-    lua_assert(bit >= 0 && bit < 8);  /* lu_byte is 8 bits */
-    marked |= cast_byte(1 << bit);
-  }
-  void clearMarkedBit(int bit) const noexcept {
-    lua_assert(bit >= 0 && bit < 8);  /* lu_byte is 8 bits */
-    marked &= cast_byte(~(1 << bit));
-  }
-  void clearMarkedBits(int mask) const noexcept { marked &= cast_byte(~mask); }
-
-  // Marked field bit manipulation helpers (for backward compatibility)
-  lu_byte& getMarkedRef() const noexcept { return marked; }  /* const - marked is mutable */
-
-  // GC color and age methods (defined in lgc.h after constants are available)
-  inline bool isWhite() const noexcept;
-  inline bool isBlack() const noexcept;
-  inline bool isGray() const noexcept;
-  inline GCAge getAge() const noexcept;
-  inline void setAge(GCAge age) const noexcept;  /* const - marked is mutable */
-  inline bool isOld() const noexcept;
-
-  // GC operations (implemented in lgc.cpp)
-  void fix(lua_State* L) const;  /* const - only modifies mutable GC fields */
-  void checkFinalizer(lua_State* L, Table* mt);
-};
-
-/*
-** CRTP (Curiously Recurring Template Pattern) Base class for all GC-managed objects
-**
-** DESIGN PATTERN:
-** CRTP is a C++ idiom where a class X derives from a template base class using X itself
-** as a template parameter: class X : public Base<X>
-**
-** Benefits compared to traditional polymorphism (virtual functions):
-** 1. Zero runtime overhead - no vtable pointer, no virtual function indirection
-** 2. Compile-time polymorphism - compiler can inline all method calls
-** 3. Type safety - each derived class gets its own type-specific methods
-** 4. Same memory layout as plain C struct - maintains C API compatibility
-**
-** Usage in Lua's GC system:
-** - Table : public GCBase<Table>
-** - TString : public GCBase<TString>
-** - Proto : public GCBase<Proto>
-** - LClosure : public GCBase<LClosure>
-** - CClosure : public GCBase<CClosure>
-** - UpVal : public GCBase<UpVal>
-** - Udata : public GCBase<Udata>
-** - lua_State : public GCBase<lua_State>  (thread object)
-**
-** CRITICAL INVARIANT:
-** Memory layout MUST match GCObject exactly:
-**   GCObject *next; lu_byte tt; lu_byte marked
-**
-** This allows safe casting between GCObject* and Derived* without pointer adjustment.
-** The static_assert in each derived class verifies this invariant at compile time.
-**
-** PERFORMANCE:
-** This design eliminated the vtable overhead from the original Lua C implementation
-** while gaining C++ type safety and encapsulation. All color-checking methods
-** (isWhite, isBlack, isGray) compile to simple bit tests with no function call overhead.
-**
-** See claude.md for detailed discussion of this architectural decision.
-*/
-template<typename Derived>
-class GCBase: public GCObject {
-public:
-    // Accessor methods (preferred over direct field access)
-    constexpr GCObject* getNext() const noexcept { return next; }
-    constexpr void setNext(GCObject* n) const noexcept { next = n; }  /* const - next is mutable */
-
-    constexpr lu_byte getType() const noexcept { return tt; }
-    constexpr void setType(lu_byte t) noexcept { tt = t; }
-
-    constexpr lu_byte getMarked() const noexcept { return marked; }
-    constexpr void setMarked(lu_byte m) const noexcept { marked = m; }  /* const - marked is mutable */
-
-    constexpr bool isMarked() const noexcept { return marked != 0; }
-
-    // GC color and age methods (defined in lgc.h after constants)
-    inline void setAge(GCAge age) const noexcept;  /* const - marked is mutable */
-    inline bool isOld() const noexcept;
-
-    // Cast to GCObject* for compatibility
-    GCObject* toGCObject() noexcept {
-        return reinterpret_cast<GCObject*>(static_cast<Derived*>(this));
-    }
-    const GCObject* toGCObject() const noexcept {
-        return reinterpret_cast<const GCObject*>(static_cast<const Derived*>(this));
-    }
-};
-
-constexpr bool iscollectable(const TValue* o) noexcept { return (rawtt(o) & BIT_ISCOLLECTABLE) != 0; }
-
-constexpr bool TValue::isCollectable() const noexcept { return (tt_ & BIT_ISCOLLECTABLE) != 0; }
-
-inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
-
-constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
-
-/* setgcovalue now defined as inline function below */
-
-/* collectable object has the same tag as the original value (inline version) */
-inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == gcvalue(obj)->getType(); }
-
-inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue()->getType(); }
-
-/* }================================================================== */
 
 
 /*
@@ -402,387 +260,8 @@ inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); 
 /* }================================================================== */
 
 
-/*
-** {==================================================================
-** Strings
-** ===================================================================
-*/
 
-/* Variant tags for strings */
-inline constexpr int LUA_VSHRSTR = makevariant(LUA_TSTRING, 0);  /* short strings */
-inline constexpr int LUA_VLNGSTR = makevariant(LUA_TSTRING, 1);  /* long strings */
 
-constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
-constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
-constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
-
-constexpr bool TValue::isString() const noexcept { return checktype(this, LUA_TSTRING); }
-constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LUA_VSHRSTR)); }
-constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LUA_VLNGSTR)); }
-
-inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
-
-
-
-/* Kinds of long strings (stored in 'shrlen') */
-inline constexpr int LSTRREG = -1;  /* regular long string */
-inline constexpr int LSTRFIX = -2;  /* fixed external long string */
-inline constexpr int LSTRMEM = -3;  /* external long string with deallocation */
-
-
-/*
-** Header for a string value.
-*/
-// TString inherits from GCBase (CRTP)
-class TString : public GCBase<TString> {
-private:
-  lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
-  ls_byte shrlen;  /* length for short strings, negative for long strings */
-  unsigned int hash;
-  union {
-    size_t lnglen;  /* length for long strings */
-    TString *hnext;  /* linked list for hash table */
-  } u;
-  char *contents;  /* pointer to content in long strings */
-  lua_Alloc falloc;  /* deallocation function for external strings */
-  void *ud;  /* user data for external strings */
-
-public:
-  // Phase 50: Constructor - initializes only fields common to both short and long strings
-  // For short strings: only fields up to 'u' exist (contents/falloc/ud are overlay for string data)
-  // For long strings: all fields exist
-  TString() noexcept {
-    extra = 0;
-    shrlen = 0;
-    hash = 0;
-    u.lnglen = 0;  // Zero-initialize union
-    // Note: contents, falloc, ud are NOT initialized here!
-    // They will be initialized by the caller only for long strings.
-  }
-
-  // Phase 50: Destructor - trivial (GC handles deallocation)
-  // MUST be empty (not = default) because for short strings, not all fields exist in memory!
-  ~TString() noexcept {}
-
-  // Phase 50: Special placement new for variable-size objects
-  // This is used when we need exact size control (for short strings)
-  static void* operator new(size_t /*size*/, void* ptr) noexcept {
-    return ptr;  // Just return the pointer, no allocation
-  }
-
-  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
-  // Note: For TString, this may allocate less than sizeof(TString) for short strings!
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
-
-  // Disable regular new/delete (must use placement new with GC)
-  static void* operator new(size_t) = delete;
-  static void operator delete(void*) = delete;
-
-  // Type checks
-  bool isShort() const noexcept { return shrlen >= 0; }
-  bool isLong() const noexcept { return shrlen < 0; }
-  bool isExternal() const noexcept { return isLong() && shrlen != LSTRREG; }
-
-  // Accessors
-  size_t length() const noexcept {
-    return isShort() ? static_cast<size_t>(shrlen) : u.lnglen;
-  }
-  ls_byte getShrlen() const noexcept { return shrlen; }
-  size_t getLnglen() const noexcept { return u.lnglen; }
-  unsigned int getHash() const noexcept { return hash; }
-  lu_byte getExtra() const noexcept { return extra; }
-  const char* c_str() const noexcept {
-    return isShort() ? getContentsAddr() : contents;
-  }
-  char* getContentsPtr() noexcept { return isShort() ? getContentsAddr() : contents; }
-  char* getContentsField() noexcept { return contents; }
-  const char* getContentsField() const noexcept { return contents; }
-  // For short strings: return address where inline string data starts (after 'u' union)
-  // For long strings: would return same address (where contents pointer is stored)
-  char* getContentsAddr() noexcept { return cast_charp(this) + contentsOffset(); }
-  const char* getContentsAddr() const noexcept { return cast_charp(this) + contentsOffset(); }
-  lua_Alloc getFalloc() const noexcept { return falloc; }
-  void* getUserData() const noexcept { return ud; }
-
-  // Setters
-  void setExtra(lu_byte e) noexcept { extra = e; }
-  void setShrlen(ls_byte len) noexcept { shrlen = len; }
-  void setHash(unsigned int h) noexcept { hash = h; }
-  void setLnglen(size_t len) noexcept { u.lnglen = len; }
-  void setContents(char* c) noexcept { contents = c; }
-  void setFalloc(lua_Alloc f) noexcept { falloc = f; }
-  void setUserData(void* data) noexcept { ud = data; }
-
-  // Hash table operations
-  TString* getNext() const noexcept { return u.hnext; }
-  void setNext(TString* next_str) noexcept { u.hnext = next_str; }
-
-  // Helper for offset calculations
-  static constexpr size_t fallocOffset() noexcept {
-    // Offset of falloc field accounting for alignment
-    // Must include GCObject base!
-    struct OffsetHelper {
-      GCObject base;
-      lu_byte extra;
-      ls_byte shrlen;
-      unsigned int hash;
-      union { size_t lnglen; TString* hnext; } u;
-      char* contents;
-    };
-    return sizeof(OffsetHelper);
-  }
-
-  static constexpr size_t contentsOffset() noexcept {
-    // Offset of contents field accounting for GCObject base and alignment
-    struct OffsetHelper {
-      GCObject base;
-      lu_byte extra;
-      ls_byte shrlen;
-      unsigned int hash;
-      union { size_t lnglen; TString* hnext; } u;
-    };
-    return sizeof(OffsetHelper);
-  }
-
-  // Method declarations (implemented in lstring.cpp)
-  unsigned hashLongStr();
-  bool equals(const TString* other) const;
-  void remove(lua_State* L);           // Phase 25a: from luaS_remove
-  TString* normalize(lua_State* L);    // Phase 25a: from luaS_normstr
-
-  // Static factory-like functions (still use luaS_* for now)
-  // static TString* create(lua_State* L, const char* str, size_t len);
-
-  // Comparison operator overloads (defined after l_strcmp declaration)
-  friend bool operator<(const TString& l, const TString& r) noexcept;
-  friend bool operator<=(const TString& l, const TString& r) noexcept;
-  friend bool operator==(const TString& l, const TString& r) noexcept;
-  friend bool operator!=(const TString& l, const TString& r) noexcept;
-};
-
-
-/* Check if string is short (wrapper for backward compatibility) */
-inline bool strisshr(const TString* ts) noexcept { return ts->isShort(); }
-
-/* Check if string is external (fixed or with custom deallocator) */
-inline bool isextstr(const TValue* v) noexcept {
-	return ttislngstring(v) && tsvalue(v)->isExternal();
-}
-
-inline bool TValue::isExtString() const noexcept {
-	return isLongString() && stringValue()->isExternal();
-}
-
-/*
-** Get the actual string (array of bytes) from a 'TString'. (Generic
-** version and specialized versions for long and short strings.)
-*/
-inline char* rawgetshrstr(TString* ts) noexcept {
-	return ts->getContentsAddr();
-}
-inline const char* rawgetshrstr(const TString* ts) noexcept {
-	return ts->getContentsAddr();
-}
-
-/*
-** String accessor functions (Phase 46: converted from macros to inline functions)
-** These provide type-safe access to string contents with assertions.
-*/
-
-/* Get short string contents (asserts string is short) */
-inline char* getshrstr(TString* ts) noexcept {
-	lua_assert(ts->isShort());
-	return ts->getContentsAddr();
-}
-inline const char* getshrstr(const TString* ts) noexcept {
-	lua_assert(ts->isShort());
-	return ts->getContentsAddr();
-}
-
-/* Get long string contents (asserts string is long) */
-inline char* getlngstr(TString* ts) noexcept {
-	lua_assert(ts->isLong());
-	return ts->getContentsField();
-}
-inline const char* getlngstr(const TString* ts) noexcept {
-	lua_assert(ts->isLong());
-	return ts->getContentsField();
-}
-
-/* Get string contents (works for both short and long strings) */
-inline char* getstr(TString* ts) noexcept {
-	return ts->getContentsPtr();
-}
-inline const char* getstr(const TString* ts) noexcept {
-	return ts->c_str();
-}
-
-
-/* get string length from 'TString *ts' */
-inline size_t tsslen(const TString* ts) noexcept {
-	return ts->length();
-}
-
-/*
-** Get string and length */
-inline const char* getlstr(const TString* ts, size_t& len) noexcept {
-	len = ts->length();
-	return ts->c_str();
-}
-
-/* }================================================================== */
-
-
-/*
-** {==================================================================
-** Userdata
-** ===================================================================
-*/
-
-
-/*
-** Light userdata should be a variant of userdata, but for compatibility
-** reasons they are also different types.
-*/
-inline constexpr int LUA_VLIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0);
-
-inline constexpr int LUA_VUSERDATA = makevariant(LUA_TUSERDATA, 0);
-
-constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
-constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }
-
-constexpr bool TValue::isLightUserdata() const noexcept { return checktag(this, LUA_VLIGHTUSERDATA); }
-constexpr bool TValue::isFullUserdata() const noexcept { return checktag(this, ctb(LUA_VUSERDATA)); }
-
-inline void* pvalue(const TValue* o) noexcept { return o->pointerValue(); }
-
-inline Udata* uvalue(const TValue* o) noexcept { return o->userdataValue(); }
-
-constexpr void* pvalueraw(const Value& v) noexcept { return v.p; }
-
-/* setpvalue and setuvalue now defined as inline functions below */
-
-
-/* Ensures that addresses after this type are always fully aligned. */
-typedef union UValue {
-  TValue uv;
-  LUAI_MAXALIGN;  /* ensures maximum alignment for udata bytes */
-} UValue;
-
-
-/*
-** Header for userdata with user values;
-** memory area follows the end of this structure.
-*/
-// Udata inherits from GCBase (CRTP)
-class Udata : public GCBase<Udata> {
-private:
-  unsigned short nuvalue;  /* number of user values */
-  size_t len;  /* number of bytes */
-  Table *metatable;
-  GCObject *gclist;
-  UValue uv[1];  /* user values */
-
-public:
-  // Phase 50: Constructor - initializes all fields to safe defaults
-  Udata() noexcept {
-    nuvalue = 0;
-    len = 0;
-    metatable = nullptr;
-    gclist = nullptr;
-    // Note: uv array will be initialized by caller if needed
-  }
-
-  // Phase 50: Destructor - trivial (GC handles deallocation)
-  // MUST be empty (not = default) for variable-size objects
-  ~Udata() noexcept {}
-
-  // Phase 50: Special placement new for variable-size objects
-  static void* operator new(size_t /*size*/, void* ptr) noexcept {
-    return ptr;  // Just return the pointer, no allocation
-  }
-
-  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
-
-  // Disable regular new/delete (must use placement new with GC)
-  static void* operator new(size_t) = delete;
-  static void operator delete(void*) = delete;
-
-  // Inline accessors
-  size_t getLen() const noexcept { return len; }
-  void setLen(size_t l) noexcept { len = l; }
-  unsigned short getNumUserValues() const noexcept { return nuvalue; }
-  void setNumUserValues(unsigned short n) noexcept { nuvalue = n; }
-  Table* getMetatable() const noexcept { return metatable; }
-  void setMetatable(Table* mt) noexcept { metatable = mt; }
-  Table** getMetatablePtr() noexcept { return &metatable; }
-  GCObject* getGclist() noexcept { return gclist; }
-  void setGclist(GCObject* gc) noexcept { gclist = gc; }
-  // For GC gray list traversal - allows efficient list manipulation
-  GCObject** getGclistPtr() noexcept { return &gclist; }
-  UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
-  const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
-  // Note: getMemory() uses function udatamemoffset which requires Udata0 to be defined
-  inline void* getMemory() noexcept;
-  inline const void* getMemory() const noexcept;
-
-  // Static method to compute UV offset (needed for udatamemoffset function)
-  static constexpr size_t uvOffset() noexcept { return offsetof(Udata, uv); }
-};
-
-
-/*
-** Header for userdata with no user values. These userdata do not need
-** to be gray during GC, and therefore do not need a 'gclist' field.
-** To simplify, the code always use 'Udata' for both kinds of userdata,
-** making sure it never accesses 'gclist' on userdata with no user values.
-** This structure here is used only to compute the correct size for
-** this representation. (The 'bindata' field in its end ensures correct
-** alignment for binary data following this header.)
-*/
-// Udata0 inherits from GCBase (CRTP)
-typedef struct Udata0 : public GCBase<Udata0> {
-  unsigned short nuvalue;  /* number of user values */
-  size_t len;  /* number of bytes */
-  Table *metatable;
-  union {LUAI_MAXALIGN;} bindata;
-} Udata0;
-
-
-/* compute the offset of the memory area of a userdata */
-// Phase 49: Convert macro to constexpr function
-// offsetof for non-standard-layout types (classes with GCBase inheritance)
-// This triggers -Winvalid-offsetof but is safe because we control the memory layout
-constexpr inline size_t udatamemoffset(int nuv) noexcept {
-	return (nuv == 0) ? offsetof(Udata0, bindata)
-	                  : Udata::uvOffset() + (sizeof(UValue) * static_cast<size_t>(nuv));
-}
-
-/* get the address of the memory block inside 'Udata' */
-// Phase 49: Convert macro to inline function with const overload
-inline char* getudatamem(Udata* u) noexcept {
-	return cast_charp(u) + udatamemoffset(u->getNumUserValues());
-}
-inline const char* getudatamem(const Udata* u) noexcept {
-	return cast_charp(u) + udatamemoffset(u->getNumUserValues());
-}
-
-/* compute the size of a userdata */
-// Phase 49: Convert macro to constexpr function
-constexpr inline size_t sizeudata(int nuv, size_t nb) noexcept {
-	return udatamemoffset(nuv) + nb;
-}
-
-// Implementation of Udata::getMemory() now that Udata0 is defined
-inline void* Udata::getMemory() noexcept {
-  return getudatamem(this);
-}
-inline const void* Udata::getMemory() const noexcept {
-  return getudatamem(this);  // Calls const overload
-}
-
-/* }================================================================== */
 
 
 /*
@@ -2021,6 +1500,48 @@ inline bool operator!=(const TString& l, const TString& r) noexcept {
 ** other C++ features, but the GC conversions remain safe through careful
 ** design and runtime type checking.
 */
+
+
+/*
+** {==================================================================
+** Table fast-access inline functions
+** ===================================================================
+** Phase 121: Moved here from ltable.h to resolve circular dependencies
+** These functions need both Table (from ltable.h) and TMS (from ltm.h)
+*/
+
+// Phase 88: Convert luaH_fastgeti and luaH_fastseti macros to inline functions
+// These are hot-path table access functions used throughout the VM
+inline void luaH_fastgeti(Table* t, lua_Integer k, TValue* res, lu_byte& tag) noexcept {
+	Table* h = t;
+	lua_Unsigned u = l_castS2U(k) - 1u;
+	if (u < h->arraySize()) {
+		tag = *h->getArrayTag(u);
+		if (!tagisempty(tag)) {
+			farr2val(h, u, tag, res);
+		}
+	} else {
+		tag = luaH_getint(h, k, res);
+	}
+}
+
+inline void luaH_fastseti(Table* t, lua_Integer k, TValue* val, int& hres) noexcept {
+	Table* h = t;
+	lua_Unsigned u = l_castS2U(k) - 1u;
+	if (u < h->arraySize()) {
+		lu_byte* tag = h->getArrayTag(u);
+		if (checknoTM(h->getMetatable(), TMS::TM_NEWINDEX) || !tagisempty(*tag)) {
+			fval2arr(h, u, tag, val);
+			hres = HOK;
+		} else {
+			hres = ~cast_int(u);
+		}
+	} else {
+		hres = luaH_psetint(h, k, val);
+	}
+}
+
+/* }================================================================== */
 
 
 #endif
