@@ -93,7 +93,7 @@ inline void enterlevel(LexState* ls) {
 }
 
 inline void leavelevel(LexState* ls) noexcept {
-	ls->getLuaState()->getNCcallsRef()--;
+	ls->getLuaState()->getNumberOfCCallsRef()--;
 }
 
 

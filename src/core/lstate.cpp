@@ -89,7 +89,7 @@ CallInfo *luaE_extendCI (lua_State *L) {
   ci->setNext(nullptr);
   // trap already initialized to 0 in constructor, but keep this for clarity
   ci->getTrap() = 0;
-  L->getNCIRef()++;
+  L->getNumberOfCallInfosRef()++;
   return ci;
 }
 
@@ -104,7 +104,7 @@ static void freeCI (lua_State *L) {
   while ((ci = next) != nullptr) {
     next = ci->getNext();
     luaM_free(L, ci);
-    L->getNCIRef()--;
+    L->getNumberOfCallInfosRef()--;
   }
 }
 
@@ -121,7 +121,7 @@ void luaE_shrinkCI (lua_State *L) {
   while ((next = ci->getNext()) != nullptr) {  /* two extra elements? */
     CallInfo *next2 = next->getNext();  /* next's next */
     ci->setNext(next2);  /* remove next from the list */
-    L->getNCIRef()--;
+    L->getNumberOfCallInfosRef()--;
     luaM_free(L, next);  /* free next */
     if (next2 == nullptr)
       break;  /* no more elements */
@@ -149,7 +149,7 @@ void luaE_checkcstack (lua_State *L) {
 
 
 LUAI_FUNC void luaE_incCstack (lua_State *L) {
-  L->getNCcallsRef()++;
+  L->getNumberOfCCallsRef()++;
   if (l_unlikely(getCcalls(L) >= LUAI_MAXCCALLS))
     luaE_checkcstack(L);
 }
@@ -179,7 +179,7 @@ static void stack_init (lua_State *L1, lua_State *L) {
 static void freestack (lua_State *L) {
   L->setCI(L->getBaseCI());  /* free the entire 'ci' list */
   freeCI(L);
-  lua_assert(L->getNCI() == 0);
+  lua_assert(L->getNumberOfCallInfos() == 0);
   /* free stack via LuaStack subsystem */
   L->getStackSubsystem().free(L);
 }
@@ -240,7 +240,7 @@ static void preinit_thread (lua_State *L, global_State *g) {
 
 lu_mem luaE_threadsize (lua_State *L) {
   lu_mem sz = static_cast<lu_mem>(sizeof(LX))
-            + cast_uint(L->getNCI()) * sizeof(CallInfo);
+            + cast_uint(L->getNumberOfCallInfos()) * sizeof(CallInfo);
   if (L->getStack().p != nullptr)
     sz += cast_uint(L->getStackSize() + EXTRA_STACK) * sizeof(StackValue);
   return sz;
@@ -319,7 +319,7 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
 LUA_API int lua_closethread (lua_State *L, lua_State *from) {
   TStatus status;
   lua_lock(L);
-  L->setNCcalls((from) ? getCcalls(from) : 0);
+  L->setNumberOfCCalls((from) ? getCcalls(from) : 0);
   status = luaE_resetthread(L, L->getStatus());
   if (L == from)  /* closing itself? */
     L->throwBaseLevel( status);

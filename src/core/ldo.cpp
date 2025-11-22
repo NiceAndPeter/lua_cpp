@@ -208,10 +208,10 @@ l_noret lua_State::throwBaseLevel(TStatus errcode) {
 ** ENCAPSULATION NOTE:
 ** This is now a lua_State method rather than a free function, following
 ** the C++ modernization (Phase 31). All state manipulation uses accessor
-** methods (getNCcalls, setErrorJmp, etc.) rather than direct field access.
+** methods (getNumberOfCCalls, setErrorJmp, etc.) rather than direct field access.
 */
 TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
-  l_uint32 oldnCcalls = getNCcalls();
+  l_uint32 oldnCcalls = getNumberOfCCalls();
   lua_longjmp lj;
   lj.status = LUA_OK;
   lj.previous = getErrorJmp();  /* chain new error handler */
@@ -230,7 +230,7 @@ TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
   }
 
   setErrorJmp(lj.previous);  /* restore old error handler */
-  setNCcalls(oldnCcalls);
+  setNumberOfCCalls(oldnCcalls);
   return lj.status;
 }
 
@@ -670,7 +670,7 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
 // Convert to private lua_State method
 void lua_State::cCall(StkId func, int nResults, l_uint32 inc) {
   CallInfo *ci_result;
-  getNCcallsRef() += inc;
+  getNumberOfCCallsRef() += inc;
   if (l_unlikely(getCcalls(this) >= LUAI_MAXCCALLS)) {
     checkstackp(this, 0, func);  /* free any use of EXTRA_STACK */
     luaE_checkcstack(this);
@@ -679,7 +679,7 @@ void lua_State::cCall(StkId func, int nResults, l_uint32 inc) {
     ci_result->callStatusRef() |= CIST_FRESH;  /* mark that it is a "fresh" execute */
     luaV_execute(this, ci_result);  /* call it */
   }
-  getNCcallsRef() -= inc;
+  getNumberOfCCallsRef() -= inc;
 }
 
 
@@ -902,10 +902,10 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs,
   }
   else if (L->getStatus() != LUA_YIELD)  /* ended with errors? */
     return resume_error(L, "cannot resume dead coroutine", nargs);
-  L->setNCcalls((from) ? getCcalls(from) : 0);
+  L->setNumberOfCCalls((from) ? getCcalls(from) : 0);
   if (getCcalls(L) >= LUAI_MAXCCALLS)
     return resume_error(L, "C stack overflow", nargs);
-  L->getNCcallsRef()++;
+  L->getNumberOfCCallsRef()++;
   luai_userstateresume(L, nargs);
   api_checkpop(L, (L->getStatus() == LUA_OK) ? nargs + 1 : nargs);
   status = L->rawRunProtected( resume, &nargs);

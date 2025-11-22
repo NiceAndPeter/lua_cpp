@@ -422,8 +422,8 @@ private:
   } transferinfo;
 
   // Step 6: Call counter fields (encapsulated)
-  l_uint32 nCcalls;  /* number of nested non-yieldable or C calls */
-  int nci;  /* number of items in 'ci' list */
+  l_uint32 numberOfCCalls;  /* number of nested non-yieldable or C calls */
+  int numberOfCallInfos;  /* number of items in 'ci' list */
 
 public:
   // Initialize lua_State fields (GC base fields must already be set by caller)
@@ -442,7 +442,7 @@ public:
 
     // CallInfo fields
     ci = nullptr;
-    nci = 0;
+    numberOfCallInfos = 0;
     // base_ci initialized via placement new to call its constructor
     new (&base_ci) CallInfo();
 
@@ -469,7 +469,7 @@ public:
     transferinfo.ntransfer = 0;
 
     // Call depth
-    nCcalls = 0;
+    numberOfCCalls = 0;
   }
 
   // Stack subsystem accessor
@@ -563,17 +563,17 @@ public:
   const auto& getTransferInfo() const noexcept { return transferinfo; }
 
   // Step 6: Call counter field accessors
-  l_uint32 getNCcalls() const noexcept { return nCcalls; }
-  void setNCcalls(l_uint32 nc) noexcept { nCcalls = nc; }
-  l_uint32& getNCcallsRef() noexcept { return nCcalls; }  // For increment/decrement
+  l_uint32 getNumberOfCCalls() const noexcept { return numberOfCCalls; }
+  void setNumberOfCCalls(l_uint32 nc) noexcept { numberOfCCalls = nc; }
+  l_uint32& getNumberOfCCallsRef() noexcept { return numberOfCCalls; }  // For increment/decrement
 
-  int getNCI() const noexcept { return nci; }
-  void setNCI(int n) noexcept { nci = n; }
-  int& getNCIRef() noexcept { return nci; }  // For increment/decrement
+  int getNumberOfCallInfos() const noexcept { return numberOfCallInfos; }
+  void setNumberOfCallInfos(int n) noexcept { numberOfCallInfos = n; }
+  int& getNumberOfCallInfosRef() noexcept { return numberOfCallInfos; }  // For increment/decrement
 
   // Non-yieldable call management
-  void incrementNonYieldable() noexcept { nCcalls += 0x10000; }
-  void decrementNonYieldable() noexcept { nCcalls -= 0x10000; }
+  void incrementNonYieldable() noexcept { numberOfCCalls += 0x10000; }
+  void decrementNonYieldable() noexcept { numberOfCCalls -= 0x10000; }
 
   // Phase 44.4: Additional lua_State helper methods
 
@@ -700,12 +700,12 @@ private:
 
 /* true if this thread does not have non-yieldable calls in the stack */
 inline constexpr bool yieldable(const lua_State* L) noexcept {
-	return ((L->getNCcalls() & 0xffff0000) == 0);
+	return ((L->getNumberOfCCalls() & 0xffff0000) == 0);
 }
 
 /* real number of C calls */
 inline constexpr l_uint32 getCcalls(const lua_State* L) noexcept {
-	return (L->getNCcalls() & 0xffff);
+	return (L->getNumberOfCCalls() & 0xffff);
 }
 
 /* Increment the number of non-yieldable calls */

@@ -1108,8 +1108,8 @@ static int stacklevel (lua_State *L) {
   int a = 0;
   lua_pushinteger(L, cast_Integer(L->getTop().p - L->getStack().p));
   lua_pushinteger(L, L->getStackSize());
-  lua_pushinteger(L, cast_Integer(L->getNCcalls()));
-  lua_pushinteger(L, L->getNCI());
+  lua_pushinteger(L, cast_Integer(L->getNumberOfCCalls()));
+  lua_pushinteger(L, L->getNumberOfCallInfos());
   lua_pushinteger(L, (lua_Integer)(size_t)&a);
   return 5;
 }
