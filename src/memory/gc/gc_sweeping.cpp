@@ -137,11 +137,11 @@ void GCSweeping::sweep2old(lua_State* L, GCObject** p) {
         else {  /* all surviving objects become old */
             setage(curr, GCAge::Old);
 
-            if (curr->getType() == LUA_VTHREAD) {  /* threads must be watched */
+            if (curr->getType() == ctb(LuaT::THREAD)) {  /* threads must be watched */
                 lua_State* th = gco2th(curr);
                 linkgclistThread(th, *g->getGrayAgainPtr());  /* insert into 'grayagain' list */
             }
-            else if (curr->getType() == LUA_VUPVAL && gco2upv(curr)->isOpen())
+            else if (curr->getType() == ctb(LuaT::UPVAL) && gco2upv(curr)->isOpen())
                 set2gray(curr);  /* open upvalues are always gray */
             else  /* everything else is black */
                 nw2black(curr);

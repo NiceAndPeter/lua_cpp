@@ -193,19 +193,19 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     return 0;
   else if (ttypetag(t1) != ttypetag(t2)) {
     switch (ttypetag(t1)) {
-      case LUA_VNUMINT: {  /* integer == float? */
+      case LuaT::NUMINT: {  /* integer == float? */
         /* integer and float can only be equal if float has an integer
            value equal to the integer */
         lua_Integer i2;
         return (luaV_flttointeger(fltvalue(t2), &i2, F2Imod::F2Ieq) &&
                 ivalue(t1) == i2);
       }
-      case LUA_VNUMFLT: {  /* float == integer? */
+      case LuaT::NUMFLT: {  /* float == integer? */
         lua_Integer i1;  /* see comment in previous case */
         return (luaV_flttointeger(fltvalue(t1), &i1, F2Imod::F2Ieq) &&
                 i1 == ivalue(t2));
       }
-      case LUA_VSHRSTR: case LUA_VLNGSTR: {
+      case LuaT::SHRSTR: case LuaT::LNGSTR: {
         /* compare two strings with different variants: they can be
            equal when one string is a short string and the other is
            an external string  */
@@ -219,18 +219,18 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
   }
   else {  /* equal variants */
     switch (ttypetag(t1)) {
-      case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE:
+      case LuaT::NIL: case LuaT::VFALSE: case LuaT::VTRUE:
         return 1;
-      case LUA_VNUMINT:
+      case LuaT::NUMINT:
         return (ivalue(t1) == ivalue(t2));
-      case LUA_VNUMFLT:
+      case LuaT::NUMFLT:
         return (fltvalue(t1) == fltvalue(t2));
-      case LUA_VLIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
-      case LUA_VSHRSTR:
+      case LuaT::LIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
+      case LuaT::SHRSTR:
         return eqshrstr(tsvalue(t1), tsvalue(t2));
-      case LUA_VLNGSTR:
+      case LuaT::LNGSTR:
         return tsvalue(t1)->equals(tsvalue(t2));
-      case LUA_VUSERDATA: {
+      case LuaT::USERDATA: {
         if (uvalue(t1) == uvalue(t2)) return 1;
         else if (L == nullptr) return 0;
         tm = fasttm(L, uvalue(t1)->getMetatable(), TMS::TM_EQ);
@@ -238,7 +238,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
           tm = fasttm(L, uvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
-      case LUA_VTABLE: {
+      case LuaT::TABLE: {
         if (hvalue(t1) == hvalue(t2)) return 1;
         else if (L == nullptr) return 0;
         tm = fasttm(L, hvalue(t1)->getMetatable(), TMS::TM_EQ);
@@ -246,7 +246,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
           tm = fasttm(L, hvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
-      case LUA_VLCF:
+      case LuaT::LCF:
         return (fvalue(t1) == fvalue(t2));
       default:  /* functions and threads */
         return (gcvalue(t1) == gcvalue(t2));
@@ -254,7 +254,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     if (tm == nullptr)  /* no TM? */
       return 0;  /* objects are different */
     else {
-      int tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */
+      LuaT tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */
       return !tagisfalse(tag);
     }
   }

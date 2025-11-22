@@ -25,15 +25,15 @@ typedef union StackValue *StkId;
 */
 
 constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
-constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }
-constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LUA_VLCF); }
-constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VCCL)); }
+constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LuaT::LCL)); }
+constexpr bool ttislcf(const TValue* o) noexcept { return checktag(o, LuaT::LCF); }
+constexpr bool ttisCclosure(const TValue* o) noexcept { return checktag(o, ctb(LuaT::CCL)); }
 constexpr bool ttisclosure(const TValue* o) noexcept { return ttisLclosure(o) || ttisCclosure(o); }
 
 constexpr bool TValue::isFunction() const noexcept { return checktype(this, LUA_TFUNCTION); }
-constexpr bool TValue::isLClosure() const noexcept { return checktag(this, ctb(LUA_VLCL)); }
-constexpr bool TValue::isLightCFunction() const noexcept { return checktag(this, LUA_VLCF); }
-constexpr bool TValue::isCClosure() const noexcept { return checktag(this, ctb(LUA_VCCL)); }
+constexpr bool TValue::isLClosure() const noexcept { return checktag(this, ctb(LuaT::LCL)); }
+constexpr bool TValue::isLightCFunction() const noexcept { return checktag(this, LuaT::LCF); }
+constexpr bool TValue::isCClosure() const noexcept { return checktag(this, ctb(LuaT::CCL)); }
 constexpr bool TValue::isClosure() const noexcept { return isLClosure() || isCClosure(); }
 
 inline constexpr bool isLfunction(const TValue* o) noexcept {
@@ -87,7 +87,7 @@ public:
   ~UpVal() noexcept = default;
 
   // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
-  static void* operator new(size_t size, lua_State* L, lu_byte tt);
+  static void* operator new(size_t size, lua_State* L, LuaT tt);
 
   // Disable regular new/delete (must use placement new with GC)
   static void* operator new(size_t) = delete;
@@ -144,7 +144,7 @@ private:
 
 public:
   // Member placement new operator for GC allocation (defined in lgc.h)
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+  static void* operator new(size_t size, lua_State* L, LuaT tt, size_t extra = 0);
 
   // Constructor
   CClosure(int nupvals);
@@ -182,7 +182,7 @@ private:
 
 public:
   // Member placement new operator for GC allocation (defined in lgc.h)
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+  static void* operator new(size_t size, lua_State* L, LuaT tt, size_t extra = 0);
 
   // Constructor
   LClosure(int nupvals);

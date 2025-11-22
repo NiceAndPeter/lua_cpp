@@ -146,7 +146,7 @@ void TString::init(lua_State* L) {
 ** creates a new string object
 ** Phase 50: Now uses placement new to call constructor
 */
-static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
+static TString *createstrobj (lua_State *L, size_t totalsize, LuaT tag,
                               unsigned h) {
   // For TString, we need to allocate exactly totalsize bytes, not sizeof(TString)
   // For short strings: totalsize = contentsOffset() + string_length + 1
@@ -194,7 +194,7 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
   // LSTRFIX: allocates 40 bytes (up to but not including falloc)
   // LSTRREG: allocates 40 + string length (up to but not including falloc)
   // LSTRMEM: allocates full sizeof(TString) = 56 bytes (includes falloc and ud)
-  if (tag == LUA_VLNGSTR) {
+  if (tag == LuaT::LNGSTR) {
     ts->setContents(nullptr);
     // DON'T initialize falloc/ud here - they may not exist in allocated memory!
     // They will be initialized by the caller if needed (e.g., luaS_newextlstr for LSTRMEM)
@@ -206,7 +206,7 @@ static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
 
 TString* TString::createLongString(lua_State* L, size_t l) {
   size_t totalsize = calculateLongStringSize(l, LSTRREG);
-  TString *ts = createstrobj(L, totalsize, LUA_VLNGSTR, G(L)->getSeed());
+  TString *ts = createstrobj(L, totalsize, ctb(LuaT::LNGSTR), G(L)->getSeed());
   ts->setLnglen(l);
   ts->setShrlen(LSTRREG);  /* signals that it is a regular long string */
   ts->setContents(cast_charp(ts) + tstringFallocOffset());
@@ -254,7 +254,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
     list = &tb->getHash()[lmod(h, tb->getSize())];  /* rehash with new size */
   }
   size_t allocsize = sizestrshr(l);
-  ts = createstrobj(L, allocsize, LUA_VSHRSTR, h);
+  ts = createstrobj(L, allocsize, ctb(LuaT::SHRSTR), h);
   ts->setShrlen(static_cast<ls_byte>(l));
   getshrstr(ts)[l] = '\0';  /* ending 0 */
   std::copy_n(str, l, getshrstr(ts));
@@ -311,7 +311,7 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
   size_t totalsize = sizeudata(nuvalue, s);
 
   // Allocate exactly what we need (may be less than sizeof(Udata) for small data)
-  GCObject *o = luaC_newobj(L, LUA_VUSERDATA, totalsize);
+  GCObject *o = luaC_newobj(L, ctb(LuaT::USERDATA), totalsize);
   u = gco2u(o);
 
   // Manually initialize fields (can't use constructor reliably for variable-size objects)
@@ -343,7 +343,7 @@ struct NewExt {
 static void f_newext (lua_State *L, void *ud) {
   NewExt *ne = static_cast<NewExt*>(ud);
   size_t size = TString::calculateLongStringSize(0, ne->kind);
-  ne->ts = createstrobj(L, size, LUA_VLNGSTR, G(L)->getSeed());
+  ne->ts = createstrobj(L, size, ctb(LuaT::LNGSTR), G(L)->getSeed());
 }
 
 
@@ -375,7 +375,7 @@ TString* TString::createExternal(lua_State* L, const char* s, size_t len,
 */
 
 unsigned TString::hashLongStr() {
-  lua_assert(getType() == LUA_VLNGSTR);
+  lua_assert(getType() == ctb(LuaT::LNGSTR));
   if (getExtra() == 0) {  /* no hash? */
     size_t len = getLnglen();
     setHash(computeHash(getlngstr(this), len, getHash()));

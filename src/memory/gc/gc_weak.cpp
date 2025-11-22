@@ -38,7 +38,7 @@
 
 /* Access to collectable objects in array part of tables */
 #define gcvalarr(t,i)  \
-	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
+	(iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr)
 
 /* Note: gcvalueN and valiswhite are now in lgc.h */
 /* Note: markkey and markvalue are defined in gc_marking.h */
@@ -321,7 +321,7 @@ void GCWeak::clearbyvalues(global_State* g, GCObject* l, GCObject* f) {
         for (i = 0; i < asize; i++) {
             GCObject* o = gcvalarr(h, i);
             if (iscleared(g, o))  /* value was collected? */
-                *h->getArrayTag(i) = LUA_VEMPTY;  /* remove entry */
+                *h->getArrayTag(i) = LuaT::EMPTY;  /* remove entry */
         }
 
         for (n = gnode(h, 0); n < limit; n++) {

@@ -337,7 +337,7 @@ int FuncState::addk(Proto *proto, TValue *v) {
 int FuncState::k2proto(TValue *key, TValue *v) {
   TValue val;
   Proto *proto = getProto();
-  int tag = luaH_get(getKCache(), key, &val);  /* query scanner table */
+  LuaT tag = luaH_get(getKCache(), key, &val);  /* query scanner table */
   if (!tagisempty(tag)) {  /* is there an index there? */
     int k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
@@ -466,22 +466,22 @@ void FuncState::floatCode(int reg, lua_Number flt) {
 */
 static void const2exp (TValue *v, expdesc *e) {
   switch (ttypetag(v)) {
-    case LUA_VNUMINT:
+    case LuaT::NUMINT:
       e->setKind(VKINT); e->setIntValue(ivalue(v));
       break;
-    case LUA_VNUMFLT:
+    case LuaT::NUMFLT:
       e->setKind(VKFLT); e->setFloatValue(fltvalue(v));
       break;
-    case LUA_VFALSE:
+    case LuaT::VFALSE:
       e->setKind(VFALSE);
       break;
-    case LUA_VTRUE:
+    case LuaT::VTRUE:
       e->setKind(VTRUE);
       break;
-    case LUA_VNIL:
+    case LuaT::NIL:
       e->setKind(VNIL);
       break;
-    case LUA_VSHRSTR:  case LUA_VLNGSTR:
+    case LuaT::SHRSTR:  case LuaT::LNGSTR:
       e->setKind(VKSTR); e->setStringValue(tsvalue(v));
       break;
     default: lua_assert(0);

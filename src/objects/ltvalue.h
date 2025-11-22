@@ -35,44 +35,46 @@ inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
 ** ===================================================================
 */
 
-/* Nil variants */
-inline constexpr int LUA_VNIL = makevariant(LUA_TNIL, 0);
-inline constexpr int LUA_VEMPTY = makevariant(LUA_TNIL, 1);
-inline constexpr int LUA_VABSTKEY = makevariant(LUA_TNIL, 2);
-inline constexpr int LUA_VNOTABLE = makevariant(LUA_TNIL, 3);
+enum class LuaT : lu_byte {
+  /* Nil variants */
+  NIL = makevariant(LUA_TNIL, 0),
+  EMPTY = makevariant(LUA_TNIL, 1),
+  ABSTKEY = makevariant(LUA_TNIL, 2),
+  NOTABLE = makevariant(LUA_TNIL, 3),
 
-/* Boolean variants */
-inline constexpr int LUA_VFALSE = makevariant(LUA_TBOOLEAN, 0);
-inline constexpr int LUA_VTRUE = makevariant(LUA_TBOOLEAN, 1);
+  /* Boolean variants */
+  VFALSE = makevariant(LUA_TBOOLEAN, 0),
+  VTRUE = makevariant(LUA_TBOOLEAN, 1),
 
-/* Number variants */
-inline constexpr int LUA_VNUMINT = makevariant(LUA_TNUMBER, 0);  /* integer numbers */
-inline constexpr int LUA_VNUMFLT = makevariant(LUA_TNUMBER, 1);  /* float numbers */
+  /* Number variants */
+  NUMINT = makevariant(LUA_TNUMBER, 0),  /* integer numbers */
+  NUMFLT = makevariant(LUA_TNUMBER, 1),  /* float numbers */
 
-/* String variants */
-inline constexpr int LUA_VSHRSTR = makevariant(LUA_TSTRING, 0);  /* short strings */
-inline constexpr int LUA_VLNGSTR = makevariant(LUA_TSTRING, 1);  /* long strings */
+  /* String variants */
+  SHRSTR = makevariant(LUA_TSTRING, 0),  /* short strings */
+  LNGSTR = makevariant(LUA_TSTRING, 1),  /* long strings */
 
-/* Table variant */
-inline constexpr int LUA_VTABLE = makevariant(LUA_TTABLE, 0);
+  /* Table variant */
+  TABLE = makevariant(LUA_TTABLE, 0),
 
-/* Function variants */
-inline constexpr int LUA_VLCL = makevariant(LUA_TFUNCTION, 0);  /* Lua closure */
-inline constexpr int LUA_VLCF = makevariant(LUA_TFUNCTION, 1);  /* light C function */
-inline constexpr int LUA_VCCL = makevariant(LUA_TFUNCTION, 2);  /* C closure */
+  /* Function variants */
+  LCL = makevariant(LUA_TFUNCTION, 0),  /* Lua closure */
+  LCF = makevariant(LUA_TFUNCTION, 1),  /* light C function */
+  CCL = makevariant(LUA_TFUNCTION, 2),  /* C closure */
 
-/* Userdata variants */
-inline constexpr int LUA_VLIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0);
-inline constexpr int LUA_VUSERDATA = makevariant(LUA_TUSERDATA, 0);
+  /* Userdata variants */
+  LIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0),
+  USERDATA = makevariant(LUA_TUSERDATA, 0),
 
-/* Thread variant */
-inline constexpr int LUA_VTHREAD = makevariant(LUA_TTHREAD, 0);
+  /* Thread variant */
+  THREAD = makevariant(LUA_TTHREAD, 0),
 
-/* Upvalue variant (collectable non-value) */
-inline constexpr int LUA_VUPVAL = makevariant(LUA_TUPVAL, 0);
+  /* Upvalue variant (collectable non-value) */
+  UPVAL = makevariant(LUA_TUPVAL, 0),
 
-/* Proto variant (collectable non-value) */
-inline constexpr int LUA_VPROTO = makevariant(LUA_TPROTO, 0);
+  /* Proto variant (collectable non-value) */
+  PROTO = makevariant(LUA_TPROTO, 0)
+};
 
 /* }================================================================== */
 
@@ -124,17 +126,19 @@ class GCObject;
 class TValue {
 private:
   Value value_;
-  lu_byte tt_;
+  LuaT tt_;
 
 public:
   // Constexpr constructor for static initialization
-  constexpr TValue(Value v, lu_byte t) noexcept : value_(v), tt_(t) {}
+  constexpr TValue(Value v, LuaT t) noexcept : value_(v), tt_(t) {}
+  constexpr TValue(Value v, lu_byte t) noexcept : value_(v), tt_(static_cast<LuaT>(t)) {}  /* for compatibility */
 
   // Default constructor
   TValue() = default;
 
   // Inline accessors for hot-path access
-  lu_byte getType() const noexcept { return tt_; }
+  LuaT getType() const noexcept { return tt_; }
+  lu_byte getRawType() const noexcept { return static_cast<lu_byte>(tt_); }  /* for legacy code */
   const Value& getValue() const noexcept { return value_; }
   Value& getValue() noexcept { return value_; }
 
@@ -203,7 +207,8 @@ public:
   // Low-level field access (for macros during transition)
   Value& valueField() noexcept { return value_; }
   const Value& valueField() const noexcept { return value_; }
-  void setType(lu_byte t) noexcept { tt_ = t; }
+  void setType(LuaT t) noexcept { tt_ = t; }
+  void setType(lu_byte t) noexcept { tt_ = static_cast<LuaT>(t); }  /* for legacy code */
 
   // Type checking methods (implementations below after constants are defined)
   // Nil checks
@@ -253,9 +258,9 @@ public:
   bool hasRightType() const noexcept; // GC object has same tag as value
 
   // Low-level type accessors
-  constexpr lu_byte rawType() const noexcept { return tt_; }
+  constexpr LuaT rawType() const noexcept { return tt_; }
   constexpr int baseType() const noexcept;
-  constexpr lu_byte typeTag() const noexcept;
+  constexpr LuaT typeTag() const noexcept;
 
   // Operator overloads (for numeric comparisons - defined after dependencies)
   // These are declared here but implemented in lobject.h after all type helpers are available
@@ -279,32 +284,38 @@ constexpr const Value& valraw(const TValue* o) noexcept { return val_(o); }
 
 
 /* raw type tag of a TValue */
-constexpr lu_byte rawtt(const TValue* o) noexcept { return o->getType(); }
+constexpr LuaT rawtt(const TValue* o) noexcept { return o->getType(); }
+constexpr lu_byte rawtt_byte(const TValue* o) noexcept { return o->getRawType(); }  /* for legacy code */
 
 /* tag with no variants (bits 0-3) */
 constexpr int novariant(int t) noexcept { return (t & 0x0F); }
+constexpr int novariant(LuaT t) noexcept { return (static_cast<int>(t) & 0x0F); }
 
 /* type tag of a TValue (bits 0-3 for tags + variant bits 4-5) */
 constexpr int withvariant(int t) noexcept { return (t & 0x3F); }
+constexpr LuaT withvariant(LuaT t) noexcept { return static_cast<LuaT>(static_cast<int>(t) & 0x3F); }
 
-constexpr lu_byte ttypetag(const TValue* o) noexcept { return cast_byte(withvariant(rawtt(o))); }
+constexpr LuaT ttypetag(const TValue* o) noexcept { return withvariant(rawtt(o)); }
+constexpr lu_byte ttypetag_byte(const TValue* o) noexcept { return static_cast<lu_byte>(withvariant(rawtt(o))); }  /* for legacy code */
 
 /* type of a TValue */
 constexpr int ttype(const TValue* o) noexcept { return novariant(rawtt(o)); }
 
 // TValue low-level type accessor implementations
 constexpr int TValue::baseType() const noexcept { return novariant(tt_); }
-constexpr lu_byte TValue::typeTag() const noexcept { return cast_byte(withvariant(tt_)); }
+constexpr LuaT TValue::typeTag() const noexcept { return withvariant(tt_); }
 
 /* Macros to test type */
-constexpr bool checktag(const TValue* o, int t) noexcept { return rawtt(o) == t; }
+constexpr bool checktag(const TValue* o, LuaT t) noexcept { return rawtt(o) == t; }
+constexpr bool checktag(const TValue* o, lu_byte t) noexcept { return rawtt(o) == static_cast<LuaT>(t); }  /* overload for raw bytes */
 constexpr bool checktype(const TValue* o, int t) noexcept { return ttype(o) == t; }
 
 /* Bit mark for collectable types */
 inline constexpr int BIT_ISCOLLECTABLE = (1 << 6);
 
 /* mark a tag as collectable */
-constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCOLLECTABLE); }
+constexpr LuaT ctb(LuaT t) noexcept { return static_cast<LuaT>(static_cast<int>(t) | BIT_ISCOLLECTABLE); }
+constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCOLLECTABLE); }  /* overload for base types */
 
 
 /* Macros for internal tests */
@@ -315,7 +326,8 @@ constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCO
 /* Macros to set values */
 
 /* set a value's tag */
-inline void settt_(TValue* o, lu_byte t) noexcept { o->setType(t); }
+inline void settt_(TValue* o, LuaT t) noexcept { o->setType(t); }
+inline void settt_(TValue* o, lu_byte t) noexcept { o->setType(t); }  /* overload for raw bytes */
 
 
 #endif

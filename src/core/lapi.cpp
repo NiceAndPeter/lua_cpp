@@ -383,10 +383,10 @@ LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
 LUA_API lua_Unsigned lua_rawlen (lua_State *L, int idx) {
   const TValue *o = L->getStackSubsystem().indexToValue(L,idx);
   switch (ttypetag(o)) {
-    case LUA_VSHRSTR: return static_cast<lua_Unsigned>(tsvalue(o)->length());
-    case LUA_VLNGSTR: return static_cast<lua_Unsigned>(tsvalue(o)->length());
-    case LUA_VUSERDATA: return static_cast<lua_Unsigned>(uvalue(o)->getLen());
-    case LUA_VTABLE: {
+    case LuaT::SHRSTR: return static_cast<lua_Unsigned>(tsvalue(o)->length());
+    case LuaT::LNGSTR: return static_cast<lua_Unsigned>(tsvalue(o)->length());
+    case LuaT::USERDATA: return static_cast<lua_Unsigned>(uvalue(o)->getLen());
+    case LuaT::TABLE: {
       lua_Unsigned res;
       lua_lock(L);
       res = luaH_getn(L, hvalue(o));
@@ -438,8 +438,8 @@ LUA_API lua_State *lua_tothread (lua_State *L, int idx) {
 LUA_API const void *lua_topointer (lua_State *L, int idx) {
   const TValue *o = L->getStackSubsystem().indexToValue(L,idx);
   switch (ttypetag(o)) {
-    case LUA_VLCF: return cast_voidp(cast_sizet(fvalue(o)));
-    case LUA_VUSERDATA: case LUA_VLIGHTUSERDATA:
+    case LuaT::LCF: return cast_voidp(cast_sizet(fvalue(o)));
+    case LuaT::USERDATA: case LuaT::LIGHTUSERDATA:
       return touserdata(o);
     default: {
       if (iscollectable(o))
@@ -612,7 +612,7 @@ LUA_API int lua_pushthread (lua_State *L) {
 
 
 static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
-  lu_byte tag;
+  LuaT tag;
   TString *str = TString::create(L, k);
   tag = luaV_fastget(t, str, s2v(L->getTop().p), luaH_getstr);
   if (!tagisempty(tag))
@@ -634,7 +634,7 @@ static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
 */
 static void getGlobalTable (lua_State *L, TValue *gt) {
   Table *registry = hvalue(G(L)->getRegistry());
-  lu_byte tag = luaH_getint(registry, LUA_RIDX_GLOBALS, gt);
+  LuaT tag = luaH_getint(registry, LUA_RIDX_GLOBALS, gt);
   (void)tag;  /* avoid not-used warnings when checks are off */
   api_check(L, novariant(tag) == LUA_TTABLE, "global table must exist");
 }
@@ -652,7 +652,7 @@ LUA_API int lua_gettable (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 1);
   TValue *t = L->getStackSubsystem().indexToValue(L,idx);
-  lu_byte tag = luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), luaH_get);
+  LuaT tag = luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), luaH_get);
   if (tagisempty(tag))
     tag = luaV_finishget(L, t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
   lua_unlock(L);
@@ -669,7 +669,7 @@ LUA_API int lua_getfield (lua_State *L, int idx, const char *k) {
 LUA_API int lua_geti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   TValue *t = L->getStackSubsystem().indexToValue(L,idx);
-  lu_byte tag;
+  LuaT tag;
   luaV_fastgeti(t, n, s2v(L->getTop().p), tag);
   if (tagisempty(tag)) {
     TValue key;
@@ -682,7 +682,7 @@ LUA_API int lua_geti (lua_State *L, int idx, lua_Integer n) {
 }
 
 
-static int finishrawget (lua_State *L, lu_byte tag) {
+static int finishrawget (lua_State *L, LuaT tag) {
   if (tagisempty(tag))  /* avoid copying empty items to the stack */
     setnilvalue(s2v(L->getTop().p));
   api_incr_top(L);
@@ -702,7 +702,7 @@ LUA_API int lua_rawget (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 1);
   Table *t = gettable(L, idx);
-  lu_byte tag = luaH_get(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1));
+  LuaT tag = luaH_get(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1));
   L->getStackSubsystem().pop();  /* pop key */
   return finishrawget(L, tag);
 }
@@ -711,7 +711,7 @@ LUA_API int lua_rawget (lua_State *L, int idx) {
 LUA_API int lua_rawgeti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   Table *t = gettable(L, idx);
-  lu_byte tag;
+  LuaT tag;
   luaH_fastgeti(t, n, s2v(L->getTop().p), tag);
   return finishrawget(L, tag);
 }
@@ -1290,7 +1290,7 @@ LUA_API void *lua_newuserdatauv (lua_State *L, size_t size, int nuvalue) {
 static const char *aux_upvalue (TValue *fi, int n, TValue **val,
                                 GCObject **owner) {
   switch (ttypetag(fi)) {
-    case LUA_VCCL: {  /* C closure */
+    case LuaT::CCL: {  /* C closure */
       CClosure *f = clCvalue(fi);
       if (!(cast_uint(n) - 1u < cast_uint(f->getNumUpvalues())))
         return nullptr;  /* 'n' not in [1, f->getNumUpvalues()] */
@@ -1298,7 +1298,7 @@ static const char *aux_upvalue (TValue *fi, int n, TValue **val,
       if (owner) *owner = obj2gco(f);
       return "";
     }
-    case LUA_VLCL: {  /* Lua closure */
+    case LuaT::LCL: {  /* Lua closure */
       LClosure *f = clLvalue(fi);
       TString *name;
       Proto *p = f->getProto();
@@ -1364,16 +1364,16 @@ static UpVal **getupvalref (lua_State *L, int fidx, int n, LClosure **pf) {
 LUA_API void *lua_upvalueid (lua_State *L, int fidx, int n) {
   TValue *fi = L->getStackSubsystem().indexToValue(L,fidx);
   switch (ttypetag(fi)) {
-    case LUA_VLCL: {  /* lua closure */
+    case LuaT::LCL: {  /* lua closure */
       return *getupvalref(L, fidx, n, nullptr);
     }
-    case LUA_VCCL: {  /* C closure */
+    case LuaT::CCL: {  /* C closure */
       CClosure *f = clCvalue(fi);
       if (1 <= n && n <= f->getNumUpvalues())
         return f->getUpvalue(n - 1);
       /* else */
     }  /* FALLTHROUGH */
-    case LUA_VLCF:
+    case LuaT::LCF:
       return nullptr;  /* light C functions have no upvalues */
     default: {
       api_check(L, 0, "function expected");

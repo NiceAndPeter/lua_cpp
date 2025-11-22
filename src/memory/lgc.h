@@ -387,8 +387,8 @@ LUAI_FUNC void luaC_step (lua_State *L);
 LUAI_FUNC void luaC_runtilstate (lua_State *L, GCState state, int fast);
 LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
 LUAI_FUNC void propagateall (global_State *g);  /* used by GCCollector */
-LUAI_FUNC GCObject *luaC_newobj (lua_State *L, lu_byte tt, size_t sz);
-LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz,
+LUAI_FUNC GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz);
+LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz,
                                                  size_t offset);
 LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
 LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
@@ -411,37 +411,37 @@ LUAI_FUNC void freeobj (lua_State *L, GCObject *o);
 */
 
 // CClosure placement new operator
-inline void* CClosure::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+inline void* CClosure::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
   return luaC_newobj(L, tt, size + extra);
 }
 
 // LClosure placement new operator
-inline void* LClosure::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+inline void* LClosure::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
   return luaC_newobj(L, tt, size + extra);
 }
 
 // Udata placement new operator
-inline void* Udata::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+inline void* Udata::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
   return luaC_newobj(L, tt, size + extra);
 }
 
 // TString placement new operator
-inline void* TString::operator new(size_t size, lua_State* L, lu_byte tt, size_t extra) {
+inline void* TString::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
   return luaC_newobj(L, tt, size + extra);
 }
 
 // Proto placement new operator
-inline void* Proto::operator new(size_t size, lua_State* L, lu_byte tt) {
+inline void* Proto::operator new(size_t size, lua_State* L, LuaT tt) {
   return luaC_newobj(L, tt, size);
 }
 
 // UpVal placement new operator
-inline void* UpVal::operator new(size_t size, lua_State* L, lu_byte tt) {
+inline void* UpVal::operator new(size_t size, lua_State* L, LuaT tt) {
   return luaC_newobj(L, tt, size);
 }
 
 // Table placement new operator
-inline void* Table::operator new(size_t size, lua_State* L, lu_byte tt) {
+inline void* Table::operator new(size_t size, lua_State* L, LuaT tt) {
   return luaC_newobj(L, tt, size);
 }
 

@@ -83,7 +83,7 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
 ** Access to collectable objects in table array part
 */
 #define gcvalarr(t, i)  \
-    ((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
+    (iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr)
 
 
 /*
@@ -216,13 +216,13 @@ l_mem GCMarking::traversethread(global_State* g, lua_State* th) {
 */
 void GCMarking::reallymarkobject(global_State* g, GCObject* o) {
     g->setGCMarked(g->getGCMarked() + objsize(o));
-    switch (o->getType()) {
-        case LUA_VSHRSTR:
-        case LUA_VLNGSTR: {
+    switch (static_cast<int>(o->getType())) {
+        case static_cast<int>(ctb(LuaT::SHRSTR)):
+        case static_cast<int>(ctb(LuaT::LNGSTR)): {
             set2black(o);  /* strings have no children */
             break;
         }
-        case LUA_VUPVAL: {
+        case static_cast<int>(ctb(LuaT::UPVAL)): {
             UpVal* uv = gco2upv(o);
             if (uv->isOpen())
                 set2gray(uv);  /* open upvalues kept gray */
@@ -231,7 +231,7 @@ void GCMarking::reallymarkobject(global_State* g, GCObject* o) {
             markvalue(g, uv->getVP());
             break;
         }
-        case LUA_VUSERDATA: {
+        case static_cast<int>(ctb(LuaT::USERDATA)): {
             Udata* u = gco2u(o);
             if (u->getNumUserValues() == 0) {
                 markobjectN(g, u->getMetatable());
@@ -240,11 +240,11 @@ void GCMarking::reallymarkobject(global_State* g, GCObject* o) {
             }
             /* else fall through to add to gray list */
         } /* FALLTHROUGH */
-        case LUA_VLCL:
-        case LUA_VCCL:
-        case LUA_VTABLE:
-        case LUA_VTHREAD:
-        case LUA_VPROTO: {
+        case static_cast<int>(ctb(LuaT::LCL)):
+        case static_cast<int>(ctb(LuaT::CCL)):
+        case static_cast<int>(ctb(LuaT::TABLE)):
+        case static_cast<int>(ctb(LuaT::THREAD)):
+        case static_cast<int>(ctb(LuaT::PROTO)): {
             linkobjgclist(o, *g->getGrayPtr());  /* to be visited later */
             break;
         }
@@ -262,18 +262,18 @@ l_mem GCMarking::propagatemark(global_State* g) {
     GCObject* o = g->getGray();
     nw2black(o);
     g->setGray(*getgclist(o));  /* remove from 'gray' list */
-    switch (o->getType()) {
-        case LUA_VTABLE:
+    switch (static_cast<int>(o->getType())) {
+        case static_cast<int>(ctb(LuaT::TABLE)):
             return traversetable(g, gco2t(o));
-        case LUA_VUSERDATA:
+        case static_cast<int>(ctb(LuaT::USERDATA)):
             return traverseudata(g, gco2u(o));
-        case LUA_VLCL:
+        case static_cast<int>(ctb(LuaT::LCL)):
             return traverseLclosure(g, gco2lcl(o));
-        case LUA_VCCL:
+        case static_cast<int>(ctb(LuaT::CCL)):
             return traverseCclosure(g, gco2ccl(o));
-        case LUA_VPROTO:
+        case static_cast<int>(ctb(LuaT::PROTO)):
             return traverseproto(g, gco2p(o));
-        case LUA_VTHREAD:
+        case static_cast<int>(ctb(LuaT::THREAD)):
             return traversethread(g, gco2th(o));
         default:
             lua_assert(0);

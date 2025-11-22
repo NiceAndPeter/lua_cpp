@@ -655,7 +655,7 @@ public:
   void finishOp();
   void concat(int total);
   void objlen(StkId ra, const TValue *rb);
-  lu_byte finishGet(const TValue *t, TValue *key, StkId val, lu_byte tag);
+  LuaT finishGet(const TValue *t, TValue *key, StkId val, LuaT tag);
   void finishSet(const TValue *t, TValue *key, TValue *val, int aux);
 
   // Arithmetic operation methods (formerly luaV_* functions, implemented in lvm.cpp)
@@ -1229,17 +1229,17 @@ inline TString* gco2ts(GCObject* o) noexcept {
 }
 
 inline Udata* gco2u(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VUSERDATA);
+	lua_assert(o->getType() == ctb(LuaT::USERDATA));
 	return reinterpret_cast<Udata*>(o);
 }
 
 inline LClosure* gco2lcl(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VLCL);
+	lua_assert(o->getType() == ctb(LuaT::LCL));
 	return reinterpret_cast<LClosure*>(o);
 }
 
 inline CClosure* gco2ccl(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VCCL);
+	lua_assert(o->getType() == ctb(LuaT::CCL));
 	return reinterpret_cast<CClosure*>(o);
 }
 
@@ -1249,22 +1249,22 @@ inline Closure* gco2cl(GCObject* o) noexcept {
 }
 
 inline Table* gco2t(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VTABLE);
+	lua_assert(o->getType() == ctb(LuaT::TABLE));
 	return reinterpret_cast<Table*>(o);
 }
 
 inline Proto* gco2p(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VPROTO);
+	lua_assert(o->getType() == ctb(LuaT::PROTO));
 	return reinterpret_cast<Proto*>(o);
 }
 
 inline lua_State* gco2th(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VTHREAD);
+	lua_assert(o->getType() == ctb(LuaT::THREAD));
 	return reinterpret_cast<lua_State*>(o);
 }
 
 inline UpVal* gco2upv(GCObject* o) noexcept {
-	lua_assert(o->getType() == LUA_VUPVAL);
+	lua_assert(o->getType() == ctb(LuaT::UPVAL));
 	return reinterpret_cast<UpVal*>(o);
 }
 

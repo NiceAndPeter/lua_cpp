@@ -41,12 +41,12 @@ class global_State;
 */
 
 constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
-constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
-constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLNGSTR)); }
+constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LuaT::SHRSTR)); }
+constexpr bool ttislngstring(const TValue* o) noexcept { return checktag(o, ctb(LuaT::LNGSTR)); }
 
 constexpr bool TValue::isString() const noexcept { return checktype(this, LUA_TSTRING); }
-constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LUA_VSHRSTR)); }
-constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LUA_VLNGSTR)); }
+constexpr bool TValue::isShortString() const noexcept { return checktag(this, ctb(LuaT::SHRSTR)); }
+constexpr bool TValue::isLongString() const noexcept { return checktag(this, ctb(LuaT::LNGSTR)); }
 
 inline TString* tsvalue(const TValue* o) noexcept { return o->stringValue(); }
 
@@ -99,7 +99,7 @@ public:
 
   // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
   // Note: For TString, this may allocate less than sizeof(TString) for short strings!
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+  static void* operator new(size_t size, lua_State* L, LuaT tt, size_t extra = 0);
 
   // Disable regular new/delete (must use placement new with GC)
   static void* operator new(size_t) = delete;
@@ -302,7 +302,7 @@ inline bool isreserved(const TString* s) noexcept {
 ** equality for short strings, which are always internalized
 */
 inline bool eqshrstr(const TString* a, const TString* b) noexcept {
-	return check_exp((a)->getType() == LUA_VSHRSTR, (a) == (b));
+	return check_exp((a)->getType() == ctb(LuaT::SHRSTR), (a) == (b));
 }
 
 

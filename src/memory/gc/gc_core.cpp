@@ -24,45 +24,45 @@
 */
 l_mem GCCore::objsize(GCObject* o) {
     lu_mem res;
-    switch (o->getType()) {
-        case LUA_VTABLE: {
+    switch (static_cast<int>(o->getType())) {
+        case static_cast<int>(ctb(LuaT::TABLE)): {
             res = luaH_size(gco2t(o));
             break;
         }
-        case LUA_VLCL: {
+        case static_cast<int>(ctb(LuaT::LCL)): {
             LClosure* cl = gco2lcl(o);
             res = sizeLclosure(cl->getNumUpvalues());
             break;
         }
-        case LUA_VCCL: {
+        case static_cast<int>(ctb(LuaT::CCL)): {
             CClosure* cl = gco2ccl(o);
             res = sizeCclosure(cl->getNumUpvalues());
             break;
         }
-        case LUA_VUSERDATA: {
+        case static_cast<int>(ctb(LuaT::USERDATA)): {
             Udata* u = gco2u(o);
             res = sizeudata(u->getNumUserValues(), u->getLen());
             break;
         }
-        case LUA_VPROTO: {
+        case static_cast<int>(ctb(LuaT::PROTO)): {
             res = gco2p(o)->memorySize();
             break;
         }
-        case LUA_VTHREAD: {
+        case static_cast<int>(ctb(LuaT::THREAD)): {
             res = luaE_threadsize(gco2th(o));
             break;
         }
-        case LUA_VSHRSTR: {
+        case static_cast<int>(ctb(LuaT::SHRSTR)): {
             TString* ts = gco2ts(o);
             res = sizestrshr(cast_uint(ts->getShrlen()));
             break;
         }
-        case LUA_VLNGSTR: {
+        case static_cast<int>(ctb(LuaT::LNGSTR)): {
             TString* ts = gco2ts(o);
             res = TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen());
             break;
         }
-        case LUA_VUPVAL: {
+        case static_cast<int>(ctb(LuaT::UPVAL)): {
             res = sizeof(UpVal);
             break;
         }
@@ -77,22 +77,22 @@ l_mem GCCore::objsize(GCObject* o) {
 ** Different object types store this field in different locations.
 */
 GCObject** GCCore::getgclist(GCObject* o) {
-    switch (o->getType()) {
-        case LUA_VTABLE: return gco2t(o)->getGclistPtr();
-        case LUA_VLCL: return gco2lcl(o)->getGclistPtr();
-        case LUA_VCCL: return gco2ccl(o)->getGclistPtr();
-        case LUA_VTHREAD: return gco2th(o)->getGclistPtr();
-        case LUA_VPROTO: return gco2p(o)->getGclistPtr();
-        case LUA_VUSERDATA: {
+    switch (static_cast<int>(o->getType())) {
+        case static_cast<int>(ctb(LuaT::TABLE)): return gco2t(o)->getGclistPtr();
+        case static_cast<int>(ctb(LuaT::LCL)): return gco2lcl(o)->getGclistPtr();
+        case static_cast<int>(ctb(LuaT::CCL)): return gco2ccl(o)->getGclistPtr();
+        case static_cast<int>(ctb(LuaT::THREAD)): return gco2th(o)->getGclistPtr();
+        case static_cast<int>(ctb(LuaT::PROTO)): return gco2p(o)->getGclistPtr();
+        case static_cast<int>(ctb(LuaT::USERDATA)): {
             Udata* u = gco2u(o);
             lua_assert(u->getNumUserValues() > 0);
             return u->getGclistPtr();
         }
-        case LUA_VUPVAL:
+        case static_cast<int>(ctb(LuaT::UPVAL)):
             /* UpVals use the base GCObject 'next' field for gray list linkage */
             return o->getNextPtr();
-        case LUA_VSHRSTR:
-        case LUA_VLNGSTR:
+        case static_cast<int>(ctb(LuaT::SHRSTR)):
+        case static_cast<int>(ctb(LuaT::LNGSTR)):
             /* Strings are marked black directly and should never be in gray list.
              * However, with LTO, we've seen strings passed to this function.
              * Use the 'next' field (from GCObject base) as a fallback. */

@@ -36,7 +36,7 @@ CClosure::CClosure(int nupvals) {
 // Factory method
 CClosure* CClosure::create(lua_State* L, int nupvals) {
   size_t extra = (nupvals > 0) ? (static_cast<size_t>(nupvals) - 1) * sizeof(TValue) : 0;
-  CClosure* c = new (L, LUA_VCCL, extra) CClosure(nupvals);
+  CClosure* c = new (L, ctb(LuaT::CCL), extra) CClosure(nupvals);
   return c;
 }
 
@@ -58,7 +58,7 @@ LClosure* LClosure::create(lua_State* L, int nupvals) {
   // So extra = sizeLclosure(nupvals) - sizeof(LClosure)
   size_t total_size = sizeLclosure(nupvals);
   size_t extra = total_size - sizeof(LClosure);
-  LClosure* c = new (L, LUA_VLCL, extra) LClosure(nupvals);
+  LClosure* c = new (L, ctb(LuaT::LCL), extra) LClosure(nupvals);
   return c;
 }
 
@@ -71,7 +71,7 @@ void LClosure::initUpvals(lua_State* L) {
   int i;
   for (i = 0; i < nupvalues; i++) {
     // Use placement new - calls constructor (initializes to closed nil upvalue)
-    UpVal *uv = new (L, LUA_VUPVAL) UpVal();
+    UpVal *uv = new (L, ctb(LuaT::UPVAL)) UpVal();
     uv->setVP(uv->getValueSlot());  /* make it closed */
     // Constructor already sets value to nil, but keeping setnilvalue for clarity
     setnilvalue(uv->getVP());
@@ -88,7 +88,7 @@ void LClosure::initUpvals(lua_State* L) {
 **/
 static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
   // Use placement new - calls constructor
-  UpVal *uv = new (L, LUA_VUPVAL) UpVal();
+  UpVal *uv = new (L, ctb(LuaT::UPVAL)) UpVal();
   UpVal *next = *prev;
   uv->setVP(s2v(level));  /* current value lives in the stack */
   uv->setOpenNext(next);  /* link it to list of open upvalues */
@@ -271,7 +271,7 @@ StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy) {
 // Phase 50: Use placement new to call constructor
 Proto *luaF_newproto (lua_State *L) {
   // Use placement new - calls constructor which initializes all fields to safe defaults
-  Proto *f = new (L, LUA_VPROTO) Proto();
+  Proto *f = new (L, ctb(LuaT::PROTO)) Proto();
   // Constructor handles all initialization
   return f;
 }

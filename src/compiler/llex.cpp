@@ -119,7 +119,7 @@ l_noret LexState::syntaxError(const char *msg) {
 TString* LexState::anchorStr(TString *ts) {
   lua_State *luaState = getLuaState();
   TValue oldts;
-  int tag = luaH_getstr(getTable(), ts, &oldts);
+  LuaT tag = luaH_getstr(getTable(), ts, &oldts);
   if (!tagisempty(tag))  /* string already present? */
     return tsvalue(&oldts);  /* use stored value */
   else {  /* create a new entry */

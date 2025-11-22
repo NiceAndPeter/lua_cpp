@@ -108,18 +108,18 @@ void luaV_concat (lua_State *L, int total) {
 void luaV_objlen (lua_State *L, StkId ra, const TValue *rb) {
   const TValue *tm;
   switch (ttypetag(rb)) {
-    case LUA_VTABLE: {
+    case LuaT::TABLE: {
       Table *h = hvalue(rb);
       tm = fasttm(L, h->getMetatable(), TMS::TM_LEN);
       if (tm) break;  /* metamethod? break switch to call it */
       s2v(ra)->setInt(l_castU2S(luaH_getn(L, h)));  /* else primitive len */
       return;
     }
-    case LUA_VSHRSTR: {
+    case LuaT::SHRSTR: {
       s2v(ra)->setInt(static_cast<lua_Integer>(tsvalue(rb)->length()));
       return;
     }
-    case LUA_VLNGSTR: {
+    case LuaT::LNGSTR: {
       s2v(ra)->setInt(cast_st2S(tsvalue(rb)->getLnglen()));
       return;
     }
