@@ -170,9 +170,9 @@ LUA_API int lua_gethookcount (lua_State *L) {
 
 LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
   int status;
-  CallInfo *ci;
   if (level < 0) return 0;  /* invalid (negative) level */
   lua_lock(L);
+  CallInfo *ci;
   for (ci = L->getCI(); level > 0 && ci != L->getBaseCI(); ci = ci->getPrevious())
     level--;
   if (level == 0 && ci != L->getBaseCI()) {  /* level found? */
@@ -257,9 +257,8 @@ LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
 
 LUA_API const char *lua_setlocal (lua_State *L, const lua_Debug *ar, int n) {
   StkId pos = nullptr;  /* to avoid warnings */
-  const char *name;
   lua_lock(L);
-  name = luaG_findlocal(L, ar->i_ci, n, &pos);
+  const char *name = luaG_findlocal(L, ar->i_ci, n, &pos);
   if (name) {
     api_checkpop(L, 1);
     *s2v(pos) = *s2v(L->getTop().p - 1);  /* use operator= */
@@ -412,11 +411,9 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
 
 
 LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
-  int status;
-  Closure *cl;
+  lua_lock(L);
   CallInfo *ci;
   TValue *func;
-  lua_lock(L);
   if (*what == '>') {
     ci = nullptr;
     func = s2v(L->getTop().p - 1);
@@ -429,8 +426,8 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
     func = s2v(ci->funcRef().p);
     lua_assert(ttisfunction(func));
   }
-  cl = ttisclosure(func) ? clvalue(func) : nullptr;
-  status = auxgetinfo(L, what, ar, cl, ci);
+  Closure *cl = ttisclosure(func) ? clvalue(func) : nullptr;
+  int status = auxgetinfo(L, what, ar, cl, ci);
   if (strchr(what, 'f')) {
     L->getStackSubsystem().setSlot(L->getTop().p, func);
     api_incr_top(L);
@@ -460,12 +457,11 @@ static int filterpc (int pc, int jmptarget) {
 ** Try to find last instruction before 'lastpc' that modified register 'reg'.
 */
 static int findsetreg (const Proto *p, int lastpc, int reg) {
-  int pc;
   int setreg = -1;  /* keep last instruction that changed 'reg' */
   int jmptarget = 0;  /* any code before this address is conditional */
   if (InstructionView(p->getCode()[lastpc]).testMMMode())
     lastpc--;  /* previous instruction was not actually executed */
-  for (pc = 0; pc < lastpc; pc++) {
+  for (int pc = 0; pc < lastpc; pc++) {
     Instruction i = p->getCode()[pc];
     InstructionView view(i);
     OpCode op = static_cast<OpCode>(view.opcode());
@@ -570,8 +566,9 @@ static void rname (const Proto *p, int pc, int c, const char **name) {
 static const char *isEnv (const Proto *p, int pc, Instruction i, int isup) {
   int t = InstructionView(i).b();  /* table index */
   const char *name;  /* name of indexed variable */
-  if (isup)  /* is 't' an upvalue? */
+  if (isup) {  /* is 't' an upvalue? */
     name = upvalname(p, t);
+  }
   else {  /* 't' is a register */
     const char *what = basicgetobjname(p, &pc, t, &name);
     /* 'name' must be the name of a local variable (at the current
@@ -720,8 +717,7 @@ static int instack (CallInfo *ci, const TValue *o) {
 static const char *getupvalname (CallInfo *ci, const TValue *o,
                                  const char **name) {
   LClosure *c = ci->getFunc();
-  int i;
-  for (i = 0; i < c->getNumUpvalues(); i++) {
+  for (int i = 0; i < c->getNumUpvalues(); i++) {
     if (c->getUpval(i)->getVP() == o) {
       *name = upvalname(c->getProto(), i);
       return strupval;
@@ -957,7 +953,7 @@ static int changedline (const Proto *p, int oldpc, int newpc) {
     size_t pc = static_cast<size_t>(oldpc);
     for (;;) {
       ++pc;
-      int lineinfo = lineInfoSpan[pc];
+      const int lineinfo = lineInfoSpan[pc];
       if (lineinfo == ABSLINEINFO)
         break;  /* cannot compute delta; fall through */
       delta += lineinfo;
@@ -1015,14 +1011,13 @@ int lua_State::traceExec(const Instruction *pc) {
   CallInfo *ci_local = ci;
   lu_byte mask = cast_byte(getHookMask());
   const Proto *p = ci_local->getFunc()->getProto();
-  int counthook;
   if (!(mask & (LUA_MASKLINE | LUA_MASKCOUNT))) {  /* no hooks? */
     ci_local->getTrap() = 0;  /* don't need to stop again */
     return 0;  /* turn off 'trap' */
   }
   pc++;  /* reference is always next instruction */
   ci_local->setSavedPC(pc);  /* save 'pc' */
-  counthook = (mask & LUA_MASKCOUNT) && (--getHookCountRef() == 0);
+  int counthook = (mask & LUA_MASKCOUNT) && (--getHookCountRef() == 0);
   if (counthook)
     this->resetHookCount();  /* reset count */
   else if (!(mask & LUA_MASKLINE))

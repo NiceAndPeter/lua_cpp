@@ -326,7 +326,6 @@ TString *luaS_new (lua_State *L, const char *str) {
 // Phase 50: Use placement new to call constructor
 Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
   Udata *u;
-  int i;
   if (l_unlikely(s > MAX_SIZE - udatamemoffset(nuvalue)))
     luaM_toobig(L);
 
@@ -349,7 +348,7 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
     u->setGclist(nullptr);
 
   // Initialize user values to nil
-  for (i = 0; i < nuvalue; i++)
+  for (int i = 0; i < nuvalue; i++)
     setnilvalue(&u->getUserValue(i)->uv);
   return u;
 }

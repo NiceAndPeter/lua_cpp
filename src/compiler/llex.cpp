@@ -63,10 +63,9 @@ void LexState::saveAndNext() {
 }
 
 void luaX_init (lua_State *L) {
-  int i;
   TString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
   obj2gco(e)->fix(L);  /* Phase 25c: never collect this name */
-  for (i=0; i<NUM_RESERVED; i++) {
+  for (int i=0; i<NUM_RESERVED; i++) {
     TString *ts = luaS_new(L, luaX_tokens[i]);
     obj2gco(ts)->fix(L);  /* Phase 25c: reserved words are never collected */
     ts->setExtra(cast_byte(i+1));  /* reserved word */

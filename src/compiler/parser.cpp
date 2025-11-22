@@ -309,8 +309,7 @@ void Parser::check_readonly(expdesc *e) {
 void Parser::adjustlocalvars(int nvars) {
   // FuncState passed as parameter
   int regLevel = fs->nvarstack();
-  int i;
-  for (i = 0; i < nvars; i++) {
+  for (int i = 0; i < nvars; i++) {
     int vidx = fs->getNumActiveVarsRef()++;
     Vardesc *var = fs->getlocalvardesc(vidx);
     var->vd.ridx = cast_byte(regLevel++);
@@ -326,12 +325,12 @@ void Parser::adjustlocalvars(int nvars) {
 */
 void Parser::buildglobal(TString *varname, expdesc *var) {
   // FuncState passed as parameter
-  expdesc key;
   var->init(VGLOBAL, -1);  /* global by default */
   fs->singlevaraux(ls->getEnvName(), var, 1);  /* get environment variable */
   if (var->getKind() == VGLOBAL)
     ls->semerror("_ENV is global when accessing variable '%s'", getstr(varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
+  expdesc key;
   key.initString(varname);  /* key is variable name */
   fs->indexed(var, &key);  /* 'var' represents _ENV[varname] */
 }
@@ -527,9 +526,9 @@ void Parser::statlist() {
 void Parser::fieldsel( expdesc *v) {
   /* fieldsel -> ['.' | ':'] NAME */
   FuncState *funcstate = fs;
-  expdesc key;
   funcstate->exp2anyregup(v);
   ls->nextToken();  /* skip the dot or colon */
+  expdesc key;
   codename( &key);
   funcstate->indexed(v, &key);
 }
@@ -1059,12 +1058,10 @@ void Parser::labelstat( TString *name, int line) {
 void Parser::whilestat( int line) {
   /* whilestat -> WHILE cond DO block END */
   FuncState *funcstate = fs;
-  int whileinit;
-  int condexit;
   BlockCnt bl;
   ls->nextToken();  /* skip WHILE */
-  whileinit = funcstate->getlabel();
-  condexit = cond();
+  int whileinit = funcstate->getlabel();
+  int condexit = cond();
   funcstate->enterblock(&bl, 1);
   checknext(static_cast<int>(RESERVED::TK_DO));
   block();
@@ -1077,7 +1074,6 @@ void Parser::whilestat( int line) {
 
 void Parser::repeatstat( int line) {
   /* repeatstat -> REPEAT block UNTIL cond */
-  int condexit;
   FuncState *funcstate = fs;
   int repeat_init = funcstate->getlabel();
   BlockCnt bl1, bl2;
@@ -1086,7 +1082,7 @@ void Parser::repeatstat( int line) {
   ls->nextToken();  /* skip REPEAT */
   statlist();
   check_match(static_cast<int>(RESERVED::TK_UNTIL), static_cast<int>(RESERVED::TK_REPEAT), line);
-  condexit = cond();  /* read condition (inside scope block) */
+  int condexit = cond();  /* read condition (inside scope block) */
   funcstate->leaveblock();  /* finish scope */
   if (bl2.upval) {  /* upvalues? */
     int exit = funcstate->jump();  /* normal exit must jump over fix */
@@ -1171,7 +1167,6 @@ void Parser::forlist( TString *indexname) {
   FuncState *funcstate = fs;
   expdesc e;
   int nvars = 4;  /* function, state, closing, control */
-  int line;
   int base = funcstate->getFreeReg();
   /* create internal variables */
   new_localvarliteral(this, "(for state)");  /* iterator function */
@@ -1184,7 +1179,7 @@ void Parser::forlist( TString *indexname) {
     nvars++;
   }
   checknext(static_cast<int>(RESERVED::TK_IN));
-  line = ls->getLineNumber();
+  int line = ls->getLineNumber();
   adjust_assign(4, explist(&e), &e);
   adjustlocalvars(3);  /* start scope for internal variables */
   funcstate->marktobeclosed();  /* last internal var. must be closed */
@@ -1214,9 +1209,8 @@ void Parser::forstat( int line) {
 void Parser::test_then_block( int *escapelist) {
   /* test_then_block -> [IF | ELSEIF] cond THEN block */
   FuncState *funcstate = fs;
-  int condtrue;
   ls->nextToken();  /* skip IF or ELSEIF */
-  condtrue = cond();  /* read condition */
+  int condtrue = cond();  /* read condition */
   checknext(static_cast<int>(RESERVED::TK_THEN));
   block();  /* 'then' part */
   if (ls->getToken() == static_cast<int>(RESERVED::TK_ELSE) ||
@@ -1273,11 +1267,8 @@ void Parser::localstat() {
   /* stat -> LOCAL NAME attrib { ',' NAME attrib } ['=' explist] */
   FuncState *funcstate = fs;
   int toclose = -1;  /* index of to-be-closed variable (if any) */
-  Vardesc *var;  /* last variable */
   int vidx;  /* index of last variable */
   int nvars = 0;
-  int nexps;
-  expdesc e;
   /* get prefixed attribute (if any); default is regular local variable */
   lu_byte defkind = getvarattribute(VDKREG);
   do {  /* for each variable */
@@ -1291,13 +1282,15 @@ void Parser::localstat() {
     }
     nvars++;
   } while (testnext( ','));
+  expdesc e;
+  int nexps;
   if (testnext( '='))  /* initialization? */
     nexps = explist(&e);
   else {
     e.setKind(VVOID);
     nexps = 0;
   }
-  var = funcstate->getlocalvardesc( vidx);  /* retrieve last variable */
+  Vardesc *var = funcstate->getlocalvardesc( vidx);  /* retrieve last variable */
   if (nvars == nexps &&  /* no adjustments? */
       var->vd.kind == RDKCONST &&  /* last variable is const? */
       funcstate->exp2const(&e, &var->k)) {  /* compile-time constant? */
@@ -1409,10 +1402,9 @@ int Parser::funcname( expdesc *v) {
 
 void Parser::funcstat( int line) {
   /* funcstat -> FUNCTION funcname body */
-  int ismethod;
   expdesc v, b;
   ls->nextToken();  /* skip FUNCTION */
-  ismethod = funcname(&v);
+  int ismethod = funcname(&v);
   check_readonly(&v);
   body(&b, ismethod, line);
   fs->storevar(&v, &b);

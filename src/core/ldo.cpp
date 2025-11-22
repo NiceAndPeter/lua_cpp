@@ -395,14 +395,13 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
     lua_assert(getTop().p >= getStack().p + nres);  /* ensure nres is in bounds */
     StkId firstres = getTop().p - nres;  /* index of first result */
     int delta = 0;  /* correction for vararg functions */
-    int ftransfer;
     if (ci_arg->isLua()) {
       Proto *p = ci_arg->getFunc()->getProto();
       if (p->getFlag() & PF_ISVARARG)
         delta = ci_arg->getExtraArgs() + p->getNumParams() + 1;
     }
     ci_arg->funcRef().p += delta;  /* if vararg, back to virtual 'func' */
-    ftransfer = cast_int(firstres - ci_arg->funcRef().p);
+    int ftransfer = cast_int(firstres - ci_arg->funcRef().p);
     callHook(LUA_HOOKRET, -1, ftransfer, nres);  /* call it */
     ci_arg->funcRef().p -= delta;
   }
@@ -591,10 +590,9 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
       Proto *p = clLvalue(s2v(func))->getProto();
       int fsize = p->getMaxStackSize();  /* frame size */
       int nfixparams = p->getNumParams();
-      int i;
       checkstackp(this, fsize - delta, func);
       ci_arg->funcRef().p -= delta;  /* restore 'func' (if vararg) */
-      for (i = 0; i < narg1; i++)  /* move down function and arguments */
+      for (int i = 0; i < narg1; i++)  /* move down function and arguments */
         *s2v(ci_arg->funcRef().p + i) = *s2v(func + i);  /* use operator= */
       func = ci_arg->funcRef().p;  /* moved-down function */
       for (; narg1 <= nfixparams; narg1++)
@@ -812,8 +810,7 @@ static void unroll (lua_State *L, void *ud) {
 */
 // Convert to private lua_State method
 CallInfo* lua_State::findPCall() {
-  CallInfo *ci_iter;
-  for (ci_iter = getCI(); ci_iter != nullptr; ci_iter = ci_iter->getPrevious()) {  /* search for a pcall */
+  for (CallInfo *ci_iter = getCI(); ci_iter != nullptr; ci_iter = ci_iter->getPrevious()) {  /* search for a pcall */
     if (ci_iter->callStatusRef() & CIST_YPCALL)
       return ci_iter;
   }
