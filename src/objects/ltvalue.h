@@ -23,6 +23,61 @@ constexpr int makevariant(int t, int v) noexcept { return (t | (v << 4)); }
 
 
 /*
+** Extra types for collectable non-values
+*/
+inline constexpr int LUA_TUPVAL = LUA_NUMTYPES;      /* upvalues */
+inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
+
+
+/*
+** {==================================================================
+** Variant tags for all Lua types
+** ===================================================================
+*/
+
+/* Nil variants */
+inline constexpr int LUA_VNIL = makevariant(LUA_TNIL, 0);
+inline constexpr int LUA_VEMPTY = makevariant(LUA_TNIL, 1);
+inline constexpr int LUA_VABSTKEY = makevariant(LUA_TNIL, 2);
+inline constexpr int LUA_VNOTABLE = makevariant(LUA_TNIL, 3);
+
+/* Boolean variants */
+inline constexpr int LUA_VFALSE = makevariant(LUA_TBOOLEAN, 0);
+inline constexpr int LUA_VTRUE = makevariant(LUA_TBOOLEAN, 1);
+
+/* Number variants */
+inline constexpr int LUA_VNUMINT = makevariant(LUA_TNUMBER, 0);  /* integer numbers */
+inline constexpr int LUA_VNUMFLT = makevariant(LUA_TNUMBER, 1);  /* float numbers */
+
+/* String variants */
+inline constexpr int LUA_VSHRSTR = makevariant(LUA_TSTRING, 0);  /* short strings */
+inline constexpr int LUA_VLNGSTR = makevariant(LUA_TSTRING, 1);  /* long strings */
+
+/* Table variant */
+inline constexpr int LUA_VTABLE = makevariant(LUA_TTABLE, 0);
+
+/* Function variants */
+inline constexpr int LUA_VLCL = makevariant(LUA_TFUNCTION, 0);  /* Lua closure */
+inline constexpr int LUA_VLCF = makevariant(LUA_TFUNCTION, 1);  /* light C function */
+inline constexpr int LUA_VCCL = makevariant(LUA_TFUNCTION, 2);  /* C closure */
+
+/* Userdata variants */
+inline constexpr int LUA_VLIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0);
+inline constexpr int LUA_VUSERDATA = makevariant(LUA_TUSERDATA, 0);
+
+/* Thread variant */
+inline constexpr int LUA_VTHREAD = makevariant(LUA_TTHREAD, 0);
+
+/* Upvalue variant (collectable non-value) */
+inline constexpr int LUA_VUPVAL = makevariant(LUA_TUPVAL, 0);
+
+/* Proto variant (collectable non-value) */
+inline constexpr int LUA_VPROTO = makevariant(LUA_TPROTO, 0);
+
+/* }================================================================== */
+
+
+/*
 ** Rounding modes for float->integer coercion (needed by TValue conversion methods)
 */
 #ifndef F2Imod_defined

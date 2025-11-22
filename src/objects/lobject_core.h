@@ -22,9 +22,8 @@ class lua_State;
 
 /*
 ** Extra types for collectable non-values
+** Note: LUA_TUPVAL and LUA_TPROTO now defined in ltvalue.h
 */
-inline constexpr int LUA_TUPVAL = LUA_NUMTYPES;      /* upvalues */
-inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
 inline constexpr int LUA_TDEADKEY = (LUA_NUMTYPES+2);  /* removed keys in tables */
 
 
@@ -38,20 +37,8 @@ inline constexpr int LUA_TOTALTYPES = (LUA_TPROTO + 2);
 ** {==================================================================
 ** Nil
 ** ===================================================================
+** Note: LUA_VNIL, LUA_VEMPTY, LUA_VABSTKEY, LUA_VNOTABLE now defined in ltvalue.h
 */
-
-/* Standard nil */
-inline constexpr int LUA_VNIL = makevariant(LUA_TNIL, 0);
-
-/* Empty slot (which might be different from a slot containing nil) */
-inline constexpr int LUA_VEMPTY = makevariant(LUA_TNIL, 1);
-
-/* Value returned for a key not found in a table (absent key) */
-inline constexpr int LUA_VABSTKEY = makevariant(LUA_TNIL, 2);
-
-/* Special variant to signal that a fast get is accessing a non-table */
-inline constexpr int LUA_VNOTABLE = makevariant(LUA_TNIL, 3);
-
 
 /* macro to test for (any kind of) nil */
 constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
@@ -115,11 +102,8 @@ inline void setempty(TValue* v) noexcept { settt_(v, LUA_VEMPTY); }
 ** {==================================================================
 ** Booleans
 ** ===================================================================
+** Note: LUA_VFALSE, LUA_VTRUE now defined in ltvalue.h
 */
-
-
-inline constexpr int LUA_VFALSE = makevariant(LUA_TBOOLEAN, 0);
-inline constexpr int LUA_VTRUE = makevariant(LUA_TBOOLEAN, 1);
 
 constexpr bool ttisboolean(const TValue* o) noexcept { return checktype(o, LUA_TBOOLEAN); }
 constexpr bool ttisfalse(const TValue* o) noexcept { return checktag(o, LUA_VFALSE); }
@@ -146,9 +130,8 @@ inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
 ** {==================================================================
 ** Threads
 ** ===================================================================
+** Note: LUA_VTHREAD now defined in ltvalue.h
 */
-
-inline constexpr int LUA_VTHREAD = makevariant(LUA_TTHREAD, 0);
 
 constexpr bool ttisthread(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTHREAD)); }
 
@@ -165,11 +148,8 @@ inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 ** {==================================================================
 ** Numbers
 ** ===================================================================
+** Note: LUA_VNUMINT, LUA_VNUMFLT now defined in ltvalue.h
 */
-
-/* Variant tags for numbers */
-inline constexpr int LUA_VNUMINT = makevariant(LUA_TNUMBER, 0);  /* integer numbers */
-inline constexpr int LUA_VNUMFLT = makevariant(LUA_TNUMBER, 1);  /* float numbers */
 
 constexpr bool ttisnumber(const TValue* o) noexcept { return checktype(o, LUA_TNUMBER); }
 constexpr bool ttisfloat(const TValue* o) noexcept { return checktag(o, LUA_VNUMFLT); }
@@ -339,16 +319,8 @@ inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue(
 ** {==================================================================
 ** Userdata
 ** ===================================================================
+** Note: LUA_VLIGHTUSERDATA, LUA_VUSERDATA now defined in ltvalue.h
 */
-
-
-/*
-** Light userdata should be a variant of userdata, but for compatibility
-** reasons they are also different types.
-*/
-inline constexpr int LUA_VLIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0);
-
-inline constexpr int LUA_VUSERDATA = makevariant(LUA_TUSERDATA, 0);
 
 constexpr bool ttislightuserdata(const TValue* o) noexcept { return checktag(o, LUA_VLIGHTUSERDATA); }
 constexpr bool ttisfulluserdata(const TValue* o) noexcept { return checktag(o, ctb(LUA_VUSERDATA)); }

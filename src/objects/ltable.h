@@ -21,9 +21,8 @@ typedef union StackValue *StkId;
 ** {==================================================================
 ** Tables
 ** ===================================================================
+** Note: LUA_VTABLE now defined in ltvalue.h
 */
-
-inline constexpr int LUA_VTABLE = makevariant(LUA_TTABLE, 0);
 
 constexpr bool ttistable(const TValue* o) noexcept { return checktag(o, ctb(LUA_VTABLE)); }
 

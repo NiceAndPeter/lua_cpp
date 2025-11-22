@@ -25,9 +25,8 @@ typedef l_uint32 Instruction;
 ** {==================================================================
 ** Prototypes
 ** ===================================================================
+** Note: LUA_VPROTO now defined in ltvalue.h
 */
-
-inline constexpr int LUA_VPROTO = makevariant(LUA_TPROTO, 0);
 
 
 /*
