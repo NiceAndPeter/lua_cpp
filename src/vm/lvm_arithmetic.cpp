@@ -31,7 +31,7 @@ lua_Integer luaV_idiv (lua_State *L, lua_Integer m, lua_Integer n) {
     return intop(-, 0, m);   /* n==-1; avoid overflow with 0x80000...//-1 */
   }
   else {
-    lua_Integer q = m / n;  /* perform C division */
+    auto q = m / n;  /* perform C division */
     if ((m ^ n) < 0 && m % n != 0)  /* 'm/n' would be negative non-integer? */
       q -= 1;  /* correct result for different rounding */
     return q;
@@ -51,7 +51,7 @@ lua_Integer luaV_mod (lua_State *L, lua_Integer m, lua_Integer n) {
     return 0;   /* m % -1 == 0; avoid overflow with 0x80000...%-1 */
   }
   else {
-    lua_Integer r = m % n;
+    auto r = m % n;
     if (r != 0 && (r ^ n) < 0)  /* 'm/n' would be non-integer negative? */
       r += n;  /* correct result for different rounding */
     return r;

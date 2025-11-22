@@ -36,11 +36,11 @@ inline bool isemptystr(const TValue* o) noexcept {
 
 /* copy strings in stack from top - n up to top - 1 to buffer */
 static void copy2buff (StkId top, int n, char *buff) {
-  size_t tl = 0;  /* size already copied */
+  auto tl = size_t{0};  /* size already copied */
   do {
-    TString *st = tsvalue(s2v(top - n));
+    auto *st = tsvalue(s2v(top - n));
     size_t l;  /* length of string being copied */
-    const char *s = getlstr(st, l);
+    auto *s = getlstr(st, l);
     std::copy_n(s, l, buff + tl);
     tl += l;
   } while (--n > 0);
@@ -55,8 +55,8 @@ void luaV_concat (lua_State *L, int total) {
   if (total == 1)
     return;  /* "all" values already concatenated */
   do {
-    StkId top = L->getTop().p;
-    int n = 2;  /* number of elements handled in this pass (at least 2) */
+    auto top = L->getTop().p;
+    auto n = 2;  /* number of elements handled in this pass (at least 2) */
     if (!(ttisstring(s2v(top - 2)) || cvt2str(s2v(top - 2))) ||
         !tostring(L, s2v(top - 1))) {
       luaT_tryconcatTM(L);  /* may invalidate 'top' */
@@ -71,12 +71,12 @@ void luaV_concat (lua_State *L, int total) {
     }
     else {
       /* at least two non-empty string values; get as many as possible */
-      size_t tl = tsslen(tsvalue(s2v(top - 1)));
+      auto tl = tsslen(tsvalue(s2v(top - 1)));
       TString *ts;
       /* collect total length and number of strings */
       for (n = 1; n < total && tostring(L, s2v(top - n - 1)); n++) {
         top = L->getTop().p;  /* recapture after tostring() which can trigger GC */
-        size_t l = tsslen(tsvalue(s2v(top - n - 1)));
+        auto l = tsslen(tsvalue(s2v(top - n - 1)));
         if (l_unlikely(l >= MAX_SIZE - sizeof(TString) - tl)) {
           L->getStackSubsystem().setTopPtr(top - total);  /* pop strings to avoid wasting stack */
           luaG_runerror(L, "string length overflow");

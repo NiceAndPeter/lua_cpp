@@ -616,7 +616,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   auto op_arithf_aux = [&](const TValue *v1, const TValue *v2, auto fop, Instruction i) {
     lua_Number n1, n2;
     if (tonumberns(v1, n1) && tonumberns(v2, n2)) {
-      StkId ra = RA(i);
+      auto ra = RA(i);
       pc++; s2v(ra)->setFloat(fop(L, n1, n2));
     }
   };
@@ -639,9 +639,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
   // Lambda: Auxiliary for arithmetic operations over integers and floats
   auto op_arith_aux = [&](const TValue *v1, const TValue *v2, auto iop, auto fop, Instruction i) {
     if (ttisinteger(v1) && ttisinteger(v2)) {
-      StkId ra = RA(i);
-      lua_Integer i1 = ivalue(v1);
-      lua_Integer i2 = ivalue(v2);
+      auto ra = RA(i);
+      auto i1 = ivalue(v1);
+      auto i2 = ivalue(v2);
       pc++; s2v(ra)->setInt(iop(L, i1, i2));
     }
     else {
@@ -666,23 +666,23 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 
   // Lambda: Bitwise operations with constant operand
   auto op_bitwiseK = [&](auto op, Instruction i) {
-    TValue *v1 = vRB(i);
-    TValue *v2 = KC(i);
+    auto *v1 = vRB(i);
+    auto *v2 = KC(i);
     lua_Integer i1;
-    lua_Integer i2 = ivalue(v2);
+    auto i2 = ivalue(v2);
     if (tointegerns(v1, &i1)) {
-      StkId ra = RA(i);
+      auto ra = RA(i);
       pc++; s2v(ra)->setInt(op(i1, i2));
     }
   };
 
   // Lambda: Bitwise operations with register operands
   auto op_bitwise = [&](auto op, Instruction i) {
-    TValue *v1 = vRB(i);
-    TValue *v2 = vRC(i);
+    auto *v1 = vRB(i);
+    auto *v2 = vRC(i);
     lua_Integer i1, i2;
     if (tointegerns(v1, &i1) && tointegerns(v2, &i2)) {
-      StkId ra = RA(i);
+      auto ra = RA(i);
       pc++; s2v(ra)->setInt(op(i1, i2));
     }
   };
@@ -761,76 +761,76 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
     lua_assert(luaP_isIT(i) || (cast_void(L->getStackSubsystem().setTopPtr(base)), 1));
     vmdispatch (InstructionView(i).opcode()) {
       vmcase(OP_MOVE) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         *s2v(ra) = *s2v(RB(i));  /* Use operator= for move */
         vmbreak;
       }
       vmcase(OP_LOADI) {
-        StkId ra = RA(i);
-        lua_Integer b = InstructionView(i).sbx();
+        auto ra = RA(i);
+        auto b = InstructionView(i).sbx();
         s2v(ra)->setInt(b);
         vmbreak;
       }
       vmcase(OP_LOADF) {
-        StkId ra = RA(i);
-        int b = InstructionView(i).sbx();
+        auto ra = RA(i);
+        auto b = InstructionView(i).sbx();
         s2v(ra)->setFloat(cast_num(b));
         vmbreak;
       }
       vmcase(OP_LOADK) {
-        StkId ra = RA(i);
-        TValue *rb = k + InstructionView(i).bx();
+        auto ra = RA(i);
+        auto *rb = k + InstructionView(i).bx();
         L->getStackSubsystem().setSlot(ra, rb);
         vmbreak;
       }
       vmcase(OP_LOADKX) {
-        StkId ra = RA(i);
-        TValue *rb = k + InstructionView(*pc).ax(); pc++;
+        auto ra = RA(i);
+        auto *rb = k + InstructionView(*pc).ax(); pc++;
         L->getStackSubsystem().setSlot(ra, rb);
         vmbreak;
       }
       vmcase(OP_LOADFALSE) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         setbfvalue(s2v(ra));
         vmbreak;
       }
       vmcase(OP_LFALSESKIP) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         setbfvalue(s2v(ra));
         pc++;  /* skip next instruction */
         vmbreak;
       }
       vmcase(OP_LOADTRUE) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         setbtvalue(s2v(ra));
         vmbreak;
       }
       vmcase(OP_LOADNIL) {
-        StkId ra = RA(i);
-        int b = InstructionView(i).b();
+        auto ra = RA(i);
+        auto b = InstructionView(i).b();
         do {
           setnilvalue(s2v(ra++));
         } while (b--);
         vmbreak;
       }
       vmcase(OP_GETUPVAL) {
-        StkId ra = RA(i);
-        int b = InstructionView(i).b();
+        auto ra = RA(i);
+        auto b = InstructionView(i).b();
         L->getStackSubsystem().setSlot(ra, cl->getUpval(b)->getVP());
         vmbreak;
       }
       vmcase(OP_SETUPVAL) {
-        StkId ra = RA(i);
-        UpVal *uv = cl->getUpval(InstructionView(i).b());
+        auto ra = RA(i);
+        auto *uv = cl->getUpval(InstructionView(i).b());
         *uv->getVP() = *s2v(ra);
         luaC_barrier(L, uv, s2v(ra));
         vmbreak;
       }
       vmcase(OP_GETTABUP) {
-        StkId ra = RA(i);
-        TValue *upval = cl->getUpval(InstructionView(i).b())->getVP();
-        TValue *rc = KC(i);
-        TString *key = tsvalue(rc);  /* key must be a short string */
+        auto ra = RA(i);
+        auto *upval = cl->getUpval(InstructionView(i).b())->getVP();
+        auto *rc = KC(i);
+        auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
         tag = luaV_fastget(upval, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
@@ -838,9 +838,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETTABLE) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
-        TValue *rc = vRC(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);
+        auto *rc = vRC(i);
         LuaT tag;
         if (ttisinteger(rc)) {  /* fast track for integers? */
           luaV_fastgeti(rb, ivalue(rc), s2v(ra), tag);
@@ -852,9 +852,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETI) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
-        int c = InstructionView(i).c();
+        auto ra = RA(i);
+        auto *rb = vRB(i);
+        auto c = InstructionView(i).c();
         LuaT tag;
         luaV_fastgeti(rb, c, s2v(ra), tag);
         if (tagisempty(tag)) {
@@ -865,10 +865,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_GETFIELD) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
-        TValue *rc = KC(i);
-        TString *key = tsvalue(rc);  /* key must be a short string */
+        auto ra = RA(i);
+        auto *rb = vRB(i);
+        auto *rc = KC(i);
+        auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
         tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
@@ -876,12 +876,11 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SETTABUP) {
-        int hres;
-        TValue *upval = cl->getUpval(InstructionView(i).a())->getVP();
-        TValue *rb = KB(i);
-        TValue *rc = RKC(i);
-        TString *key = tsvalue(rb);  /* key must be a short string */
-        hres = luaV_fastset(upval, key, rc, luaH_psetshortstr);
+        auto *upval = cl->getUpval(InstructionView(i).a())->getVP();
+        auto *rb = KB(i);
+        auto *rc = RKC(i);
+        auto *key = tsvalue(rb);  /* key must be a short string */
+        auto hres = luaV_fastset(upval, key, rc, luaH_psetshortstr);
         if (hres == HOK)
           luaV_finishfastset(L, upval, rc);
         else
@@ -889,10 +888,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SETTABLE) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);  /* key (table is in 'ra') */
+        auto *rc = RKC(i);  /* value */
         int hres;
-        TValue *rb = vRB(i);  /* key (table is in 'ra') */
-        TValue *rc = RKC(i);  /* value */
         if (ttisinteger(rb)) {  /* fast track for integers? */
           luaV_fastseti(s2v(ra), ivalue(rb), rc, hres);
         }
@@ -906,10 +905,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SETI) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
+        auto b = InstructionView(i).b();
+        auto *rc = RKC(i);
         int hres;
-        int b = InstructionView(i).b();
-        TValue *rc = RKC(i);
         luaV_fastseti(s2v(ra), b, rc, hres);
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
@@ -921,12 +920,11 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SETFIELD) {
-        StkId ra = RA(i);
-        int hres;
-        TValue *rb = KB(i);
-        TValue *rc = RKC(i);
-        TString *key = tsvalue(rb);  /* key must be a short string */
-        hres = luaV_fastset(s2v(ra), key, rc, luaH_psetshortstr);
+        auto ra = RA(i);
+        auto *rb = KB(i);
+        auto *rc = RKC(i);
+        auto *key = tsvalue(rb);  /* key must be a short string */
+        auto hres = luaV_fastset(s2v(ra), key, rc, luaH_psetshortstr);
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
         else
@@ -934,10 +932,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_NEWTABLE) {
-        StkId ra = RA(i);
-        unsigned b = cast_uint(InstructionView(i).vb());  /* log2(hash size) + 1 */
-        unsigned c = cast_uint(InstructionView(i).vc());  /* array size */
-        Table *t;
+        auto ra = RA(i);
+        auto b = cast_uint(InstructionView(i).vb());  /* log2(hash size) + 1 */
+        auto c = cast_uint(InstructionView(i).vc());  /* array size */
         if (b > 0)
           b = 1u << (b - 1);  /* hash size is 2^(b - 1) */
         if (InstructionView(i).testk()) {  /* non-zero extra argument? */
@@ -947,7 +944,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         }
         pc++;  /* skip extra argument */
         L->getStackSubsystem().setTopPtr(ra + 1);  /* correct top in case of emergency GC */
-        t = luaH_new(L);  /* memory allocation */
+        auto *t = luaH_new(L);  /* memory allocation */
         sethvalue2s(L, ra, t);
         if (b != 0 || c != 0)
           luaH_resize(L, t, c, b);  /* idem */
@@ -955,13 +952,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SELF) {
-        StkId ra = RA(i);
-        LuaT tag;
-        TValue *rb = vRB(i);
-        TValue *rc = KC(i);
-        TString *key = tsvalue(rc);  /* key must be a short string */
+        auto ra = RA(i);
+        auto *rb = vRB(i);
+        auto *rc = KC(i);
+        auto *key = tsvalue(rc);  /* key must be a short string */
         L->getStackSubsystem().setSlot(ra + 1, rb);
-        tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
+        LuaT tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
@@ -1013,9 +1009,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SHLI) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
-        int ic = InstructionView(i).sc();
+        auto ra = RA(i);
+        auto *rb = vRB(i);
+        auto ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
           pc++; s2v(ra)->setInt(luaV_shiftl(ic, ib));
@@ -1023,9 +1019,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_SHRI) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
-        int ic = InstructionView(i).sc();
+        auto ra = RA(i);
+        auto *rb = vRB(i);
+        auto ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
           pc++; s2v(ra)->setInt(luaV_shiftl(ib, -ic));
@@ -1083,41 +1079,41 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_MMBIN) {
-        StkId ra = RA(i);
-        Instruction pi = *(pc - 2);  /* original arith. expression */
-        TValue *rb = vRB(i);
-        TMS tm = (TMS)InstructionView(i).c();
-        StkId result = RA(pi);
+        auto ra = RA(i);
+        auto pi = *(pc - 2);  /* original arith. expression */
+        auto *rb = vRB(i);
+        auto tm = static_cast<TMS>(InstructionView(i).c());
+        auto result = RA(pi);
         lua_assert(OP_ADD <= InstructionView(pi).opcode() && InstructionView(pi).opcode() <= OP_SHR);
         Protect([&]() { luaT_trybinTM(L, s2v(ra), rb, result, tm); });
         vmbreak;
       }
       vmcase(OP_MMBINI) {
-        StkId ra = RA(i);
-        Instruction pi = *(pc - 2);  /* original arith. expression */
-        int imm = InstructionView(i).sb();
-        TMS tm = (TMS)InstructionView(i).c();
-        int flip = InstructionView(i).k();
-        StkId result = RA(pi);
+        auto ra = RA(i);
+        auto pi = *(pc - 2);  /* original arith. expression */
+        auto imm = InstructionView(i).sb();
+        auto tm = static_cast<TMS>(InstructionView(i).c());
+        auto flip = InstructionView(i).k();
+        auto result = RA(pi);
         Protect([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm); });
         vmbreak;
       }
       vmcase(OP_MMBINK) {
-        StkId ra = RA(i);
-        Instruction pi = *(pc - 2);  /* original arith. expression */
-        TValue *imm = KB(i);
-        TMS tm = (TMS)InstructionView(i).c();
-        int flip = InstructionView(i).k();
-        StkId result = RA(pi);
+        auto ra = RA(i);
+        auto pi = *(pc - 2);  /* original arith. expression */
+        auto *imm = KB(i);
+        auto tm = static_cast<TMS>(InstructionView(i).c());
+        auto flip = InstructionView(i).k();
+        auto result = RA(pi);
         Protect([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm); });
         vmbreak;
       }
       vmcase(OP_UNM) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);
         lua_Number nb;
         if (ttisinteger(rb)) {
-          lua_Integer ib = ivalue(rb);
+          auto ib = ivalue(rb);
           s2v(ra)->setInt(intop(-, 0, ib));
         }
         else if (tonumberns(rb, nb)) {
@@ -1128,8 +1124,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_BNOT) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
           s2v(ra)->setInt(intop(^, ~l_castS2U(0), ib));
@@ -1139,8 +1135,8 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_NOT) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);
         if (l_isfalse(rb))
           setbtvalue(s2v(ra));
         else
@@ -1148,26 +1144,26 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_LEN) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         Protect([&]() { luaV_objlen(L, ra, vRB(i)); });
         vmbreak;
       }
       vmcase(OP_CONCAT) {
-        StkId ra = RA(i);
-        int n = InstructionView(i).b();  /* number of elements to concatenate */
+        auto ra = RA(i);
+        auto n = InstructionView(i).b();  /* number of elements to concatenate */
         L->getStackSubsystem().setTopPtr(ra + n);  /* mark the end of concat operands */
         ProtectNT([&]() { luaV_concat(L, n); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
         vmbreak;
       }
       vmcase(OP_CLOSE) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         lua_assert(!InstructionView(i).b());  /* 'close must be alive */
         Protect([&]() { luaF_close(L, ra, LUA_OK, 1); });
         vmbreak;
       }
       vmcase(OP_TBC) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         /* create new to-be-closed upvalue */
         halfProtect([&]() { luaF_newtbcupval(L, ra); });
         vmbreak;
@@ -1177,9 +1173,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_EQ) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);
         int cond;
-        TValue *rb = vRB(i);
         Protect([&]() { cond = luaV_equalobj(L, s2v(ra), rb); });
         docondjump(cond, ci, i);
         vmbreak;
@@ -1193,17 +1189,17 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_EQK) {
-        StkId ra = RA(i);
-        TValue *rb = KB(i);
+        auto ra = RA(i);
+        auto *rb = KB(i);
         /* basic types do not use '__eq'; we can use raw equality */
-        int cond = (*s2v(ra) == *rb);  /* Use operator== for cleaner syntax */
+        auto cond = (*s2v(ra) == *rb);  /* Use operator== for cleaner syntax */
         docondjump(cond, ci, i);
         vmbreak;
       }
       vmcase(OP_EQI) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
+        auto im = InstructionView(i).sb();
         int cond;
-        int im = InstructionView(i).sb();
         if (ttisinteger(s2v(ra)))
           cond = (ivalue(s2v(ra)) == im);
         else if (ttisfloat(s2v(ra)))
@@ -1230,14 +1226,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_TEST) {
-        StkId ra = RA(i);
-        int cond = !l_isfalse(s2v(ra));
+        auto ra = RA(i);
+        auto cond = !l_isfalse(s2v(ra));
         docondjump(cond, ci, i);
         vmbreak;
       }
       vmcase(OP_TESTSET) {
-        StkId ra = RA(i);
-        TValue *rb = vRB(i);
+        auto ra = RA(i);
+        auto *rb = vRB(i);
         if (l_isfalse(rb) == InstructionView(i).k())
           pc++;
         else {
@@ -1247,14 +1243,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_CALL) {
-        StkId ra = RA(i);
-        CallInfo *newci;
-        int b = InstructionView(i).b();
-        int nresults = InstructionView(i).c() - 1;
+        auto ra = RA(i);
+        auto b = InstructionView(i).b();
+        auto nresults = InstructionView(i).c() - 1;
         if (b != 0)  /* fixed number of arguments? */
           L->getStackSubsystem().setTopPtr(ra + b);  /* top signals number of arguments */
         /* else previous instruction set top */
         savepc(ci);  /* in case of errors */
+        CallInfo *newci;
         if ((newci = L->preCall( ra, nresults)) == nullptr)
           updatetrap(ci);  /* C call; nothing else to be done */
         else {  /* Lua call: run function in this same C frame */
@@ -1264,12 +1260,11 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_TAILCALL) {
-        StkId ra = RA(i);
-        int b = InstructionView(i).b();  /* number of arguments + 1 (function) */
-        int n;  /* number of results when calling a C function */
-        int nparams1 = InstructionView(i).c();
+        auto ra = RA(i);
+        auto b = InstructionView(i).b();  /* number of arguments + 1 (function) */
+        auto nparams1 = InstructionView(i).c();
         /* delta is virtual 'func' - real 'func' (vararg functions) */
-        int delta = (nparams1) ? ci->getExtraArgs() + nparams1 : 0;
+        auto delta = (nparams1) ? ci->getExtraArgs() + nparams1 : 0;
         if (b != 0)
           L->getStackSubsystem().setTopPtr(ra + b);
         else  /* previous instruction set top */
@@ -1280,6 +1275,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           lua_assert(L->getTbclist().p < base);  /* no pending tbc variables */
           lua_assert(base == ci->funcRef().p + 1);
         }
+        int n;  /* number of results when calling a C function */
         if ((n = L->preTailCall( ci, ra, b, delta)) < 0)  /* Lua function? */
           goto startfunc;  /* execute the callee */
         else {  /* C function? */
@@ -1290,9 +1286,9 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         }
       }
       vmcase(OP_RETURN) {
-        StkId ra = RA(i);
-        int n = InstructionView(i).b() - 1;  /* number of results */
-        int nparams1 = InstructionView(i).c();
+        auto ra = RA(i);
+        auto n = InstructionView(i).b() - 1;  /* number of results */
+        auto nparams1 = InstructionView(i).c();
         if (n < 0)  /* not fixed? */
           n = cast_int(L->getTop().p - ra);  /* get what is available */
         savepc(ci);
@@ -1313,14 +1309,14 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_RETURN0) {
         if (l_unlikely(L->getHookMask())) {
-          StkId ra = RA(i);
+          auto ra = RA(i);
           L->getStackSubsystem().setTopPtr(ra);
           savepc(ci);
           L->postCall( ci, 0);  /* no hurry... */
           trap = 1;
         }
         else {  /* do the 'poscall' here */
-          int nres = CallInfo::getNResults(ci->getCallStatus());
+          auto nres = CallInfo::getNResults(ci->getCallStatus());
           L->setCI(ci->getPrevious());  /* back to caller */
           L->getStackSubsystem().setTopPtr(base - 1);
           for (; l_unlikely(nres > 0); nres--) {
@@ -1332,19 +1328,19 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_RETURN1) {
         if (l_unlikely(L->getHookMask())) {
-          StkId ra = RA(i);
+          auto ra = RA(i);
           L->getStackSubsystem().setTopPtr(ra + 1);
           savepc(ci);
           L->postCall( ci, 1);  /* no hurry... */
           trap = 1;
         }
         else {  /* do the 'poscall' here */
-          int nres = CallInfo::getNResults(ci->getCallStatus());
+          auto nres = CallInfo::getNResults(ci->getCallStatus());
           L->setCI(ci->getPrevious());  /* back to caller */
           if (nres == 0)
             L->getStackSubsystem().setTopPtr(base - 1);  /* asked for no results */
           else {
-            StkId ra = RA(i);
+            auto ra = RA(i);
             *s2v(base - 1) = *s2v(ra);  /* at least this result (operator=) */
             L->getStackSubsystem().setTopPtr(base);
             for (; l_unlikely(nres > 1); nres--) {
@@ -1362,12 +1358,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         }
       }
       vmcase(OP_FORLOOP) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         if (ttisinteger(s2v(ra + 1))) {  /* integer loop? */
-          lua_Unsigned count = l_castS2U(ivalue(s2v(ra)));
+          auto count = l_castS2U(ivalue(s2v(ra)));
           if (count > 0) {  /* still more iterations? */
-            lua_Integer step = ivalue(s2v(ra + 1));
-            lua_Integer idx = ivalue(s2v(ra + 2));  /* control variable */
+            auto step = ivalue(s2v(ra + 1));
+            auto idx = ivalue(s2v(ra + 2));  /* control variable */
             s2v(ra)->changeInt(l_castU2S(count - 1));  /* update counter */
             idx = intop(+, idx, step);  /* add step to index */
             s2v(ra + 2)->changeInt(idx);  /* update control variable */
@@ -1380,7 +1376,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_FORPREP) {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         savestate(L, ci);  /* in case of errors */
         if (L->forPrep(ra))
           pc += InstructionView(i).bx() + 1;  /* skip the loop */
@@ -1393,7 +1389,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           control and the closing variables and marks the closing variable
           as to-be-closed.
        */
-       StkId ra = RA(i);
+       auto ra = RA(i);
        TValue temp;  /* to swap control and closing variables */
        temp = *s2v(ra + 3);  /* Use operator= for temp assignment */
        *s2v(ra + 3) = *s2v(ra + 2);  /* Use operator= */
@@ -1413,7 +1409,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
            so that it preserves the first three values, and the first
            return will be the new value for the control variable.
         */
-        StkId ra = RA(i);
+        auto ra = RA(i);
         *s2v(ra + 5) = *s2v(ra + 3);  /* copy the control variable (operator=) */
         *s2v(ra + 4) = *s2v(ra + 1);  /* copy state (operator=) */
         *s2v(ra + 3) = *s2v(ra);  /* copy function (operator=) */
@@ -1426,16 +1422,16 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }}
       vmcase(OP_TFORLOOP) {
        l_tforloop: {
-        StkId ra = RA(i);
+        auto ra = RA(i);
         if (!ttisnil(s2v(ra + 3)))  /* continue loop? */
           pc -= InstructionView(i).bx();  /* jump back */
         vmbreak;
       }}
       vmcase(OP_SETLIST) {
-        StkId ra = RA(i);
-        unsigned n = cast_uint(InstructionView(i).vb());
-        unsigned last = cast_uint(InstructionView(i).vc());
-        Table *h = hvalue(s2v(ra));
+        auto ra = RA(i);
+        auto n = cast_uint(InstructionView(i).vb());
+        auto last = cast_uint(InstructionView(i).vc());
+        auto *h = hvalue(s2v(ra));
         if (n == 0)
           n = cast_uint(L->getTop().p - ra) - 1;  /* get up to the top */
         else
@@ -1452,7 +1448,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           luaH_resizearray(L, h, last);  /* preallocate it at once */
         }
         for (; n > 0; n--) {
-          TValue *val = s2v(ra + n);
+          auto *val = s2v(ra + n);
           obj2arr(h, last - 1, val);
           last--;
           luaC_barrierback(L, obj2gco(h), val);
@@ -1460,15 +1456,15 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         vmbreak;
       }
       vmcase(OP_CLOSURE) {
-        StkId ra = RA(i);
-        Proto *p = cl->getProto()->getProtos()[InstructionView(i).bx()];
+        auto ra = RA(i);
+        auto *p = cl->getProto()->getProtos()[InstructionView(i).bx()];
         halfProtect([&]() { L->pushClosure(p, cl->getUpvalPtr(0), base, ra); });
         checkGC(L, ra + 1);
         vmbreak;
       }
       vmcase(OP_VARARG) {
-        StkId ra = RA(i);
-        int n = InstructionView(i).c() - 1;  /* required results */
+        auto ra = RA(i);
+        auto n = InstructionView(i).c() - 1;  /* required results */
         Protect([&]() { luaT_getvarargs(L, ci, ra, n); });
         vmbreak;
       }

@@ -89,7 +89,7 @@ Instruction *FuncState::previousinstruction() {
 ** a list of jumps.
 */
 int FuncState::getjump(int position) {
-  int offset = InstructionView(getProto()->getCode()[position]).sj();
+  auto offset = InstructionView(getProto()->getCode()[position]).sj();
   if (offset == NO_JUMP)  /* point to itself represents end of list */
     return NO_JUMP;  /* end of list */
   else
@@ -101,8 +101,8 @@ int FuncState::getjump(int position) {
 ** (Jump addresses are relative in Lua)
 */
 void FuncState::fixjump(int position, int dest) {
-  Instruction *jmp = &getProto()->getCode()[position];
-  int offset = dest - (position + 1);
+  auto *jmp = &getProto()->getCode()[position];
+  auto offset = dest - (position + 1);
   lua_assert(dest != NO_JUMP);
   if (!(-OFFSET_sJ <= offset && offset <= MAXARG_sJ - OFFSET_sJ))
     getLexState()->syntaxError("control structure too long");
@@ -125,7 +125,7 @@ int FuncState::condjump(OpCode o, int A, int B, int C, int k) {
 ** unconditional.
 */
 Instruction *FuncState::getjumpcontrol(int position) {
-  Instruction *pi = &getProto()->getCode()[position];
+  auto *pi = &getProto()->getCode()[position];
   if (position >= 1 && InstructionView(*(pi-1)).testTMode())
     return pi-1;
   else
@@ -140,7 +140,7 @@ Instruction *FuncState::getjumpcontrol(int position) {
 ** no register value)
 */
 int FuncState::patchtestreg(int node, int reg) {
-  Instruction *i = getjumpcontrol(node);
+  auto *i = getjumpcontrol(node);
   if (InstructionView(*i).opcode() != OP_TESTSET)
     return 0;  /* cannot patch other instructions */
   if (reg != NO_REG && reg != InstructionView(*i).b())
@@ -169,7 +169,7 @@ int FuncState::removevalues(int list) {
 */
 void FuncState::patchlistaux(int list, int vtarget, int reg, int dtarget) {
   while (list != NO_JUMP) {
-    int next = getjump(list);
+    auto next = getjump(list);
     if (patchtestreg(list, reg))
       fixjump(list, vtarget);
     else
@@ -189,8 +189,8 @@ void FuncState::patchlistaux(int list, int vtarget, int reg, int dtarget) {
 ** Otherwise, store the difference from last line in 'lineinfo'.
 */
 void FuncState::savelineinfo(Proto *proto, int line) {
-  int linedif = line - getPreviousLine();
-  int pcval = getPC() - 1;  /* last instruction coded */
+  auto linedif = line - getPreviousLine();
+  auto pcval = getPC() - 1;  /* last instruction coded */
   if (abs(linedif) >= LIMLINEDIFF || postIncrementInstructionsWithAbs() >= MAXIWTHABS) {
     luaM_growvector(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNAbsLineInfo(),
                     proto->getAbsLineInfoSizeRef(), AbsLineInfo, std::numeric_limits<int>::max(), "lines");
@@ -212,8 +212,8 @@ void FuncState::savelineinfo(Proto *proto, int line) {
 ** absolute line info, too.
 */
 void FuncState::removelastlineinfo() {
-  Proto *proto = getProto();
-  int pcval = getPC() - 1;  /* last instruction coded */
+  auto *proto = getProto();
+  auto pcval = getPC() - 1;  /* last instruction coded */
   if (proto->getLineInfo()[pcval] != ABSLINEINFO) {  /* relative line info? */
     setPreviousLine(getPreviousLine() - proto->getLineInfo()[pcval]);  /* correct last line saved */
     decrementInstructionsWithAbs();  /* undo previous increment */
@@ -238,7 +238,7 @@ void FuncState::removelastinstruction() {
 ** Format and emit an 'iAsBx' instruction.
 */
 int FuncState::codeAsBx(OpCode o, int A, int Bc) {
-  int b = Bc + OFFSET_sBx;
+  auto b = Bc + OFFSET_sBx;
   lua_assert(getOpMode(o) == OpMode::iAsBx);
   lua_assert(A <= MAXARG_A && b <= MAXARG_Bx);
   return code(CREATE_ABx(o, A, b));
@@ -261,7 +261,7 @@ int FuncState::codek(int reg, int k) {
   if (k <= MAXARG_Bx)
     return codeABx(OP_LOADK, reg, k);
   else {
-    int p = codeABx(OP_LOADKX, reg, 0);
+    auto p = codeABx(OP_LOADKX, reg, 0);
     codeextraarg(k);
     return p;
   }
@@ -306,8 +306,8 @@ void FuncState::freeExpression(expdesc *e) {
 ** order.
 */
 void FuncState::freeExpressions(expdesc *e1, expdesc *e2) {
-  int r1 = (e1->getKind() == VNONRELOC) ? e1->getInfo() : -1;
-  int r2 = (e2->getKind() == VNONRELOC) ? e2->getInfo() : -1;
+  auto r1 = (e1->getKind() == VNONRELOC) ? e1->getInfo() : -1;
+  auto r2 = (e2->getKind() == VNONRELOC) ? e2->getInfo() : -1;
   freeRegisters(r1, r2);
 }
 
@@ -316,8 +316,8 @@ void FuncState::freeExpressions(expdesc *e1, expdesc *e2) {
 */
 int FuncState::addk(Proto *proto, TValue *v) {
   lua_State *L = getLexState()->getLuaState();
-  int oldsize = proto->getConstantsSize();
-  int k = getNK();
+  auto oldsize = proto->getConstantsSize();
+  auto k = getNK();
   luaM_growvector(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
   auto constantsSpan = proto->getConstantsSpan();
   while (oldsize < static_cast<int>(constantsSpan.size()))
@@ -339,13 +339,13 @@ int FuncState::k2proto(TValue *key, TValue *v) {
   Proto *proto = getProto();
   LuaT tag = luaH_get(getKCache(), key, &val);  /* query scanner table */
   if (!tagisempty(tag)) {  /* is there an index there? */
-    int k = cast_int(ivalue(&val));
+    auto k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
     lua_assert(ttisfloat(key) || luaV_rawequalobj(&proto->getConstants()[k], v));
     return k;  /* reuse index */
   }
   else {  /* constant not found; create a new entry */
-    int k = addk(proto, v);
+    auto k = addk(proto, v);
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
     val.setInt(k);
@@ -398,7 +398,7 @@ int FuncState::numberK(lua_Number r) {
     lua_Integer ik;
     kv.setFloat(k);  /* key as a TValue */
     if (!luaV_flttointeger(k, &ik, F2Imod::F2Ieq)) {  /* not an integer value? */
-      int n = k2proto(&kv, &o);  /* use key */
+      auto n = k2proto(&kv, &o);  /* use key */
       if (luaV_rawequalobj(&getProto()->getConstants()[n], &o))  /* correct value? */
         return n;
     }
@@ -575,7 +575,7 @@ int FuncState::code_loadbool(int A, OpCode op) {
 */
 int FuncState::need_value(int list) {
   for (; list != NO_JUMP; list = getjump(list)) {
-    Instruction i = *getjumpcontrol(list);
+    auto i = *getjumpcontrol(list);
     if (InstructionView(i).opcode() != OP_TESTSET) return 1;
   }
   return 0;  /* not found */
@@ -593,16 +593,16 @@ void FuncState::exp2reg(expdesc *e, int reg) {
   if (e->getKind() == VJMP)  /* expression itself is a test? */
     concat(e->getTrueListRef(), e->getInfo());  /* put this jump in 't' list */
   if (hasjumps(e)) {
-    int p_f = NO_JUMP;  /* position of an eventual LOAD false */
-    int p_t = NO_JUMP;  /* position of an eventual LOAD true */
+    auto p_f = NO_JUMP;  /* position of an eventual LOAD false */
+    auto p_t = NO_JUMP;  /* position of an eventual LOAD true */
     if (need_value(e->getTrueList()) || need_value(e->getFalseList())) {
-      int fj = (e->getKind() == VJMP) ? NO_JUMP : jump();
+      auto fj = (e->getKind() == VJMP) ? NO_JUMP : jump();
       p_f = code_loadbool(reg, OP_LFALSESKIP);  /* skip next inst. */
       p_t = code_loadbool(reg, OP_LOADTRUE);
       /* jump around these booleans if 'e' is not a test */
       patchtohere(fj);
     }
-    int final = getlabel();  /* position after whole expression */
+    auto final = getlabel();  /* position after whole expression */
     patchlistaux(e->getFalseList(), final, reg, p_f);
     patchlistaux(e->getTrueList(), final, reg, p_t);
   }
@@ -654,7 +654,7 @@ int FuncState::exp2RK(expdesc *e) {
 }
 
 void FuncState::codeABRK(OpCode o, int A, int B, expdesc *ec) {
-  int k = exp2RK(ec);
+  auto k = exp2RK(ec);
   codeABCk(o, A, B, ec->getInfo(), k);
 }
 
@@ -677,7 +677,7 @@ void FuncState::negatecondition(expdesc *e) {
 */
 int FuncState::jumponcond(expdesc *e, int cond) {
   if (e->getKind() == VRELOC) {
-    Instruction ie = getinstruction(this, e);
+    auto ie = getinstruction(this, e);
     if (InstructionView(ie).opcode() == OP_NOT) {
       removelastinstruction();  /* remove previous OP_NOT */
       return condjump(OP_TEST, InstructionView(ie).b(), 0, 0, !cond);
@@ -848,7 +848,7 @@ static inline TMS binopr2TM (BinOpr opr) {
 ** Expression to produce final result will be encoded in 'e'.
 */
 void FuncState::codeunexpval(OpCode op, expdesc *e, int line) {
-  int r = exp2anyreg(e);  /* opcodes operate only on registers */
+  auto r = exp2anyreg(e);  /* opcodes operate only on registers */
   freeExpression(e);
   e->setInfo(codeABC(op, 0, r, 0));  /* generate opcode */
   e->setKind(VRELOC);  /* all those operations are relocatable */
@@ -863,8 +863,8 @@ void FuncState::codeunexpval(OpCode op, expdesc *e, int line) {
 */
 void FuncState::finishbinexpval(expdesc *e1, expdesc *e2, OpCode op, int v2,
                                  int flip, int line, OpCode mmop, TMS event) {
-  int v1 = exp2anyreg(e1);
-  int instrPos = codeABCk(op, 0, v1, v2, 0);
+  auto v1 = exp2anyreg(e1);
+  auto instrPos = codeABCk(op, 0, v1, v2, 0);
   freeExpressions(e1, e2);
   e1->setInfo(instrPos);
   e1->setKind(VRELOC);  /* all those operations are relocatable */
@@ -878,8 +878,8 @@ void FuncState::finishbinexpval(expdesc *e1, expdesc *e2, OpCode op, int v2,
 ** two registers.
 */
 void FuncState::codebinexpval(BinOpr opr, expdesc *e1, expdesc *e2, int line) {
-  OpCode op = binopr2op(opr, BinOpr::OPR_ADD, OP_ADD);
-  int v2 = exp2anyreg(e2);  /* make sure 'e2' is in a register */
+  auto op = binopr2op(opr, BinOpr::OPR_ADD, OP_ADD);
+  auto v2 = exp2anyreg(e2);  /* make sure 'e2' is in a register */
   /* 'e1' must be already in a register or it is a constant */
   lua_assert((VNIL <= e1->getKind() && e1->getKind() <= VKSTR) ||
              e1->getKind() == VNONRELOC || e1->getKind() == VRELOC);

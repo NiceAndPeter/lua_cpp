@@ -68,12 +68,12 @@ int lua_State::forLimit(lua_Integer init, const TValue *lim,
 **   ra + 2 : control variable
 */
 int lua_State::forPrep(StkId ra) {
-  TValue *pinit = s2v(ra);
-  TValue *plimit = s2v(ra + 1);
-  TValue *pstep = s2v(ra + 2);
+  auto *pinit = s2v(ra);
+  auto *plimit = s2v(ra + 1);
+  auto *pstep = s2v(ra + 2);
   if (ttisinteger(pinit) && ttisinteger(pstep)) { /* integer loop? */
-    lua_Integer init = ivalue(pinit);
-    lua_Integer step = ivalue(pstep);
+    auto init = ivalue(pinit);
+    auto step = ivalue(pstep);
     lua_Integer limit;
     if (step == 0)
       luaG_runerror(this, "'for' step is zero");
@@ -105,7 +105,7 @@ int lua_State::forPrep(StkId ra) {
     }
   }
   else {  /* try making all values floats */
-    lua_Number init; lua_Number limit; lua_Number step;
+    lua_Number init, limit, step;
     if (l_unlikely(!tonumber(plimit, &limit)))
       luaG_forerror(this, plimit, "limit");
     if (l_unlikely(!tonumber(pstep, &step)))
@@ -134,9 +134,9 @@ int lua_State::forPrep(StkId ra) {
 ** written online with opcode OP_FORLOOP, for performance.)
 */
 int lua_State::floatForLoop(StkId ra) {
-  lua_Number step = fltvalue(s2v(ra + 1));
-  lua_Number limit = fltvalue(s2v(ra));
-  lua_Number idx = fltvalue(s2v(ra + 2));  /* control variable */
+  auto step = fltvalue(s2v(ra + 1));
+  auto limit = fltvalue(s2v(ra));
+  auto idx = fltvalue(s2v(ra + 2));  /* control variable */
   idx = luai_numadd(this, idx, step);  /* increment index */
   if (luai_numlt(0, step) ? luai_numle(idx, limit)
                           : luai_numle(limit, idx)) {
