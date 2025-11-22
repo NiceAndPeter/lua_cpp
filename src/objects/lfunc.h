@@ -21,15 +21,8 @@ typedef union StackValue *StkId;
 ** {==================================================================
 ** Functions
 ** ===================================================================
+** Note: LUA_VUPVAL, LUA_VLCL, LUA_VLCF, LUA_VCCL now defined in ltvalue.h
 */
-
-inline constexpr int LUA_VUPVAL = makevariant(LUA_TUPVAL, 0);
-
-
-/* Variant tags for functions */
-inline constexpr int LUA_VLCL = makevariant(LUA_TFUNCTION, 0);  /* Lua closure */
-inline constexpr int LUA_VLCF = makevariant(LUA_TFUNCTION, 1);  /* light C function */
-inline constexpr int LUA_VCCL = makevariant(LUA_TFUNCTION, 2);  /* C closure */
 
 constexpr bool ttisfunction(const TValue* o) noexcept { return checktype(o, LUA_TFUNCTION); }
 constexpr bool ttisLclosure(const TValue* o) noexcept { return checktag(o, ctb(LUA_VLCL)); }

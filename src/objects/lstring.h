@@ -37,11 +37,8 @@ class global_State;
 ** {==================================================================
 ** Strings
 ** ===================================================================
+** Note: LUA_VSHRSTR, LUA_VLNGSTR now defined in ltvalue.h
 */
-
-/* Variant tags for strings */
-inline constexpr int LUA_VSHRSTR = makevariant(LUA_TSTRING, 0);  /* short strings */
-inline constexpr int LUA_VLNGSTR = makevariant(LUA_TSTRING, 1);  /* long strings */
 
 constexpr bool ttisstring(const TValue* o) noexcept { return checktype(o, LUA_TSTRING); }
 constexpr bool ttisshrstring(const TValue* o) noexcept { return checktag(o, ctb(LUA_VSHRSTR)); }
