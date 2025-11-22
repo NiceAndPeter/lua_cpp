@@ -138,57 +138,57 @@ private:
 
 public:
   /* Inline accessors */
-  inline ls_byte* getLineInfo() const noexcept { return lineinfo; }
-  inline int getLineInfoSize() const noexcept { return sizelineinfo; }
-  inline AbsLineInfo* getAbsLineInfo() const noexcept { return abslineinfo; }
-  inline int getAbsLineInfoSize() const noexcept { return sizeabslineinfo; }
-  inline LocVar* getLocVars() const noexcept { return locvars; }
-  inline int getLocVarsSize() const noexcept { return sizelocvars; }
-  inline int getLineDefined() const noexcept { return linedefined; }
-  inline int getLastLineDefined() const noexcept { return lastlinedefined; }
-  inline TString* getSource() const noexcept { return source; }
+  ls_byte* getLineInfo() const noexcept { return lineinfo; }
+  int getLineInfoSize() const noexcept { return sizelineinfo; }
+  AbsLineInfo* getAbsLineInfo() const noexcept { return abslineinfo; }
+  int getAbsLineInfoSize() const noexcept { return sizeabslineinfo; }
+  LocVar* getLocVars() const noexcept { return locvars; }
+  int getLocVarsSize() const noexcept { return sizelocvars; }
+  int getLineDefined() const noexcept { return linedefined; }
+  int getLastLineDefined() const noexcept { return lastlinedefined; }
+  TString* getSource() const noexcept { return source; }
 
   /* Inline setters */
-  inline void setLineInfo(ls_byte* li) noexcept { lineinfo = li; }
-  inline void setLineInfoSize(int s) noexcept { sizelineinfo = s; }
-  inline void setAbsLineInfo(AbsLineInfo* ali) noexcept { abslineinfo = ali; }
-  inline void setAbsLineInfoSize(int s) noexcept { sizeabslineinfo = s; }
-  inline void setLocVars(LocVar* lv) noexcept { locvars = lv; }
-  inline void setLocVarsSize(int s) noexcept { sizelocvars = s; }
-  inline void setLineDefined(int l) noexcept { linedefined = l; }
-  inline void setLastLineDefined(int l) noexcept { lastlinedefined = l; }
-  inline void setSource(TString* s) noexcept { source = s; }
+  void setLineInfo(ls_byte* li) noexcept { lineinfo = li; }
+  void setLineInfoSize(int s) noexcept { sizelineinfo = s; }
+  void setAbsLineInfo(AbsLineInfo* ali) noexcept { abslineinfo = ali; }
+  void setAbsLineInfoSize(int s) noexcept { sizeabslineinfo = s; }
+  void setLocVars(LocVar* lv) noexcept { locvars = lv; }
+  void setLocVarsSize(int s) noexcept { sizelocvars = s; }
+  void setLineDefined(int l) noexcept { linedefined = l; }
+  void setLastLineDefined(int l) noexcept { lastlinedefined = l; }
+  void setSource(TString* s) noexcept { source = s; }
 
   /* Reference accessors for luaM_growvector */
-  inline int& getLineInfoSizeRef() noexcept { return sizelineinfo; }
-  inline int& getAbsLineInfoSizeRef() noexcept { return sizeabslineinfo; }
-  inline int& getLocVarsSizeRef() noexcept { return sizelocvars; }
-  inline ls_byte*& getLineInfoRef() noexcept { return lineinfo; }
-  inline AbsLineInfo*& getAbsLineInfoRef() noexcept { return abslineinfo; }
-  inline LocVar*& getLocVarsRef() noexcept { return locvars; }
+  int& getLineInfoSizeRef() noexcept { return sizelineinfo; }
+  int& getAbsLineInfoSizeRef() noexcept { return sizeabslineinfo; }
+  int& getLocVarsSizeRef() noexcept { return sizelocvars; }
+  ls_byte*& getLineInfoRef() noexcept { return lineinfo; }
+  AbsLineInfo*& getAbsLineInfoRef() noexcept { return abslineinfo; }
+  LocVar*& getLocVarsRef() noexcept { return locvars; }
 
   /* Pointer accessors */
-  inline TString** getSourcePtr() noexcept { return &source; }
+  TString** getSourcePtr() noexcept { return &source; }
 
   /* Phase 112: std::span accessors for debug info arrays */
-  inline std::span<ls_byte> getLineInfoSpan() noexcept {
+  std::span<ls_byte> getLineInfoSpan() noexcept {
     return std::span(lineinfo, static_cast<size_t>(sizelineinfo));
   }
-  inline std::span<const ls_byte> getLineInfoSpan() const noexcept {
+  std::span<const ls_byte> getLineInfoSpan() const noexcept {
     return std::span(lineinfo, static_cast<size_t>(sizelineinfo));
   }
 
-  inline std::span<AbsLineInfo> getAbsLineInfoSpan() noexcept {
+  std::span<AbsLineInfo> getAbsLineInfoSpan() noexcept {
     return std::span(abslineinfo, static_cast<size_t>(sizeabslineinfo));
   }
-  inline std::span<const AbsLineInfo> getAbsLineInfoSpan() const noexcept {
+  std::span<const AbsLineInfo> getAbsLineInfoSpan() const noexcept {
     return std::span(abslineinfo, static_cast<size_t>(sizeabslineinfo));
   }
 
-  inline std::span<LocVar> getLocVarsSpan() noexcept {
+  std::span<LocVar> getLocVarsSpan() noexcept {
     return std::span(locvars, static_cast<size_t>(sizelocvars));
   }
-  inline std::span<const LocVar> getLocVarsSpan() const noexcept {
+  std::span<const LocVar> getLocVarsSpan() const noexcept {
     return std::span(locvars, static_cast<size_t>(sizelocvars));
   }
 };
@@ -256,112 +256,112 @@ public:
   static void operator delete(void*) = delete;
 
   /* Subsystem access (for direct debug info manipulation) */
-  inline ProtoDebugInfo& getDebugInfo() noexcept { return debugInfo; }
-  inline const ProtoDebugInfo& getDebugInfo() const noexcept { return debugInfo; }
+  ProtoDebugInfo& getDebugInfo() noexcept { return debugInfo; }
+  const ProtoDebugInfo& getDebugInfo() const noexcept { return debugInfo; }
 
   /* Runtime data accessors */
-  inline lu_byte getNumParams() const noexcept { return numparams; }
-  inline lu_byte getFlag() const noexcept { return flag; }
-  inline lu_byte getMaxStackSize() const noexcept { return maxstacksize; }
-  inline int getCodeSize() const noexcept { return sizecode; }
-  inline int getConstantsSize() const noexcept { return sizek; }
-  inline int getUpvaluesSize() const noexcept { return sizeupvalues; }
-  inline int getProtosSize() const noexcept { return sizep; }
-  inline bool isVarArg() const noexcept { return flag != 0; }
-  inline Instruction* getCode() const noexcept { return code; }
-  inline TValue* getConstants() const noexcept { return k; }
+  lu_byte getNumParams() const noexcept { return numparams; }
+  lu_byte getFlag() const noexcept { return flag; }
+  lu_byte getMaxStackSize() const noexcept { return maxstacksize; }
+  int getCodeSize() const noexcept { return sizecode; }
+  int getConstantsSize() const noexcept { return sizek; }
+  int getUpvaluesSize() const noexcept { return sizeupvalues; }
+  int getProtosSize() const noexcept { return sizep; }
+  bool isVarArg() const noexcept { return flag != 0; }
+  Instruction* getCode() const noexcept { return code; }
+  TValue* getConstants() const noexcept { return k; }
 
   /* Phase 112: std::span accessors for arrays */
-  inline std::span<Instruction> getCodeSpan() noexcept {
+  std::span<Instruction> getCodeSpan() noexcept {
     return std::span(code, static_cast<size_t>(sizecode));
   }
-  inline std::span<const Instruction> getCodeSpan() const noexcept {
+  std::span<const Instruction> getCodeSpan() const noexcept {
     return std::span(code, static_cast<size_t>(sizecode));
   }
 
-  inline std::span<TValue> getConstantsSpan() noexcept {
+  std::span<TValue> getConstantsSpan() noexcept {
     return std::span(k, static_cast<size_t>(sizek));
   }
-  inline std::span<const TValue> getConstantsSpan() const noexcept {
+  std::span<const TValue> getConstantsSpan() const noexcept {
     return std::span(k, static_cast<size_t>(sizek));
   }
 
-  inline std::span<Proto*> getProtosSpan() noexcept {
+  std::span<Proto*> getProtosSpan() noexcept {
     return std::span(p, static_cast<size_t>(sizep));
   }
-  inline std::span<Proto* const> getProtosSpan() const noexcept {
+  std::span<Proto* const> getProtosSpan() const noexcept {
     return std::span(p, static_cast<size_t>(sizep));
   }
 
-  inline std::span<Upvaldesc> getUpvaluesSpan() noexcept {
+  std::span<Upvaldesc> getUpvaluesSpan() noexcept {
     return std::span(upvalues, static_cast<size_t>(sizeupvalues));
   }
-  inline std::span<const Upvaldesc> getUpvaluesSpan() const noexcept {
+  std::span<const Upvaldesc> getUpvaluesSpan() const noexcept {
     return std::span(upvalues, static_cast<size_t>(sizeupvalues));
   }
 
-  inline Proto** getProtos() const noexcept { return p; }
-  inline Upvaldesc* getUpvalues() const noexcept { return upvalues; }
-  inline GCObject* getGclist() const noexcept { return gclist; }
+  Proto** getProtos() const noexcept { return p; }
+  Upvaldesc* getUpvalues() const noexcept { return upvalues; }
+  GCObject* getGclist() const noexcept { return gclist; }
 
   /* Delegating accessors for ProtoDebugInfo */
-  inline int getLineInfoSize() const noexcept { return debugInfo.getLineInfoSize(); }
-  inline int getLocVarsSize() const noexcept { return debugInfo.getLocVarsSize(); }
-  inline int getAbsLineInfoSize() const noexcept { return debugInfo.getAbsLineInfoSize(); }
-  inline int getLineDefined() const noexcept { return debugInfo.getLineDefined(); }
-  inline int getLastLineDefined() const noexcept { return debugInfo.getLastLineDefined(); }
-  inline TString* getSource() const noexcept { return debugInfo.getSource(); }
-  inline ls_byte* getLineInfo() const noexcept { return debugInfo.getLineInfo(); }
-  inline AbsLineInfo* getAbsLineInfo() const noexcept { return debugInfo.getAbsLineInfo(); }
-  inline LocVar* getLocVars() const noexcept { return debugInfo.getLocVars(); }
+  int getLineInfoSize() const noexcept { return debugInfo.getLineInfoSize(); }
+  int getLocVarsSize() const noexcept { return debugInfo.getLocVarsSize(); }
+  int getAbsLineInfoSize() const noexcept { return debugInfo.getAbsLineInfoSize(); }
+  int getLineDefined() const noexcept { return debugInfo.getLineDefined(); }
+  int getLastLineDefined() const noexcept { return debugInfo.getLastLineDefined(); }
+  TString* getSource() const noexcept { return debugInfo.getSource(); }
+  ls_byte* getLineInfo() const noexcept { return debugInfo.getLineInfo(); }
+  AbsLineInfo* getAbsLineInfo() const noexcept { return debugInfo.getAbsLineInfo(); }
+  LocVar* getLocVars() const noexcept { return debugInfo.getLocVars(); }
 
   /* Runtime data setters */
-  inline void setNumParams(lu_byte n) noexcept { numparams = n; }
-  inline void setFlag(lu_byte f) noexcept { flag = f; }
-  inline void setMaxStackSize(lu_byte s) noexcept { maxstacksize = s; }
-  inline void setCodeSize(int s) noexcept { sizecode = s; }
-  inline void setConstantsSize(int s) noexcept { sizek = s; }
-  inline void setUpvaluesSize(int s) noexcept { sizeupvalues = s; }
-  inline void setProtosSize(int s) noexcept { sizep = s; }
-  inline void setCode(Instruction* c) noexcept { code = c; }
-  inline void setConstants(TValue* constants) noexcept { k = constants; }
-  inline void setProtos(Proto** protos) noexcept { p = protos; }
-  inline void setUpvalues(Upvaldesc* uv) noexcept { upvalues = uv; }
-  inline void setGclist(GCObject* gc) noexcept { gclist = gc; }
+  void setNumParams(lu_byte n) noexcept { numparams = n; }
+  void setFlag(lu_byte f) noexcept { flag = f; }
+  void setMaxStackSize(lu_byte s) noexcept { maxstacksize = s; }
+  void setCodeSize(int s) noexcept { sizecode = s; }
+  void setConstantsSize(int s) noexcept { sizek = s; }
+  void setUpvaluesSize(int s) noexcept { sizeupvalues = s; }
+  void setProtosSize(int s) noexcept { sizep = s; }
+  void setCode(Instruction* c) noexcept { code = c; }
+  void setConstants(TValue* constants) noexcept { k = constants; }
+  void setProtos(Proto** protos) noexcept { p = protos; }
+  void setUpvalues(Upvaldesc* uv) noexcept { upvalues = uv; }
+  void setGclist(GCObject* gc) noexcept { gclist = gc; }
 
   /* Delegating setters for ProtoDebugInfo */
-  inline void setLineInfoSize(int s) noexcept { debugInfo.setLineInfoSize(s); }
-  inline void setLocVarsSize(int s) noexcept { debugInfo.setLocVarsSize(s); }
-  inline void setAbsLineInfoSize(int s) noexcept { debugInfo.setAbsLineInfoSize(s); }
-  inline void setLineDefined(int l) noexcept { debugInfo.setLineDefined(l); }
-  inline void setLastLineDefined(int l) noexcept { debugInfo.setLastLineDefined(l); }
-  inline void setSource(TString* s) noexcept { debugInfo.setSource(s); }
-  inline void setLineInfo(ls_byte* li) noexcept { debugInfo.setLineInfo(li); }
-  inline void setAbsLineInfo(AbsLineInfo* ali) noexcept { debugInfo.setAbsLineInfo(ali); }
-  inline void setLocVars(LocVar* lv) noexcept { debugInfo.setLocVars(lv); }
+  void setLineInfoSize(int s) noexcept { debugInfo.setLineInfoSize(s); }
+  void setLocVarsSize(int s) noexcept { debugInfo.setLocVarsSize(s); }
+  void setAbsLineInfoSize(int s) noexcept { debugInfo.setAbsLineInfoSize(s); }
+  void setLineDefined(int l) noexcept { debugInfo.setLineDefined(l); }
+  void setLastLineDefined(int l) noexcept { debugInfo.setLastLineDefined(l); }
+  void setSource(TString* s) noexcept { debugInfo.setSource(s); }
+  void setLineInfo(ls_byte* li) noexcept { debugInfo.setLineInfo(li); }
+  void setAbsLineInfo(AbsLineInfo* ali) noexcept { debugInfo.setAbsLineInfo(ali); }
+  void setLocVars(LocVar* lv) noexcept { debugInfo.setLocVars(lv); }
 
   /* Pointer accessors for serialization and GC */
-  inline TString** getSourcePtr() noexcept { return debugInfo.getSourcePtr(); }
-  inline GCObject** getGclistPtr() noexcept { return &gclist; }
+  TString** getSourcePtr() noexcept { return debugInfo.getSourcePtr(); }
+  GCObject** getGclistPtr() noexcept { return &gclist; }
 
   /* Runtime data reference accessors for luaM_growvector */
-  inline int& getCodeSizeRef() noexcept { return sizecode; }
-  inline int& getConstantsSizeRef() noexcept { return sizek; }
-  inline int& getUpvaluesSizeRef() noexcept { return sizeupvalues; }
-  inline int& getProtosSizeRef() noexcept { return sizep; }
+  int& getCodeSizeRef() noexcept { return sizecode; }
+  int& getConstantsSizeRef() noexcept { return sizek; }
+  int& getUpvaluesSizeRef() noexcept { return sizeupvalues; }
+  int& getProtosSizeRef() noexcept { return sizep; }
 
-  inline Instruction*& getCodeRef() noexcept { return code; }
-  inline TValue*& getConstantsRef() noexcept { return k; }
-  inline Proto**& getProtosRef() noexcept { return p; }
-  inline Upvaldesc*& getUpvaluesRef() noexcept { return upvalues; }
+  Instruction*& getCodeRef() noexcept { return code; }
+  TValue*& getConstantsRef() noexcept { return k; }
+  Proto**& getProtosRef() noexcept { return p; }
+  Upvaldesc*& getUpvaluesRef() noexcept { return upvalues; }
 
   /* Delegating reference accessors for ProtoDebugInfo */
-  inline int& getLineInfoSizeRef() noexcept { return debugInfo.getLineInfoSizeRef(); }
-  inline int& getLocVarsSizeRef() noexcept { return debugInfo.getLocVarsSizeRef(); }
-  inline int& getAbsLineInfoSizeRef() noexcept { return debugInfo.getAbsLineInfoSizeRef(); }
-  inline ls_byte*& getLineInfoRef() noexcept { return debugInfo.getLineInfoRef(); }
-  inline AbsLineInfo*& getAbsLineInfoRef() noexcept { return debugInfo.getAbsLineInfoRef(); }
-  inline LocVar*& getLocVarsRef() noexcept { return debugInfo.getLocVarsRef(); }
+  int& getLineInfoSizeRef() noexcept { return debugInfo.getLineInfoSizeRef(); }
+  int& getLocVarsSizeRef() noexcept { return debugInfo.getLocVarsSizeRef(); }
+  int& getAbsLineInfoSizeRef() noexcept { return debugInfo.getAbsLineInfoSizeRef(); }
+  ls_byte*& getLineInfoRef() noexcept { return debugInfo.getLineInfoRef(); }
+  AbsLineInfo*& getAbsLineInfoRef() noexcept { return debugInfo.getAbsLineInfoRef(); }
+  LocVar*& getLocVarsRef() noexcept { return debugInfo.getLocVarsRef(); }
 
   // Phase 44.5: Additional Proto helper methods
 

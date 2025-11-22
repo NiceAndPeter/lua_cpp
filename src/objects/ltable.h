@@ -62,84 +62,84 @@ public:
     : u{val, val_tt, key_tt, next_val, key_val} {}
 
   // Copy assignment operator (needed because union contains TValue with user-declared operator=)
-  inline Node& operator=(const Node& other) noexcept {
+  Node& operator=(const Node& other) noexcept {
     u = other.u;  // Copy the union
     return *this;
   }
 
   // Value access
-  inline TValue* getValue() noexcept { return &i_val; }
-  inline const TValue* getValue() const noexcept { return &i_val; }
+  TValue* getValue() noexcept { return &i_val; }
+  const TValue* getValue() const noexcept { return &i_val; }
 
   // Next chain access
-  inline int& getNext() noexcept { return u.next; }
-  inline int getNext() const noexcept { return u.next; }
-  inline void setNext(int n) noexcept { u.next = n; }
+  int& getNext() noexcept { return u.next; }
+  int getNext() const noexcept { return u.next; }
+  void setNext(int n) noexcept { u.next = n; }
 
   // Key type access
-  inline lu_byte getKeyType() const noexcept { return u.key_tt; }
-  inline void setKeyType(lu_byte tt) noexcept { u.key_tt = tt; }
+  lu_byte getKeyType() const noexcept { return u.key_tt; }
+  void setKeyType(lu_byte tt) noexcept { u.key_tt = tt; }
 
   // Key value access
-  inline const Value& getKeyValue() const noexcept { return u.key_val; }
-  inline Value& getKeyValue() noexcept { return u.key_val; }
-  inline void setKeyValue(const Value& v) noexcept { u.key_val = v; }
+  const Value& getKeyValue() const noexcept { return u.key_val; }
+  Value& getKeyValue() noexcept { return u.key_val; }
+  void setKeyValue(const Value& v) noexcept { u.key_val = v; }
 
   // Key type checks
-  inline bool isKeyNil() const noexcept {
+  bool isKeyNil() const noexcept {
     return u.key_tt == LUA_TNIL;
   }
 
-  inline bool isKeyInteger() const noexcept {
+  bool isKeyInteger() const noexcept {
     return u.key_tt == LUA_VNUMINT;
   }
 
-  inline bool isKeyShrStr() const noexcept {
+  bool isKeyShrStr() const noexcept {
     return u.key_tt == ctb(LUA_VSHRSTR);
   }
 
-  inline bool isKeyDead() const noexcept {
+  bool isKeyDead() const noexcept {
     return u.key_tt == LUA_TDEADKEY;
   }
 
-  inline bool isKeyCollectable() const noexcept {
+  bool isKeyCollectable() const noexcept {
     return (u.key_tt & BIT_ISCOLLECTABLE) != 0;
   }
 
   // Key value getters (typed)
-  inline lua_Integer getKeyIntValue() const noexcept {
+  lua_Integer getKeyIntValue() const noexcept {
     return u.key_val.i;
   }
 
-  inline TString* getKeyStrValue() const noexcept {
+  TString* getKeyStrValue() const noexcept {
     return reinterpret_cast<TString*>(u.key_val.gc);
   }
 
-  inline GCObject* getKeyGC() const noexcept {
+  GCObject* getKeyGC() const noexcept {
     return u.key_val.gc;
   }
 
-  inline GCObject* getKeyGCOrNull() const noexcept {
+  GCObject* getKeyGCOrNull() const noexcept {
     return isKeyCollectable() ? u.key_val.gc : nullptr;
   }
 
   // Key setters
-  inline void setKeyNil() noexcept {
+  void setKeyNil() noexcept {
     u.key_tt = LUA_TNIL;
   }
 
-  inline void setKeyDead() noexcept {
+  void setKeyDead() noexcept {
     u.key_tt = LUA_TDEADKEY;
   }
 
   // Copy TValue to key
-  inline void setKey(const TValue* obj) noexcept {
+  void setKey(const TValue* obj) noexcept {
     u.key_val = obj->getValue();
     u.key_tt = obj->getType();
   }
 
   // Copy key to TValue
-  inline void getKey(lua_State* L, TValue* obj) const noexcept {
+  void getKey(lua_State* L, TValue* obj) const noexcept {
     obj->valueField() = u.key_val;
     obj->setType(u.key_tt);
     (void)L; // checkliveness removed to avoid forward declaration issues
@@ -233,35 +233,35 @@ public:
   // invalidateTMCache uses maskflags from ltm.h, so can't inline here - use macro instead
 
   // Phase 44.1: Additional table helper methods
-  inline unsigned int allocatedNodeSize() const noexcept {
+  unsigned int allocatedNodeSize() const noexcept {
     return isDummy() ? 0 : nodeSize();
   }
 
-  inline unsigned int* getLenHint() noexcept {
+  unsigned int* getLenHint() noexcept {
     return static_cast<unsigned int*>(static_cast<void*>(array));
   }
 
-  inline const unsigned int* getLenHint() const noexcept {
+  const unsigned int* getLenHint() const noexcept {
     return static_cast<const unsigned int*>(static_cast<const void*>(array));
   }
 
-  inline lu_byte* getArrayTag(lua_Unsigned k) noexcept {
+  lu_byte* getArrayTag(lua_Unsigned k) noexcept {
     return static_cast<lu_byte*>(static_cast<void*>(array)) + sizeof(unsigned) + k;
   }
 
-  inline const lu_byte* getArrayTag(lua_Unsigned k) const noexcept {
+  const lu_byte* getArrayTag(lua_Unsigned k) const noexcept {
     return static_cast<const lu_byte*>(static_cast<const void*>(array)) + sizeof(unsigned) + k;
   }
 
-  inline Value* getArrayVal(lua_Unsigned k) noexcept {
+  Value* getArrayVal(lua_Unsigned k) noexcept {
     return array - 1 - k;
   }
 
-  inline const Value* getArrayVal(lua_Unsigned k) const noexcept {
+  const Value* getArrayVal(lua_Unsigned k) const noexcept {
     return array - 1 - k;
   }
 
-  static inline unsigned int powerOfTwo(unsigned int x) noexcept {
+  static unsigned int powerOfTwo(unsigned int x) noexcept {
     return (1u << x);
   }
 

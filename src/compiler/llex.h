@@ -99,23 +99,23 @@ private:
 
 public:
   // Accessors
-  inline int getCurrent() const noexcept { return current; }
-  inline int getLineNumber() const noexcept { return linenumber; }
-  inline int getLastLine() const noexcept { return lastline; }
-  inline ZIO* getZIO() const noexcept { return z; }
-  inline TString* getSource() const noexcept { return source; }
+  int getCurrent() const noexcept { return current; }
+  int getLineNumber() const noexcept { return linenumber; }
+  int getLastLine() const noexcept { return lastline; }
+  ZIO* getZIO() const noexcept { return z; }
+  TString* getSource() const noexcept { return source; }
 
-  inline void setCurrent(int c) noexcept { current = c; }
-  inline void setLineNumber(int line) noexcept { linenumber = line; }
-  inline void setLastLine(int line) noexcept { lastline = line; }
-  inline void setZIO(ZIO* zio) noexcept { z = zio; }
-  inline void setSource(TString* src) noexcept { source = src; }
+  void setCurrent(int c) noexcept { current = c; }
+  void setLineNumber(int line) noexcept { linenumber = line; }
+  void setLastLine(int line) noexcept { lastline = line; }
+  void setZIO(ZIO* zio) noexcept { z = zio; }
+  void setSource(TString* src) noexcept { source = src; }
 
-  inline int& getLineNumberRef() noexcept { return linenumber; }
+  int& getLineNumberRef() noexcept { return linenumber; }
 
   // Operations
-  inline void next() noexcept { current = zgetc(z); }
-  inline bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
+  void next() noexcept { current = zgetc(z); }
+  bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
 };
 
 /* Phase 94: Subsystem for token state management */
@@ -126,10 +126,10 @@ private:
 
 public:
   // Accessors
-  inline const Token& getCurrent() const noexcept { return current; }
-  inline Token& getCurrentRef() noexcept { return current; }
-  inline const Token& getLookahead() const noexcept { return lookahead; }
-  inline Token& getLookaheadRef() noexcept { return lookahead; }
+  const Token& getCurrent() const noexcept { return current; }
+  Token& getCurrentRef() noexcept { return current; }
+  const Token& getLookahead() const noexcept { return lookahead; }
+  Token& getLookaheadRef() noexcept { return lookahead; }
 };
 
 /* Phase 94: Subsystem for string interning and buffer management */
@@ -143,17 +143,17 @@ private:
 
 public:
   // Accessors
-  inline Mbuffer* getBuffer() const noexcept { return buff; }
-  inline Table* getTable() const noexcept { return h; }
-  inline TString* getEnvName() const noexcept { return envn; }
-  inline TString* getBreakName() const noexcept { return brkn; }
-  inline TString* getGlobalName() const noexcept { return glbn; }
+  Mbuffer* getBuffer() const noexcept { return buff; }
+  Table* getTable() const noexcept { return h; }
+  TString* getEnvName() const noexcept { return envn; }
+  TString* getBreakName() const noexcept { return brkn; }
+  TString* getGlobalName() const noexcept { return glbn; }
 
-  inline void setBuffer(Mbuffer* b) noexcept { buff = b; }
-  inline void setTable(Table* table) noexcept { h = table; }
-  inline void setEnvName(TString* env) noexcept { envn = env; }
-  inline void setBreakName(TString* brk) noexcept { brkn = brk; }
-  inline void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
+  void setBuffer(Mbuffer* b) noexcept { buff = b; }
+  void setTable(Table* table) noexcept { h = table; }
+  void setEnvName(TString* env) noexcept { envn = env; }
+  void setBreakName(TString* brk) noexcept { brkn = brk; }
+  void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
 };
 
 /* Phase 95: Lexical state - focused on tokenization only
