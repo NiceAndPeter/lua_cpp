@@ -582,11 +582,11 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
   unsigned status_val = LUA_MULTRET + 1;
  retry:
   switch (ttypetag(s2v(func))) {
-    case LUA_VCCL:  /* C closure */
+    case LuaT::CCL:  /* C closure */
       return preCallC(func, status_val, clCvalue(s2v(func))->getFunction());
-    case LUA_VLCF:  /* light C function */
+    case LuaT::LCF:  /* light C function */
       return preCallC(func, status_val, fvalue(s2v(func)));
-    case LUA_VLCL: {  /* Lua function */
+    case LuaT::LCL: {  /* Lua function */
       Proto *p = clLvalue(s2v(func))->getProto();
       int fsize = p->getMaxStackSize();  /* frame size */
       int nfixparams = p->getNumParams();
@@ -628,13 +628,13 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
   lua_assert(status_val <= MAXRESULTS + 1);
  retry:
   switch (ttypetag(s2v(func))) {
-    case LUA_VCCL:  /* C closure */
+    case LuaT::CCL:  /* C closure */
       preCallC(func, status_val, clCvalue(s2v(func))->getFunction());
       return nullptr;
-    case LUA_VLCF:  /* light C function */
+    case LuaT::LCF:  /* light C function */
       preCallC(func, status_val, fvalue(s2v(func)));
       return nullptr;
-    case LUA_VLCL: {  /* Lua function */
+    case LuaT::LCL: {  /* Lua function */
       CallInfo *ci_new;
       Proto *p = clLvalue(s2v(func))->getProto();
       int narg = cast_int(getTop().p - func) - 1;  /* number of real arguments */

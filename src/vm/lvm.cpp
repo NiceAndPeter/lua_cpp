@@ -831,7 +831,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *upval = cl->getUpval(InstructionView(i).b())->getVP();
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
-        lu_byte tag;
+        LuaT tag;
         tag = luaV_fastget(upval, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, upval, rc, ra, tag); });
@@ -841,7 +841,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         StkId ra = RA(i);
         TValue *rb = vRB(i);
         TValue *rc = vRC(i);
-        lu_byte tag;
+        LuaT tag;
         if (ttisinteger(rc)) {  /* fast track for integers? */
           luaV_fastgeti(rb, ivalue(rc), s2v(ra), tag);
         }
@@ -855,7 +855,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         StkId ra = RA(i);
         TValue *rb = vRB(i);
         int c = InstructionView(i).c();
-        lu_byte tag;
+        LuaT tag;
         luaV_fastgeti(rb, c, s2v(ra), tag);
         if (tagisempty(tag)) {
           TValue key;
@@ -869,7 +869,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         TValue *rb = vRB(i);
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
-        lu_byte tag;
+        LuaT tag;
         tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
@@ -956,7 +956,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_SELF) {
         StkId ra = RA(i);
-        lu_byte tag;
+        LuaT tag;
         TValue *rb = vRB(i);
         TValue *rc = KC(i);
         TString *key = tsvalue(rc);  /* key must be a short string */
@@ -1512,7 +1512,7 @@ void lua_State::objlen(StkId ra, const TValue *rb) {
   luaV_objlen(this, ra, rb);
 }
 
-lu_byte lua_State::finishGet(const TValue *t, TValue *key, StkId val, lu_byte tag) {
+LuaT lua_State::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag) {
   return luaV_finishget(this, t, key, val, tag);
 }
 

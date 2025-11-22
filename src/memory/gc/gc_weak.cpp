@@ -321,7 +321,7 @@ void GCWeak::clearbyvalues(global_State* g, GCObject* l, GCObject* f) {
         for (i = 0; i < asize; i++) {
             GCObject* o = gcvalarr(h, i);
             if (iscleared(g, o))  /* value was collected? */
-                *h->getArrayTag(i) = LUA_VEMPTY;  /* remove entry */
+                *h->getArrayTag(i) = LuaT::EMPTY;  /* remove entry */
         }
 
         for (n = gnode(h, 0); n < limit; n++) {

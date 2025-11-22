@@ -217,12 +217,12 @@ l_mem GCMarking::traversethread(global_State* g, lua_State* th) {
 void GCMarking::reallymarkobject(global_State* g, GCObject* o) {
     g->setGCMarked(g->getGCMarked() + objsize(o));
     switch (o->getType()) {
-        case LUA_VSHRSTR:
-        case LUA_VLNGSTR: {
+        case LuaT::SHRSTR:
+        case LuaT::LNGSTR: {
             set2black(o);  /* strings have no children */
             break;
         }
-        case LUA_VUPVAL: {
+        case LuaT::UPVAL: {
             UpVal* uv = gco2upv(o);
             if (uv->isOpen())
                 set2gray(uv);  /* open upvalues kept gray */
@@ -231,7 +231,7 @@ void GCMarking::reallymarkobject(global_State* g, GCObject* o) {
             markvalue(g, uv->getVP());
             break;
         }
-        case LUA_VUSERDATA: {
+        case LuaT::USERDATA: {
             Udata* u = gco2u(o);
             if (u->getNumUserValues() == 0) {
                 markobjectN(g, u->getMetatable());
@@ -240,11 +240,11 @@ void GCMarking::reallymarkobject(global_State* g, GCObject* o) {
             }
             /* else fall through to add to gray list */
         } /* FALLTHROUGH */
-        case LUA_VLCL:
-        case LUA_VCCL:
-        case LUA_VTABLE:
-        case LUA_VTHREAD:
-        case LUA_VPROTO: {
+        case LuaT::LCL:
+        case LuaT::CCL:
+        case LuaT::TABLE:
+        case LuaT::THREAD:
+        case LuaT::PROTO: {
             linkobjgclist(o, *g->getGrayPtr());  /* to be visited later */
             break;
         }
@@ -263,17 +263,17 @@ l_mem GCMarking::propagatemark(global_State* g) {
     nw2black(o);
     g->setGray(*getgclist(o));  /* remove from 'gray' list */
     switch (o->getType()) {
-        case LUA_VTABLE:
+        case LuaT::TABLE:
             return traversetable(g, gco2t(o));
-        case LUA_VUSERDATA:
+        case LuaT::USERDATA:
             return traverseudata(g, gco2u(o));
-        case LUA_VLCL:
+        case LuaT::LCL:
             return traverseLclosure(g, gco2lcl(o));
-        case LUA_VCCL:
+        case LuaT::CCL:
             return traverseCclosure(g, gco2ccl(o));
-        case LUA_VPROTO:
+        case LuaT::PROTO:
             return traverseproto(g, gco2p(o));
-        case LUA_VTHREAD:
+        case LuaT::THREAD:
             return traversethread(g, gco2th(o));
         default:
             lua_assert(0);

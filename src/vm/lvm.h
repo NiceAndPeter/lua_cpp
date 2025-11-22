@@ -162,17 +162,17 @@ inline int luaV_rawequalobj(const TValue* t1, const TValue* t2) noexcept {
 ** fast track for 'gettable'
 */
 template<typename F>
-inline lu_byte luaV_fastget(const TValue* t, const TValue* k, TValue* res, F&& f) noexcept {
+inline LuaT luaV_fastget(const TValue* t, const TValue* k, TValue* res, F&& f) noexcept {
 	if (!ttistable(t))
-		return LUA_VNOTABLE;
+		return LuaT::NOTABLE;
 	return f(hvalue(t), k, res);
 }
 
 /* Overload for TString* keys */
 template<typename F>
-inline lu_byte luaV_fastget(const TValue* t, TString* k, TValue* res, F&& f) noexcept {
+inline LuaT luaV_fastget(const TValue* t, TString* k, TValue* res, F&& f) noexcept {
 	if (!ttistable(t))
-		return LUA_VNOTABLE;
+		return LuaT::NOTABLE;
 	return f(hvalue(t), k, res);
 }
 
@@ -181,9 +181,9 @@ inline lu_byte luaV_fastget(const TValue* t, TString* k, TValue* res, F&& f) noe
 ** Special case of 'luaV_fastget' for integers, inlining the fast case
 ** of 'luaH_getint'.
 */
-inline void luaV_fastgeti(const TValue* t, lua_Integer k, TValue* res, lu_byte& tag) noexcept {
+inline void luaV_fastgeti(const TValue* t, lua_Integer k, TValue* res, LuaT& tag) noexcept {
 	if (!ttistable(t))
-		tag = LUA_VNOTABLE;
+		tag = LuaT::NOTABLE;
 	else
 		luaH_fastgeti(hvalue(t), k, res, tag);
 }
@@ -238,8 +238,8 @@ inline lua_Integer luaV_shiftr(lua_Integer x, lua_Integer y) noexcept {
 #define luaV_flttointeger_declared
 LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
 #endif
-LUAI_FUNC lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
-                                                StkId val, lu_byte tag);
+LUAI_FUNC LuaT luaV_finishget (lua_State *L, const TValue *t, TValue *key,
+                                                StkId val, LuaT tag);
 LUAI_FUNC void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
                                              TValue *val, int aux);
 LUAI_FUNC void luaV_finishOp (lua_State *L);

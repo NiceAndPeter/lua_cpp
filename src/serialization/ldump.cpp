@@ -186,21 +186,21 @@ static void dumpConstants (DumpState *D, const Proto *f) {
   auto constants = f->getConstantsSpan();
   dumpInt(D, static_cast<int>(constants.size()));
   for (const auto& constant : constants) {
-    int tt = ttypetag(&constant);
-    dumpByte(D, tt);
+    LuaT tt = ttypetag(&constant);
+    dumpByte(D, static_cast<lu_byte>(tt));
     switch (tt) {
-      case LUA_VNUMFLT:
+      case LuaT::NUMFLT:
         dumpNumber(D, fltvalue(&constant));
         break;
-      case LUA_VNUMINT:
+      case LuaT::NUMINT:
         dumpInteger(D, ivalue(&constant));
         break;
-      case LUA_VSHRSTR:
-      case LUA_VLNGSTR:
+      case LuaT::SHRSTR:
+      case LuaT::LNGSTR:
         dumpString(D, tsvalue(&constant));
         break;
       default:
-        lua_assert(tt == LUA_VNIL || tt == LUA_VFALSE || tt == LUA_VTRUE);
+        lua_assert(tt == LuaT::NIL || tt == LuaT::VFALSE || tt == LuaT::VTRUE);
     }
   }
 }

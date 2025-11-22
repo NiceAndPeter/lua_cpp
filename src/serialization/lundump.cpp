@@ -223,25 +223,25 @@ static void loadConstants (LoadState *S, Proto *f) {
   }
   for (size_t i = 0; i < static_cast<size_t>(n); i++) {
     TValue *o = &constantsSpan[i];
-    int t = loadByte(S);
+    LuaT t = static_cast<LuaT>(loadByte(S));
     switch (t) {
-      case LUA_VNIL:
+      case LuaT::NIL:
         setnilvalue(o);
         break;
-      case LUA_VFALSE:
+      case LuaT::VFALSE:
         setbfvalue(o);
         break;
-      case LUA_VTRUE:
+      case LuaT::VTRUE:
         setbtvalue(o);
         break;
-      case LUA_VNUMFLT:
+      case LuaT::NUMFLT:
         o->setFloat(loadNumber(S));
         break;
-      case LUA_VNUMINT:
+      case LuaT::NUMINT:
         o->setInt(loadInteger(S));
         break;
-      case LUA_VSHRSTR:
-      case LUA_VLNGSTR: {
+      case LuaT::SHRSTR:
+      case LuaT::LNGSTR: {
         lua_assert(f->getSource() == nullptr);
         loadString(S, f, f->getSourcePtr());  /* use 'source' to anchor string */
         if (f->getSource() == nullptr)

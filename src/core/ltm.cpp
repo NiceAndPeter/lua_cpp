@@ -117,7 +117,7 @@ void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
 }
 
 
-lu_byte luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
+LuaT luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
                         const TValue *p2, StkId res) {
   ptrdiff_t result = L->saveStack(res);
   StkId func = L->getTop().p;
@@ -144,7 +144,7 @@ static int callbinTM (lua_State *L, const TValue *p1, const TValue *p2,
   if (notm(tm))
     return -1;  /* tag method not found */
   else  /* call tag method and return the tag of the result */
-    return luaT_callTMres(L, tm, p1, p2, res);
+    return static_cast<int>(luaT_callTMres(L, tm, p1, p2, res));
 }
 
 

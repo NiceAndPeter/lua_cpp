@@ -25,44 +25,44 @@
 l_mem GCCore::objsize(GCObject* o) {
     lu_mem res;
     switch (o->getType()) {
-        case LUA_VTABLE: {
+        case LuaT::TABLE: {
             res = luaH_size(gco2t(o));
             break;
         }
-        case LUA_VLCL: {
+        case LuaT::LCL: {
             LClosure* cl = gco2lcl(o);
             res = sizeLclosure(cl->getNumUpvalues());
             break;
         }
-        case LUA_VCCL: {
+        case LuaT::CCL: {
             CClosure* cl = gco2ccl(o);
             res = sizeCclosure(cl->getNumUpvalues());
             break;
         }
-        case LUA_VUSERDATA: {
+        case LuaT::USERDATA: {
             Udata* u = gco2u(o);
             res = sizeudata(u->getNumUserValues(), u->getLen());
             break;
         }
-        case LUA_VPROTO: {
+        case LuaT::PROTO: {
             res = gco2p(o)->memorySize();
             break;
         }
-        case LUA_VTHREAD: {
+        case LuaT::THREAD: {
             res = luaE_threadsize(gco2th(o));
             break;
         }
-        case LUA_VSHRSTR: {
+        case LuaT::SHRSTR: {
             TString* ts = gco2ts(o);
             res = sizestrshr(cast_uint(ts->getShrlen()));
             break;
         }
-        case LUA_VLNGSTR: {
+        case LuaT::LNGSTR: {
             TString* ts = gco2ts(o);
             res = TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen());
             break;
         }
-        case LUA_VUPVAL: {
+        case LuaT::UPVAL: {
             res = sizeof(UpVal);
             break;
         }
@@ -78,21 +78,21 @@ l_mem GCCore::objsize(GCObject* o) {
 */
 GCObject** GCCore::getgclist(GCObject* o) {
     switch (o->getType()) {
-        case LUA_VTABLE: return gco2t(o)->getGclistPtr();
-        case LUA_VLCL: return gco2lcl(o)->getGclistPtr();
-        case LUA_VCCL: return gco2ccl(o)->getGclistPtr();
-        case LUA_VTHREAD: return gco2th(o)->getGclistPtr();
-        case LUA_VPROTO: return gco2p(o)->getGclistPtr();
-        case LUA_VUSERDATA: {
+        case LuaT::TABLE: return gco2t(o)->getGclistPtr();
+        case LuaT::LCL: return gco2lcl(o)->getGclistPtr();
+        case LuaT::CCL: return gco2ccl(o)->getGclistPtr();
+        case LuaT::THREAD: return gco2th(o)->getGclistPtr();
+        case LuaT::PROTO: return gco2p(o)->getGclistPtr();
+        case LuaT::USERDATA: {
             Udata* u = gco2u(o);
             lua_assert(u->getNumUserValues() > 0);
             return u->getGclistPtr();
         }
-        case LUA_VUPVAL:
+        case LuaT::UPVAL:
             /* UpVals use the base GCObject 'next' field for gray list linkage */
             return o->getNextPtr();
-        case LUA_VSHRSTR:
-        case LUA_VLNGSTR:
+        case LuaT::SHRSTR:
+        case LuaT::LNGSTR:
             /* Strings are marked black directly and should never be in gray list.
              * However, with LTO, we've seen strings passed to this function.
              * Use the 'next' field (from GCObject base) as a fallback. */

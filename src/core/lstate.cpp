@@ -335,7 +335,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
                        (*f)(ud, nullptr, LUA_TTHREAD, sizeof(global_State)));
   if (g == nullptr) return nullptr;
   L = &g->getMainThread()->l;
-  L->setType(LUA_VTHREAD);
+  L->setType(LuaT::THREAD);
   g->setCurrentWhite(bitmask(WHITE0BIT));
   L->setMarked(g->getWhite());
   preinit_thread(L, g);

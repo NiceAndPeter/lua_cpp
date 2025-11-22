@@ -655,7 +655,7 @@ public:
   void finishOp();
   void concat(int total);
   void objlen(StkId ra, const TValue *rb);
-  lu_byte finishGet(const TValue *t, TValue *key, StkId val, lu_byte tag);
+  LuaT finishGet(const TValue *t, TValue *key, StkId val, LuaT tag);
   void finishSet(const TValue *t, TValue *key, TValue *val, int aux);
 
   // Arithmetic operation methods (formerly luaV_* functions, implemented in lvm.cpp)

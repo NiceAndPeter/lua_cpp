@@ -326,7 +326,7 @@ static void printobj (global_State *g, GCObject *o) {
            ttypename(novariant(o->getType())), (void *)o,
            isdead(g,o) ? 'd' : isblack(o) ? 'b' : iswhite(o) ? 'w' : 'g',
            "ns01oTt"[static_cast<size_t>(getage(o))], o->getMarked());
-  if (o->getType() == LUA_VSHRSTR || o->getType() == LUA_VLNGSTR)
+  if (o->getType() == LuaT::SHRSTR || o->getType() == LuaT::LNGSTR)
     printf(" '%s'", getstr(gco2ts(o)));
 }
 
@@ -338,36 +338,36 @@ void lua_printobj (lua_State *L, GCObject *o) {
 
 void lua_printvalue (TValue *v) {
   switch (ttypetag(v)) {
-    case LUA_VNUMINT: case LUA_VNUMFLT: {
+    case LuaT::NUMINT: case LuaT::NUMFLT: {
       char buff[LUA_N2SBUFFSZ];
       unsigned len = luaO_tostringbuff(v, buff);
       buff[len] = '\0';
       printf("%s", buff);
       break;
     }
-    case LUA_VSHRSTR:
+    case LuaT::SHRSTR:
       printf("'%s'", getstr(tsvalue(v))); break;
-    case LUA_VLNGSTR:
+    case LuaT::LNGSTR:
       printf("'%.30s...'", getstr(tsvalue(v))); break;
-    case LUA_VFALSE:
+    case LuaT::VFALSE:
       printf("%s", "false"); break;
-    case LUA_VTRUE:
+    case LuaT::VTRUE:
       printf("%s", "true"); break;
-    case LUA_VLIGHTUSERDATA:
+    case LuaT::LIGHTUSERDATA:
       printf("light udata: %p", pvalue(v)); break;
-    case LUA_VUSERDATA:
+    case LuaT::USERDATA:
       printf("full udata: %p", uvalue(v)); break;
-    case LUA_VNIL:
+    case LuaT::NIL:
       printf("nil"); break;
-    case LUA_VLCF:
+    case LuaT::LCF:
       printf("light C function: %p", fvalue(v)); break;
-    case LUA_VCCL:
+    case LuaT::CCL:
       printf("C closure: %p", clCvalue(v)); break;
-    case LUA_VLCL:
+    case LuaT::LCL:
       printf("Lua function: %p", clLvalue(v)); break;
-    case LUA_VTHREAD:
+    case LuaT::THREAD:
       printf("thread: %p", thvalue(v)); break;
-    case LUA_VTABLE:
+    case LuaT::TABLE:
       printf("table: %p", hvalue(v)); break;
     default:
       lua_assert(0);
@@ -519,36 +519,36 @@ static void check_stack (global_State *g, lua_State *L1) {
 
 static void checkrefs (global_State *g, GCObject *o) {
   switch (o->getType()) {
-    case LUA_VUSERDATA: {
+    case LuaT::USERDATA: {
       checkudata(g, gco2u(o));
       break;
     }
-    case LUA_VUPVAL: {
+    case LuaT::UPVAL: {
       checkvalref(g, o, gco2upv(o)->getVP());
       break;
     }
-    case LUA_VTABLE: {
+    case LuaT::TABLE: {
       checktable(g, gco2t(o));
       break;
     }
-    case LUA_VTHREAD: {
+    case LuaT::THREAD: {
       check_stack(g, gco2th(o));
       break;
     }
-    case LUA_VLCL: {
+    case LuaT::LCL: {
       checkLclosure(g, gco2lcl(o));
       break;
     }
-    case LUA_VCCL: {
+    case LuaT::CCL: {
       checkCclosure(g, gco2ccl(o));
       break;
     }
-    case LUA_VPROTO: {
+    case LuaT::PROTO: {
       checkproto(g, gco2p(o));
       break;
     }
-    case LUA_VSHRSTR:
-    case LUA_VLNGSTR: {
+    case LuaT::SHRSTR:
+    case LuaT::LNGSTR: {
       assert(!isgray(o));  /* strings are never gray */
       break;
     }
@@ -582,8 +582,8 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
         assert(isblack(o) ||
         getage(o) == GCAge::Touched1 ||
         getage(o) == GCAge::Old0 ||
-        o->getType() == LUA_VTHREAD ||
-        (o->getType() == LUA_VUPVAL && gco2upv(o)->isOpen()));
+        o->getType() == LuaT::THREAD ||
+        (o->getType() == LuaT::UPVAL && gco2upv(o)->isOpen()));
       }
       assert(getage(o) != GCAge::Touched1 || isgray(o));
     }
@@ -602,12 +602,12 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
       o->setMarkedBit(TESTBIT);  /* mark that object is in a gray list */
     total++;
     switch (o->getType()) {
-      case LUA_VTABLE: o = gco2t(o)->getGclist(); break;
-      case LUA_VLCL: o = gco2lcl(o)->getGclist(); break;
-      case LUA_VCCL: o = gco2ccl(o)->getGclist(); break;
-      case LUA_VTHREAD: o = gco2th(o)->getGclist(); break;
-      case LUA_VPROTO: o = gco2p(o)->getGclist(); break;
-      case LUA_VUSERDATA:
+      case LuaT::TABLE: o = gco2t(o)->getGclist(); break;
+      case LuaT::LCL: o = gco2lcl(o)->getGclist(); break;
+      case LuaT::CCL: o = gco2ccl(o)->getGclist(); break;
+      case LuaT::THREAD: o = gco2th(o)->getGclist(); break;
+      case LuaT::PROTO: o = gco2p(o)->getGclist(); break;
+      case LuaT::USERDATA:
         assert(gco2u(o)->getNumUserValues() > 0);
         o = gco2u(o)->getGclist();
         break;
@@ -641,7 +641,7 @@ static l_mem checkgrays (global_State *g) {
 static void incifingray (global_State *g, GCObject *o, l_mem *count) {
   if (!g->keepInvariant())
     return;  /* gray lists not being kept in these phases */
-  if (o->getType() == LUA_VUPVAL) {
+  if (o->getType() == LuaT::UPVAL) {
     /* only open upvalues can be gray */
     assert(!isgray(o) || gco2upv(o)->isOpen());
     return;  /* upvalues are never in gray lists */
@@ -699,7 +699,7 @@ int lua_checkmemory (lua_State *L) {
 
   /* check 'fixedgc' list */
   for (o = g->getFixedGC(); o != nullptr; o = o->getNext()) {
-    assert(o->getType() == LUA_VSHRSTR && isgray(o) && getage(o) == GCAge::Old);
+    assert(o->getType() == LuaT::SHRSTR && isgray(o) && getage(o) == GCAge::Old);
   }
 
   /* check 'allgc' list */
@@ -716,7 +716,7 @@ int lua_checkmemory (lua_State *L) {
     checkobject(g, o, 0, GCAge::New);
     incifingray(g, o, &totalshould);
     assert(tofinalize(o));
-    assert(o->getType() == LUA_VUSERDATA || o->getType() == LUA_VTABLE);
+    assert(o->getType() == LuaT::USERDATA || o->getType() == LuaT::TABLE);
   }
   if (g->keepInvariant())
     assert(totalin == totalshould);
@@ -1089,7 +1089,7 @@ static int hash_query (lua_State *L) {
     TString *ts;
     luaL_argcheck(L, lua_type(L, 1) == LUA_TSTRING, 1, "string expected");
     ts = tsvalue(obj_at(L, 1));
-    if (ts->getType() == LUA_VLNGSTR)
+    if (ts->getType() == LuaT::LNGSTR)
       ts->hashLongStr();  /* make sure long string has a hash */
     lua_pushinteger(L, cast_int(ts->getHash()));
   }

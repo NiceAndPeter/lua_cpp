@@ -250,8 +250,8 @@ inline Node* hashpointer(const Table* t, T* p) noexcept {
 ** (DEADKEY, nullptr) that is different from any valid TValue.
 */
 static Node dummynode_ = Node(
-  {nullptr}, LUA_VEMPTY,  /* value's value and type */
-  LUA_TDEADKEY, 0, {nullptr}  /* key type, next, and key value */
+  {nullptr}, LuaT::EMPTY,  /* value's value and type */
+  static_cast<LuaT>(LUA_TDEADKEY), 0, {nullptr}  /* key type, next, and key value */
 );
 
 
@@ -309,31 +309,31 @@ static unsigned l_hashfloat (lua_Number n) {
 */
 static Node *mainpositionTV (const Table *t, const TValue *key) {
   switch (ttypetag(key)) {
-    case LUA_VNUMINT: {
+    case LuaT::NUMINT: {
       lua_Integer i = ivalue(key);
       return hashint(t, i);
     }
-    case LUA_VNUMFLT: {
+    case LuaT::NUMFLT: {
       lua_Number n = fltvalue(key);
       return hashmod(t, l_hashfloat(n));
     }
-    case LUA_VSHRSTR: {
+    case LuaT::SHRSTR: {
       TString *ts = tsvalue(key);
       return hashstr(t, ts);
     }
-    case LUA_VLNGSTR: {
+    case LuaT::LNGSTR: {
       TString *ts = tsvalue(key);
       return hashpow2(t, ts->hashLongStr());
     }
-    case LUA_VFALSE:
+    case LuaT::VFALSE:
       return hashboolean(t, 0);
-    case LUA_VTRUE:
+    case LuaT::VTRUE:
       return hashboolean(t, 1);
-    case LUA_VLIGHTUSERDATA: {
+    case LuaT::LIGHTUSERDATA: {
       void *p = pvalue(key);
       return hashpointer(t, p);
     }
-    case LUA_VLCF: {
+    case LuaT::LCF: {
       lua_CFunction f = fvalue(key);
       return hashpointer(t, f);
     }
@@ -385,18 +385,18 @@ static bool equalkey (const TValue *k1, const Node *n2, int deadok) {
      return false;  /* otherwise, different variants cannot be equal */
   }
   else {  /* equal variants */
-    switch (n2->getKeyType()) {
-      case LUA_VNIL: case LUA_VFALSE: case LUA_VTRUE:
+    switch (static_cast<int>(n2->getKeyType())) {
+      case static_cast<int>(LuaT::NIL): case static_cast<int>(LuaT::VFALSE): case static_cast<int>(LuaT::VTRUE):
         return true;
-      case LUA_VNUMINT:
+      case static_cast<int>(LuaT::NUMINT):
         return (ivalue(k1) == n2->getKeyIntValue());
-      case LUA_VNUMFLT:
+      case static_cast<int>(LuaT::NUMFLT):
         return luai_numeq(fltvalue(k1), fltvalueraw(n2->getKeyValue()));
-      case LUA_VLIGHTUSERDATA:
+      case static_cast<int>(LuaT::LIGHTUSERDATA):
         return pvalue(k1) == pvalueraw(n2->getKeyValue());
-      case LUA_VLCF:
+      case static_cast<int>(LuaT::LCF):
         return fvalue(k1) == fvalueraw(n2->getKeyValue());
-      case ctb(LUA_VLNGSTR):
+      case static_cast<int>(ctb(LuaT::LNGSTR)):
         return tsvalue(k1)->equals(n2->getKeyStrValue());
       default:
         return gcvalue(k1) == gcvalueraw(n2->getKeyValue());
@@ -495,7 +495,7 @@ int luaH_next (lua_State *L, Table *t, StkId key) {
   unsigned int asize = t->arraySize();
   unsigned int i = findindex(L, t, s2v(key), asize);  /* find original key */
   for (; i < asize; i++) {  /* try first array part */
-    lu_byte tag = *t->getArrayTag(i);
+    LuaT tag = *t->getArrayTag(i);
     if (!tagisempty(tag)) {  /* a non-empty entry? */
       s2v(key)->setInt(cast_int(i) + 1);
       farr2val(t, i, tag, s2v(key + 1));
@@ -829,7 +829,7 @@ static void reinsertOldSlice (Table *t, unsigned oldasize,
 */
 static void clearNewSlice (Table *t, unsigned oldasize, unsigned newasize) {
   for (; oldasize < newasize; oldasize++)
-    *t->getArrayTag(oldasize) = LUA_VEMPTY;
+    *t->getArrayTag(oldasize) = LuaT::EMPTY;
 }
 
 
@@ -1383,15 +1383,15 @@ Node *luaH_mainposition (const Table *t, const TValue *key) {
 lu_byte Table::get(const TValue* key, TValue* res) {
   const TValue *slot;
   switch (ttypetag(key)) {
-    case LUA_VSHRSTR:
+    case LuaT::SHRSTR:
       slot = HgetShortStr(tsvalue(key));
       break;
-    case LUA_VNUMINT:
+    case LuaT::NUMINT:
       return getInt(ivalue(key), res);
-    case LUA_VNIL:
+    case LuaT::NIL:
       slot = &absentkey;
       break;
-    case LUA_VNUMFLT: {
+    case LuaT::NUMFLT: {
       lua_Integer k;
       if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) /* integral index? */
         return getInt(k, res);  /* use specialized version */
@@ -1441,14 +1441,14 @@ TValue* Table::HgetShortStr(TString* key) {
 
 int Table::pset(const TValue* key, TValue* val) {
   switch (ttypetag(key)) {
-    case LUA_VSHRSTR: return psetShortStr(tsvalue(key), val);
-    case LUA_VNUMINT: {
+    case LuaT::SHRSTR: return psetShortStr(tsvalue(key), val);
+    case LuaT::NUMINT: {
       int hres;
       luaH_fastseti(this, ivalue(key), val, hres);
       return hres;
     }
-    case LUA_VNIL: return HNOTFOUND;
-    case LUA_VNUMFLT: {
+    case LuaT::NIL: return HNOTFOUND;
+    case LuaT::NUMFLT: {
       lua_Integer k;
       if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) { /* integral index? */
         int hres;
@@ -1578,7 +1578,7 @@ lua_Unsigned Table::getn(lua_State* L) {
 // Phase 50: Factory pattern with placement new operator
 Table* Table::create(lua_State* L) {
   // Use placement new operator - calls constructor from lobject.h
-  Table *t = new (L, LUA_VTABLE) Table();
+  Table *t = new (L, LuaT::TABLE) Table();
 
   // Set non-default values
   t->setFlags(maskflags);  /* table has no metamethod fields */

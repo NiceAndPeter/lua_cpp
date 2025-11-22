@@ -46,12 +46,12 @@ inline constexpr int MAXTAGLOOP = 2000;
 ** PERFORMANCE: This is the slow path. The hot path (direct table access) is
 ** handled inline in the VM main loop via luaV_fastget macro.
 */
-lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
-                                      StkId val, lu_byte tag) {
+LuaT luaV_finishget (lua_State *L, const TValue *t, TValue *key,
+                                      StkId val, LuaT tag) {
   int loop;  /* counter to avoid infinite loops */
   const TValue *tm;  /* metamethod */
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
-    if (tag == LUA_VNOTABLE) {  /* 't' is not a table? */
+    if (tag == LuaT::NOTABLE) {  /* 't' is not a table? */
       lua_assert(!ttistable(t));
       tm = luaT_gettmbyobj(L, t, TMS::TM_INDEX);
       if (l_unlikely(notm(tm)))
@@ -62,7 +62,7 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
       tm = fasttm(L, hvalue(t)->getMetatable(), TMS::TM_INDEX);  /* table's metamethod */
       if (tm == nullptr) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
-        return LUA_VNIL;
+        return LuaT::NIL;
       }
       /* else will try the metamethod */
     }
@@ -77,7 +77,7 @@ lu_byte luaV_finishget (lua_State *L, const TValue *t, TValue *key,
     /* else repeat (tail call 'luaV_finishget') */
   }
   luaG_runerror(L, "'__index' chain too long; possible loop");
-  return 0;  /* to avoid warnings */
+  return LuaT::NIL;  /* to avoid warnings */
 }
 
 
