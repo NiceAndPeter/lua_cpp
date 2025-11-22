@@ -153,7 +153,7 @@ public:
 class Table : public GCBase<Table> {
 private:
   mutable lu_byte flags;  /* 1<<p means tagmethod(p) is not present (mutable for metamethod caching) */
-  lu_byte lsizenode;  /* log2 of number of slots of 'node' array */
+  lu_byte logSizeOfNodeArray;  /* log2 of number of slots of 'node' array */
   unsigned int asize;  /* number of slots in 'array' array */
   Value *array;  /* array part */
   Node *node;
@@ -163,7 +163,7 @@ private:
 public:
   // Phase 50: Constructor - initializes all fields to safe defaults
   Table() noexcept
-    : flags(0), lsizenode(0), asize(0), array(nullptr),
+    : flags(0), logSizeOfNodeArray(0), asize(0), array(nullptr),
       node(nullptr), metatable(nullptr), gclist(nullptr) {
   }
 
@@ -188,8 +188,8 @@ public:
   // Flags field reference accessor (for backward compatibility)
   lu_byte& getFlagsRef() noexcept { return flags; }
 
-  lu_byte getLsizenode() const noexcept { return lsizenode; }
-  void setLsizenode(lu_byte ls) noexcept { lsizenode = ls; }
+  lu_byte getLogSizeOfNodeArray() const noexcept { return logSizeOfNodeArray; }
+  void setLogSizeOfNodeArray(lu_byte ls) noexcept { logSizeOfNodeArray = ls; }
 
   unsigned int arraySize() const noexcept { return asize; }
   void setArraySize(unsigned int sz) noexcept { asize = sz; }
@@ -210,7 +210,7 @@ public:
   const Node* getNodeArray() const noexcept { return node; }
   void setNodeArray(Node* n) noexcept { node = n; }
 
-  unsigned int nodeSize() const noexcept { return (1u << lsizenode); }
+  unsigned int nodeSize() const noexcept { return (1u << logSizeOfNodeArray); }
   Table* getMetatable() const noexcept { return metatable; }
   void setMetatable(Table* mt) noexcept { metatable = mt; }
 

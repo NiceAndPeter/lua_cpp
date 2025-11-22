@@ -146,7 +146,7 @@ public:
 };
 
 inline bool haslastfree(const Table* t) noexcept {
-	return t->getLsizenode() >= LIMFORLAST;
+	return t->getLogSizeOfNodeArray() >= LIMFORLAST;
 }
 
 inline Node*& getlastfree(Table* t) noexcept {
@@ -744,7 +744,7 @@ static Value *resizearray (lua_State *L , Table *t,
 static void setnodevector (lua_State *L, Table *t, unsigned size) {
   if (size == 0) {  /* no elements to hash part? */
     t->setNodeArray(dummynode);  /* use common 'dummynode' */
-    t->setLsizenode(0);
+    t->setLogSizeOfNodeArray(0);
     t->setDummy();  /* signal that it is using dummy node */
   }
   else {
@@ -757,7 +757,7 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
     bool needsLastfree = (lsize >= LIMFORLAST);
     Node* nodes = NodeArray::allocate(L, size, needsLastfree);
     t->setNodeArray(nodes);
-    t->setLsizenode(cast_byte(lsize));
+    t->setLogSizeOfNodeArray(cast_byte(lsize));
     t->setNoDummy();
     for (unsigned int i = 0; i < size; i++) {
       Node *n = gnode(t, i);
@@ -794,13 +794,13 @@ static void reinserthash (lua_State *L, Table *ot, Table *t) {
 ** a resize, so the "real" table can keep their values.)
 */
 static void exchangehashpart (Table *t1, Table *t2) {
-  lu_byte lsizenode = t1->getLsizenode();
+  lu_byte logSizeOfNodeArray = t1->getLogSizeOfNodeArray();
   Node *node = t1->getNodeArray();
   int bitdummy1 = t1->getFlags() & BITDUMMY;
-  t1->setLsizenode(t2->getLsizenode());
+  t1->setLogSizeOfNodeArray(t2->getLogSizeOfNodeArray());
   t1->setNodeArray(t2->getNodeArray());
   t1->setFlags(cast_byte((t1->getFlags() & NOTBITDUMMY) | (t2->getFlags() & BITDUMMY)));
-  t2->setLsizenode(lsizenode);
+  t2->setLogSizeOfNodeArray(logSizeOfNodeArray);
   t2->setNodeArray(node);
   t2->setFlags(cast_byte((t2->getFlags() & NOTBITDUMMY) | bitdummy1));
 }
