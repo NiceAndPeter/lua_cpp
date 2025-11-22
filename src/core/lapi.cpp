@@ -489,7 +489,7 @@ LUA_API void lua_pushinteger (lua_State *L, lua_Integer n) {
 LUA_API const char *lua_pushlstring (lua_State *L, const char *s, size_t len) {
   TString *ts;
   lua_lock(L);
-  ts = (len == 0) ? luaS_new(L, "") : luaS_newlstr(L, s, len);
+  ts = (len == 0) ? TString::create(L, "") : TString::create(L, s, len);
   setsvalue2s(L, L->getTop().p, ts);
   api_incr_top(L);
   luaC_checkGC(L);
@@ -504,7 +504,7 @@ LUA_API const char *lua_pushexternalstring (lua_State *L,
   lua_lock(L);
   api_check(L, len <= MAX_SIZE, "string too large");
   api_check(L, s[len] == '\0', "string not ending with zero");
-  ts = luaS_newextlstr (L, s, len, falloc, ud);
+  ts = TString::createExternal(L, s, len, falloc, ud);
   setsvalue2s(L, L->getTop().p, ts);
   api_incr_top(L);
   luaC_checkGC(L);
@@ -519,7 +519,7 @@ LUA_API const char *lua_pushstring (lua_State *L, const char *s) {
     setnilvalue(s2v(L->getTop().p));
   else {
     TString *ts;
-    ts = luaS_new(L, s);
+    ts = TString::create(L, s);
     setsvalue2s(L, L->getTop().p, ts);
     s = getstr(ts);  /* internal copy's address */
   }
@@ -613,7 +613,7 @@ LUA_API int lua_pushthread (lua_State *L) {
 
 static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
   lu_byte tag;
-  TString *str = luaS_new(L, k);
+  TString *str = TString::create(L, k);
   tag = luaV_fastget(t, str, s2v(L->getTop().p), luaH_getstr);
   if (!tagisempty(tag))
     api_incr_top(L);
@@ -794,7 +794,7 @@ LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
 */
 static void auxsetstr (lua_State *L, const TValue *t, const char *k) {
   int hres;
-  TString *str = luaS_new(L, k);
+  TString *str = TString::create(L, k);
   api_checkpop(L, 1);
   hres = luaV_fastset(t, str, s2v(L->getTop().p - 1), luaH_psetstr);
   if (hres == HOK) {
@@ -1225,7 +1225,7 @@ LUA_API void lua_concat (lua_State *L, int n) {
     luaC_checkGC(L);
   }
   else {  /* nothing to concatenate */
-    setsvalue2s(L, L->getTop().p, luaS_newlstr(L, "", 0));  /* push empty string */
+    setsvalue2s(L, L->getTop().p, TString::create(L, "", 0));  /* push empty string */
     api_incr_top(L);
   }
   lua_unlock(L);

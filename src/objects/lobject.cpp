@@ -462,7 +462,7 @@ unsigned luaO_tostringbuff (const TValue *obj, char *buff) {
 void luaO_tostring (lua_State *L, TValue *obj) {
   char buff[LUA_N2SBUFFSZ];
   unsigned len = luaO_tostringbuff(obj, buff);
-  setsvalue(L, obj, luaS_newlstr(L, buff, len));
+  setsvalue(L, obj, TString::create(L, buff, len));
 }
 
 
@@ -519,7 +519,7 @@ static void pushbuff (lua_State *L, void *ud) {
       }
       /* FALLTHROUGH */
     default: {  /* no errors, but it can raise one creating the new string */
-      TString *ts = luaS_newlstr(L, buff->b, buff->blen);
+      TString *ts = TString::create(L, buff->b, buff->blen);
       setsvalue2s(L, L->getTop().p, ts);
       L->getStackSubsystem().push();
     }

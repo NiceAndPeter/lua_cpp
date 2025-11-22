@@ -46,7 +46,7 @@
 void GCFinalizer::checkSizes(lua_State* L, global_State* g) {
     if (!g->getGCEmergency()) {
         if (g->getStringTable()->getNumElements() < g->getStringTable()->getSize() / 4)
-            luaS_resize(L, g->getStringTable()->getSize() / 2);
+            TString::resize(L, g->getStringTable()->getSize() / 2);
     }
 }
 

@@ -191,7 +191,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   funcstate.setProto(luaF_newproto(L));
   cl->setProto(funcstate.getProto());
   luaC_objbarrier(L, cl, cl->getProto());
-  funcstate.getProto()->setSource(luaS_new(L, name));  /* create and anchor TString */
+  funcstate.getProto()->setSource(TString::create(L, name));  /* create and anchor TString */
   luaC_objbarrier(L, funcstate.getProto(), funcstate.getProto()->getSource());
   lexstate.setBuffer(buff);
   lexstate.setDyndata(dyd);

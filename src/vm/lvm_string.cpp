@@ -86,11 +86,11 @@ void luaV_concat (lua_State *L, int total) {
       if (tl <= LUAI_MAXSHORTLEN) {  /* is result a short string? */
         char buff[LUAI_MAXSHORTLEN];
         copy2buff(top, n, buff);  /* copy strings to buffer */
-        ts = luaS_newlstr(L, buff, tl);
+        ts = TString::create(L, buff, tl);
         top = L->getTop().p;  /* recapture after potential GC */
       }
       else {  /* long string; copy strings directly to final result */
-        ts = luaS_createlngstrobj(L, tl);
+        ts = TString::createLongString(L, tl);
         top = L->getTop().p;  /* recapture after potential GC */
         copy2buff(top, n, getlngstr(ts));
       }

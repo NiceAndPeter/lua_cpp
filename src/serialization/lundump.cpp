@@ -171,16 +171,16 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
   else if ((size -= 2) <= LUAI_MAXSHORTLEN) {  /* short string? */
     char buff[LUAI_MAXSHORTLEN + 1];  /* extra space for '\0' */
     loadVector(S, buff, size + 1);  /* load string into buffer */
-    *sl = ts = luaS_newlstr(L, buff, size);  /* create string */
+    *sl = ts = TString::create(L, buff, size);  /* create string */
     luaC_objbarrier(L, p, ts);
   }
   else if (S->fixed) {  /* for a fixed buffer, use a fixed string */
     const char *s = getaddr(S, size + 1, char);  /* get content address */
-    *sl = ts = luaS_newextlstr(L, s, size, nullptr, nullptr);
+    *sl = ts = TString::createExternal(L, s, size, nullptr, nullptr);
     luaC_objbarrier(L, p, ts);
   }
   else {  /* create internal copy */
-    *sl = ts = luaS_createlngstrobj(L, size);  /* create string */
+    *sl = ts = TString::createLongString(L, size);  /* create string */
     luaC_objbarrier(L, p, ts);
     loadVector(S, getlngstr(ts), size + 1);  /* load directly in final place */
   }

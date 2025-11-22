@@ -66,7 +66,7 @@ void luaX_init (lua_State *L) {
   TString *e = luaS_newliteral(L, LUA_ENV);  /* create env name */
   obj2gco(e)->fix(L);  /* Phase 25c: never collect this name */
   for (int i=0; i<NUM_RESERVED; i++) {
-    TString *ts = luaS_new(L, luaX_tokens[i]);
+    TString *ts = TString::create(L, luaX_tokens[i]);
     obj2gco(ts)->fix(L);  /* Phase 25c: reserved words are never collected */
     ts->setExtra(cast_byte(i+1));  /* reserved word */
   }
@@ -138,7 +138,7 @@ TString* LexState::anchorStr(TString *ts) {
 ** Creates a new string and anchors it in scanner's table.
 */
 TString *LexState::newString(const char *str, size_t l) {
-  return anchorStr(luaS_newlstr(getLuaState(), str, l));
+  return anchorStr(TString::create(getLuaState(), str, l));
 }
 
 /*
@@ -542,7 +542,7 @@ int LexState::lex(SemInfo *seminfo) {
             saveAndNext();
           } while (lislalnum(getCurrentChar()));
           /* find or create string */
-          ts = luaS_newlstr(getLuaState(), luaZ_buffer(getBuffer()),
+          ts = TString::create(getLuaState(), luaZ_buffer(getBuffer()),
                                    luaZ_bufflen(getBuffer()));
           if (isreserved(ts))   /* reserved word? */
             return ts->getExtra() - 1 + FIRST_RESERVED;

@@ -895,7 +895,7 @@ l_noret lua_State::errorMsg() {
   }
   if (ttisnil(s2v(getTop().p - 1))) {  /* error object is nil? */
     /* change it to a proper message */
-    setsvalue2s(this, getTop().p - 1, luaS_newliteral(this, "<no error object>"));
+    setsvalue2s(this, getTop().p - 1, TString::create(this, "<no error object>", 17));
   }
   doThrow(LUA_ERRRUN);
 }
