@@ -137,10 +137,10 @@ inline constexpr int MAXTAGLOOP = 2000;
 void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
   auto upvaluesSpan = p->getUpvaluesSpan();
   int nup = static_cast<int>(upvaluesSpan.size());
-  int i = 0;
   LClosure *ncl = LClosure::create(this, nup);
   ncl->setProto(p);
   setclLvalue2s(this, ra, ncl);  /* anchor new closure in stack */
+  int i = 0;
   for (const auto& uv : upvaluesSpan) {  /* fill in its upvalues */
     if (uv.isInStack())  /* upvalue refers to local variable? */
       ncl->setUpval(i, luaF_findupval(this, base + uv.getIndex()));
@@ -785,8 +785,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_LOADKX) {
         StkId ra = RA(i);
-        TValue *rb;
-        rb = k + InstructionView(*pc).ax(); pc++;
+        TValue *rb = k + InstructionView(*pc).ax(); pc++;
         L->getStackSubsystem().setSlot(ra, rb);
         vmbreak;
       }

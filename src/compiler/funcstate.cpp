@@ -66,12 +66,11 @@ typedef struct ConsControl {
 
 l_noret FuncState::errorlimit(int limit, const char *what) {
   lua_State *L = getLexState()->getLuaState();
-  const char *msg;
   int line = getProto()->getLineDefined();
   const char *where = (line == 0)
                       ? "main function"
                       : luaO_pushfstring(L, "function at line %d", line);
-  msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
+  const char *msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
                              what, limit, where);
   getLexState()->syntaxError(msg);
 }
@@ -236,8 +235,7 @@ int FuncState::newupvalue(TString *name, expdesc *v) {
 */
 int FuncState::searchvar(TString *n, expdesc *var) {
   int nactive = static_cast<int>(getNumActiveVars());
-  int i;
-  for (i = nactive - 1; i >= 0; i--) {
+  for (int i = nactive - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(i);
     if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == nullptr) {  /* collective declaration? */

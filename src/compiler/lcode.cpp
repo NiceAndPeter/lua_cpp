@@ -593,7 +593,6 @@ void FuncState::exp2reg(expdesc *e, int reg) {
   if (e->getKind() == VJMP)  /* expression itself is a test? */
     concat(e->getTrueListRef(), e->getInfo());  /* put this jump in 't' list */
   if (hasjumps(e)) {
-    int final;  /* position after whole expression */
     int p_f = NO_JUMP;  /* position of an eventual LOAD false */
     int p_t = NO_JUMP;  /* position of an eventual LOAD true */
     if (need_value(e->getTrueList()) || need_value(e->getFalseList())) {
@@ -603,7 +602,7 @@ void FuncState::exp2reg(expdesc *e, int reg) {
       /* jump around these booleans if 'e' is not a test */
       patchtohere(fj);
     }
-    final = getlabel();
+    int final = getlabel();  /* position after whole expression */
     patchlistaux(e->getFalseList(), final, reg, p_f);
     patchlistaux(e->getTrueList(), final, reg, p_t);
   }
@@ -1073,8 +1072,7 @@ void FuncState::codeconcat(expdesc *e1, expdesc *e2, int line) {
 */
 int FuncState::finaltarget(int i) {
   auto codeSpan = getProto()->getCodeSpan();
-  int count;
-  for (count = 0; count < 100; count++) {  /* avoid infinite loops */
+  for (int count = 0; count < 100; count++) {  /* avoid infinite loops */
     Instruction instr = codeSpan[i];
     if (InstructionView(instr).opcode() != OP_JMP)
       break;
@@ -1284,11 +1282,10 @@ void FuncState::exp2val(expdesc *e) {
 }
 
 void FuncState::self(expdesc *e, expdesc *key) {
-  int ereg, base;
   exp2anyreg(e);
-  ereg = e->getInfo();  /* register where 'e' (the receiver) was placed */
+  int ereg = e->getInfo();  /* register where 'e' (the receiver) was placed */
   freeExpression(e);
-  base = getFreeReg();
+  int base = getFreeReg();
   e->setInfo(base);  /* base register for op_self */
   e->setKind(VNONRELOC);  /* self expression has a fixed register */
   reserveregs(2);  /* method and 'self' produced by op_self */
@@ -1307,9 +1304,7 @@ void FuncState::self(expdesc *e, expdesc *key) {
 }
 
 void FuncState::indexed(expdesc *t, expdesc *k) {
-  int keystr = -1;
-  if (k->getKind() == VKSTR)
-    keystr = str2K(k);
+  int keystr = (k->getKind() == VKSTR) ? str2K(k) : -1;
   lua_assert(!hasjumps(t) &&
              (t->getKind() == VLOCAL || t->getKind() == VNONRELOC || t->getKind() == VUPVAL));
   if (t->getKind() == VUPVAL && !isKstr(k))  /* upvalue indexed by non 'Kstr'? */
@@ -1342,8 +1337,8 @@ void FuncState::indexed(expdesc *t, expdesc *k) {
 }
 
 void FuncState::goiftrue(expdesc *e) {
-  int pcpos;  /* pc of new jump */
   dischargevars(e);
+  int pcpos;  /* pc of new jump */
   switch (e->getKind()) {
     case VJMP: {  /* condition? */
       negatecondition(e);  /* jump when it is false */
@@ -1365,8 +1360,8 @@ void FuncState::goiftrue(expdesc *e) {
 }
 
 void FuncState::goiffalse(expdesc *e) {
-  int pcpos;  /* pc of new jump */
   dischargevars(e);
+  int pcpos;  /* pc of new jump */
   switch (e->getKind()) {
     case VJMP: {
       pcpos = e->getInfo();  /* already jump if true */
@@ -1653,10 +1648,9 @@ void FuncState::setlist(int base, int nelems, int tostore) {
 }
 
 void FuncState::finish() {
-  int i;
   Proto *p = getProto();
   auto codeSpan = p->getCodeSpan();
-  for (i = 0; i < getPC(); i++) {
+  for (int i = 0; i < getPC(); i++) {
     Instruction *instr = &codeSpan[i];
     /* avoid "not used" warnings when assert is off (for 'onelua.c') */
     (void)luaP_isOT; (void)luaP_isIT;

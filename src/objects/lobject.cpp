@@ -229,18 +229,17 @@ static bool isneg (const char **s) {
 ** C99 specification for 'strtod'
 */
 static lua_Number lua_strx2number (const char *s, char **endptr) {
-  int dot = lua_getlocaledecpoint();
   lua_Number r = l_mathop(0.0);  /* result (accumulator) */
   int sigdig = 0;  /* number of significant digits */
   int nosigdig = 0;  /* number of non-significant digits */
   int e = 0;  /* exponent correction */
-  int neg;  /* 1 if number is negative */
   int hasdot = 0;  /* true after seen a dot */
   *endptr = cast_charp(s);  /* nothing is valid yet */
   while (lisspace(cast_uchar(*s))) s++;  /* skip initial spaces */
-  neg = isneg(&s);  /* check sign */
+  int neg = isneg(&s);  /* check sign */
   if (!(*s == '0' && (*(s + 1) == 'x' || *(s + 1) == 'X')))  /* check '0x' */
     return l_mathop(0.0);  /* invalid format (no '0x') */
+  int dot = lua_getlocaledecpoint();
   for (s += 2; ; s++) {  /* skip '0x' and read numeral */
     if (*s == dot) {
       if (hasdot) break;  /* second dot? stop loop */
@@ -262,9 +261,8 @@ static lua_Number lua_strx2number (const char *s, char **endptr) {
   e *= 4;  /* each digit multiplies/divides value by 2^4 */
   if (*s == 'p' || *s == 'P') {  /* exponent part? */
     int exp1 = 0;  /* exponent value */
-    int neg1;  /* exponent sign */
     s++;  /* skip 'p' */
-    neg1 = isneg(&s);  /* sign */
+    int neg1 = isneg(&s);  /* exponent sign */
     if (!lisdigit(cast_uchar(*s)))
       return l_mathop(0.0);  /* invalid; must have at least one digit */
     while (lisdigit(cast_uchar(*s)))  /* read exponent */
@@ -342,9 +340,8 @@ static const char *l_str2d (const char *s, lua_Number *result) {
 static const char *l_str2int (const char *s, lua_Integer *result) {
   lua_Unsigned a = 0;
   int empty = 1;
-  int neg;
   while (lisspace(cast_uchar(*s))) s++;  /* skip initial spaces */
-  neg = isneg(&s);
+  int neg = isneg(&s);
   if (s[0] == '0' &&
       (s[1] == 'x' || s[1] == 'X')) {  /* hex? */
     s += 2;  /* skip '0x' */
@@ -450,12 +447,10 @@ static int tostringbuffFloat (lua_Number n, char *buff) {
 ** Convert a number object to a string, adding it to a buffer.
 */
 unsigned luaO_tostringbuff (const TValue *obj, char *buff) {
-  int len;
   lua_assert(ttisnumber(obj));
-  if (ttisinteger(obj))
-    len = lua_integer2str(buff, LUA_N2SBUFFSZ, ivalue(obj));
-  else
-    len = tostringbuffFloat(fltvalue(obj), buff);
+  int len = ttisinteger(obj)
+              ? lua_integer2str(buff, LUA_N2SBUFFSZ, ivalue(obj))
+              : tostringbuffFloat(fltvalue(obj), buff);
   lua_assert(len < LUA_N2SBUFFSZ);
   return cast_uint(len);
 }
