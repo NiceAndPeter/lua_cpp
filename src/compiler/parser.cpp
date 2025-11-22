@@ -309,9 +309,9 @@ void Parser::check_readonly(expdesc *e) {
 */
 void Parser::adjustlocalvars(int nvars) {
   // FuncState passed as parameter
-  int regLevel = fs->nvarstack();
+  auto regLevel = fs->nvarstack();
   for (int i = 0; i < nvars; i++) {
-    int vidx = fs->getNumActiveVarsRef()++;
+    auto vidx = fs->getNumActiveVarsRef()++;
     Vardesc *var = fs->getlocalvardesc(vidx);
     var->vd.ridx = cast_byte(regLevel++);
     var->vd.pidx = fs->registerlocalvar(var->vd.name);
@@ -345,7 +345,7 @@ void Parser::buildvar(TString *varname, expdesc *var) {
   var->init(VGLOBAL, -1);  /* global by default */
   fs->singlevaraux(varname, var, 1);
   if (var->getKind() == VGLOBAL) {  /* global name? */
-    int info = var->getInfo();
+    auto info = var->getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
       ls->semerror("variable '%s' not declared", getstr(varname));
@@ -369,9 +369,9 @@ void Parser::singlevar(expdesc *var) {
 */
 void Parser::adjust_assign(int nvars, int nexps, expdesc *e) {
   // FuncState passed as parameter
-  int needed = nvars - nexps;  /* extra values needed */
+  auto needed = nvars - nexps;  /* extra values needed */
   if (hasmultret(e->getKind())) {  /* last expression has multiple returns? */
-    int extra = needed + 1;  /* discount last expression itself */
+    auto extra = needed + 1;  /* discount last expression itself */
     if (extra < 0)
       extra = 0;
     fs->setreturns(e, extra);  /* last exp. provides the difference */
@@ -391,7 +391,7 @@ void Parser::adjust_assign(int nvars, int nexps, expdesc *e) {
 
 int Parser::newgotoentry(TString *name, int line) {
   // FuncState passed as parameter
-  int pc = fs->jump();  /* create jump */
+  auto pc = fs->jump();  /* create jump */
   fs->codeABC(OP_CLOSE, 0, 1, 0);  /* spaceholder, marked as dead */
   return ls->newlabelentry(fs, &ls->getDyndata()->gt, name, line, pc);
 }
@@ -410,7 +410,7 @@ Proto *Parser::addprototype() {
   FuncState *funcstate = fs;
   Proto *proto = funcstate->getProto();  /* prototype of current function */
   if (funcstate->getNP() >= proto->getProtosSize()) {
-    int oldsize = proto->getProtosSize();
+    auto oldsize = proto->getProtosSize();
     luaM_growvector(state, proto->getProtosRef(), funcstate->getNP(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
     auto protosSpan = proto->getProtosSpan();
     while (oldsize < static_cast<int>(protosSpan.size()))
@@ -607,8 +607,8 @@ void Parser::constructor( expdesc *table_exp) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
   FuncState *funcstate = fs;
-  int line = ls->getLineNumber();
-  int pc = funcstate->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
+  auto line = ls->getLineNumber();
+  auto pc = funcstate->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
   ConsControl cc;
   funcstate->code(0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
@@ -704,7 +704,7 @@ void Parser::funcargs( expdesc *f) {
   FuncState *funcstate = fs;
   expdesc args;
   int base, nparams;
-  int line = ls->getLineNumber();
+  auto line = ls->getLineNumber();
   switch (ls->getToken()) {
     case '(': {  /* funcargs -> '(' [ explist ] ')' */
       ls->nextToken();
@@ -761,7 +761,7 @@ void Parser::primaryexp( expdesc *v) {
   /* primaryexp -> NAME | '(' expr ')' */
   switch (ls->getToken()) {
     case '(': {
-      int line = ls->getLineNumber();
+      auto line = ls->getLineNumber();
       ls->nextToken();
       expr(v);
       check_match( ')', '(', line);
@@ -1061,8 +1061,8 @@ void Parser::whilestat( int line) {
   FuncState *funcstate = fs;
   BlockCnt bl;
   ls->nextToken();  /* skip WHILE */
-  int whileinit = funcstate->getlabel();
-  int condexit = cond();
+  auto whileinit = funcstate->getlabel();
+  auto condexit = cond();
   funcstate->enterblock(&bl, 1);
   checknext(static_cast<int>(RESERVED::TK_DO));
   block();
@@ -1076,14 +1076,14 @@ void Parser::whilestat( int line) {
 void Parser::repeatstat( int line) {
   /* repeatstat -> REPEAT block UNTIL cond */
   FuncState *funcstate = fs;
-  int repeat_init = funcstate->getlabel();
+  auto repeat_init = funcstate->getlabel();
   BlockCnt bl1, bl2;
   funcstate->enterblock(&bl1, 1);  /* loop block */
   funcstate->enterblock(&bl2, 0);  /* scope block */
   ls->nextToken();  /* skip REPEAT */
   statlist();
   check_match(static_cast<int>(RESERVED::TK_UNTIL), static_cast<int>(RESERVED::TK_REPEAT), line);
-  int condexit = cond();  /* read condition (inside scope block) */
+  auto condexit = cond();  /* read condition (inside scope block) */
   funcstate->leaveblock();  /* finish scope */
   if (bl2.upval) {  /* upvalues? */
     int exit = funcstate->jump();  /* normal exit must jump over fix */

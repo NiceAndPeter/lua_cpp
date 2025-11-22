@@ -393,15 +393,15 @@ void lua_State::hookCall(CallInfo *ci_arg) {
 void lua_State::retHook(CallInfo *ci_arg, int nres) {
   if (getHookMask() & LUA_MASKRET) {  /* is return hook on? */
     lua_assert(getTop().p >= getStack().p + nres);  /* ensure nres is in bounds */
-    StkId firstres = getTop().p - nres;  /* index of first result */
-    int delta = 0;  /* correction for vararg functions */
+    auto firstres = getTop().p - nres;  /* index of first result */
+    auto delta = 0;  /* correction for vararg functions */
     if (ci_arg->isLua()) {
       Proto *p = ci_arg->getFunc()->getProto();
       if (p->getFlag() & PF_ISVARARG)
         delta = ci_arg->getExtraArgs() + p->getNumParams() + 1;
     }
     ci_arg->funcRef().p += delta;  /* if vararg, back to virtual 'func' */
-    int ftransfer = cast_int(firstres - ci_arg->funcRef().p);
+    auto ftransfer = cast_int(firstres - ci_arg->funcRef().p);
     callHook(LUA_HOOKRET, -1, ftransfer, nres);  /* call it */
     ci_arg->funcRef().p -= delta;
   }
@@ -588,8 +588,8 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
       return preCallC(func, status_val, fvalue(s2v(func)));
     case LuaT::LCL: {  /* Lua function */
       Proto *p = clLvalue(s2v(func))->getProto();
-      int fsize = p->getMaxStackSize();  /* frame size */
-      int nfixparams = p->getNumParams();
+      auto fsize = p->getMaxStackSize();  /* frame size */
+      auto nfixparams = p->getNumParams();
       checkstackp(this, fsize - delta, func);
       ci_arg->funcRef().p -= delta;  /* restore 'func' (if vararg) */
       for (int i = 0; i < narg1; i++)  /* move down function and arguments */
@@ -637,9 +637,9 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
     case LuaT::LCL: {  /* Lua function */
       CallInfo *ci_new;
       Proto *p = clLvalue(s2v(func))->getProto();
-      int narg = cast_int(getTop().p - func) - 1;  /* number of real arguments */
-      int nfixparams = p->getNumParams();
-      int fsize = p->getMaxStackSize();  /* frame size */
+      auto narg = cast_int(getTop().p - func) - 1;  /* number of real arguments */
+      auto nfixparams = p->getNumParams();
+      auto fsize = p->getMaxStackSize();  /* frame size */
       checkstackp(this, fsize, func);
       ci_new = setCI(prepareCallInfo(func, status_val, func + 1 + fsize));
       ci_new->setSavedPC(p->getCode());  /* starting point */
