@@ -190,7 +190,7 @@ void luaT_trybinassocTM (lua_State *L, const TValue *p1, const TValue *p2,
 void luaT_trybiniTM (lua_State *L, const TValue *p1, lua_Integer i2,
                                    int flip, StkId res, TMS event) {
   TValue aux;
-  setivalue(&aux, i2);
+  aux.setInt(i2);
   luaT_trybinassocTM(L, p1, &aux, flip, res, event);
 }
 
@@ -212,10 +212,10 @@ int luaT_callorderiTM (lua_State *L, const TValue *p1, int v2,
                        int flip, int isfloat, TMS event) {
   TValue aux; const TValue *p2;
   if (isfloat) {
-    setfltvalue(&aux, cast_num(v2));
+    aux.setFloat(cast_num(v2));
   }
   else
-    setivalue(&aux, v2);
+    aux.setInt(v2);
   if (flip) {  /* arguments were exchanged? */
     p2 = p1; p1 = &aux;  /* correct them */
   }

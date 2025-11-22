@@ -192,11 +192,6 @@ inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
 constexpr lua_Number fltvalueraw(const Value& v) noexcept { return v.n; }
 constexpr lua_Integer ivalueraw(const Value& v) noexcept { return v.i; }
 
-inline void setfltvalue(TValue* obj, lua_Number x) noexcept { obj->setFloat(x); }
-inline void chgfltvalue(TValue* obj, lua_Number x) noexcept { obj->changeFloat(x); }
-inline void setivalue(TValue* obj, lua_Integer x) noexcept { obj->setInt(x); }
-inline void chgivalue(TValue* obj, lua_Integer x) noexcept { obj->changeInt(x); }
-
 /* }================================================================== */
 
 

@@ -98,10 +98,10 @@ int lua_State::forPrep(StkId ra) {
           count /= l_castS2U(-(step + 1)) + 1u;
         }
       }
-      /* use 'chgivalue' for places that for sure had integers */
-      chgivalue(s2v(ra), l_castU2S(count));  /* change init to count */
-      setivalue(s2v(ra + 1), step);  /* change limit to step */
-      chgivalue(s2v(ra + 2), init);  /* change step to init */
+      /* use 'changeInt' for places that for sure had integers */
+      s2v(ra)->changeInt(l_castU2S(count));  /* change init to count */
+      s2v(ra + 1)->setInt(step);  /* change limit to step */
+      s2v(ra + 2)->changeInt(init);  /* change step to init */
     }
   }
   else {  /* try making all values floats */
@@ -119,9 +119,9 @@ int lua_State::forPrep(StkId ra) {
       return 1;  /* skip the loop */
     else {
       /* make sure all values are floats */
-      setfltvalue(s2v(ra), limit);
-      setfltvalue(s2v(ra + 1), step);
-      setfltvalue(s2v(ra + 2), init);  /* control variable */
+      s2v(ra)->setFloat(limit);
+      s2v(ra + 1)->setFloat(step);
+      s2v(ra + 2)->setFloat(init);  /* control variable */
     }
   }
   return 0;
@@ -140,7 +140,7 @@ int lua_State::floatForLoop(StkId ra) {
   idx = luai_numadd(this, idx, step);  /* increment index */
   if (luai_numlt(0, step) ? luai_numle(idx, limit)
                           : luai_numle(limit, idx)) {
-    chgfltvalue(s2v(ra + 2), idx);  /* update control variable */
+    s2v(ra + 2)->changeFloat(idx);  /* update control variable */
     return 1;  /* jump back */
   }
   else

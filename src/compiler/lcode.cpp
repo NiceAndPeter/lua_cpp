@@ -53,10 +53,10 @@ static int tonumeral (const expdesc *e, TValue *v) {
     return 0;  /* not a numeral */
   switch (e->getKind()) {
     case VKINT:
-      if (v) setivalue(v, e->getIntValue());
+      if (v) v->setInt(e->getIntValue());
       return 1;
     case VKFLT:
-      if (v) setfltvalue(v, e->getFloatValue());
+      if (v) v->setFloat(e->getFloatValue());
       return 1;
     default: return 0;
   }
@@ -348,7 +348,7 @@ int FuncState::k2proto(TValue *key, TValue *v) {
     int k = addk(proto, v);
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
-    setivalue(&val, k);
+    val.setInt(k);
     luaH_set(getLexState()->getLuaState(), getKCache(), key, &val);
     return k;
   }
@@ -368,7 +368,7 @@ int FuncState::stringK(TString *s) {
 */
 int FuncState::intK(lua_Integer n) {
   TValue o;
-  setivalue(&o, n);
+  o.setInt(n);
   return k2proto(&o, &o);  /* use integer itself as key */
 }
 
@@ -386,7 +386,7 @@ int FuncState::intK(lua_Integer n) {
 */
 int FuncState::numberK(lua_Number r) {
   TValue o, kv;
-  setfltvalue(&o, r);  /* value as a TValue */
+  o.setFloat(r);  /* value as a TValue */
   if (r == 0) {  /* handle zero as a special case */
     setpvalue(&kv, this);  /* use FuncState as index */
     return k2proto(&kv, &o);  /* cannot collide */
@@ -396,7 +396,7 @@ int FuncState::numberK(lua_Number r) {
     const lua_Number q = l_mathop(ldexp)(l_mathop(1.0), -nbm + 1);
     const lua_Number k =  r * (1 + q);  /* key */
     lua_Integer ik;
-    setfltvalue(&kv, k);  /* key as a TValue */
+    kv.setFloat(k);  /* key as a TValue */
     if (!luaV_flttointeger(k, &ik, F2Imod::F2Ieq)) {  /* not an integer value? */
       int n = k2proto(&kv, &o);  /* use key */
       if (luaV_rawequalobj(&getProto()->getConstants()[n], &o))  /* correct value? */

@@ -467,7 +467,7 @@ LUA_API void lua_pushnil (lua_State *L) {
 
 LUA_API void lua_pushnumber (lua_State *L, lua_Number n) {
   lua_lock(L);
-  setfltvalue(s2v(L->getTop().p), n);
+  s2v(L->getTop().p)->setFloat(n);
   api_incr_top(L);
   lua_unlock(L);
 }
@@ -475,7 +475,7 @@ LUA_API void lua_pushnumber (lua_State *L, lua_Number n) {
 
 LUA_API void lua_pushinteger (lua_State *L, lua_Integer n) {
   lua_lock(L);
-  setivalue(s2v(L->getTop().p), n);
+  s2v(L->getTop().p)->setInt(n);
   api_incr_top(L);
   lua_unlock(L);
 }
@@ -673,7 +673,7 @@ LUA_API int lua_geti (lua_State *L, int idx, lua_Integer n) {
   luaV_fastgeti(t, n, s2v(L->getTop().p), tag);
   if (tagisempty(tag)) {
     TValue key;
-    setivalue(&key, n);
+    key.setInt(n);
     tag = luaV_finishget(L, t, &key, L->getTop().p, tag);
   }
   api_incr_top(L);
@@ -849,7 +849,7 @@ LUA_API void lua_seti (lua_State *L, int idx, lua_Integer n) {
     luaV_finishfastset(L, t, s2v(L->getTop().p - 1));
   else {
     TValue temp;
-    setivalue(&temp, n);
+    temp.setInt(n);
     luaV_finishset(L, t, &temp, s2v(L->getTop().p - 1), hres);
   }
   L->getStackSubsystem().pop();  /* pop value */

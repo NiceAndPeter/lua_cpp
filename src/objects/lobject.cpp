@@ -159,7 +159,7 @@ int luaO_rawarith (lua_State *L, int op, const TValue *p1, const TValue *p2,
     case LUA_OPBNOT: {  /* operate only on integers */
       lua_Integer i1; lua_Integer i2;
       if (tointegerns(p1, &i1) && tointegerns(p2, &i2)) {
-        setivalue(res, intarith(L, op, i1, i2));
+        res->setInt(intarith(L, op, i1, i2));
         return 1;
       }
       else return 0;  /* fail */
@@ -167,7 +167,7 @@ int luaO_rawarith (lua_State *L, int op, const TValue *p1, const TValue *p2,
     case LUA_OPDIV: case LUA_OPPOW: {  /* operate only on floats */
       lua_Number n1; lua_Number n2;
       if (tonumberns(p1, n1) && tonumberns(p2, n2)) {
-        setfltvalue(res, numarith(L, op, n1, n2));
+        res->setFloat(numarith(L, op, n1, n2));
         return 1;
       }
       else return 0;  /* fail */
@@ -175,11 +175,11 @@ int luaO_rawarith (lua_State *L, int op, const TValue *p1, const TValue *p2,
     default: {  /* other operations */
       lua_Number n1; lua_Number n2;
       if (ttisinteger(p1) && ttisinteger(p2)) {
-        setivalue(res, intarith(L, op, ivalue(p1), ivalue(p2)));
+        res->setInt(intarith(L, op, ivalue(p1), ivalue(p2)));
         return 1;
       }
       else if (tonumberns(p1, n1) && tonumberns(p2, n2)) {
-        setfltvalue(res, numarith(L, op, n1, n2));
+        res->setFloat(numarith(L, op, n1, n2));
         return 1;
       }
       else return 0;  /* fail */
@@ -372,10 +372,10 @@ size_t luaO_str2num (const char *s, TValue *o) {
   lua_Integer i; lua_Number n;
   const char *e;
   if ((e = l_str2int(s, &i)) != nullptr) {  /* try as an integer */
-    setivalue(o, i);
+    o->setInt(i);
   }
   else if ((e = l_str2d(s, &n)) != nullptr) {  /* else try as a float */
-    setfltvalue(o, n);
+    o->setFloat(n);
   }
   else
     return 0;  /* conversion failed */
@@ -608,19 +608,19 @@ const char *luaO_pushvfstring (lua_State *L, const char *fmt, va_list argp) {
       }
       case 'd': {  /* an 'int' */
         TValue num;
-        setivalue(&num, va_arg(argp, int));
+        num.setInt(va_arg(argp, int));
         addnum2buff(&buff, &num);
         break;
       }
       case 'I': {  /* a 'lua_Integer' */
         TValue num;
-        setivalue(&num, cast_Integer(va_arg(argp, l_uacInt)));
+        num.setInt(cast_Integer(va_arg(argp, l_uacInt)));
         addnum2buff(&buff, &num);
         break;
       }
       case 'f': {  /* a 'lua_Number' */
         TValue num;
-        setfltvalue(&num, cast_num(va_arg(argp, l_uacNumber)));
+        num.setFloat(cast_num(va_arg(argp, l_uacNumber)));
         addnum2buff(&buff, &num);
         break;
       }

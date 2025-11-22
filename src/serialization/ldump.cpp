@@ -163,7 +163,7 @@ static void dumpString (DumpState *D, TString *ts) {
       dumpVector(D, s, size + 1);  /* include ending '\0' */
       D->nstr++;  /* one more saved string */
       setsvalue(D->L, &key, ts);  /* the string is the key */
-      setivalue(&value, l_castU2S(D->nstr));  /* its index is the value */
+      value.setInt(l_castU2S(D->nstr));  /* its index is the value */
       luaH_set(D->L, D->h, &key, &value);  /* h[ts] = nstr */
       /* integer value does not need barrier */
     }
