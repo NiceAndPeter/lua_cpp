@@ -313,9 +313,9 @@ constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
 /* setgcovalue now defined as inline function below */
 
 /* collectable object has the same tag as the original value (inline version) */
-inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == gcvalue(obj)->getType(); }
+inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == withvariant(gcvalue(obj)->getType()); }
 
-inline bool TValue::hasRightType() const noexcept { return typeTag() == gcValue()->getType(); }
+inline bool TValue::hasRightType() const noexcept { return typeTag() == withvariant(gcValue()->getType()); }
 
 /* }================================================================== */
 

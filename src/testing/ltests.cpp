@@ -518,37 +518,37 @@ static void check_stack (global_State *g, lua_State *L1) {
 
 
 static void checkrefs (global_State *g, GCObject *o) {
-  switch (o->getType()) {
-    case LuaT::USERDATA: {
+  switch (static_cast<int>(o->getType())) {
+    case static_cast<int>(ctb(LuaT::USERDATA)): {
       checkudata(g, gco2u(o));
       break;
     }
-    case LuaT::UPVAL: {
+    case static_cast<int>(ctb(LuaT::UPVAL)): {
       checkvalref(g, o, gco2upv(o)->getVP());
       break;
     }
-    case LuaT::TABLE: {
+    case static_cast<int>(ctb(LuaT::TABLE)): {
       checktable(g, gco2t(o));
       break;
     }
-    case LuaT::THREAD: {
+    case static_cast<int>(ctb(LuaT::THREAD)): {
       check_stack(g, gco2th(o));
       break;
     }
-    case LuaT::LCL: {
+    case static_cast<int>(ctb(LuaT::LCL)): {
       checkLclosure(g, gco2lcl(o));
       break;
     }
-    case LuaT::CCL: {
+    case static_cast<int>(ctb(LuaT::CCL)): {
       checkCclosure(g, gco2ccl(o));
       break;
     }
-    case LuaT::PROTO: {
+    case static_cast<int>(ctb(LuaT::PROTO)): {
       checkproto(g, gco2p(o));
       break;
     }
-    case LuaT::SHRSTR:
-    case LuaT::LNGSTR: {
+    case static_cast<int>(ctb(LuaT::SHRSTR)):
+    case static_cast<int>(ctb(LuaT::LNGSTR)): {
       assert(!isgray(o));  /* strings are never gray */
       break;
     }
@@ -601,13 +601,13 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
     if (g->keepInvariant())
       o->setMarkedBit(TESTBIT);  /* mark that object is in a gray list */
     total++;
-    switch (o->getType()) {
-      case LuaT::TABLE: o = gco2t(o)->getGclist(); break;
-      case LuaT::LCL: o = gco2lcl(o)->getGclist(); break;
-      case LuaT::CCL: o = gco2ccl(o)->getGclist(); break;
-      case LuaT::THREAD: o = gco2th(o)->getGclist(); break;
-      case LuaT::PROTO: o = gco2p(o)->getGclist(); break;
-      case LuaT::USERDATA:
+    switch (static_cast<int>(o->getType())) {
+      case static_cast<int>(ctb(LuaT::TABLE)): o = gco2t(o)->getGclist(); break;
+      case static_cast<int>(ctb(LuaT::LCL)): o = gco2lcl(o)->getGclist(); break;
+      case static_cast<int>(ctb(LuaT::CCL)): o = gco2ccl(o)->getGclist(); break;
+      case static_cast<int>(ctb(LuaT::THREAD)): o = gco2th(o)->getGclist(); break;
+      case static_cast<int>(ctb(LuaT::PROTO)): o = gco2p(o)->getGclist(); break;
+      case static_cast<int>(ctb(LuaT::USERDATA)):
         assert(gco2u(o)->getNumUserValues() > 0);
         o = gco2u(o)->getGclist();
         break;

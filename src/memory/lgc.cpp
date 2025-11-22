@@ -263,13 +263,13 @@ GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz) {
 */
 static void reallymarkobject (global_State *g, GCObject *o) {
   g->setGCMarked(g->getGCMarked() + objsize(o));
-  switch (o->getType()) {
-    case LuaT::SHRSTR:
-    case LuaT::LNGSTR: {
+  switch (static_cast<int>(o->getType())) {
+    case static_cast<int>(ctb(LuaT::SHRSTR)):
+    case static_cast<int>(ctb(LuaT::LNGSTR)): {
       set2black(o);  /* nothing to visit */
       break;
     }
-    case LuaT::UPVAL: {
+    case static_cast<int>(ctb(LuaT::UPVAL)): {
       UpVal *uv = gco2upv(o);
       if (uv->isOpen())
         set2gray(uv);  /* open upvalues are kept gray */
@@ -278,7 +278,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       markvalue(g, uv->getVP());  /* mark its content */
       break;
     }
-    case LuaT::USERDATA: {
+    case static_cast<int>(ctb(LuaT::USERDATA)): {
       Udata *u = gco2u(o);
       if (u->getNumUserValues() == 0) {  /* no user values? */
         markobjectN(g, u->getMetatable());  /* mark its metatable */
@@ -287,8 +287,8 @@ static void reallymarkobject (global_State *g, GCObject *o) {
       }
       /* else... */
     }  /* FALLTHROUGH */
-    case LuaT::LCL: case LuaT::CCL: case LuaT::TABLE:
-    case LuaT::THREAD: case LuaT::PROTO: {
+    case static_cast<int>(ctb(LuaT::LCL)): case static_cast<int>(ctb(LuaT::CCL)): case static_cast<int>(ctb(LuaT::TABLE)):
+    case static_cast<int>(ctb(LuaT::THREAD)): case static_cast<int>(ctb(LuaT::PROTO)): {
       linkobjgclist(o, *g->getGrayPtr());  /* to be visited later */
       break;
     }
@@ -390,46 +390,46 @@ static void freeupval(lua_State* L, UpVal* uv) {
 // Made non-static for use by gc_sweeping module (Phase 2)
 void freeobj (lua_State *L, GCObject *o) {
   assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
-  switch (o->getType()) {
-    case LuaT::PROTO: {
+  switch (static_cast<int>(o->getType())) {
+    case static_cast<int>(ctb(LuaT::PROTO)): {
       Proto *p = gco2p(o);
       p->free(L);  /* Phase 25b - frees internal arrays */
       // Proto destructor is trivial, but call it for completeness
       p->~Proto();
       break;
     }
-    case LuaT::UPVAL: {
+    case static_cast<int>(ctb(LuaT::UPVAL)): {
       UpVal *uv = gco2upv(o);
       freeupval(L, uv);  // Note: freeupval calls destructor internally
       break;
     }
-    case LuaT::LCL: {
+    case static_cast<int>(ctb(LuaT::LCL)): {
       LClosure *cl = gco2lcl(o);
       cl->~LClosure();  // Call destructor
       luaM_freemem(L, cl, sizeLclosure(cl->getNumUpvalues()));
       break;
     }
-    case LuaT::CCL: {
+    case static_cast<int>(ctb(LuaT::CCL)): {
       CClosure *cl = gco2ccl(o);
       cl->~CClosure();  // Call destructor
       luaM_freemem(L, cl, sizeCclosure(cl->getNumUpvalues()));
       break;
     }
-    case LuaT::TABLE: {
+    case static_cast<int>(ctb(LuaT::TABLE)): {
       Table *t = gco2t(o);
       luaH_free(L, t);  // Note: luaH_free calls destroy() which should handle cleanup
       break;
     }
-    case LuaT::THREAD:
+    case static_cast<int>(ctb(LuaT::THREAD)):
       luaE_freethread(L, gco2th(o));
       break;
-    case LuaT::USERDATA: {
+    case static_cast<int>(ctb(LuaT::USERDATA)): {
       Udata *u = gco2u(o);
       u->~Udata();  // Call destructor
       luaM_freemem(L, o, sizeudata(u->getNumUserValues(), u->getLen()));
       break;
     }
-    case LuaT::SHRSTR: {
+    case static_cast<int>(ctb(LuaT::SHRSTR)): {
       TString *ts = gco2ts(o);
       size_t sz = sizestrshr(cast_uint(ts->getShrlen()));
       ts->remove(L);  /* use method instead of free function */
@@ -438,7 +438,7 @@ void freeobj (lua_State *L, GCObject *o) {
       luaM_freemem(L, ts, sz);
       break;
     }
-    case LuaT::LNGSTR: {
+    case static_cast<int>(ctb(LuaT::LNGSTR)): {
       TString *ts = gco2ts(o);
       if (ts->getShrlen() == LSTRMEM)  /* must free external string? */
         (*ts->getFalloc())(ts->getUserData(), ts->getContentsField(), ts->getLnglen() + 1, 0);
