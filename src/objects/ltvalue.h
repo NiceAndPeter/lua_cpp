@@ -315,7 +315,6 @@ inline constexpr int BIT_ISCOLLECTABLE = (1 << 6);
 
 /* mark a tag as collectable */
 constexpr LuaT ctb(LuaT t) noexcept { return static_cast<LuaT>(static_cast<int>(t) | BIT_ISCOLLECTABLE); }
-constexpr lu_byte ctb(int t) noexcept { return static_cast<lu_byte>(t | BIT_ISCOLLECTABLE); }  /* overload for base types */
 
 
 /* Macros for internal tests */
