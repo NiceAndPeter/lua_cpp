@@ -41,7 +41,7 @@ typedef struct BlockCnt {
   struct BlockCnt *previous;  /* chain */
   int firstlabel;  /* index of first label in this block */
   int firstgoto;  /* index of first pending goto in this block */
-  short nactvar;  /* number of active declarations at block entry */
+  short numberOfActiveVariables;  /* number of active declarations at block entry */
   lu_byte upval;  /* true if some variable in the block is an upvalue */
   lu_byte isloop;  /* 1 if 'block' is a loop; 2 if it has pending breaks */
   lu_byte insidetbc;  /* true if inside the scope of a to-be-closed var. */
@@ -53,7 +53,7 @@ typedef struct BlockCnt {
 ** variable declaration.
 */
 l_noret LexState::jumpscopeerror(FuncState *funcState, Labeldesc *gt) {
-  TString *tsname = funcState->getlocalvardesc(gt->nactvar)->vd.name;
+  TString *tsname = funcState->getlocalvardesc(gt->numberOfActiveVariables)->vd.name;
   const char *varname = (tsname != nullptr) ? getstr(tsname) : "*";
   semerror("<goto %s> at line %d jumps into the scope of '%s'",
            getstr(gt->name), gt->line, varname);  /* raise the error */
@@ -73,11 +73,11 @@ void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup)
   Labellist *gl = &getDyndata()->gt;  /* list of gotos */
   Labeldesc *gt = &(*gl)[g];  /* goto to be resolved */
   lua_assert(eqstr(gt->name, label->name));
-  if (l_unlikely(gt->nactvar < label->nactvar))  /* enter some scope? */
+  if (l_unlikely(gt->numberOfActiveVariables < label->numberOfActiveVariables))  /* enter some scope? */
     jumpscopeerror(funcState, gt);
   if (gt->close ||
-      (label->nactvar < gt->nactvar && bup)) {  /* needs close? */
-    lu_byte stklevel = funcState->reglevel(label->nactvar);
+      (label->numberOfActiveVariables < gt->numberOfActiveVariables && bup)) {  /* needs close? */
+    lu_byte stklevel = funcState->reglevel(label->numberOfActiveVariables);
     /* move jump to CLOSE position */
     funcState->getProto()->getCode()[gt->pc + 1] = funcState->getProto()->getCode()[gt->pc];
     /* put CLOSE instruction at original position */
@@ -115,7 +115,7 @@ int LexState::newlabelentry(FuncState *funcState, Labellist *l, TString *name, i
   Labeldesc* desc = l->allocateNew();  /* LuaVector automatically grows */
   desc->name = name;
   desc->line = line;
-  desc->nactvar = funcState->getNumActiveVars();
+  desc->numberOfActiveVariables = funcState->getNumActiveVars();
   desc->close = 0;
   desc->pc = pc;
   return n;
@@ -135,7 +135,7 @@ void LexState::createlabel(FuncState *funcState, TString *name, int line, int la
   int l = newlabelentry(funcState, ll, name, line, funcState->getlabel());
   if (last) {  /* label is last no-op statement in the block? */
     /* assume that locals are already out of scope */
-    (*ll)[l].nactvar = funcState->getBlock()->nactvar;
+    (*ll)[l].numberOfActiveVariables = funcState->getBlock()->numberOfActiveVariables;
   }
 }
 

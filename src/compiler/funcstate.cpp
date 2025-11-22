@@ -43,7 +43,7 @@ typedef struct BlockCnt {
   struct BlockCnt *previous;  /* chain */
   int firstlabel;  /* index of first label in this block */
   int firstgoto;  /* index of first pending goto in this block */
-  short nactvar;  /* number of active declarations at block entry */
+  short numberOfActiveVariables;  /* number of active declarations at block entry */
   lu_byte upval;  /* true if some variable in the block is an upvalue */
   lu_byte isloop;  /* 1 if 'block' is a loop; 2 if it has pending breaks */
   lu_byte insidetbc;  /* true if inside the scope of a to-be-closed var. */
@@ -270,7 +270,7 @@ int FuncState::searchvar(TString *n, expdesc *var) {
 */
 void FuncState::markupval(int level) {
   BlockCnt *block = getBlock();
-  while (block->nactvar > level)
+  while (block->numberOfActiveVariables > level)
     block = block->previous;
   block->upval = 1;
   setNeedClose(1);
@@ -318,13 +318,13 @@ void FuncState::singlevaraux(TString *n, expdesc *var, int base) {
 ** Traverse the pending gotos of the finishing block checking whether
 ** each match some label of that block. Those that do not match are
 ** "exported" to the outer block, to be solved there. In particular,
-** its 'nactvar' is updated with the level of the inner block,
+** its 'numberOfActiveVariables' is updated with the level of the inner block,
 ** as the variables of the inner block are now out of scope.
 */
 void FuncState::solvegotos(BlockCnt *blockCnt) {
   LexState *lexState = getLexState();
   Labellist *gl = &lexState->getDyndata()->gt;
-  int outlevel = reglevel(blockCnt->nactvar);  /* level outside the block */
+  int outlevel = reglevel(blockCnt->numberOfActiveVariables);  /* level outside the block */
   int igt = blockCnt->firstgoto;  /* first goto in the finishing block */
   while (igt < gl->getN()) {   /* for each pending goto */
     Labeldesc *gt = &(*gl)[igt];
@@ -335,9 +335,9 @@ void FuncState::solvegotos(BlockCnt *blockCnt) {
     else {  /* adjust 'goto' for outer block */
       /* block has variables to be closed and goto escapes the scope of
          some variable? */
-      if (blockCnt->upval && reglevel(gt->nactvar) > outlevel)
+      if (blockCnt->upval && reglevel(gt->numberOfActiveVariables) > outlevel)
         gt->close = 1;  /* jump may need a close */
-      gt->nactvar = blockCnt->nactvar;  /* correct level for outer block */
+      gt->numberOfActiveVariables = blockCnt->numberOfActiveVariables;  /* correct level for outer block */
       igt++;  /* go to next goto */
     }
   }
@@ -347,7 +347,7 @@ void FuncState::solvegotos(BlockCnt *blockCnt) {
 
 void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
   blk->isloop = isloop;
-  blk->nactvar = getNumActiveVars();
+  blk->numberOfActiveVariables = getNumActiveVars();
   blk->firstlabel = getLexState()->getDyndata()->label.getN();
   blk->firstgoto = getLexState()->getDyndata()->gt.getN();
   blk->upval = 0;
@@ -362,12 +362,12 @@ void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
 void FuncState::leaveblock() {
   BlockCnt *blk = getBlock();
   LexState *lexstate = getLexState();
-  lu_byte stklevel = reglevel(blk->nactvar);  /* level outside block */
+  lu_byte stklevel = reglevel(blk->numberOfActiveVariables);  /* level outside block */
   if (blk->previous && blk->upval)  /* need a 'close'? */
     codeABC(OP_CLOSE, stklevel, 0, 0);
   setFreeReg(stklevel);  /* free registers */
-  removevars(blk->nactvar);  /* remove block locals */
-  lua_assert(blk->nactvar == getNumActiveVars());  /* back to level on entry */
+  removevars(blk->numberOfActiveVariables);  /* remove block locals */
+  lua_assert(blk->numberOfActiveVariables == getNumActiveVars());  /* back to level on entry */
   if (blk->isloop == 2)  /* has to fix pending breaks? */
     lexstate->createlabel(this, lexstate->getBreakName(), 0, 0);
   solvegotos(blk);

@@ -204,7 +204,7 @@ typedef struct Labeldesc {
   TString *name;  /* label identifier */
   int pc;  /* position in code */
   int line;  /* line where it appeared */
-  short nactvar;  /* number of active variables in that position */
+  short numberOfActiveVariables;  /* number of active variables in that position */
   lu_byte close;  /* true for goto that escapes upvalues */
 } Labeldesc;
 
@@ -381,29 +381,29 @@ public:
 /* 3. Variable Scope - Local variable and label tracking */
 class VariableScope {
 private:
-  int firstlocal;      /* Index of first local in this function (Dyndata array) */
-  int firstlabel;      /* Index of first label in this function */
-  short ndebugvars;    /* Number of variables in f->locvars (debug info) */
-  short nactvar;       /* Number of active variable declarations */
+  int firstlocal;              /* Index of first local in this function (Dyndata array) */
+  int firstlabel;              /* Index of first label in this function */
+  short numberOfDebugVariables;    /* Number of variables in f->locvars (debug info) */
+  short numberOfActiveVariables;   /* Number of active variable declarations */
 
 public:
   /* Inline accessors */
   int getFirstLocal() const noexcept { return firstlocal; }
   int getFirstLabel() const noexcept { return firstlabel; }
-  short getNumDebugVars() const noexcept { return ndebugvars; }
-  short getNumActiveVars() const noexcept { return nactvar; }
+  short getNumDebugVars() const noexcept { return numberOfDebugVariables; }
+  short getNumActiveVars() const noexcept { return numberOfActiveVariables; }
 
   void setFirstLocal(int firstlocal_) noexcept { firstlocal = firstlocal_; }
   void setFirstLabel(int firstlabel_) noexcept { firstlabel = firstlabel_; }
-  void setNumDebugVars(short ndebugvars_) noexcept { ndebugvars = ndebugvars_; }
-  void setNumActiveVars(short nactvar_) noexcept { nactvar = nactvar_; }
+  void setNumDebugVars(short ndebugvars_) noexcept { numberOfDebugVariables = ndebugvars_; }
+  void setNumActiveVars(short nactvar_) noexcept { numberOfActiveVariables = nactvar_; }
 
   /* Increment */
-  short postIncrementNumDebugVars() noexcept { return ndebugvars++; }
+  short postIncrementNumDebugVars() noexcept { return numberOfDebugVariables++; }
 
   /* Reference accessors */
-  short& getNumDebugVarsRef() noexcept { return ndebugvars; }
-  short& getNumActiveVarsRef() noexcept { return nactvar; }
+  short& getNumDebugVarsRef() noexcept { return numberOfDebugVariables; }
+  short& getNumActiveVarsRef() noexcept { return numberOfActiveVariables; }
 };
 
 
