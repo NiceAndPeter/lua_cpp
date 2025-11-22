@@ -326,7 +326,7 @@ static void printobj (global_State *g, GCObject *o) {
            ttypename(novariant(o->getType())), (void *)o,
            isdead(g,o) ? 'd' : isblack(o) ? 'b' : iswhite(o) ? 'w' : 'g',
            "ns01oTt"[static_cast<size_t>(getage(o))], o->getMarked());
-  if (o->getType() == LuaT::SHRSTR || o->getType() == LuaT::LNGSTR)
+  if (o->getType() == ctb(LuaT::SHRSTR) || o->getType() == ctb(LuaT::LNGSTR))
     printf(" '%s'", getstr(gco2ts(o)));
 }
 
@@ -582,8 +582,8 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
         assert(isblack(o) ||
         getage(o) == GCAge::Touched1 ||
         getage(o) == GCAge::Old0 ||
-        o->getType() == LuaT::THREAD ||
-        (o->getType() == LuaT::UPVAL && gco2upv(o)->isOpen()));
+        o->getType() == ctb(LuaT::THREAD) ||
+        (o->getType() == ctb(LuaT::UPVAL) && gco2upv(o)->isOpen()));
       }
       assert(getage(o) != GCAge::Touched1 || isgray(o));
     }
@@ -641,7 +641,7 @@ static l_mem checkgrays (global_State *g) {
 static void incifingray (global_State *g, GCObject *o, l_mem *count) {
   if (!g->keepInvariant())
     return;  /* gray lists not being kept in these phases */
-  if (o->getType() == LuaT::UPVAL) {
+  if (o->getType() == ctb(LuaT::UPVAL)) {
     /* only open upvalues can be gray */
     assert(!isgray(o) || gco2upv(o)->isOpen());
     return;  /* upvalues are never in gray lists */
@@ -699,7 +699,7 @@ int lua_checkmemory (lua_State *L) {
 
   /* check 'fixedgc' list */
   for (o = g->getFixedGC(); o != nullptr; o = o->getNext()) {
-    assert(o->getType() == LuaT::SHRSTR && isgray(o) && getage(o) == GCAge::Old);
+    assert(o->getType() == ctb(LuaT::SHRSTR) && isgray(o) && getage(o) == GCAge::Old);
   }
 
   /* check 'allgc' list */
@@ -716,7 +716,7 @@ int lua_checkmemory (lua_State *L) {
     checkobject(g, o, 0, GCAge::New);
     incifingray(g, o, &totalshould);
     assert(tofinalize(o));
-    assert(o->getType() == LuaT::USERDATA || o->getType() == LuaT::TABLE);
+    assert(o->getType() == ctb(LuaT::USERDATA) || o->getType() == ctb(LuaT::TABLE));
   }
   if (g->keepInvariant())
     assert(totalin == totalshould);
@@ -1089,7 +1089,7 @@ static int hash_query (lua_State *L) {
     TString *ts;
     luaL_argcheck(L, lua_type(L, 1) == LUA_TSTRING, 1, "string expected");
     ts = tsvalue(obj_at(L, 1));
-    if (ts->getType() == LuaT::LNGSTR)
+    if (ts->getType() == ctb(LuaT::LNGSTR))
       ts->hashLongStr();  /* make sure long string has a hash */
     lua_pushinteger(L, cast_int(ts->getHash()));
   }

@@ -272,7 +272,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   lua_lock(L);
   luaC_checkGC(L);
   /* create new thread */
-  o = luaC_newobjdt(L, LuaT::THREAD, sizeof(LX), lxOffset());
+  o = luaC_newobjdt(L, ctb(LuaT::THREAD), sizeof(LX), lxOffset());
   L1 = gco2th(o);
   /* anchor it on L stack */
   setthvalue2s(L, L->getTop().p, L1);
@@ -335,7 +335,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
                        (*f)(ud, nullptr, LUA_TTHREAD, sizeof(global_State)));
   if (g == nullptr) return nullptr;
   L = &g->getMainThread()->l;
-  L->setType(LuaT::THREAD);
+  L->setType(ctb(LuaT::THREAD));
   g->setCurrentWhite(bitmask(WHITE0BIT));
   L->setMarked(g->getWhite());
   preinit_thread(L, g);

@@ -1578,7 +1578,7 @@ lua_Unsigned Table::getn(lua_State* L) {
 // Phase 50: Factory pattern with placement new operator
 Table* Table::create(lua_State* L) {
   // Use placement new operator - calls constructor from lobject.h
-  Table *t = new (L, LuaT::TABLE) Table();
+  Table *t = new (L, ctb(LuaT::TABLE)) Table();
 
   // Set non-default values
   t->setFlags(maskflags);  /* table has no metamethod fields */

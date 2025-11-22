@@ -24,45 +24,45 @@
 */
 l_mem GCCore::objsize(GCObject* o) {
     lu_mem res;
-    switch (o->getType()) {
-        case LuaT::TABLE: {
+    switch (static_cast<int>(o->getType())) {
+        case static_cast<int>(ctb(LuaT::TABLE)): {
             res = luaH_size(gco2t(o));
             break;
         }
-        case LuaT::LCL: {
+        case static_cast<int>(ctb(LuaT::LCL)): {
             LClosure* cl = gco2lcl(o);
             res = sizeLclosure(cl->getNumUpvalues());
             break;
         }
-        case LuaT::CCL: {
+        case static_cast<int>(ctb(LuaT::CCL)): {
             CClosure* cl = gco2ccl(o);
             res = sizeCclosure(cl->getNumUpvalues());
             break;
         }
-        case LuaT::USERDATA: {
+        case static_cast<int>(ctb(LuaT::USERDATA)): {
             Udata* u = gco2u(o);
             res = sizeudata(u->getNumUserValues(), u->getLen());
             break;
         }
-        case LuaT::PROTO: {
+        case static_cast<int>(ctb(LuaT::PROTO)): {
             res = gco2p(o)->memorySize();
             break;
         }
-        case LuaT::THREAD: {
+        case static_cast<int>(ctb(LuaT::THREAD)): {
             res = luaE_threadsize(gco2th(o));
             break;
         }
-        case LuaT::SHRSTR: {
+        case static_cast<int>(ctb(LuaT::SHRSTR)): {
             TString* ts = gco2ts(o);
             res = sizestrshr(cast_uint(ts->getShrlen()));
             break;
         }
-        case LuaT::LNGSTR: {
+        case static_cast<int>(ctb(LuaT::LNGSTR)): {
             TString* ts = gco2ts(o);
             res = TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen());
             break;
         }
-        case LuaT::UPVAL: {
+        case static_cast<int>(ctb(LuaT::UPVAL)): {
             res = sizeof(UpVal);
             break;
         }

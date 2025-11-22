@@ -302,7 +302,7 @@ inline bool isreserved(const TString* s) noexcept {
 ** equality for short strings, which are always internalized
 */
 inline bool eqshrstr(const TString* a, const TString* b) noexcept {
-	return check_exp((a)->getType() == LuaT::SHRSTR, (a) == (b));
+	return check_exp((a)->getType() == ctb(LuaT::SHRSTR), (a) == (b));
 }
 
 

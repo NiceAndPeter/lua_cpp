@@ -589,7 +589,7 @@ static GCObject **correctgraylist (GCObject **p) {
       setage(curr, GCAge::Touched2);
       goto remain;  /* keep it in the list and go to next element */
     }
-    else if (curr->getType() == LuaT::THREAD) {
+    else if (curr->getType() == ctb(LuaT::THREAD)) {
       lua_assert(isgray(curr));
       goto remain;  /* keep non-white threads on the list */
     }
