@@ -48,9 +48,8 @@ inline constexpr int MAXTAGLOOP = 2000;
 */
 LuaT luaV_finishget (lua_State *L, const TValue *t, TValue *key,
                                       StkId val, LuaT tag) {
-  int loop;  /* counter to avoid infinite loops */
   const TValue *tm;  /* metamethod */
-  for (loop = 0; loop < MAXTAGLOOP; loop++) {
+  for (int loop = 0; loop < MAXTAGLOOP; loop++) {
     if (tag == LuaT::NOTABLE) {  /* 't' is not a table? */
       lua_assert(!ttistable(t));
       tm = luaT_gettmbyobj(L, t, TMS::TM_INDEX);
@@ -103,11 +102,10 @@ LuaT luaV_finishget (lua_State *L, const TValue *t, TValue *key,
 */
 void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
                       TValue *val, int hres) {
-  int loop;  /* counter to avoid infinite loops */
-  for (loop = 0; loop < MAXTAGLOOP; loop++) {
+  for (int loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;  /* '__newindex' metamethod */
     if (hres != HNOTATABLE) {  /* is 't' a table? */
-      Table *h = hvalue(t);  /* save 't' table */
+      auto *h = hvalue(t);  /* save 't' table */
       tm = fasttm(L, h->getMetatable(), TMS::TM_NEWINDEX);  /* get metamethod */
       if (tm == nullptr) {  /* no metamethod? */
         sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */

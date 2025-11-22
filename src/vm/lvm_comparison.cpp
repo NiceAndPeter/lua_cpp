@@ -33,16 +33,16 @@
 */
 [[nodiscard]] int l_strcmp (const TString *ts1, const TString *ts2) {
   size_t rl1;  /* real length */
-  const char *s1 = getlstr(ts1, rl1);
+  auto *s1 = getlstr(ts1, rl1);
   size_t rl2;
-  const char *s2 = getlstr(ts2, rl2);
+  auto *s2 = getlstr(ts2, rl2);
   for (;;) {  /* for each segment */
-    int temp = strcoll(s1, s2);
+    auto temp = strcoll(s1, s2);
     if (temp != 0)  /* not equal? */
       return temp;  /* done */
     else {  /* strings are equal up to a '\0' */
-      size_t zl1 = strlen(s1);  /* index of first '\0' in 's1' */
-      size_t zl2 = strlen(s2);  /* index of first '\0' in 's2' */
+      auto zl1 = strlen(s1);  /* index of first '\0' in 's1' */
+      auto zl2 = strlen(s2);  /* index of first '\0' in 's2' */
       if (zl2 == rl2)  /* 's2' is finished? */
         return (zl1 == rl1) ? 0 : 1;  /* check 's1' */
       else if (zl1 == rl1)  /* 's1' is finished? */
@@ -254,7 +254,7 @@ int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
     if (tm == nullptr)  /* no TM? */
       return 0;  /* objects are different */
     else {
-      LuaT tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */
+      auto tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */
       return !tagisfalse(tag);
     }
   }
