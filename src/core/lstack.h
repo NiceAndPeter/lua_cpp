@@ -74,36 +74,36 @@ public:
   */
 
   /* Top pointer accessors */
-  inline StkIdRel& getTop() noexcept { return top; }
-  inline const StkIdRel& getTop() const noexcept { return top; }
-  inline void setTop(StkIdRel t) noexcept { top = t; }
+  StkIdRel& getTop() noexcept { return top; }
+  const StkIdRel& getTop() const noexcept { return top; }
+  void setTop(StkIdRel t) noexcept { top = t; }
 
   /* Stack base pointer accessors */
-  inline StkIdRel& getStack() noexcept { return stack; }
-  inline const StkIdRel& getStack() const noexcept { return stack; }
-  inline void setStack(StkIdRel s) noexcept { stack = s; }
+  StkIdRel& getStack() noexcept { return stack; }
+  const StkIdRel& getStack() const noexcept { return stack; }
+  void setStack(StkIdRel s) noexcept { stack = s; }
 
   /* Stack limit pointer accessors */
-  inline StkIdRel& getStackLast() noexcept { return stack_last; }
-  inline const StkIdRel& getStackLast() const noexcept { return stack_last; }
-  inline void setStackLast(StkIdRel sl) noexcept { stack_last = sl; }
+  StkIdRel& getStackLast() noexcept { return stack_last; }
+  const StkIdRel& getStackLast() const noexcept { return stack_last; }
+  void setStackLast(StkIdRel sl) noexcept { stack_last = sl; }
 
   /* To-be-closed list pointer accessors */
-  inline StkIdRel& getTbclist() noexcept { return tbclist; }
-  inline const StkIdRel& getTbclist() const noexcept { return tbclist; }
-  inline void setTbclist(StkIdRel tbc) noexcept { tbclist = tbc; }
+  StkIdRel& getTbclist() noexcept { return tbclist; }
+  const StkIdRel& getTbclist() const noexcept { return tbclist; }
+  void setTbclist(StkIdRel tbc) noexcept { tbclist = tbc; }
 
   /*
   ** Computed properties
   */
 
   /* Get current stack size (number of usable slots) */
-  inline int getSize() const noexcept {
+  int getSize() const noexcept {
     return cast_int(stack_last.p - stack.p);
   }
 
   /* Check if there is space for n more elements */
-  inline bool hasSpace(int n) const noexcept {
+  bool hasSpace(int n) const noexcept {
     return stack_last.p - top.p > n;
   }
 
@@ -115,12 +115,12 @@ public:
   */
 
   /* Convert stack pointer to offset from base */
-  inline ptrdiff_t save(StkId pt) const noexcept {
+  ptrdiff_t save(StkId pt) const noexcept {
     return pt - stack.p;  /* direct pointer arithmetic, no char* round-trip */
   }
 
   /* Convert offset to stack pointer */
-  inline StkId restore(ptrdiff_t n) const noexcept {
+  StkId restore(ptrdiff_t n) const noexcept {
     return stack.p + n;  /* direct pointer arithmetic, safe with LTO */
   }
 
@@ -133,32 +133,32 @@ public:
   */
 
   /* Push one slot (increment top) */
-  inline void push() noexcept {
+  void push() noexcept {
     top.p++;
   }
 
   /* Pop one slot (decrement top) */
-  inline void pop() noexcept {
+  void pop() noexcept {
     top.p--;
   }
 
   /* Pop n slots from stack */
-  inline void popN(int n) noexcept {
+  void popN(int n) noexcept {
     top.p -= n;
   }
 
   /* Adjust top by n (positive or negative) */
-  inline void adjust(int n) noexcept {
+  void adjust(int n) noexcept {
     top.p += n;
   }
 
   /* Set top to specific pointer value */
-  inline void setTopPtr(StkId ptr) noexcept {
+  void setTopPtr(StkId ptr) noexcept {
     top.p = ptr;
   }
 
   /* Set top to offset from stack base */
-  inline void setTopOffset(int offset) noexcept {
+  void setTopOffset(int offset) noexcept {
     top.p = stack.p + offset;
   }
 
@@ -170,7 +170,7 @@ public:
   */
 
   /* Push with bounds check (replaces api_incr_top macro) */
-  inline void pushChecked(StkId limit) noexcept {
+  void pushChecked(StkId limit) noexcept {
     top.p++;
     lua_assert(top.p <= limit);
   }
@@ -205,7 +205,7 @@ public:
   */
 
   /* Ensure space for n elements (replaces luaD_checkstack) */
-  inline int ensureSpace(lua_State* L, int n) {
+  int ensureSpace(lua_State* L, int n) {
     if (l_unlikely(stack_last.p - top.p <= n)) {
       return grow(L, n, 1);
     }
@@ -220,7 +220,7 @@ public:
 
   /* Ensure space preserving pointer (replaces checkstackp) */
   template<typename T>
-  inline T* ensureSpaceP(lua_State* L, int n, T* ptr) {
+  T* ensureSpaceP(lua_State* L, int n, T* ptr) {
     if (l_unlikely(stack_last.p - top.p <= n)) {
       ptrdiff_t offset = save(reinterpret_cast<StkId>(ptr));
       grow(L, n, 1);
@@ -261,12 +261,12 @@ public:
   */
 
   /* Available space before stack_last */
-  inline int getAvailable() const noexcept {
+  int getAvailable() const noexcept {
     return cast_int(stack_last.p - top.p);
   }
 
   /* Current depth (elements from base to top) */
-  inline int getDepth() const noexcept {
+  int getDepth() const noexcept {
     return cast_int(top.p - stack.p);
   }
 
@@ -274,7 +274,7 @@ public:
   int getDepthFromFunc(CallInfo* ci) const noexcept;
 
   /* Check if can fit n elements (alias for hasSpace) */
-  inline bool canFit(int n) const noexcept {
+  bool canFit(int n) const noexcept {
     return stack_last.p - top.p > n;
   }
 
@@ -286,19 +286,19 @@ public:
   */
 
   /* Get TValue at absolute offset from stack base (0-indexed) */
-  inline TValue* at(int offset) noexcept {
+  TValue* at(int offset) noexcept {
     lua_assert(offset >= 0 && stack.p + offset < top.p);
     return s2v(stack.p + offset);
   }
 
   /* Get TValue at offset from top (-1 = top element) */
-  inline TValue* fromTop(int offset) noexcept {
+  TValue* fromTop(int offset) noexcept {
     lua_assert(offset <= 0 && top.p + offset >= stack.p);
     return s2v(top.p + offset);
   }
 
   /* Get top-most TValue (top - 1) */
-  inline TValue* topValue() noexcept {
+  TValue* topValue() noexcept {
     lua_assert(top.p > stack.p);
     return s2v(top.p - 1);
   }

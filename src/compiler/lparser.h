@@ -221,27 +221,27 @@ public:
   }
 
   /* Accessor methods matching old interface */
-  inline Labeldesc* getArr() noexcept { return vec.data(); }
-  inline const Labeldesc* getArr() const noexcept { return vec.data(); }
-  inline int getN() const noexcept { return static_cast<int>(vec.size()); }
-  inline int getSize() const noexcept { return static_cast<int>(vec.capacity()); }
+  Labeldesc* getArr() noexcept { return vec.data(); }
+  const Labeldesc* getArr() const noexcept { return vec.data(); }
+  int getN() const noexcept { return static_cast<int>(vec.size()); }
+  int getSize() const noexcept { return static_cast<int>(vec.capacity()); }
 
   /* Modifying size */
-  inline void setN(int new_n) { vec.resize(static_cast<size_t>(new_n)); }
+  void setN(int new_n) { vec.resize(static_cast<size_t>(new_n)); }
 
   /* Direct vector access for modern operations */
-  inline void push_back(const Labeldesc& desc) { vec.push_back(desc); }
-  inline void reserve(int capacity) { vec.reserve(static_cast<size_t>(capacity)); }
-  inline Labeldesc& operator[](int index) { return vec[static_cast<size_t>(index)]; }
-  inline const Labeldesc& operator[](int index) const { return vec[static_cast<size_t>(index)]; }
+  void push_back(const Labeldesc& desc) { vec.push_back(desc); }
+  void reserve(int capacity) { vec.reserve(static_cast<size_t>(capacity)); }
+  Labeldesc& operator[](int index) { return vec[static_cast<size_t>(index)]; }
+  const Labeldesc& operator[](int index) const { return vec[static_cast<size_t>(index)]; }
 
   /* For luaM_growvector replacement */
-  inline void ensureCapacity(int needed) {
+  void ensureCapacity(int needed) {
     if (needed > getSize()) {
       vec.reserve(static_cast<size_t>(needed));
     }
   }
-  inline Labeldesc* allocateNew() {
+  Labeldesc* allocateNew() {
     vec.resize(vec.size() + 1);
     return &vec.back();
   }
@@ -264,25 +264,25 @@ public:
   }
 
   /* Direct actvar accessor methods - avoid temporary object creation */
-  inline Vardesc* actvarGetArr() noexcept { return actvar_vec.data(); }
-  inline const Vardesc* actvarGetArr() const noexcept { return actvar_vec.data(); }
-  inline int actvarGetN() const noexcept { return static_cast<int>(actvar_vec.size()); }
-  inline int actvarGetSize() const noexcept { return static_cast<int>(actvar_vec.capacity()); }
+  Vardesc* actvarGetArr() noexcept { return actvar_vec.data(); }
+  const Vardesc* actvarGetArr() const noexcept { return actvar_vec.data(); }
+  int actvarGetN() const noexcept { return static_cast<int>(actvar_vec.size()); }
+  int actvarGetSize() const noexcept { return static_cast<int>(actvar_vec.capacity()); }
 
-  inline void actvarSetN(int new_n) { actvar_vec.resize(static_cast<size_t>(new_n)); }
-  inline Vardesc& actvarAt(int index) { return actvar_vec[static_cast<size_t>(index)]; }
-  inline const Vardesc& actvarAt(int index) const { return actvar_vec[static_cast<size_t>(index)]; }
+  void actvarSetN(int new_n) { actvar_vec.resize(static_cast<size_t>(new_n)); }
+  Vardesc& actvarAt(int index) { return actvar_vec[static_cast<size_t>(index)]; }
+  const Vardesc& actvarAt(int index) const { return actvar_vec[static_cast<size_t>(index)]; }
 
-  inline Vardesc* actvarAllocateNew() {
+  Vardesc* actvarAllocateNew() {
     actvar_vec.resize(actvar_vec.size() + 1);
     return &actvar_vec.back();
   }
 
   /* Phase 116: std::span accessors for actvar array */
-  inline std::span<Vardesc> actvarGetSpan() noexcept {
+  std::span<Vardesc> actvarGetSpan() noexcept {
     return std::span(actvar_vec.data(), actvar_vec.size());
   }
-  inline std::span<const Vardesc> actvarGetSpan() const noexcept {
+  std::span<const Vardesc> actvarGetSpan() const noexcept {
     return std::span(actvar_vec.data(), actvar_vec.size());
   }
 
@@ -292,13 +292,13 @@ public:
     Dyndata* dyn;
   public:
     explicit ActvarAccessor(Dyndata* d) : dyn(d) {}
-    inline int getN() const noexcept { return dyn->actvarGetN(); }
-    inline void setN(int n) { dyn->actvarSetN(n); }
-    inline Vardesc& operator[](int i) { return dyn->actvarAt(i); }
-    inline Vardesc* allocateNew() { return dyn->actvarAllocateNew(); }
+    int getN() const noexcept { return dyn->actvarGetN(); }
+    void setN(int n) { dyn->actvarSetN(n); }
+    Vardesc& operator[](int i) { return dyn->actvarAt(i); }
+    Vardesc* allocateNew() { return dyn->actvarAllocateNew(); }
   };
 
-  inline ActvarAccessor actvar() noexcept { return ActvarAccessor{this}; }
+  ActvarAccessor actvar() noexcept { return ActvarAccessor{this}; }
 };
 
 
@@ -324,35 +324,35 @@ private:
 
 public:
   /* Inline accessors for reading */
-  inline int getPC() const noexcept { return pc; }
-  inline int getLastTarget() const noexcept { return lasttarget; }
-  inline int getPreviousLine() const noexcept { return previousline; }
-  inline int getNAbsLineInfo() const noexcept { return nabslineinfo; }
-  inline lu_byte getInstructionsWithAbs() const noexcept { return iwthabs; }
+  int getPC() const noexcept { return pc; }
+  int getLastTarget() const noexcept { return lasttarget; }
+  int getPreviousLine() const noexcept { return previousline; }
+  int getNAbsLineInfo() const noexcept { return nabslineinfo; }
+  lu_byte getInstructionsWithAbs() const noexcept { return iwthabs; }
 
   /* Setters */
-  inline void setPC(int pc_) noexcept { pc = pc_; }
-  inline void setLastTarget(int lasttarget_) noexcept { lasttarget = lasttarget_; }
-  inline void setPreviousLine(int previousline_) noexcept { previousline = previousline_; }
-  inline void setNAbsLineInfo(int nabslineinfo_) noexcept { nabslineinfo = nabslineinfo_; }
-  inline void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
+  void setPC(int pc_) noexcept { pc = pc_; }
+  void setLastTarget(int lasttarget_) noexcept { lasttarget = lasttarget_; }
+  void setPreviousLine(int previousline_) noexcept { previousline = previousline_; }
+  void setNAbsLineInfo(int nabslineinfo_) noexcept { nabslineinfo = nabslineinfo_; }
+  void setInstructionsWithAbs(lu_byte iwthabs_) noexcept { iwthabs = iwthabs_; }
 
   /* Increment/decrement methods */
-  inline void incrementPC() noexcept { pc++; }
-  inline void decrementPC() noexcept { pc--; }
-  inline int postIncrementPC() noexcept { return pc++; }
-  inline void incrementNAbsLineInfo() noexcept { nabslineinfo++; }
-  inline void decrementNAbsLineInfo() noexcept { nabslineinfo--; }
-  inline int postIncrementNAbsLineInfo() noexcept { return nabslineinfo++; }
-  inline lu_byte postIncrementInstructionsWithAbs() noexcept { return iwthabs++; }
-  inline void decrementInstructionsWithAbs() noexcept { iwthabs--; }
+  void incrementPC() noexcept { pc++; }
+  void decrementPC() noexcept { pc--; }
+  int postIncrementPC() noexcept { return pc++; }
+  void incrementNAbsLineInfo() noexcept { nabslineinfo++; }
+  void decrementNAbsLineInfo() noexcept { nabslineinfo--; }
+  int postIncrementNAbsLineInfo() noexcept { return nabslineinfo++; }
+  lu_byte postIncrementInstructionsWithAbs() noexcept { return iwthabs++; }
+  void decrementInstructionsWithAbs() noexcept { iwthabs--; }
 
   /* Reference accessors for compound assignments */
-  inline int& getPCRef() noexcept { return pc; }
-  inline int& getLastTargetRef() noexcept { return lasttarget; }
-  inline int& getPreviousLineRef() noexcept { return previousline; }
-  inline int& getNAbsLineInfoRef() noexcept { return nabslineinfo; }
-  inline lu_byte& getInstructionsWithAbsRef() noexcept { return iwthabs; }
+  int& getPCRef() noexcept { return pc; }
+  int& getLastTargetRef() noexcept { return lasttarget; }
+  int& getPreviousLineRef() noexcept { return previousline; }
+  int& getNAbsLineInfoRef() noexcept { return nabslineinfo; }
+  lu_byte& getInstructionsWithAbsRef() noexcept { return iwthabs; }
 };
 
 
@@ -364,17 +364,17 @@ private:
 
 public:
   /* Inline accessors */
-  inline Table* getCache() const noexcept { return cache; }
-  inline int getCount() const noexcept { return count; }
+  Table* getCache() const noexcept { return cache; }
+  int getCount() const noexcept { return count; }
 
-  inline void setCache(Table* cache_) noexcept { cache = cache_; }
-  inline void setCount(int count_) noexcept { count = count_; }
+  void setCache(Table* cache_) noexcept { cache = cache_; }
+  void setCount(int count_) noexcept { count = count_; }
 
   /* Increment */
-  inline void incrementCount() noexcept { count++; }
+  void incrementCount() noexcept { count++; }
 
   /* Reference accessor */
-  inline int& getCountRef() noexcept { return count; }
+  int& getCountRef() noexcept { return count; }
 };
 
 
@@ -388,22 +388,22 @@ private:
 
 public:
   /* Inline accessors */
-  inline int getFirstLocal() const noexcept { return firstlocal; }
-  inline int getFirstLabel() const noexcept { return firstlabel; }
-  inline short getNumDebugVars() const noexcept { return ndebugvars; }
-  inline short getNumActiveVars() const noexcept { return nactvar; }
+  int getFirstLocal() const noexcept { return firstlocal; }
+  int getFirstLabel() const noexcept { return firstlabel; }
+  short getNumDebugVars() const noexcept { return ndebugvars; }
+  short getNumActiveVars() const noexcept { return nactvar; }
 
-  inline void setFirstLocal(int firstlocal_) noexcept { firstlocal = firstlocal_; }
-  inline void setFirstLabel(int firstlabel_) noexcept { firstlabel = firstlabel_; }
-  inline void setNumDebugVars(short ndebugvars_) noexcept { ndebugvars = ndebugvars_; }
-  inline void setNumActiveVars(short nactvar_) noexcept { nactvar = nactvar_; }
+  void setFirstLocal(int firstlocal_) noexcept { firstlocal = firstlocal_; }
+  void setFirstLabel(int firstlabel_) noexcept { firstlabel = firstlabel_; }
+  void setNumDebugVars(short ndebugvars_) noexcept { ndebugvars = ndebugvars_; }
+  void setNumActiveVars(short nactvar_) noexcept { nactvar = nactvar_; }
 
   /* Increment */
-  inline short postIncrementNumDebugVars() noexcept { return ndebugvars++; }
+  short postIncrementNumDebugVars() noexcept { return ndebugvars++; }
 
   /* Reference accessors */
-  inline short& getNumDebugVarsRef() noexcept { return ndebugvars; }
-  inline short& getNumActiveVarsRef() noexcept { return nactvar; }
+  short& getNumDebugVarsRef() noexcept { return ndebugvars; }
+  short& getNumActiveVarsRef() noexcept { return nactvar; }
 };
 
 
@@ -414,14 +414,14 @@ private:
 
 public:
   /* Inline accessors */
-  inline lu_byte getFreeReg() const noexcept { return freereg; }
-  inline void setFreeReg(lu_byte freereg_) noexcept { freereg = freereg_; }
+  lu_byte getFreeReg() const noexcept { return freereg; }
+  void setFreeReg(lu_byte freereg_) noexcept { freereg = freereg_; }
 
   /* Decrement */
-  inline void decrementFreeReg() noexcept { freereg--; }
+  void decrementFreeReg() noexcept { freereg--; }
 
   /* Reference accessor */
-  inline lu_byte& getFreeRegRef() noexcept { return freereg; }
+  lu_byte& getFreeRegRef() noexcept { return freereg; }
 };
 
 
@@ -433,15 +433,15 @@ private:
 
 public:
   /* Inline accessors */
-  inline lu_byte getNumUpvalues() const noexcept { return nups; }
-  inline lu_byte getNeedClose() const noexcept { return needclose; }
+  lu_byte getNumUpvalues() const noexcept { return nups; }
+  lu_byte getNeedClose() const noexcept { return needclose; }
 
-  inline void setNumUpvalues(lu_byte nups_) noexcept { nups = nups_; }
-  inline void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
+  void setNumUpvalues(lu_byte nups_) noexcept { nups = nups_; }
+  void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
 
   /* Reference accessors */
-  inline lu_byte& getNumUpvaluesRef() noexcept { return nups; }
-  inline lu_byte& getNeedCloseRef() noexcept { return needclose; }
+  lu_byte& getNumUpvaluesRef() noexcept { return nups; }
+  lu_byte& getNeedCloseRef() noexcept { return needclose; }
 };
 
 
