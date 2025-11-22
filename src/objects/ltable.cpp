@@ -612,7 +612,7 @@ static void countint (lua_Integer key, Counters *ct) {
 
 
 static inline int arraykeyisempty (const Table *t, unsigned key) {
-  int tag = *t->getArrayTag(key - 1);
+  LuaT tag = *t->getArrayTag(key - 1);
   return tagisempty(tag);
 }
 
@@ -813,7 +813,7 @@ static void exchangehashpart (Table *t1, Table *t2) {
 static void reinsertOldSlice (Table *t, unsigned oldasize,
                                         unsigned newasize) {
   for (unsigned i = newasize; i < oldasize; i++) {  /* traverse vanishing slice */
-    lu_byte tag = *t->getArrayTag(i);
+    LuaT tag = *t->getArrayTag(i);
     if (!tagisempty(tag)) {  /* a non-empty entry? */
       TValue key, aux;
       key.setInt(l_castU2S(i) + 1);  /* make the key */
@@ -1128,7 +1128,7 @@ static bool hashkeyisempty (Table *t, lua_Unsigned key) {
 }
 
 
-static lu_byte finishnodeget (const TValue *val, TValue *res) {
+static LuaT finishnodeget (const TValue *val, TValue *res) {
   if (!ttisnil(val)) {
     *res = *val;
   }
@@ -1188,19 +1188,19 @@ static bool rawfinishnodeset (TValue *slot, TValue *val) {
 ** C API wrapper functions - these forward to Table methods
 */
 
-lu_byte luaH_getint (Table *t, lua_Integer key, TValue *res) {
+LuaT luaH_getint (Table *t, lua_Integer key, TValue *res) {
   return t->getInt(key, res);
 }
 
-lu_byte luaH_getshortstr (Table *t, TString *key, TValue *res) {
+LuaT luaH_getshortstr (Table *t, TString *key, TValue *res) {
   return t->getShortStr(key, res);
 }
 
-lu_byte luaH_getstr (Table *t, TString *key, TValue *res) {
+LuaT luaH_getstr (Table *t, TString *key, TValue *res) {
   return t->getStr(key, res);
 }
 
-lu_byte luaH_get (Table *t, const TValue *key, TValue *res) {
+LuaT luaH_get (Table *t, const TValue *key, TValue *res) {
   return t->get(key, res);
 }
 
@@ -1380,7 +1380,7 @@ Node *luaH_mainposition (const Table *t, const TValue *key) {
 ** Table method implementations
 */
 
-lu_byte Table::get(const TValue* key, TValue* res) {
+LuaT Table::get(const TValue* key, TValue* res) {
   const TValue *slot;
   switch (ttypetag(key)) {
     case LuaT::SHRSTR:
@@ -1404,10 +1404,10 @@ lu_byte Table::get(const TValue* key, TValue* res) {
   return finishnodeget(slot, res);
 }
 
-lu_byte Table::getInt(lua_Integer key, TValue* res) {
+LuaT Table::getInt(lua_Integer key, TValue* res) {
   unsigned k = ikeyinarray(this, key);
   if (k > 0) {
-    lu_byte tag = *this->getArrayTag(k - 1);
+    LuaT tag = *this->getArrayTag(k - 1);
     if (!tagisempty(tag))
       farr2val(this, k - 1, tag, res);
     return tag;
@@ -1416,11 +1416,11 @@ lu_byte Table::getInt(lua_Integer key, TValue* res) {
     return finishnodeget(getintfromhash(this, key), res);
 }
 
-lu_byte Table::getShortStr(TString* key, TValue* res) {
+LuaT Table::getShortStr(TString* key, TValue* res) {
   return finishnodeget(HgetShortStr(key), res);
 }
 
-lu_byte Table::getStr(TString* key, TValue* res) {
+LuaT Table::getStr(TString* key, TValue* res) {
   return finishnodeget(Hgetstr(this, key), res);
 }
 

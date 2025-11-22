@@ -99,7 +99,7 @@ public:
 
   // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
   // Note: For TString, this may allocate less than sizeof(TString) for short strings!
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+  static void* operator new(size_t size, lua_State* L, LuaT tt, size_t extra = 0);
 
   // Disable regular new/delete (must use placement new with GC)
   static void* operator new(size_t) = delete;

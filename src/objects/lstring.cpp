@@ -146,7 +146,7 @@ void TString::init(lua_State* L) {
 ** creates a new string object
 ** Phase 50: Now uses placement new to call constructor
 */
-static TString *createstrobj (lua_State *L, size_t totalsize, lu_byte tag,
+static TString *createstrobj (lua_State *L, size_t totalsize, LuaT tag,
                               unsigned h) {
   // For TString, we need to allocate exactly totalsize bytes, not sizeof(TString)
   // For short strings: totalsize = contentsOffset() + string_length + 1

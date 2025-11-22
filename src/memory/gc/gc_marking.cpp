@@ -83,7 +83,7 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
 ** Access to collectable objects in table array part
 */
 #define gcvalarr(t, i)  \
-    ((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
+    (iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr)
 
 
 /*

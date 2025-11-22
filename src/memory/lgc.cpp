@@ -219,7 +219,7 @@ void luaC_barrierback_ (lua_State *L, GCObject *o) {
 ** create a new collectable object (with given type, size, and offset)
 ** and link it to 'allgc' list.
 */
-GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz, size_t offset) {
+GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz, size_t offset) {
   global_State *g = G(L);
   char *p = cast_charp(luaM_newobject(L, novariant(tt), sz));
   GCObject *o = reinterpret_cast<GCObject*>(p + offset);
@@ -234,7 +234,7 @@ GCObject *luaC_newobjdt (lua_State *L, lu_byte tt, size_t sz, size_t offset) {
 /*
 ** create a new collectable object with no offset.
 */
-GCObject *luaC_newobj (lua_State *L, lu_byte tt, size_t sz) {
+GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz) {
   return luaC_newobjdt(L, tt, sz, 0);
 }
 

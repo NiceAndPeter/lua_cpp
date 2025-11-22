@@ -302,6 +302,7 @@ public:
 };
 
 constexpr bool iscollectable(const TValue* o) noexcept { return (static_cast<int>(rawtt(o)) & BIT_ISCOLLECTABLE) != 0; }
+constexpr bool iscollectable(LuaT tag) noexcept { return (static_cast<int>(tag) & BIT_ISCOLLECTABLE) != 0; }
 
 constexpr bool TValue::isCollectable() const noexcept { return (static_cast<int>(tt_) & BIT_ISCOLLECTABLE) != 0; }
 
@@ -381,7 +382,7 @@ public:
   }
 
   // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
-  static void* operator new(size_t size, lua_State* L, lu_byte tt, size_t extra = 0);
+  static void* operator new(size_t size, lua_State* L, LuaT tt, size_t extra = 0);
 
   // Disable regular new/delete (must use placement new with GC)
   static void* operator new(size_t) = delete;

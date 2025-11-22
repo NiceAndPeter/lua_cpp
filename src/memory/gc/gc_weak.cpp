@@ -38,7 +38,7 @@
 
 /* Access to collectable objects in array part of tables */
 #define gcvalarr(t,i)  \
-	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
+	(iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr)
 
 /* Note: gcvalueN and valiswhite are now in lgc.h */
 /* Note: markkey and markvalue are defined in gc_marking.h */

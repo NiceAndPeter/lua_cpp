@@ -248,7 +248,7 @@ public:
   ~Proto() noexcept = default;
 
   // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
-  static void* operator new(size_t size, lua_State* L, lu_byte tt);
+  static void* operator new(size_t size, lua_State* L, LuaT tt);
 
   // Disable regular new/delete (must use placement new with GC)
   static void* operator new(size_t) = delete;
