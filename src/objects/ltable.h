@@ -162,14 +162,9 @@ private:
 
 public:
   // Phase 50: Constructor - initializes all fields to safe defaults
-  Table() noexcept {
-    flags = 0;
-    lsizenode = 0;
-    asize = 0;
-    array = nullptr;
-    node = nullptr;
-    metatable = nullptr;
-    gclist = nullptr;
+  Table() noexcept
+    : flags(0), lsizenode(0), asize(0), array(nullptr),
+      node(nullptr), metatable(nullptr), gclist(nullptr) {
   }
 
   // Phase 50: Destructor - trivial (GC handles deallocation)

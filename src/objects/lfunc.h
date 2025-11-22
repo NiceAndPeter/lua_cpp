@@ -76,8 +76,8 @@ private:
 
 public:
   // Phase 50: Constructor - initializes all fields to safe defaults
-  UpVal() noexcept {
-    v.p = nullptr;  // Initialize v union (pointer variant)
+  UpVal() noexcept
+    : v{nullptr}, u{} {
     // Initialize u union as closed upvalue with nil
     u.value.valueField().n = 0;  // Zero-initialize Value union
     u.value.setType(LUA_TNIL);

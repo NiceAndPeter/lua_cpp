@@ -218,20 +218,10 @@ private:
 
 public:
   // Phase 50: Constructor - initializes all fields to safe defaults
-  Proto() noexcept {
-    numparams = 0;
-    flag = 0;
-    maxstacksize = 0;
-    sizeupvalues = 0;
-    sizek = 0;
-    sizecode = 0;
-    sizep = 0;
-    k = nullptr;
-    code = nullptr;
-    p = nullptr;
-    upvalues = nullptr;
-    gclist = nullptr;
-
+  Proto() noexcept
+    : numparams(0), flag(0), maxstacksize(0), sizeupvalues(0),
+      sizek(0), sizecode(0), sizep(0), k(nullptr), code(nullptr),
+      p(nullptr), upvalues(nullptr), gclist(nullptr), debugInfo() {
     // Initialize debug info subsystem
     debugInfo.setLineInfoSize(0);
     debugInfo.setAbsLineInfoSize(0);
