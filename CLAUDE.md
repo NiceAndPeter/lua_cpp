@@ -10,7 +10,7 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Repository**: `/home/user/lua_cpp`
 **Performance Target**: ≤4.33s (≤3% regression from 4.20s baseline)
-**Current Performance**: ~4.51s avg (slight variance, acceptable) ⚠️
+**Current Performance**: ~4.26s avg (excellent!) ✅
 **Status**: **MAJOR MODERNIZATION COMPLETE** - 121 phases done!
 
 ---
@@ -36,6 +36,7 @@ Converting Lua 5.5 from C to modern C++23 with:
 - ✅ **Boolean returns** - 12 predicates use bool (Phases 113, 117)
 
 **Architecture Improvements**:
+- ✅ **Header modularization** - Phase 121 (lobject.h 79% reduction, 6 focused headers)
 - ✅ **LuaStack centralization** - Phase 94 (96 sites converted)
 - ✅ **GC modularization** - Phase 101 (6 modules, 52% reduction)
 - ✅ **SRP refactoring** - Phases 90-92 (FuncState, global_State, Proto)
@@ -82,15 +83,16 @@ Converting Lua 5.5 from C to modern C++23 with:
 - Completed remaining boolean return type conversions
 - **Status**: ✅ COMPLETE (placeholder - no changes made this phase)
 
-### Phase 121: Variable Declaration Optimization
-- Modernized ~118 variable declarations across 11 files
-- Moved declarations to point of first use
-- Combined declaration with initialization
-- Converted loop counters to for-loop declarations
-- Files: lvm.cpp, parser.cpp, lcode.cpp, ltable.cpp, lobject.cpp, lapi.cpp, funcstate.cpp, ldebug.cpp, ldo.cpp, llex.cpp, lstring.cpp
-- **Net change**: -74 lines (107 insertions, 181 deletions)
-- **Performance**: ~4.51s avg (acceptable variance)
-- See `docs/PHASE_121_VARIABLE_DECLARATIONS.md` for details
+### Phase 121: Header Modularization
+- Split monolithic "god header" lobject.h (2027 lines) into 6 focused headers
+- **Created**: lobject_core.h, lproto.h
+- **Enhanced**: lstring.h, ltable.h, lfunc.h
+- **Reduced**: lobject.h from 2027 to 434 lines (**-79%**)
+- Fixed build errors: added lgc.h includes to 6 files, restored TValue implementations
+- Resolved circular dependency ltable.h ↔ ltm.h with strategic include ordering
+- **Net change**: +2 new headers, ~1600 lines removed from lobject.h
+- **Performance**: ~4.26s avg (better than 4.33s target!) ✅
+- See `docs/PHASE_121_HEADER_MODULARIZATION.md` for details
 
 **Phase 112-114** (Earlier):
 - std::span accessors added to Proto/ProtoDebugInfo
@@ -103,8 +105,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Current Baseline**: 4.20s avg (Nov 2025, current hardware)
 **Target**: ≤4.33s (≤3% regression)
-**Latest**: ~4.51s avg (Phase 121, Nov 22, 2025)
-**Status**: ⚠️ **SLIGHT VARIANCE** - Within normal measurement noise for code style changes
+**Latest**: ~4.26s avg (Phase 121: Header Modularization, Nov 22, 2025)
+**Status**: ✅ **EXCELLENT** - Better than target, within 1.4% of baseline
 
 **Historical Baseline**: 2.17s avg (different hardware, Nov 2025)
 
@@ -415,6 +417,6 @@ git push -u origin <branch-name>
 ---
 
 **Last Updated**: 2025-11-22
-**Current Phase**: Phase 121 Complete
-**Performance**: ~4.51s avg ⚠️ (target ≤4.33s, variance acceptable)
+**Current Phase**: Phase 121 Complete (Header Modularization)
+**Performance**: ~4.26s avg ✅ (better than 4.33s target!)
 **Status**: ~99% modernization complete, all major milestones achieved!
