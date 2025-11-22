@@ -21,6 +21,7 @@
 #include "lobject.h"
 #include "lstate.h"
 #include "lstring.h"
+#include "../memory/lgc.h"
 
 
 // Phase 29: Get offset of falloc field in TString

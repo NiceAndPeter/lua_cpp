@@ -94,6 +94,76 @@ constexpr const TValue* s2v(const StackValue* o) noexcept { return &(o)->val; }
 */
 
 /*
+** TValue member function implementations
+** These must be defined here after all type constants are available
+*/
+inline void TValue::setNil() noexcept { tt_ = LUA_VNIL; }
+inline void TValue::setFalse() noexcept { tt_ = LUA_VFALSE; }
+inline void TValue::setTrue() noexcept { tt_ = LUA_VTRUE; }
+
+inline void TValue::setInt(lua_Integer i) noexcept {
+  value_.i = i;
+  tt_ = LUA_VNUMINT;
+}
+
+inline void TValue::setFloat(lua_Number n) noexcept {
+  value_.n = n;
+  tt_ = LUA_VNUMFLT;
+}
+
+inline void TValue::setPointer(void* p) noexcept {
+  value_.p = p;
+  tt_ = LUA_VLIGHTUSERDATA;
+}
+
+inline void TValue::setFunction(lua_CFunction f) noexcept {
+  value_.f = f;
+  tt_ = LUA_VLCF;
+}
+
+inline void TValue::setString(lua_State* L, TString* s) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(s);
+  tt_ = ctb(s->getType());
+  (void)L; // checkliveness removed - needs lstate.h
+}
+
+inline void TValue::setUserdata(lua_State* L, Udata* u) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(u);
+  tt_ = ctb(LUA_VUSERDATA);
+  (void)L;
+}
+
+inline void TValue::setTable(lua_State* L, Table* t) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(t);
+  tt_ = ctb(LUA_VTABLE);
+  (void)L;
+}
+
+inline void TValue::setLClosure(lua_State* L, LClosure* cl) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(cl);
+  tt_ = ctb(LUA_VLCL);
+  (void)L;
+}
+
+inline void TValue::setCClosure(lua_State* L, CClosure* cl) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(cl);
+  tt_ = ctb(LUA_VCCL);
+  (void)L;
+}
+
+inline void TValue::setThread(lua_State* L, lua_State* th) noexcept {
+  value_.gc = reinterpret_cast<GCObject*>(th);
+  tt_ = ctb(LUA_VTHREAD);
+  (void)L;
+}
+
+inline void TValue::setGCObject(lua_State* L, GCObject* gc) noexcept {
+  value_.gc = gc;
+  tt_ = ctb(gc->getType());
+  (void)L;
+}
+
+/*
 ** Base TValue setters for collectable types
 ** These are thin wrappers around TValue member functions
 */
@@ -106,6 +176,13 @@ inline void setthvalue(lua_State* L, TValue* obj, lua_State* th) noexcept { obj-
 inline void setclLvalue(lua_State* L, TValue* obj, LClosure* cl) noexcept { obj->setLClosure(L, cl); }
 inline void setclCvalue(lua_State* L, TValue* obj, CClosure* cl) noexcept { obj->setCClosure(L, cl); }
 inline void setgcovalue(lua_State* L, TValue* obj, GCObject* gc) noexcept { obj->setGCObject(L, gc); }
+
+/*
+** Additional TValue setter wrapper (TValue -> TValue)
+*/
+inline void setsvalue2n(lua_State* L, TValue* obj, TString* s) noexcept {
+	setsvalue(L, obj, s);
+}
 
 /*
 ** Convenience wrappers for setting TValues on the stack (StackValue -> TValue)

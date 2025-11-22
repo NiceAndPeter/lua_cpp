@@ -40,6 +40,7 @@
 #include "ltable.h"
 #include "lualib.h"
 #include "LuaVector.h"
+#include "../memory/lgc.h"
 
 
 

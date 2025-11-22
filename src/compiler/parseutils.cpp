@@ -26,6 +26,7 @@
 #include "lstate.h"
 #include "lstring.h"
 #include "ltable.h"
+#include "../memory/lgc.h"
 
 
 /* maximum number of variable declarations per function (must be

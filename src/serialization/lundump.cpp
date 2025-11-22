@@ -25,6 +25,7 @@
 #include "ltable.h"
 #include "lundump.h"
 #include "lzio.h"
+#include "../memory/lgc.h"
 
 
 #if !defined(luai_verifycode)
