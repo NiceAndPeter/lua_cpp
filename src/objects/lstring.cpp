@@ -397,14 +397,14 @@ void TString::remove(lua_State* L) {
   stringtable *tb = G(L)->getStringTable();
   TString **p = &tb->getHash()[lmod(getHash(), tb->getSize())];
   while (*p != this)  /* find previous element */
-    p = &(*p)->u.hnext;
-  *p = (*p)->u.hnext;  /* remove element from its list */
+    p = &(*p)->u.hashNext;
+  *p = (*p)->u.hashNext;  /* remove element from its list */
   tb->decrementNumElements();
 }
 
 // Phase 25a: Convert luaS_normstr to TString method
 TString* TString::normalize(lua_State* L) {
-  size_t len = u.lnglen;
+  size_t len = u.longLength;
   if (len > LUAI_MAXSHORTLEN)
     return this;  /* long string; keep the original */
   else {

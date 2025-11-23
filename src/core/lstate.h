@@ -177,22 +177,22 @@ enum class GCKind : lu_byte {
 class stringtable {
 private:
   TString **hash;  /* array of buckets (linked lists of strings) */
-  unsigned int nuse;  /* number of elements */
-  unsigned int size;  /* number of buckets */
+  unsigned int numberOfElements;  /* number of elements */
+  unsigned int tableSize;  /* number of buckets */
 
 public:
   // Inline accessors
   TString** getHash() const noexcept { return hash; }
   TString*** getHashPtr() noexcept { return &hash; }  // For reallocation
-  unsigned int getNumElements() const noexcept { return nuse; }
-  unsigned int getSize() const noexcept { return size; }
+  unsigned int getNumElements() const noexcept { return numberOfElements; }
+  unsigned int getSize() const noexcept { return tableSize; }
 
   // Inline setters
   void setHash(TString** h) noexcept { hash = h; }
-  void setNumElements(unsigned int n) noexcept { nuse = n; }
-  void setSize(unsigned int s) noexcept { size = s; }
-  void incrementNumElements() noexcept { nuse++; }
-  void decrementNumElements() noexcept { nuse--; }
+  void setNumElements(unsigned int n) noexcept { numberOfElements = n; }
+  void setSize(unsigned int s) noexcept { tableSize = s; }
+  void incrementNumElements() noexcept { numberOfElements++; }
+  void decrementNumElements() noexcept { numberOfElements--; }
 };
 
 

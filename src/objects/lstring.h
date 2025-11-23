@@ -64,11 +64,11 @@ inline constexpr int LSTRMEM = -3;  /* external long string with deallocation */
 class TString : public GCBase<TString> {
 private:
   lu_byte extra;  /* reserved words for short strings; "has hash" for longs */
-  ls_byte shrlen;  /* length for short strings, negative for long strings */
+  ls_byte shortLength;  /* length for short strings, negative for long strings */
   unsigned int hash;
   union {
-    size_t lnglen;  /* length for long strings */
-    TString *hnext;  /* linked list for hash table */
+    size_t longLength;  /* length for long strings */
+    TString *hashNext;  /* linked list for hash table */
   } u;
   char *contents;  /* pointer to content in long strings */
   lua_Alloc falloc;  /* deallocation function for external strings */
@@ -79,7 +79,7 @@ public:
   // For short strings: only fields up to 'u' exist (contents/falloc/ud are overlay for string data)
   // For long strings: all fields exist
   TString() noexcept
-    : extra(0), shrlen(0), hash(0), u{0} {
+    : extra(0), shortLength(0), hash(0), u{0} {
     // Note: contents, falloc, ud are NOT initialized here!
     // They will be initialized by the caller only for long strings.
   }
@@ -103,16 +103,16 @@ public:
   static void operator delete(void*) = delete;
 
   // Type checks
-  bool isShort() const noexcept { return shrlen >= 0; }
-  bool isLong() const noexcept { return shrlen < 0; }
-  bool isExternal() const noexcept { return isLong() && shrlen != LSTRREG; }
+  bool isShort() const noexcept { return shortLength >= 0; }
+  bool isLong() const noexcept { return shortLength < 0; }
+  bool isExternal() const noexcept { return isLong() && shortLength != LSTRREG; }
 
   // Accessors
   size_t length() const noexcept {
-    return isShort() ? static_cast<size_t>(shrlen) : u.lnglen;
+    return isShort() ? static_cast<size_t>(shortLength) : u.longLength;
   }
-  ls_byte getShrlen() const noexcept { return shrlen; }
-  size_t getLnglen() const noexcept { return u.lnglen; }
+  ls_byte getShrlen() const noexcept { return shortLength; }
+  size_t getLnglen() const noexcept { return u.longLength; }
   unsigned int getHash() const noexcept { return hash; }
   lu_byte getExtra() const noexcept { return extra; }
   const char* c_str() const noexcept {
@@ -130,16 +130,16 @@ public:
 
   // Setters
   void setExtra(lu_byte e) noexcept { extra = e; }
-  void setShrlen(ls_byte len) noexcept { shrlen = len; }
+  void setShrlen(ls_byte len) noexcept { shortLength = len; }
   void setHash(unsigned int h) noexcept { hash = h; }
-  void setLnglen(size_t len) noexcept { u.lnglen = len; }
+  void setLnglen(size_t len) noexcept { u.longLength = len; }
   void setContents(char* c) noexcept { contents = c; }
   void setFalloc(lua_Alloc f) noexcept { falloc = f; }
   void setUserData(void* data) noexcept { ud = data; }
 
   // Hash table operations
-  TString* getNext() const noexcept { return u.hnext; }
-  void setNext(TString* next_str) noexcept { u.hnext = next_str; }
+  TString* getNext() const noexcept { return u.hashNext; }
+  void setNext(TString* next_str) noexcept { u.hashNext = next_str; }
 
   // Helper for offset calculations
   static constexpr size_t fallocOffset() noexcept {
@@ -148,9 +148,9 @@ public:
     struct OffsetHelper {
       GCObject base;
       lu_byte extra;
-      ls_byte shrlen;
+      ls_byte shortLength;
       unsigned int hash;
-      union { size_t lnglen; TString* hnext; } u;
+      union { size_t longLength; TString* hashNext; } u;
       char* contents;
     };
     return sizeof(OffsetHelper);
@@ -161,9 +161,9 @@ public:
     struct OffsetHelper {
       GCObject base;
       lu_byte extra;
-      ls_byte shrlen;
+      ls_byte shortLength;
       unsigned int hash;
-      union { size_t lnglen; TString* hnext; } u;
+      union { size_t longLength; TString* hashNext; } u;
     };
     return sizeof(OffsetHelper);
   }
