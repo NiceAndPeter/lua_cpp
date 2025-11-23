@@ -410,18 +410,18 @@ public:
 /* 4. Register Allocator - Register allocation tracking */
 class RegisterAllocator {
 private:
-  lu_byte freereg;     /* First free register */
+  lu_byte firstFreeRegister;     /* First free register */
 
 public:
   /* Inline accessors */
-  lu_byte getFreeReg() const noexcept { return freereg; }
-  void setFreeReg(lu_byte freereg_) noexcept { freereg = freereg_; }
+  lu_byte getFirstFreeRegister() const noexcept { return firstFreeRegister; }
+  void setFirstFreeRegister(lu_byte firstFreeRegister_) noexcept { firstFreeRegister = firstFreeRegister_; }
 
   /* Decrement */
-  void decrementFreeReg() noexcept { freereg--; }
+  void decrementFirstFreeRegister() noexcept { firstFreeRegister--; }
 
   /* Reference accessor */
-  lu_byte& getFreeRegRef() noexcept { return freereg; }
+  lu_byte& getFirstFreeRegisterRef() noexcept { return firstFreeRegister; }
 };
 
 
@@ -543,10 +543,10 @@ public:
   inline short& getNumActiveVarsRef() noexcept { return variableScope.getNumActiveVarsRef(); }
 
   /* Delegating accessors for RegisterAllocator */
-  inline lu_byte getFreeReg() const noexcept { return registerAlloc.getFreeReg(); }
-  inline void setFreeReg(lu_byte freereg_) noexcept { registerAlloc.setFreeReg(freereg_); }
-  inline void decrementFreeReg() noexcept { registerAlloc.decrementFreeReg(); }
-  inline lu_byte& getFreeRegRef() noexcept { return registerAlloc.getFreeRegRef(); }
+  inline lu_byte getFirstFreeRegister() const noexcept { return registerAlloc.getFirstFreeRegister(); }
+  inline void setFirstFreeRegister(lu_byte firstFreeRegister_) noexcept { registerAlloc.setFirstFreeRegister(firstFreeRegister_); }
+  inline void decrementFirstFreeRegister() noexcept { registerAlloc.decrementFirstFreeRegister(); }
+  inline lu_byte& getFirstFreeRegisterRef() noexcept { return registerAlloc.getFirstFreeRegisterRef(); }
 
   /* Delegating accessors for UpvalueTracker */
   inline lu_byte getNumUpvalues() const noexcept { return upvalueTrack.getNumUpvalues(); }

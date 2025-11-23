@@ -380,12 +380,12 @@ void Parser::adjust_assign(int nvars, int nexps, expdesc *e) {
     if (e->getKind() != VVOID)  /* at least one expression? */
       fs->exp2nextreg(e);  /* close last expression */
     if (needed > 0)  /* missing values? */
-      fs->nil(fs->getFreeReg(), needed);  /* complete with nils */
+      fs->nil(fs->getFirstFreeRegister(), needed);  /* complete with nils */
   }
   if (needed > 0)
     fs->reserveregs(needed);  /* registers for extra values */
   else  /* adding 'needed' is actually a subtraction */
-    fs->setFreeReg(cast_byte(fs->getFreeReg() + needed));  /* remove extra values */
+    fs->setFirstFreeRegister(cast_byte(fs->getFirstFreeRegister() + needed));  /* remove extra values */
 }
 
 
@@ -446,7 +446,7 @@ void Parser::open_func(FuncState *funcstate, BlockCnt *bl) {
   funcstate->setPreviousLine(f->getLineDefined());
   funcstate->setInstructionsSinceAbsoluteLineInfo(0);
   funcstate->setLastTarget(0);
-  funcstate->setFreeReg(0);
+  funcstate->setFirstFreeRegister(0);
   funcstate->setNumberOfConstants(0);
   funcstate->setNumberOfAbsoluteLineInfo(0);
   funcstate->setNumberOfNestedPrototypes(0);
@@ -553,7 +553,7 @@ void Parser::yindex( expdesc *v) {
 void Parser::recfield( ConsControl *cc) {
   /* recfield -> (NAME | '['exp']') = exp */
   FuncState *funcstate = fs;
-  lu_byte reg = fs->getFreeReg();
+  lu_byte reg = fs->getFirstFreeRegister();
   expdesc tab, key, val;
   if (ls->getToken() == static_cast<int>(RESERVED::TK_NAME))
     codename( &key);
@@ -565,7 +565,7 @@ void Parser::recfield( ConsControl *cc) {
   funcstate->indexed(&tab, &key);
   expr(&val);
   funcstate->storevar(&tab, &val);
-  funcstate->setFreeReg(reg);  /* free registers */
+  funcstate->setFirstFreeRegister(reg);  /* free registers */
 }
 
 
@@ -613,7 +613,7 @@ void Parser::constructor( expdesc *table_exp) {
   funcstate->code(0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = table_exp;
-  table_exp->init(VNONRELOC, funcstate->getFreeReg());  /* table will be at stack top */
+  table_exp->init(VNONRELOC, funcstate->getFirstFreeRegister());  /* table will be at stack top */
   funcstate->reserveregs(1);
   cc.v.init(VVOID, 0);  /* no value (yet) */
   checknext( '{' /*}*/);
@@ -738,13 +738,13 @@ void Parser::funcargs( expdesc *f) {
   else {
     if (args.getKind() != VVOID)
       funcstate->exp2nextreg(&args);  /* close last argument */
-    nparams = funcstate->getFreeReg() - (base+1);
+    nparams = funcstate->getFirstFreeRegister() - (base+1);
   }
   f->init(VCALL, funcstate->codeABC(OP_CALL, base, nparams+1, 2));
   funcstate->fixline(line);
   /* call removes function and arguments and leaves one result (unless
      changed later) */
-  funcstate->setFreeReg(cast_byte(base + 1));
+  funcstate->setFirstFreeRegister(cast_byte(base + 1));
 }
 
 
@@ -934,7 +934,7 @@ void Parser::block() {
 */
 void Parser::check_conflict( struct LHS_assign *lh, expdesc *v) {
   FuncState *funcstate = fs;
-  lu_byte extra = funcstate->getFreeReg();  /* eventual position to save local variable */
+  lu_byte extra = funcstate->getFirstFreeRegister();  /* eventual position to save local variable */
   int conflict = 0;
   for (; lh; lh = lh->prev) {  /* check all previous assignments */
     if (expdesc::isIndexed(lh->v.getKind())) {  /* assignment to table field? */
@@ -1124,7 +1124,7 @@ void Parser::forbody( int base, int line, int nvars, int isgen) {
   int prep, endfor;
   checknext(static_cast<int>(RESERVED::TK_DO));
   prep = funcstate->codeABx(forprep[isgen], base, 0);
-  funcstate->getFreeRegRef()--;  /* both 'forprep' remove one register from the stack */
+  funcstate->getFirstFreeRegisterRef()--;  /* both 'forprep' remove one register from the stack */
   funcstate->enterblock(&bl, 0);  /* scope for declared variables */
   adjustlocalvars(nvars);
   funcstate->reserveregs(nvars);
@@ -1144,7 +1144,7 @@ void Parser::forbody( int base, int line, int nvars, int isgen) {
 void Parser::fornum( TString *varname, int line) {
   /* fornum -> NAME = exp,exp[,exp] forbody */
   FuncState *funcstate = fs;
-  int base = funcstate->getFreeReg();
+  int base = funcstate->getFirstFreeRegister();
   new_localvarliteral(this, "(for state)");
   new_localvarliteral(this, "(for state)");
   new_varkind( varname, RDKCONST);  /* control variable */
@@ -1155,7 +1155,7 @@ void Parser::fornum( TString *varname, int line) {
   if (testnext( ','))
     exp1();  /* optional step */
   else {  /* default step = 1 */
-    funcstate->intCode(funcstate->getFreeReg(), 1);
+    funcstate->intCode(funcstate->getFirstFreeRegister(), 1);
     funcstate->reserveregs(1);
   }
   adjustlocalvars(2);  /* start scope for internal variables */
@@ -1168,7 +1168,7 @@ void Parser::forlist( TString *indexname) {
   FuncState *funcstate = fs;
   expdesc e;
   int nvars = 4;  /* function, state, closing, control */
-  int base = funcstate->getFreeReg();
+  int base = funcstate->getFirstFreeRegister();
   /* create internal variables */
   new_localvarliteral(this, "(for state)");  /* iterator function */
   new_localvarliteral(this, "(for state)");  /* state */
@@ -1454,7 +1454,7 @@ void Parser::retstat() {
         first = funcstate->exp2anyreg(&e);  /* can use original slot */
       else {  /* values must go to the top of the stack */
         funcstate->exp2nextreg(&e);
-        lua_assert(nret == funcstate->getFreeReg() - first);
+        lua_assert(nret == funcstate->getFirstFreeRegister() - first);
       }
     }
   }
@@ -1549,9 +1549,9 @@ void Parser::statement() {
       break;
     }
   }
-  lua_assert(fs->getProto()->getMaxStackSize() >= fs->getFreeReg() &&
-             fs->getFreeReg() >= luaY_nvarstack(fs));
-  fs->setFreeReg(luaY_nvarstack(fs));  /* free registers */
+  lua_assert(fs->getProto()->getMaxStackSize() >= fs->getFirstFreeRegister() &&
+             fs->getFirstFreeRegister() >= luaY_nvarstack(fs));
+  fs->setFirstFreeRegister(luaY_nvarstack(fs));  /* free registers */
   leavelevel(ls);
 }
 

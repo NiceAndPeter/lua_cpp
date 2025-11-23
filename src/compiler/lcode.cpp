@@ -274,8 +274,8 @@ int FuncState::codek(int reg, int k) {
 */
 void FuncState::freeRegister(int reg) {
   if (reg >= luaY_nvarstack(this)) {
-    decrementFreeReg();
-    lua_assert(reg == getFreeReg());
+    decrementFirstFreeRegister();
+    lua_assert(reg == getFirstFreeRegister());
   }
 }
 
@@ -560,7 +560,7 @@ void FuncState::discharge2reg(expdesc *e, int reg) {
 void FuncState::discharge2anyreg(expdesc *e) {
   if (e->getKind() != VNONRELOC) {  /* no fixed register yet? */
     reserveregs(1);  /* get a register */
-    discharge2reg(e, getFreeReg()-1);  /* put value there */
+    discharge2reg(e, getFirstFreeRegister()-1);  /* put value there */
   }
 }
 
@@ -1179,11 +1179,11 @@ void FuncState::nil(int from, int n) {
 
 void FuncState::reserveregs(int n) {
   checkstack(n);
-  setFreeReg(cast_byte(getFreeReg() + n));
+  setFirstFreeRegister(cast_byte(getFirstFreeRegister() + n));
 }
 
 void FuncState::checkstack(int n) {
-  int newstack = getFreeReg() + n;
+  int newstack = getFirstFreeRegister() + n;
   if (newstack > getProto()->getMaxStackSize()) {
     luaY_checklimit(this, newstack, MAX_FSTACK, "registers");
     getProto()->setMaxStackSize(cast_byte(newstack));
@@ -1271,7 +1271,7 @@ void FuncState::exp2nextreg(expdesc *e) {
   dischargevars(e);
   freeExpression(e);
   reserveregs(1);
-  exp2reg(e, getFreeReg() - 1);
+  exp2reg(e, getFirstFreeRegister() - 1);
 }
 
 void FuncState::exp2val(expdesc *e) {
@@ -1285,7 +1285,7 @@ void FuncState::self(expdesc *e, expdesc *key) {
   exp2anyreg(e);
   int ereg = e->getInfo();  /* register where 'e' (the receiver) was placed */
   freeExpression(e);
-  int base = getFreeReg();
+  int base = getFirstFreeRegister();
   e->setInfo(base);  /* base register for op_self */
   e->setKind(VNONRELOC);  /* self expression has a fixed register */
   reserveregs(2);  /* method and 'self' produced by op_self */
@@ -1422,7 +1422,7 @@ void FuncState::setreturns(expdesc *e, int nresults) {
   else {
     lua_assert(e->getKind() == VVARARG);
     SETARG_C(*instr, static_cast<unsigned int>(nresults + 1));
-    SETARG_A(*instr, static_cast<unsigned int>(getFreeReg()));
+    SETARG_A(*instr, static_cast<unsigned int>(getFirstFreeRegister()));
     reserveregs(1);
   }
 }
@@ -1644,7 +1644,7 @@ void FuncState::setlist(int base, int nelems, int tostore) {
     codevABCk(OP_SETLIST, base, tostore, nelems, 1);
     codeextraarg(extra);
   }
-  setFreeReg(cast_byte(base + 1));  /* free registers with list values */
+  setFirstFreeRegister(cast_byte(base + 1));  /* free registers with list values */
 }
 
 void FuncState::finish() {

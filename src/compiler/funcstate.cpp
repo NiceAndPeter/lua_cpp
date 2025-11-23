@@ -355,7 +355,7 @@ void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
   blk->insidetbc = (getBlock() != nullptr && getBlock()->insidetbc);
   blk->previous = getBlock();  /* link block in function's block list */
   setBlock(blk);
-  lua_assert(getFreeReg() == luaY_nvarstack(this));
+  lua_assert(getFirstFreeRegister() == luaY_nvarstack(this));
 }
 
 
@@ -365,7 +365,7 @@ void FuncState::leaveblock() {
   lu_byte stklevel = reglevel(blk->numberOfActiveVariables);  /* level outside block */
   if (blk->previous && blk->upval)  /* need a 'close'? */
     codeABC(OP_CLOSE, stklevel, 0, 0);
-  setFreeReg(stklevel);  /* free registers */
+  setFirstFreeRegister(stklevel);  /* free registers */
   removevars(blk->numberOfActiveVariables);  /* remove block locals */
   lua_assert(blk->numberOfActiveVariables == getNumActiveVars());  /* back to level on entry */
   if (blk->isloop == 2)  /* has to fix pending breaks? */
@@ -413,7 +413,7 @@ void FuncState::lastlistfield(ConsControl *cc) {
 ** available.
 */
 int FuncState::maxtostore() {
-  int numfreeregs = MAX_FSTACK - getFreeReg();
+  int numfreeregs = MAX_FSTACK - getFirstFreeRegister();
   if (numfreeregs >= 160)  /* "lots" of registers? */
     return numfreeregs / 5;  /* use up to 1/5 of them */
   else if (numfreeregs >= 80)  /* still "enough" registers? */
@@ -432,7 +432,7 @@ void FuncState::setvararg(int nparams) {
 /* Create code to store the "top" register in 'var' */
 void FuncState::storevartop(expdesc *var) {
   expdesc e;
-  e.init(VNONRELOC, getFreeReg() - 1);
+  e.init(VNONRELOC, getFirstFreeRegister() - 1);
   storevar(var, &e);  /* will also free the top register */
 }
 
