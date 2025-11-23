@@ -91,8 +91,8 @@ private:
       int stringKeyIndex;  /* index in 'k' of string key, or -1 if not a string */
     } ind;
     struct {  /* for local variables */
-      lu_byte ridx;  /* register holding the variable */
-      short vidx;  /* index in 'actvar.arr' */
+      lu_byte registerIndex;  /* register holding the variable */
+      short variableIndex;  /* index in 'actvar.arr' */
     } var;
   } u;
   int t;  /* patch list of 'exit when true' */
@@ -125,10 +125,10 @@ public:
   void setIndexedStringKeyIndex(int keystr) noexcept { u.ind.stringKeyIndex = keystr; }
 
   // Local variable accessors (u.var)
-  lu_byte getLocalRegister() const noexcept { return u.var.ridx; }
-  void setLocalRegister(lu_byte ridx) noexcept { u.var.ridx = ridx; }
-  short getLocalVarIndex() const noexcept { return u.var.vidx; }
-  void setLocalVarIndex(short vidx) noexcept { u.var.vidx = vidx; }
+  lu_byte getLocalRegister() const noexcept { return u.var.registerIndex; }
+  void setLocalRegister(lu_byte ridx) noexcept { u.var.registerIndex = ridx; }
+  short getLocalVarIndex() const noexcept { return u.var.variableIndex; }
+  void setLocalVarIndex(short vidx) noexcept { u.var.variableIndex = vidx; }
 
   // Patch lists
   int getTrueList() const noexcept { return t; }
