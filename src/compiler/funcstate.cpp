@@ -120,7 +120,7 @@ lu_byte FuncState::reglevel(int nvar) {
   while (nvar-- > 0) {
     Vardesc *vd = getlocalvardesc(nvar);  /* get previous variable */
     if (vd->isInReg())  /* is in a register? */
-      return cast_byte(vd->vd.ridx + 1);
+      return cast_byte(vd->vd.registerIndex + 1);
   }
   return 0;  /* no variables in registers */
 }
@@ -143,7 +143,7 @@ LocVar *FuncState::localdebuginfo(int vidx) {
   if (!vd->isInReg())
     return nullptr;  /* no debug info. for constants */
   else {
-    int idx = vd->vd.pidx;
+    int idx = vd->vd.protoLocalVarIndex;
     lua_assert(idx < getNumDebugVars());
     return &getProto()->getLocVars()[idx];
   }
@@ -158,7 +158,7 @@ void FuncState::init_var(expdesc *e, int vidx) {
   e->setTrueList(NO_JUMP);
   e->setKind(VLOCAL);
   e->setLocalVarIndex(cast_short(vidx));
-  e->setLocalRegister(getlocalvardesc(vidx)->vd.ridx);
+  e->setLocalRegister(getlocalvardesc(vidx)->vd.registerIndex);
 }
 
 

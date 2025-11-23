@@ -313,8 +313,8 @@ void Parser::adjustlocalvars(int nvars) {
   for (int i = 0; i < nvars; i++) {
     auto vidx = fs->getNumActiveVarsRef()++;
     Vardesc *var = fs->getlocalvardesc(vidx);
-    var->vd.ridx = cast_byte(regLevel++);
-    var->vd.pidx = fs->registerlocalvar(var->vd.name);
+    var->vd.registerIndex = cast_byte(regLevel++);
+    var->vd.protoLocalVarIndex = fs->registerlocalvar(var->vd.name);
     fs->checklimit(regLevel, MAXVARS, "local variables");
   }
 }
