@@ -80,9 +80,9 @@ class expdesc {
 private:
   expkind k;
   union {
-    lua_Integer ival;    /* for VKINT */
-    lua_Number nval;  /* for VKFLT */
-    TString *strval;  /* for VKSTR */
+    lua_Integer integerValue;    /* for VKINT */
+    lua_Number floatValue;  /* for VKFLT */
+    TString *stringValue;  /* for VKSTR */
     int info;  /* for generic use */
     struct {  /* for indexed variables */
       short idx;  /* index (R or "long" K) */
@@ -107,12 +107,12 @@ public:
   // Union field accessors (generic/constant values)
   int getInfo() const noexcept { return u.info; }
   void setInfo(int i) noexcept { u.info = i; }
-  lua_Integer getIntValue() const noexcept { return u.ival; }
-  void setIntValue(lua_Integer i) noexcept { u.ival = i; }
-  lua_Number getFloatValue() const noexcept { return u.nval; }
-  void setFloatValue(lua_Number n) noexcept { u.nval = n; }
-  TString* getStringValue() const noexcept { return u.strval; }
-  void setStringValue(TString* s) noexcept { u.strval = s; }
+  lua_Integer getIntValue() const noexcept { return u.integerValue; }
+  void setIntValue(lua_Integer i) noexcept { u.integerValue = i; }
+  lua_Number getFloatValue() const noexcept { return u.floatValue; }
+  void setFloatValue(lua_Number n) noexcept { u.floatValue = n; }
+  TString* getStringValue() const noexcept { return u.stringValue; }
+  void setStringValue(TString* s) noexcept { u.stringValue = s; }
 
   // Indexed variable accessors (u.ind)
   short getIndexedKeyIndex() const noexcept { return u.ind.idx; }
