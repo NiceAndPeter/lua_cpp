@@ -85,10 +85,10 @@ private:
     TString *stringValue;  /* for VKSTR */
     int info;  /* for generic use */
     struct {  /* for indexed variables */
-      short idx;  /* index (R or "long" K) */
-      lu_byte t;  /* table (register or upvalue) */
+      short keyIndex;  /* index (R or "long" K) */
+      lu_byte tableRegister;  /* table (register or upvalue) */
       lu_byte ro;  /* true if variable is read-only */
-      int keystr;  /* index in 'k' of string key, or -1 if not a string */
+      int stringKeyIndex;  /* index in 'k' of string key, or -1 if not a string */
     } ind;
     struct {  /* for local variables */
       lu_byte ridx;  /* register holding the variable */
@@ -115,14 +115,14 @@ public:
   void setStringValue(TString* s) noexcept { u.stringValue = s; }
 
   // Indexed variable accessors (u.ind)
-  short getIndexedKeyIndex() const noexcept { return u.ind.idx; }
-  void setIndexedKeyIndex(short idx) noexcept { u.ind.idx = idx; }
-  lu_byte getIndexedTableReg() const noexcept { return u.ind.t; }
-  void setIndexedTableReg(lu_byte treg) noexcept { u.ind.t = treg; }
+  short getIndexedKeyIndex() const noexcept { return u.ind.keyIndex; }
+  void setIndexedKeyIndex(short idx) noexcept { u.ind.keyIndex = idx; }
+  lu_byte getIndexedTableReg() const noexcept { return u.ind.tableRegister; }
+  void setIndexedTableReg(lu_byte treg) noexcept { u.ind.tableRegister = treg; }
   lu_byte isIndexedReadOnly() const noexcept { return u.ind.ro; }
   void setIndexedReadOnly(lu_byte ro) noexcept { u.ind.ro = ro; }
-  int getIndexedStringKeyIndex() const noexcept { return u.ind.keystr; }
-  void setIndexedStringKeyIndex(int keystr) noexcept { u.ind.keystr = keystr; }
+  int getIndexedStringKeyIndex() const noexcept { return u.ind.stringKeyIndex; }
+  void setIndexedStringKeyIndex(int keystr) noexcept { u.ind.stringKeyIndex = keystr; }
 
   // Local variable accessors (u.var)
   lu_byte getLocalRegister() const noexcept { return u.var.ridx; }
