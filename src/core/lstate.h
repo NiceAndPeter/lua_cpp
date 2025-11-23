@@ -260,7 +260,7 @@ private:
     struct {  /* only for Lua functions */
       const Instruction *savedpc;
       volatile l_signalT trap;  /* function is tracing lines/counts */
-      int nextraargs;  /* # of extra arguments in vararg functions */
+      int numberOfExtraArgs;  /* # of extra arguments in vararg functions */
     } l;
     struct {  /* only for C functions */
       lua_KFunction k;  /* continuation in case of yields */
@@ -270,8 +270,8 @@ private:
   } u;
   union {
     int funcidx;  /* called-function index */
-    int nyield;  /* number of values yielded */
-    int nres;  /* number of values returned */
+    int numberOfYielded;  /* number of values yielded */
+    int numberOfResults;  /* number of values returned */
   } u2;
   l_uint32 callstatus;
 
@@ -286,7 +286,7 @@ public:
     // Initialize union members to safe defaults
     u.l.savedpc = nullptr;
     u.l.trap = 0;
-    u.l.nextraargs = 0;
+    u.l.numberOfExtraArgs = 0;
 
     u2.funcidx = 0;  // All union members are int-sized, 0 is safe
 
@@ -339,9 +339,9 @@ public:
   volatile l_signalT& getTrap() noexcept { return u.l.trap; }
   const volatile l_signalT& getTrap() const noexcept { return u.l.trap; }
 
-  int getExtraArgs() const noexcept { return u.l.nextraargs; }
-  void setExtraArgs(int n) noexcept { u.l.nextraargs = n; }
-  int& extraArgsRef() noexcept { return u.l.nextraargs; }
+  int getExtraArgs() const noexcept { return u.l.numberOfExtraArgs; }
+  void setExtraArgs(int n) noexcept { u.l.numberOfExtraArgs = n; }
+  int& extraArgsRef() noexcept { return u.l.numberOfExtraArgs; }
 
   // C function union accessors
   lua_KFunction getK() const noexcept { return u.c.k; }
@@ -357,11 +357,11 @@ public:
   int getFuncIdx() const noexcept { return u2.funcidx; }
   void setFuncIdx(int idx) noexcept { u2.funcidx = idx; }
 
-  int getNYield() const noexcept { return u2.nyield; }
-  void setNYield(int n) noexcept { u2.nyield = n; }
+  int getNYield() const noexcept { return u2.numberOfYielded; }
+  void setNYield(int n) noexcept { u2.numberOfYielded = n; }
 
-  int getNRes() const noexcept { return u2.nres; }
-  void setNRes(int n) noexcept { u2.nres = n; }
+  int getNRes() const noexcept { return u2.numberOfResults; }
+  void setNRes(int n) noexcept { u2.numberOfResults = n; }
 
   // Phase 44.5: Additional CallInfo helper methods
 
