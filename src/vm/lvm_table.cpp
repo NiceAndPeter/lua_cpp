@@ -70,7 +70,7 @@ LuaT luaV_finishget (lua_State *L, const TValue *t, TValue *key,
       return tag;  /* return tag of the result */
     }
     t = tm;  /* else try to access 'tm[key]' */
-    tag = luaV_fastget(t, key, s2v(val), luaH_get);
+    tag = luaV_fastget(t, key, s2v(val), [](Table* tbl, const TValue* k, TValue* res) { return tbl->get(k, res); });
     if (!tagisempty(tag))
       return tag;  /* done */
     /* else repeat (tail call 'luaV_finishget') */
@@ -110,7 +110,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       if (tm == nullptr) {  /* no metamethod? */
         sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */
         L->getStackSubsystem().push();  /* assume EXTRA_STACK */
-        luaH_finishset(L, h, key, val, hres);  /* set new value */
+        h->finishSet(L, key, val, hres);  /* set new value */
         L->getStackSubsystem().pop();
         invalidateTMcache(h);
         luaC_barrierback(L, obj2gco(h), val);
@@ -129,7 +129,7 @@ void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
       return;
     }
     t = tm;  /* else repeat assignment over 'tm' */
-    hres = luaV_fastset(t, key, val, luaH_pset);
+    hres = luaV_fastset(t, key, val, [](Table* tbl, const TValue* k, TValue* v) { return tbl->pset(k, v); });
     if (hres == HOK) {
       luaV_finishfastset(L, t, val);
       return;  /* done */

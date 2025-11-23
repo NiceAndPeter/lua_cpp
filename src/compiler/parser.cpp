@@ -460,7 +460,7 @@ void Parser::open_func(FuncState *funcstate, BlockCnt *bl) {
   f->setSource(ls->getSource());
   luaC_objbarrier(state, f, f->getSource());
   f->setMaxStackSize(2);  /* registers 0/1 are always valid */
-  funcstate->setKCache(luaH_new(state));  /* create table for function */
+  funcstate->setKCache(Table::create(state));  /* create table for function */
   sethvalue2s(state, state->getTop().p, funcstate->getKCache());  /* anchor it */
   state->inctop();  /* Phase 25e */
   funcstate->enterblock(bl, 0);

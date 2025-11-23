@@ -832,7 +832,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         auto *rc = KC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
-        tag = luaV_fastget(upval, key, s2v(ra), luaH_getshortstr);
+        tag = luaV_fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, upval, rc, ra, tag); });
         vmbreak;
@@ -846,7 +846,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           luaV_fastgeti(rb, ivalue(rc), s2v(ra), tag);
         }
         else
-          tag = luaV_fastget(rb, rc, s2v(ra), luaH_get);
+          tag = luaV_fastget(rb, rc, s2v(ra), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
@@ -870,7 +870,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         auto *rc = KC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
-        tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
+        tag = luaV_fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
@@ -880,7 +880,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         auto *rb = KB(i);
         auto *rc = RKC(i);
         auto *key = tsvalue(rb);  /* key must be a short string */
-        auto hres = luaV_fastset(upval, key, rc, luaH_psetshortstr);
+        auto hres = luaV_fastset(upval, key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
         if (hres == HOK)
           luaV_finishfastset(L, upval, rc);
         else
@@ -896,7 +896,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
           luaV_fastseti(s2v(ra), ivalue(rb), rc, hres);
         }
         else {
-          hres = luaV_fastset(s2v(ra), rb, rc, luaH_pset);
+          hres = luaV_fastset(s2v(ra), rb, rc, [](Table* tbl, const TValue* key, TValue* val) { return tbl->pset(key, val); });
         }
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
@@ -924,7 +924,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         auto *rb = KB(i);
         auto *rc = RKC(i);
         auto *key = tsvalue(rb);  /* key must be a short string */
-        auto hres = luaV_fastset(s2v(ra), key, rc, luaH_psetshortstr);
+        auto hres = luaV_fastset(s2v(ra), key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
         if (hres == HOK)
           luaV_finishfastset(L, s2v(ra), rc);
         else
@@ -944,10 +944,10 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         }
         pc++;  /* skip extra argument */
         L->getStackSubsystem().setTopPtr(ra + 1);  /* correct top in case of emergency GC */
-        auto *t = luaH_new(L);  /* memory allocation */
+        auto *t = Table::create(L);  /* memory allocation */
         sethvalue2s(L, ra, t);
         if (b != 0 || c != 0)
-          luaH_resize(L, t, c, b);  /* idem */
+          t->resize(L, c, b);  /* idem */
         checkGC(L, ra + 1);
         vmbreak;
       }
@@ -957,7 +957,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         auto *rc = KC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         L->getStackSubsystem().setSlot(ra + 1, rb);
-        LuaT tag = luaV_fastget(rb, key, s2v(ra), luaH_getshortstr);
+        LuaT tag = luaV_fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
         vmbreak;
@@ -1445,7 +1445,7 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
         if (last > h->arraySize()) {  /* needs more space? */
           /* fixed-size sets should have space preallocated */
           lua_assert(InstructionView(i).vb() == 0);
-          luaH_resizearray(L, h, last);  /* preallocate it at once */
+          h->resizeArray(L, last);  /* preallocate it at once */
         }
         for (; n > 0; n--) {
           auto *val = s2v(ra + n);

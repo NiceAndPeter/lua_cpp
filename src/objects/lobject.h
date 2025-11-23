@@ -478,45 +478,36 @@ inline bool operator!=(const TString& l, const TString& r) noexcept {
 
 
 /*
-** {==================================================================
-** Table fast-access inline functions
-** ===================================================================
-** Phase 121: Moved here from ltable.h to resolve circular dependencies
-** These functions need both Table (from ltable.h) and TMS (from ltm.h)
+** Phase 122: Table fast-access inline methods
+** These are performance-critical and used throughout the VM
+** Defined here (after ltm.h include) to access TMS enum
 */
-
-// Phase 88: Convert luaH_fastgeti and luaH_fastseti macros to inline functions
-// These are hot-path table access functions used throughout the VM
-inline void luaH_fastgeti(Table* t, lua_Integer k, TValue* res, LuaT& tag) noexcept {
-	Table* h = t;
-	lua_Unsigned u = l_castS2U(k) - 1u;
-	if (u < h->arraySize()) {
-		tag = *h->getArrayTag(u);
-		if (!tagisempty(tag)) {
-			farr2val(h, u, tag, res);
-		}
-	} else {
-		tag = luaH_getint(h, k, res);
-	}
+inline void Table::fastGeti(lua_Integer k, TValue* res, LuaT& tag) noexcept {
+  lua_Unsigned u = l_castS2U(k) - 1u;
+  if (u < this->arraySize()) {
+    tag = *this->getArrayTag(u);
+    if (!tagisempty(tag)) {
+      farr2val(this, u, tag, res);
+    }
+  } else {
+    tag = this->getInt(k, res);
+  }
 }
 
-inline void luaH_fastseti(Table* t, lua_Integer k, TValue* val, int& hres) noexcept {
-	Table* h = t;
-	lua_Unsigned u = l_castS2U(k) - 1u;
-	if (u < h->arraySize()) {
-		LuaT* tag = h->getArrayTag(u);
-		if (checknoTM(h->getMetatable(), TMS::TM_NEWINDEX) || !tagisempty(*tag)) {
-			fval2arr(h, u, tag, val);
-			hres = HOK;
-		} else {
-			hres = ~cast_int(u);
-		}
-	} else {
-		hres = luaH_psetint(h, k, val);
-	}
+inline void Table::fastSeti(lua_Integer k, TValue* val, int& hres) noexcept {
+  lua_Unsigned u = l_castS2U(k) - 1u;
+  if (u < this->arraySize()) {
+    LuaT* tag = this->getArrayTag(u);
+    if (checknoTM(this->getMetatable(), TMS::TM_NEWINDEX) || !tagisempty(*tag)) {
+      fval2arr(this, u, tag, val);
+      hres = HOK;
+    } else {
+      hres = ~cast_int(u);
+    }
+  } else {
+    hres = this->psetInt(k, val);
+  }
 }
-
-/* }================================================================== */
 
 
 #endif

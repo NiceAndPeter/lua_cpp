@@ -191,18 +191,18 @@ static void freestack (lua_State *L) {
 static void init_registry (lua_State *L, global_State *g) {
   /* create registry */
   TValue aux;
-  Table *registry = luaH_new(L);
+  Table *registry = Table::create(L);
   sethvalue(L, g->getRegistry(), registry);
-  luaH_resize(L, registry, LUA_RIDX_LAST, 0);
+  registry->resize(L, LUA_RIDX_LAST, 0);
   /* registry[1] = false */
   setbfvalue(&aux);
-  luaH_setint(L, registry, 1, &aux);
+  registry->setInt(L, 1, &aux);
   /* registry[LUA_RIDX_MAINTHREAD] = L */
   setthvalue(L, &aux, L);
-  luaH_setint(L, registry, LUA_RIDX_MAINTHREAD, &aux);
+  registry->setInt(L, LUA_RIDX_MAINTHREAD, &aux);
   /* registry[LUA_RIDX_GLOBALS] = new table (table of globals) */
-  sethvalue(L, &aux, luaH_new(L));
-  luaH_setint(L, registry, LUA_RIDX_GLOBALS, &aux);
+  sethvalue(L, &aux, Table::create(L));
+  registry->setInt(L, LUA_RIDX_GLOBALS, &aux);
 }
 
 

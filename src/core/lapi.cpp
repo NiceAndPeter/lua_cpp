@@ -389,7 +389,7 @@ LUA_API lua_Unsigned lua_rawlen (lua_State *L, int idx) {
     case LuaT::TABLE: {
       lua_Unsigned res;
       lua_lock(L);
-      res = luaH_getn(L, hvalue(o));
+      res = hvalue(o)->getn(L);
       lua_unlock(L);
       return res;
     }
@@ -614,7 +614,7 @@ LUA_API int lua_pushthread (lua_State *L) {
 static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
   LuaT tag;
   TString *str = TString::create(L, k);
-  tag = luaV_fastget(t, str, s2v(L->getTop().p), luaH_getstr);
+  tag = luaV_fastget(t, str, s2v(L->getTop().p), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getStr(strkey, res); });
   if (!tagisempty(tag))
     api_incr_top(L);
   else {
@@ -634,7 +634,7 @@ static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
 */
 static void getGlobalTable (lua_State *L, TValue *gt) {
   Table *registry = hvalue(G(L)->getRegistry());
-  LuaT tag = luaH_getint(registry, LUA_RIDX_GLOBALS, gt);
+  LuaT tag = registry->getInt(LUA_RIDX_GLOBALS, gt);
   (void)tag;  /* avoid not-used warnings when checks are off */
   api_check(L, novariant(tag) == LUA_TTABLE, "global table must exist");
 }
@@ -652,7 +652,7 @@ LUA_API int lua_gettable (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 1);
   TValue *t = L->getStackSubsystem().indexToValue(L,idx);
-  LuaT tag = luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), luaH_get);
+  LuaT tag = luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
   if (tagisempty(tag))
     tag = luaV_finishget(L, t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
   lua_unlock(L);
@@ -702,7 +702,7 @@ LUA_API int lua_rawget (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 1);
   Table *t = gettable(L, idx);
-  LuaT tag = luaH_get(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1));
+  LuaT tag = t->get(s2v(L->getTop().p - 1), s2v(L->getTop().p - 1));
   L->getStackSubsystem().pop();  /* pop key */
   return finishrawget(L, tag);
 }
@@ -712,7 +712,7 @@ LUA_API int lua_rawgeti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   Table *t = gettable(L, idx);
   LuaT tag;
-  luaH_fastgeti(t, n, s2v(L->getTop().p), tag);
+  t->fastGeti(n, s2v(L->getTop().p), tag);
   return finishrawget(L, tag);
 }
 
@@ -722,17 +722,17 @@ LUA_API int lua_rawgetp (lua_State *L, int idx, const void *p) {
   Table *t = gettable(L, idx);
   TValue k;
   setpvalue(&k, cast_voidp(p));
-  return finishrawget(L, luaH_get(t, &k, s2v(L->getTop().p)));
+  return finishrawget(L, t->get(&k, s2v(L->getTop().p)));
 }
 
 
 LUA_API void lua_createtable (lua_State *L, int narray, int nrec) {
   lua_lock(L);
-  Table *t = luaH_new(L);
+  Table *t = Table::create(L);
   sethvalue2s(L, L->getTop().p, t);
   api_incr_top(L);
   if (narray > 0 || nrec > 0)
-    luaH_resize(L, t, cast_uint(narray), cast_uint(nrec));
+    t->resize(L, cast_uint(narray), cast_uint(nrec));
   luaC_checkGC(L);
   lua_unlock(L);
 }
@@ -796,7 +796,7 @@ static void auxsetstr (lua_State *L, const TValue *t, const char *k) {
   int hres;
   TString *str = TString::create(L, k);
   api_checkpop(L, 1);
-  hres = luaV_fastset(t, str, s2v(L->getTop().p - 1), luaH_psetstr);
+  hres = luaV_fastset(t, str, s2v(L->getTop().p - 1), [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetStr(strkey, val); });
   if (hres == HOK) {
     luaV_finishfastset(L, t, s2v(L->getTop().p - 1));
     L->getStackSubsystem().pop();  /* pop value */
@@ -823,7 +823,7 @@ LUA_API void lua_settable (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 2);
   TValue *t = L->getStackSubsystem().indexToValue(L,idx);
-  int hres = luaV_fastset(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), luaH_pset);
+  int hres = luaV_fastset(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), [](Table* tbl, const TValue* key, TValue* val) { return tbl->pset(key, val); });
   if (hres == HOK)
     luaV_finishfastset(L, t, s2v(L->getTop().p - 1));
   else
@@ -861,7 +861,7 @@ static void aux_rawset (lua_State *L, int idx, TValue *key, int n) {
   lua_lock(L);
   api_checkpop(L, n);
   Table *t = gettable(L, idx);
-  luaH_set(L, t, key, s2v(L->getTop().p - 1));
+  t->set(L, key, s2v(L->getTop().p - 1));
   invalidateTMcache(t);
   luaC_barrierback(L, obj2gco(t), s2v(L->getTop().p - 1));
   L->getStackSubsystem().popN(n);
@@ -885,7 +885,7 @@ LUA_API void lua_rawseti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   api_checkpop(L, 1);
   Table *t = gettable(L, idx);
-  luaH_setint(L, t, n, s2v(L->getTop().p - 1));
+  t->setInt(L, n, s2v(L->getTop().p - 1));
   luaC_barrierback(L, obj2gco(t), s2v(L->getTop().p - 1));
   L->getStackSubsystem().pop();
   lua_unlock(L);
@@ -1197,7 +1197,7 @@ LUA_API int lua_next (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 1);
   Table *t = gettable(L, idx);
-  int more = luaH_next(L, t, L->getTop().p - 1);
+  int more = t->tableNext(L, L->getTop().p - 1);
   if (more)
     api_incr_top(L);
   else  /* no more elements */

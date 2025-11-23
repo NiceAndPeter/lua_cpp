@@ -119,14 +119,14 @@ l_noret LexState::syntaxError(const char *msg) {
 TString* LexState::anchorStr(TString *ts) {
   lua_State *luaState = getLuaState();
   TValue oldts;
-  LuaT tag = luaH_getstr(getTable(), ts, &oldts);
+  LuaT tag = getTable()->getStr(ts, &oldts);
   if (!tagisempty(tag))  /* string already present? */
     return tsvalue(&oldts);  /* use stored value */
   else {  /* create a new entry */
     TValue *stv = s2v(luaState->getTop().p);  /* reserve stack space for string */
     luaState->getStackSubsystem().push();
     setsvalue(luaState, stv, ts);  /* push (anchor) the string on the stack */
-    luaH_set(luaState, getTable(), stv, stv);  /* t[string] = string */
+    getTable()->set(luaState, stv, stv);  /* t[string] = string */
     /* table is not a metatable, so it does not need to invalidate cache */
     luaC_checkGC(luaState);
     luaState->getStackSubsystem().pop();  /* remove string from stack */

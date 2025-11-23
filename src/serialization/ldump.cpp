@@ -150,7 +150,7 @@ static void dumpString (DumpState *D, TString *ts) {
     dumpSize(D, 0);
   else {
     TValue idx;
-    LuaT tag = luaH_getstr(D->h, ts, &idx);
+    LuaT tag = D->h->getStr(ts, &idx);
     if (!tagisempty(tag)) {  /* string already saved? */
       dumpVarint(D, 1);  /* reuse a saved string */
       dumpVarint(D, l_castS2U(ivalue(&idx)));  /* index of saved string */
@@ -164,7 +164,7 @@ static void dumpString (DumpState *D, TString *ts) {
       D->nstr++;  /* one more saved string */
       setsvalue(D->L, &key, ts);  /* the string is the key */
       value.setInt(l_castU2S(D->nstr));  /* its index is the value */
-      luaH_set(D->L, D->h, &key, &value);  /* h[ts] = nstr */
+      D->h->set(D->L, &key, &value);  /* h[ts] = nstr */
       /* integer value does not need barrier */
     }
   }
@@ -295,7 +295,7 @@ static void dumpHeader (DumpState *D) {
 int luaU_dump (lua_State *L, const Proto *f, lua_Writer w, void *data,
                int strip) {
   DumpState D;
-  D.h = luaH_new(L);  /* aux. table to keep strings already dumped */
+  D.h = Table::create(L);  /* aux. table to keep strings already dumped */
   sethvalue2s(L, L->getTop().p, D.h);  /* anchor it */
   L->getStackSubsystem().push();
   D.L = L;

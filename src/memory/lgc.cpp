@@ -417,7 +417,7 @@ void freeobj (lua_State *L, GCObject *o) {
     }
     case static_cast<int>(ctb(LuaT::TABLE)): {
       Table *t = gco2t(o);
-      luaH_free(L, t);  // Note: luaH_free calls destroy() which should handle cleanup
+      t->destroy(L);  // Destroy table and cleanup
       break;
     }
     case static_cast<int>(ctb(LuaT::THREAD)):

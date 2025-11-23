@@ -59,7 +59,7 @@ void luaT_init (lua_State *L) {
 ** tag methods
 */
 const TValue *luaT_gettm (const Table *events, TMS event, TString *ename) {
-  const TValue *tm = luaH_Hgetshortstr(events, ename);
+  const TValue *tm = events->HgetShortStr(ename);
   lua_assert(event <= TMS::TM_EQ);
   if (notm(tm)) {  /* no tag method? */
     events->setFlagBits(1 << static_cast<int>(event));  /* cache this fact (flags is mutable) */
@@ -81,7 +81,7 @@ const TValue *luaT_gettmbyobj (lua_State *L, const TValue *o, TMS event) {
     default:
       mt = G(L)->getMetatable(ttype(o));
   }
-  return (mt ? luaH_Hgetshortstr(mt, G(L)->getTMName(static_cast<int>(event))) : G(L)->getNilValue());
+  return (mt ? mt->HgetShortStr(G(L)->getTMName(static_cast<int>(event))) : G(L)->getNilValue());
 }
 
 
@@ -93,7 +93,7 @@ const char *luaT_objtypename (lua_State *L, const TValue *o) {
   Table *mt;
   if ((ttistable(o) && (mt = hvalue(o)->getMetatable()) != nullptr) ||
       (ttisfulluserdata(o) && (mt = uvalue(o)->getMetatable()) != nullptr)) {
-    const TValue *name = luaH_Hgetshortstr(mt, TString::create(L, "__name"));
+    const TValue *name = mt->HgetShortStr(TString::create(L, "__name"));
     if (ttisstring(name))  /* is '__name' a string? */
       return getstr(tsvalue(name));  /* use it as type name */
   }

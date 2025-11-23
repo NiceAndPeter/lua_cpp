@@ -337,7 +337,7 @@ int FuncState::addk(Proto *proto, TValue *v) {
 int FuncState::k2proto(TValue *key, TValue *v) {
   TValue val;
   Proto *proto = getProto();
-  LuaT tag = luaH_get(getKCache(), key, &val);  /* query scanner table */
+  LuaT tag = getKCache()->get(key, &val);  /* query scanner table */
   if (!tagisempty(tag)) {  /* is there an index there? */
     auto k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
@@ -349,7 +349,7 @@ int FuncState::k2proto(TValue *key, TValue *v) {
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
     val.setInt(k);
-    luaH_set(getLexState()->getLuaState(), getKCache(), key, &val);
+    getKCache()->set(getLexState()->getLuaState(), key, &val);
     return k;
   }
 }

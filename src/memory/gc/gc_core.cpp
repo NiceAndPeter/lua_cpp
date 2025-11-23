@@ -26,7 +26,7 @@ l_mem GCCore::objsize(GCObject* o) {
     lu_mem res;
     switch (static_cast<int>(o->getType())) {
         case static_cast<int>(ctb(LuaT::TABLE)): {
-            res = luaH_size(gco2t(o));
+            res = gco2t(o)->size();
             break;
         }
         case static_cast<int>(ctb(LuaT::LCL)): {

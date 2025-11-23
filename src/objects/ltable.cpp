@@ -491,29 +491,6 @@ static unsigned findindex (lua_State *L, Table *t, TValue *key,
 }
 
 
-int luaH_next (lua_State *L, Table *t, StkId key) {
-  unsigned int asize = t->arraySize();
-  unsigned int i = findindex(L, t, s2v(key), asize);  /* find original key */
-  for (; i < asize; i++) {  /* try first array part */
-    LuaT tag = *t->getArrayTag(i);
-    if (!tagisempty(tag)) {  /* a non-empty entry? */
-      s2v(key)->setInt(cast_int(i) + 1);
-      farr2val(t, i, tag, s2v(key + 1));
-      return 1;
-    }
-  }
-  for (i -= asize; i < t->nodeSize(); i++) {  /* hash part */
-    if (!isempty(gval(gnode(t, i)))) {  /* a non-empty entry? */
-      Node *n = gnode(t, i);
-      n->getKey(L, s2v(key));
-      L->getStackSubsystem().setSlot(key + 1, gval(n));
-      return 1;
-    }
-  }
-  return 0;  /* no more elements */
-}
-
-
 /* Extra space in Node array if it has a lastfree entry */
 inline size_t extraLastfree(const Table* t) noexcept {
 	return haslastfree(t) ? sizeof(Limbox) : 0;
@@ -877,46 +854,6 @@ static void clearNewSlice (Table *t, unsigned oldasize, unsigned newasize) {
 ** This function now uses Table accessor methods (setArray, setArraySize, etc.)
 ** instead of direct field access, following the encapsulation modernization.
 */
-void luaH_resize (lua_State *L, Table *t, unsigned newasize,
-                                          unsigned nhsize) {
-  if (newasize > MAXASIZE)
-    luaG_runerror(L, "table overflow");
-  /* create new hash part with appropriate size into 'newt' */
-  Table newt;  /* to keep the new hash part */
-  newt.setFlags(0);
-  setnodevector(L, &newt, nhsize);
-  unsigned oldasize = t->arraySize();
-  if (newasize < oldasize) {  /* will array shrink? */
-    /* re-insert into the new hash the elements from vanishing slice */
-    exchangehashpart(t, &newt);  /* pretend table has new hash */
-    reinsertOldSlice(t, oldasize, newasize);
-    exchangehashpart(t, &newt);  /* restore old hash (in case of errors) */
-  }
-  /* allocate new array */
-  Value *newarray = resizearray(L, t, oldasize, newasize);
-  if (l_unlikely(newarray == nullptr && newasize > 0)) {  /* allocation failed? */
-    freehash(L, &newt);  /* release new hash part */
-    luaM_error(L);  /* raise error (with array unchanged) */
-  }
-  /* allocation ok; initialize new part of the array */
-  exchangehashpart(t, &newt);  /* 't' has the new hash ('newt' has the old) */
-  t->setArray(newarray);  /* set new array part */
-  t->setArraySize(newasize);
-  if (newarray != nullptr)
-    *t->getLenHint() = newasize / 2u;  /* set an initial hint */
-  clearNewSlice(t, oldasize, newasize);
-  /* re-insert elements from old hash part into new parts */
-  reinserthash(L, &newt, t);  /* 'newt' now has the old hash */
-  freehash(L, &newt);  /* free old hash part */
-}
-
-
-void luaH_resizearray (lua_State *L, Table *t, unsigned int nasize) {
-  unsigned nsize = t->allocatedNodeSize();
-  luaH_resize(L, t, nasize, nsize);
-}
-
-
 /*
 ** Rehash a table. First, count its keys. If there are array indices
 ** outside the array part, compute the new best size for that part.
@@ -975,35 +912,12 @@ static void rehash (lua_State *L, Table *t, const TValue *ek) {
     nsize += nsize >> 2;
   }
   /* resize the table to new computed sizes */
-  luaH_resize(L, t, asize, nsize);
+  t->resize(L, asize, nsize);
 }
 
 /*
 ** }=============================================================
 */
-
-
-// Phase 33: Wrapper for Table::create
-Table *luaH_new (lua_State *L) {
-  return Table::create(L);
-}
-
-
-lu_mem luaH_size (const Table *t) {
-  lu_mem sz = static_cast<lu_mem>(sizeof(Table)) + concretesize(t->arraySize());
-  if (!t->isDummy())
-    sz += sizehash(t);
-  return sz;
-}
-
-
-/*
-** Frees a table.
-** Phase 33: Wrapper for Table::destroy
-*/
-void luaH_free (lua_State *L, Table *t) {
-  t->destroy(L);
-}
 
 
 static Node *getfreepos (Table *t) {
@@ -1185,59 +1099,6 @@ static bool rawfinishnodeset (TValue *slot, TValue *val) {
 
 
 /*
-** C API wrapper functions - these forward to Table methods
-*/
-
-LuaT luaH_getint (Table *t, lua_Integer key, TValue *res) {
-  return t->getInt(key, res);
-}
-
-LuaT luaH_getshortstr (Table *t, TString *key, TValue *res) {
-  return t->getShortStr(key, res);
-}
-
-LuaT luaH_getstr (Table *t, TString *key, TValue *res) {
-  return t->getStr(key, res);
-}
-
-LuaT luaH_get (Table *t, const TValue *key, TValue *res) {
-  return t->get(key, res);
-}
-
-const TValue *luaH_Hgetshortstr (Table *t, TString *key) {
-  return t->HgetShortStr(key);
-}
-
-int luaH_psetint (Table *t, lua_Integer key, TValue *val) {
-  return t->psetInt(key, val);
-}
-
-int luaH_psetshortstr (Table *t, TString *key, TValue *val) {
-  return t->psetShortStr(key, val);
-}
-
-int luaH_psetstr (Table *t, TString *key, TValue *val) {
-  return t->psetStr(key, val);
-}
-
-int luaH_pset (Table *t, const TValue *key, TValue *val) {
-  return t->pset(key, val);
-}
-
-void luaH_set (lua_State *L, Table *t, const TValue *key, TValue *value) {
-  t->set(L, key, value);
-}
-
-void luaH_setint (lua_State *L, Table *t, lua_Integer key, TValue *value) {
-  t->setInt(L, key, value);
-}
-
-void luaH_finishset (lua_State *L, Table *t, const TValue *key,
-                                    TValue *value, int hres) {
-  t->finishSet(L, key, value, hres);
-}
-
-/*
 ** Try to find a boundary in the hash part of table 't'. From the
 ** caller, we know that 'asize + 1' is present. We want to find a larger
 ** key that is absent from the table, so that we can do a binary search
@@ -1320,49 +1181,6 @@ static lua_Unsigned newhint (Table *t, unsigned hint) {
 ** If there is no array part, or its last element is non empty, the
 ** border may be in the hash part.
 */
-lua_Unsigned luaH_getn (lua_State *L, Table *t) {
-  unsigned asize = t->arraySize();
-  if (asize > 0) {  /* is there an array part? */
-    const unsigned maxvicinity = 4;
-    unsigned limit = *t->getLenHint();  /* start with the hint */
-    if (limit == 0)
-      limit = 1;  /* make limit a valid index in the array */
-    if (arraykeyisempty(t, limit)) {  /* t[limit] empty? */
-      /* there must be a border before 'limit' */
-      /* look for a border in the vicinity of the hint */
-      for (unsigned i = 0; i < maxvicinity && limit > 1; i++) {
-        limit--;
-        if (!arraykeyisempty(t, limit))
-          return newhint(t, limit);  /* 'limit' is a border */
-      }
-      /* t[limit] still empty; search for a border in [0, limit) */
-      return newhint(t, binsearch(t, 0, limit));
-    }
-    else {  /* 'limit' is present in table; look for a border after it */
-      /* look for a border in the vicinity of the hint */
-      for (unsigned i = 0; i < maxvicinity && limit < asize; i++) {
-        limit++;
-        if (arraykeyisempty(t, limit))
-          return newhint(t, limit - 1);  /* 'limit - 1' is a border */
-      }
-      if (arraykeyisempty(t, asize)) {  /* last element empty? */
-        /* t[limit] not empty; search for a border in [limit, asize) */
-        return newhint(t, binsearch(t, limit, asize));
-      }
-    }
-    /* last element non empty; set a hint to speed up finding that again */
-    /* (keys in the hash part cannot be hints) */
-    *t->getLenHint() = asize;
-  }
-  /* no array part or t[asize] is not empty; check the hash part */
-  lua_assert(asize == 0 || !arraykeyisempty(t, asize));
-  if (t->isDummy() || hashkeyisempty(t, asize + 1))
-    return asize;  /* 'asize + 1' is empty */
-  else  /* 'asize + 1' is also non empty */
-    return hash_search(L, t, asize);
-}
-
-
 
 #if defined(LUA_DEBUG)
 
@@ -1439,12 +1257,27 @@ TValue* Table::HgetShortStr(TString* key) {
   }
 }
 
+const TValue* Table::HgetShortStr(TString* key) const {
+  Node *n = hashstr(this, key);
+  lua_assert(strisshr(key));
+  for (;;) {  /* check whether 'key' is somewhere in the chain */
+    if (n->isKeyShrStr() && eqshrstr(n->getKeyStrValue(), key))
+      return gval(n);  /* that's it */
+    else {
+      int nx = gnext(n);
+      if (nx == 0)
+        return &absentkey;  /* not found */
+      n += nx;
+    }
+  }
+}
+
 int Table::pset(const TValue* key, TValue* val) {
   switch (ttypetag(key)) {
     case LuaT::SHRSTR: return psetShortStr(tsvalue(key), val);
     case LuaT::NUMINT: {
       int hres;
-      luaH_fastseti(this, ivalue(key), val, hres);
+      this->fastSeti(ivalue(key), val, hres);
       return hres;
     }
     case LuaT::NIL: return HNOTFOUND;
@@ -1452,7 +1285,7 @@ int Table::pset(const TValue* key, TValue* val) {
       lua_Integer k;
       if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) { /* integral index? */
         int hres;
-        luaH_fastseti(this, k, val, hres);
+        this->fastSeti(k, val, hres);
         return hres;
       }
       /* else... */
@@ -1556,23 +1389,111 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
 }
 
 void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {
-  luaH_resize(L, this, nasize, nhsize);
+  if (nasize > MAXASIZE)
+    luaG_runerror(L, "table overflow");
+  /* create new hash part with appropriate size into 'newt' */
+  Table newt;  /* to keep the new hash part */
+  newt.setFlags(0);
+  setnodevector(L, &newt, nhsize);
+  unsigned oldasize = this->arraySize();
+  if (nasize < oldasize) {  /* will array shrink? */
+    /* re-insert into the new hash the elements from vanishing slice */
+    exchangehashpart(this, &newt);  /* pretend table has new hash */
+    reinsertOldSlice(this, oldasize, nasize);
+    exchangehashpart(this, &newt);  /* restore old hash (in case of errors) */
+  }
+  /* allocate new array */
+  Value *newarray = resizearray(L, this, oldasize, nasize);
+  if (l_unlikely(newarray == nullptr && nasize > 0)) {  /* allocation failed? */
+    freehash(L, &newt);  /* release new hash part */
+    luaM_error(L);  /* raise error (with array unchanged) */
+  }
+  /* allocation ok; initialize new part of the array */
+  exchangehashpart(this, &newt);  /* 't' has the new hash ('newt' has the old) */
+  this->setArray(newarray);  /* set new array part */
+  this->setArraySize(nasize);
+  if (newarray != nullptr)
+    *this->getLenHint() = nasize / 2u;  /* set an initial hint */
+  clearNewSlice(this, oldasize, nasize);
+  /* re-insert elements from old hash part into new parts */
+  reinserthash(L, &newt, this);  /* 'newt' now has the old hash */
+  freehash(L, &newt);  /* free old hash part */
 }
 
 void Table::resizeArray(lua_State* L, unsigned nasize) {
-  luaH_resizearray(L, this, nasize);
+  unsigned nsize = (this->isDummy()) ? 0 : this->nodeSize();
+  this->resize(L, nasize, nsize);
 }
 
 lu_mem Table::size() const {
-  return luaH_size(this);
+  lu_mem sz = static_cast<lu_mem>(sizeof(Table)) + concretesize(this->arraySize());
+  if (!this->isDummy())
+    sz += sizehash(this);
+  return sz;
 }
 
 int Table::tableNext(lua_State* L, StkId key) {
-  return luaH_next(L, this, key);
+  unsigned int arraysize = this->arraySize();
+  unsigned int i = findindex(L, this, s2v(key), arraysize);  /* find original key */
+  for (; i < arraysize; i++) {  /* try first array part */
+    LuaT tag = *this->getArrayTag(i);
+    if (!tagisempty(tag)) {  /* a non-empty entry? */
+      s2v(key)->setInt(cast_int(i) + 1);
+      farr2val(this, i, tag, s2v(key + 1));
+      return 1;
+    }
+  }
+  for (i -= arraysize; i < this->nodeSize(); i++) {  /* hash part */
+    if (!isempty(gval(gnode(this, i)))) {  /* a non-empty entry? */
+      Node *n = gnode(this, i);
+      n->getKey(L, s2v(key));
+      L->getStackSubsystem().setSlot(key + 1, gval(n));
+      return 1;
+    }
+  }
+  return 0;  /* no more elements */
 }
 
 lua_Unsigned Table::getn(lua_State* L) {
-  return luaH_getn(L, this);
+  unsigned arraysize = this->arraySize();
+  if (arraysize > 0) {  /* is there an array part? */
+    const unsigned maxvicinity = 4;
+    unsigned limit = *this->getLenHint();  /* start with the hint */
+    if (limit == 0)
+      limit = 1;  /* make limit a valid index in the array */
+    if (arraykeyisempty(this, limit)) {  /* t[limit] empty? */
+      /* there must be a border before 'limit' */
+      /* look for a border in the vicinity of the hint */
+      for (unsigned i = 0; i < maxvicinity && limit > 1; i++) {
+        limit--;
+        if (!arraykeyisempty(this, limit))
+          return newhint(this, limit);  /* 'limit' is a border */
+      }
+      /* t[limit] still empty; search for a border in [0, limit) */
+      return newhint(this, binsearch(this, 0, limit));
+    }
+    else {  /* 'limit' is present in table; look for a border after it */
+      /* look for a border in the vicinity of the hint */
+      for (unsigned i = 0; i < maxvicinity && limit < arraysize; i++) {
+        limit++;
+        if (arraykeyisempty(this, limit))
+          return newhint(this, limit - 1);  /* 'limit - 1' is a border */
+      }
+      if (arraykeyisempty(this, arraysize)) {  /* last element empty? */
+        /* t[limit] not empty; search for a border in [limit, arraysize) */
+        return newhint(this, binsearch(this, limit, arraysize));
+      }
+    }
+    /* last element non empty; set a hint to speed up finding that again */
+    /* (keys in the hash part cannot be hints) */
+    *this->getLenHint() = arraysize;
+  }
+  /* no array part or t[arraysize] is not empty; check the hash part */
+  lua_assert(arraysize == 0 || !arraykeyisempty(this, arraysize));
+  if (this->isDummy() || hashkeyisempty(this, arraysize + 1))
+    return arraysize;  /* 'arraysize + 1' is empty */
+  else  /* 'arraysize + 1' is also non empty */
+    return hash_search(L, this, arraysize);
 }
 
 // Phase 50: Factory pattern with placement new operator

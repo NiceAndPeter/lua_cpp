@@ -185,7 +185,7 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   LClosure *cl = LClosure::create(L, 1);  /* create main closure */
   setclLvalue2s(L, L->getTop().p, cl);  /* anchor it (to avoid being collected) */
   L->inctop();  /* Phase 25e */
-  lexstate.setTable(luaH_new(L));  /* create table for scanner */
+  lexstate.setTable(Table::create(L));  /* create table for scanner */
   sethvalue2s(L, L->getTop().p, lexstate.getTable());  /* anchor it */
   L->inctop();  /* Phase 25e */
   funcstate.setProto(luaF_newproto(L));

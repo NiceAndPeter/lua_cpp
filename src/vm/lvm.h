@@ -185,7 +185,7 @@ inline void luaV_fastgeti(const TValue* t, lua_Integer k, TValue* res, LuaT& tag
 	if (!ttistable(t))
 		tag = LuaT::NOTABLE;
 	else
-		luaH_fastgeti(hvalue(t), k, res, tag);
+		hvalue(t)->fastGeti(k, res, tag);
 }
 
 
@@ -208,7 +208,7 @@ inline void luaV_fastseti(const TValue* t, lua_Integer k, TValue* val, int& hres
 	if (!ttistable(t))
 		hres = HNOTATABLE;
 	else
-		luaH_fastseti(hvalue(t), k, val, hres);
+		hvalue(t)->fastSeti(k, val, hres);
 }
 
 

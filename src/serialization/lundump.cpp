@@ -162,7 +162,7 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
   else if (size == 1) {  /* previously saved string? */
     lua_Unsigned idx = loadVarint(S, LUA_MAXUNSIGNED);  /* get its index */
     TValue stv;
-    if (novariant(luaH_getint(S->h, l_castU2S(idx), &stv)) != LUA_TSTRING)
+    if (novariant(S->h->getInt(l_castU2S(idx), &stv)) != LUA_TSTRING)
       error(S, "invalid string index");
     *sl = ts = tsvalue(&stv);  /* get its value */
     luaC_objbarrier(L, p, ts);
@@ -187,7 +187,7 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
   /* add string to list of saved strings */
   S->nstr++;
   setsvalue(L, &sv, ts);
-  luaH_setint(L, S->h, l_castU2S(S->nstr), &sv);
+  S->h->setInt(L, l_castU2S(S->nstr), &sv);
   luaC_objbarrierback(L, obj2gco(S->h), ts);
 }
 
@@ -426,7 +426,7 @@ LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
   cl = LClosure::create(L, loadByte(&S));
   setclLvalue2s(L, L->getTop().p, cl);
   L->inctop();  /* Phase 25e */
-  S.h = luaH_new(L);  /* create list of saved strings */
+  S.h = Table::create(L);  /* create list of saved strings */
   S.nstr = 0;
   sethvalue2s(L, L->getTop().p, S.h);  /* anchor it */
   L->inctop();  /* Phase 25e */
