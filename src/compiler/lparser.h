@@ -428,20 +428,20 @@ public:
 /* 5. Upvalue Tracker - Upvalue management */
 class UpvalueTracker {
 private:
-  lu_byte nups;        /* Number of upvalues */
-  lu_byte needclose;   /* Function needs to close upvalues when returning */
+  lu_byte numberOfUpvalues;        /* Number of upvalues */
+  lu_byte needsCloseUpvalues;   /* Function needs to close upvalues when returning */
 
 public:
   /* Inline accessors */
-  lu_byte getNumUpvalues() const noexcept { return nups; }
-  lu_byte getNeedClose() const noexcept { return needclose; }
+  lu_byte getNumUpvalues() const noexcept { return numberOfUpvalues; }
+  lu_byte getNeedClose() const noexcept { return needsCloseUpvalues; }
 
-  void setNumUpvalues(lu_byte nups_) noexcept { nups = nups_; }
-  void setNeedClose(lu_byte needclose_) noexcept { needclose = needclose_; }
+  void setNumUpvalues(lu_byte numberOfUpvalues_) noexcept { numberOfUpvalues = numberOfUpvalues_; }
+  void setNeedClose(lu_byte needsCloseUpvalues_) noexcept { needsCloseUpvalues = needsCloseUpvalues_; }
 
   /* Reference accessors */
-  lu_byte& getNumUpvaluesRef() noexcept { return nups; }
-  lu_byte& getNeedCloseRef() noexcept { return needclose; }
+  lu_byte& getNumUpvaluesRef() noexcept { return numberOfUpvalues; }
+  lu_byte& getNeedCloseRef() noexcept { return needsCloseUpvalues; }
 };
 
 

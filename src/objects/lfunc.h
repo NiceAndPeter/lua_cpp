@@ -137,7 +137,7 @@ public:
 
 class CClosure : public GCBase<CClosure> {
 private:
-  lu_byte nupvalues;
+  lu_byte numberOfUpvalues;
   GCObject *gclist;
   lua_CFunction f;
   TValue upvalue[1];  /* list of upvalues */
@@ -156,8 +156,8 @@ public:
   lua_CFunction getFunction() const noexcept { return f; }
   void setFunction(lua_CFunction func) noexcept { f = func; }
 
-  lu_byte getNumUpvalues() const noexcept { return nupvalues; }
-  void setNumUpvalues(lu_byte n) noexcept { nupvalues = n; }
+  lu_byte getNumUpvalues() const noexcept { return numberOfUpvalues; }
+  void setNumUpvalues(lu_byte n) noexcept { numberOfUpvalues = n; }
 
   TValue* getUpvalue(int idx) noexcept { return &upvalue[idx]; }
   const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
@@ -175,7 +175,7 @@ public:
 
 class LClosure : public GCBase<LClosure> {
 private:
-  lu_byte nupvalues;
+  lu_byte numberOfUpvalues;
   GCObject *gclist;
   Proto *p;
   UpVal *upvals[1];  /* list of upvalues */
@@ -194,8 +194,8 @@ public:
   Proto* getProto() const noexcept { return p; }
   void setProto(Proto* proto) noexcept { p = proto; }
 
-  lu_byte getNumUpvalues() const noexcept { return nupvalues; }
-  void setNumUpvalues(lu_byte n) noexcept { nupvalues = n; }
+  lu_byte getNumUpvalues() const noexcept { return numberOfUpvalues; }
+  void setNumUpvalues(lu_byte n) noexcept { numberOfUpvalues = n; }
 
   UpVal* getUpval(int idx) const noexcept { return upvals[idx]; }
   void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }

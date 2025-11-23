@@ -27,7 +27,7 @@
 
 // Constructor
 CClosure::CClosure(int nupvals)
-  : nupvalues(cast_byte(nupvals)), gclist(nullptr), f(nullptr) {
+  : numberOfUpvalues(cast_byte(nupvals)), gclist(nullptr), f(nullptr) {
   // upvalue array initialized by caller if needed
 }
 
@@ -41,7 +41,7 @@ CClosure* CClosure::create(lua_State* L, int nupvals) {
 
 // Constructor
 LClosure::LClosure(int nupvals)
-  : nupvalues(cast_byte(nupvals)), gclist(nullptr), p(nullptr) {
+  : numberOfUpvalues(cast_byte(nupvals)), gclist(nullptr), p(nullptr) {
   // Initialize upvals array to nullptr
   std::fill_n(upvals, nupvals, nullptr);
 }
@@ -65,7 +65,7 @@ LClosure* LClosure::create(lua_State* L, int nupvals) {
 */
 void LClosure::initUpvals(lua_State* L) {
   int i;
-  for (i = 0; i < nupvalues; i++) {
+  for (i = 0; i < numberOfUpvalues; i++) {
     // Use placement new - calls constructor (initializes to closed nil upvalue)
     UpVal *uv = new (L, ctb(LuaT::UPVAL)) UpVal();
     uv->setVP(uv->getValueSlot());  /* make it closed */
