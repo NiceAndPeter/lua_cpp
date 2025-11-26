@@ -128,7 +128,7 @@ public:
       return nodeStart;
     } else {
       // Small table: just Node[] (no Limbox)
-      return luaM_newvector(L, n, Node);
+      return luaM_newvector<Node>(L, n);
     }
   }
 
@@ -688,7 +688,7 @@ static Value *resizearray (lua_State *L , Table *t,
   else {
     size_t newasizeb = concretesize(newasize);
     Value *np = static_cast<Value*>(
-                  static_cast<void*>(luaM_reallocvector(L, nullptr, 0, newasizeb, lu_byte)));
+                  static_cast<void*>(luaM_reallocvector<lu_byte>(L, nullptr, 0, newasizeb)));
     if (np == nullptr)  /* allocation error? */
       return nullptr;
     np += newasize;  /* shift pointer to the end of value segment */

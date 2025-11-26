@@ -89,8 +89,8 @@ void FuncState::checklimit(int v, int l, const char *what) {
 short FuncState::registerlocalvar(TString *varname) {
   Proto *proto = getProto();
   int oldsize = proto->getLocVarsSize();
-  luaM_growvector(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
-                  LocVar, SHRT_MAX, "local variables");
+  luaM_growvector<LocVar>(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
+                  SHRT_MAX, "local variables");
   auto locVarsSpan = proto->getDebugInfo().getLocVarsSpan();
   while (oldsize < static_cast<int>(locVarsSpan.size()))
     locVarsSpan[oldsize++].setVarName(nullptr);
@@ -194,8 +194,8 @@ Upvaldesc *FuncState::allocupvalue() {
   Proto *proto = getProto();
   int oldsize = proto->getUpvaluesSize();
   checklimit(getNumUpvalues() + 1, MAXUPVAL, "upvalues");
-  luaM_growvector(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
-                  Upvaldesc, MAXUPVAL, "upvalues");
+  luaM_growvector<Upvaldesc>(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
+                  MAXUPVAL, "upvalues");
   auto upvaluesSpan = proto->getUpvaluesSpan();
   while (oldsize < static_cast<int>(upvaluesSpan.size()))
     upvaluesSpan[oldsize++].setName(nullptr);

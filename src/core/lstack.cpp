@@ -96,7 +96,7 @@ inline constexpr int STACKERRSPACE = 200;
 */
 void LuaStack::init(lua_State* L) {
   /* allocate stack array */
-  stack.p = luaM_newvector(L, BASIC_STACK_SIZE + EXTRA_STACK, StackValue);
+  stack.p = luaM_newvector<StackValue>(L, BASIC_STACK_SIZE + EXTRA_STACK);
   tbclist.p = stack.p;
 
   /* erase new stack */
@@ -261,8 +261,8 @@ int LuaStack::realloc(lua_State* L, int newsize, int raiseerror) {
   relPointers(L);  /* change pointers to offsets */
   G(L)->setGCStopEm(1);  /* stop emergency collection */
 
-  newstack = luaM_reallocvector(L, oldstack, oldsize + EXTRA_STACK,
-                                   newsize + EXTRA_STACK, StackValue);
+  newstack = luaM_reallocvector<StackValue>(L, oldstack, oldsize + EXTRA_STACK,
+                                   newsize + EXTRA_STACK);
 
   G(L)->setGCStopEm(oldgcstop);  /* restore emergency collection */
 

@@ -201,7 +201,7 @@ static void loadCode (LoadState *S, Proto *f) {
     f->setCodeSize(n);
   }
   else {
-    f->setCode(luaM_newvectorchecked(S->L, n, Instruction));
+    f->setCode(luaM_newvectorchecked<Instruction>(S->L, n));
     f->setCodeSize(n);
     auto codeSpan = f->getCodeSpan();  // Get span after allocation
     loadVector(S, codeSpan.data(), codeSpan.size());
@@ -215,7 +215,7 @@ static void loadFunction(LoadState *S, Proto *f);
 // Phase 115.2: Use span accessors
 static void loadConstants (LoadState *S, Proto *f) {
   int n = loadInt(S);
-  f->setConstants(luaM_newvectorchecked(S->L, n, TValue));
+  f->setConstants(luaM_newvectorchecked<TValue>(S->L, n));
   f->setConstantsSize(n);
   auto constantsSpan = f->getConstantsSpan();
   for (TValue& v : constantsSpan) {
@@ -259,7 +259,7 @@ static void loadConstants (LoadState *S, Proto *f) {
 static void loadProtos (LoadState *S, Proto *f) {
   int i;
   int n = loadInt(S);
-  f->setProtos(luaM_newvectorchecked(S->L, n, Proto *));
+  f->setProtos(luaM_newvectorchecked<Proto*>(S->L, n));
   f->setProtosSize(n);
   std::fill_n(f->getProtos(), n, nullptr);
   for (i = 0; i < n; i++) {
@@ -279,7 +279,7 @@ static void loadProtos (LoadState *S, Proto *f) {
 // Phase 115.2: Use span accessors
 static void loadUpvalues (LoadState *S, Proto *f) {
   int n = loadInt(S);
-  f->setUpvalues(luaM_newvectorchecked(S->L, n, Upvaldesc));
+  f->setUpvalues(luaM_newvectorchecked<Upvaldesc>(S->L, n));
   f->setUpvaluesSize(n);
   auto upvaluesSpan = f->getUpvaluesSpan();
   /* make array valid for GC */
@@ -302,7 +302,7 @@ static void loadDebug (LoadState *S, Proto *f) {
     f->setLineInfoSize(n);
   }
   else {
-    f->setLineInfo(luaM_newvectorchecked(S->L, n, ls_byte));
+    f->setLineInfo(luaM_newvectorchecked<ls_byte>(S->L, n));
     f->setLineInfoSize(n);
     auto lineInfoSpan = f->getDebugInfo().getLineInfoSpan();
     loadVector(S, lineInfoSpan.data(), lineInfoSpan.size());
@@ -315,14 +315,14 @@ static void loadDebug (LoadState *S, Proto *f) {
       f->setAbsLineInfoSize(n);
     }
     else {
-      f->setAbsLineInfo(luaM_newvectorchecked(S->L, n, AbsLineInfo));
+      f->setAbsLineInfo(luaM_newvectorchecked<AbsLineInfo>(S->L, n));
       f->setAbsLineInfoSize(n);
       auto absLineInfoSpan = f->getDebugInfo().getAbsLineInfoSpan();
       loadVector(S, absLineInfoSpan.data(), absLineInfoSpan.size());
     }
   }
   n = loadInt(S);
-  f->setLocVars(luaM_newvectorchecked(S->L, n, LocVar));
+  f->setLocVars(luaM_newvectorchecked<LocVar>(S->L, n));
   f->setLocVarsSize(n);
   auto locVarsSpan = f->getDebugInfo().getLocVarsSpan();
   for (LocVar& lv : locVarsSpan) {

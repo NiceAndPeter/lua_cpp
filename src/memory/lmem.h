@@ -53,33 +53,9 @@
   cast_charp(luaM_saferealloc_(L, (b), (on)*sizeof(char), (n)*sizeof(char)))
 
 #define luaM_freemem(L, b, s)	luaM_free_(L, (b), (s))
-#define luaM_free(L, b)		luaM_free_(L, (b), sizeof(*(b)))
-#define luaM_freearray(L, b, n)   luaM_free_(L, (b), (n)*sizeof(*(b)))
 
-#define luaM_new(L,t)		cast(t*, luaM_malloc_(L, sizeof(t), 0))
-#define luaM_newvector(L,n,t)  \
-	cast(t*, luaM_malloc_(L, cast_sizet(n)*sizeof(t), 0))
-#define luaM_newvectorchecked(L,n,t) \
-  (luaM_checksize(L,n,sizeof(t)), luaM_newvector(L,n,t))
-
-#define luaM_newobject(L,tag,s)	luaM_malloc_(L, (s), tag)
-
-#define luaM_newblock(L, size)	luaM_newvector(L, size, char)
-
-#define luaM_growvector(L,v,nelems,size,t,limit,e) \
-	((v)=cast(t *, luaM_growaux_(L,v,nelems,&(size),sizeof(t), \
-                         luaM_limitN(limit,t),e)))
-
-#define luaM_reallocvector(L, v,oldn,n,t) \
-   (cast(t *, luaM_realloc_(L, v, cast_sizet(oldn) * sizeof(t), \
-                                  cast_sizet(n) * sizeof(t))))
-
-#define luaM_shrinkvector(L,v,size,fs,t) \
-   ((v)=cast(t *, luaM_shrinkvector_(L, v, &(size), fs, sizeof(t))))
-
+/* Forward declarations of underlying memory functions */
 LUAI_FUNC l_noret luaM_toobig (lua_State *L);
-
-/* not to be called directly */
 LUAI_FUNC void *luaM_realloc_ (lua_State *L, void *block, size_t oldsize,
                                                           size_t size);
 LUAI_FUNC void *luaM_saferealloc_ (lua_State *L, void *block, size_t oldsize,
@@ -91,6 +67,71 @@ LUAI_FUNC void *luaM_growaux_ (lua_State *L, void *block, int nelems,
 LUAI_FUNC void *luaM_shrinkvector_ (lua_State *L, void *block, int *nelem,
                                     int final_n, unsigned size_elem);
 LUAI_FUNC void *luaM_malloc_ (lua_State *L, size_t size, int tag);
+
+/*
+** Template-based memory management functions for type safety.
+** These replace the old macros with proper C++ templates.
+*/
+
+/* Free a single object of type T */
+template<typename T>
+inline void luaM_free(lua_State* L, T* b) noexcept {
+	luaM_free_(L, static_cast<void*>(b), sizeof(T));
+}
+
+/* Free an array of n objects of type T */
+template<typename T>
+inline void luaM_freearray(lua_State* L, T* b, size_t n) noexcept {
+	luaM_free_(L, static_cast<void*>(b), n * sizeof(T));
+}
+
+/* Allocate a single object of type T */
+template<typename T>
+inline T* luaM_new(lua_State* L) {
+	return static_cast<T*>(luaM_malloc_(L, sizeof(T), 0));
+}
+
+/* Allocate an array of n objects of type T */
+template<typename T>
+inline T* luaM_newvector(lua_State* L, size_t n) {
+	return static_cast<T*>(luaM_malloc_(L, cast_sizet(n) * sizeof(T), 0));
+}
+
+/* Allocate an array with size check */
+template<typename T>
+inline T* luaM_newvectorchecked(lua_State* L, size_t n) {
+	luaM_checksize(L, n, sizeof(T));
+	return luaM_newvector<T>(L, n);
+}
+
+#define luaM_newobject(L,tag,s)	luaM_malloc_(L, (s), tag)
+
+/* Allocate a block of size bytes (char array) */
+inline char* luaM_newblock(lua_State* L, size_t size) {
+	return luaM_newvector<char>(L, size);
+}
+
+/* Reallocate an array from oldn to n elements */
+template<typename T>
+inline T* luaM_reallocvector(lua_State* L, T* v, size_t oldn, size_t n) {
+	return static_cast<T*>(luaM_realloc_(L, v, cast_sizet(oldn) * sizeof(T),
+	                                             cast_sizet(n) * sizeof(T)));
+}
+
+/* Grow a vector, updating size and checking limit */
+template<typename T>
+inline void luaM_growvector(lua_State* L, T*& v, int nelems, int& size, int limit, const char* e) {
+	v = static_cast<T*>(luaM_growaux_(L, v, nelems, &size, sizeof(T),
+	                                   luaM_limitN(limit, T), e));
+}
+
+/* Shrink a vector to final_n elements, updating size */
+template<typename T>
+inline void luaM_shrinkvector(lua_State* L, T*& v, int& size, int final_n) {
+	v = static_cast<T*>(luaM_shrinkvector_(L, v, &size, final_n, sizeof(T)));
+}
+
+/* Note: Function declarations moved above template definitions */
 
 #endif
 

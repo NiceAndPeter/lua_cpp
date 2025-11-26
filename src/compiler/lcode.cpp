@@ -192,14 +192,14 @@ void FuncState::savelineinfo(Proto *proto, int line) {
   auto linedif = line - getPreviousLine();
   auto pcval = getPC() - 1;  /* last instruction coded */
   if (abs(linedif) >= LIMLINEDIFF || postIncrementInstructionsSinceAbsoluteLineInfo() >= MAXIWTHABS) {
-    luaM_growvector(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNumberOfAbsoluteLineInfo(),
-                    proto->getAbsLineInfoSizeRef(), AbsLineInfo, std::numeric_limits<int>::max(), "lines");
+    luaM_growvector<AbsLineInfo>(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNumberOfAbsoluteLineInfo(),
+                    proto->getAbsLineInfoSizeRef(), std::numeric_limits<int>::max(), "lines");
     proto->getAbsLineInfo()[getNumberOfAbsoluteLineInfo()].setPC(pcval);
     proto->getAbsLineInfo()[postIncrementNumberOfAbsoluteLineInfo()].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     setInstructionsSinceAbsoluteLineInfo(1);  /* restart counter */
   }
-  luaM_growvector(getLexState()->getLuaState(), proto->getLineInfoRef(), pcval, proto->getLineInfoSizeRef(), ls_byte,
+  luaM_growvector<ls_byte>(getLexState()->getLuaState(), proto->getLineInfoRef(), pcval, proto->getLineInfoSizeRef(),
                   std::numeric_limits<int>::max(), "opcodes");
   proto->getLineInfo()[pcval] = static_cast<ls_byte>(linedif);
   setPreviousLine(line);  /* last line saved */
@@ -318,7 +318,7 @@ int FuncState::addk(Proto *proto, TValue *v) {
   lua_State *L = getLexState()->getLuaState();
   auto oldsize = proto->getConstantsSize();
   auto k = getNumberOfConstants();
-  luaM_growvector(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), TValue, MAXARG_Ax, "constants");
+  luaM_growvector<TValue>(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), MAXARG_Ax, "constants");
   auto constantsSpan = proto->getConstantsSpan();
   while (oldsize < static_cast<int>(constantsSpan.size()))
     setnilvalue(&constantsSpan[oldsize++]);
@@ -1092,7 +1092,7 @@ int FuncState::finaltarget(int i) {
 int FuncState::code(Instruction i) {
   Proto *proto = getProto();
   /* put new instruction in code array */
-  luaM_growvector(getLexState()->getLuaState(), proto->getCodeRef(), getPC(), proto->getCodeSizeRef(), Instruction,
+  luaM_growvector<Instruction>(getLexState()->getLuaState(), proto->getCodeRef(), getPC(), proto->getCodeSizeRef(),
                   std::numeric_limits<int>::max(), "opcodes");
   proto->getCode()[postIncrementPC()] = i;
   savelineinfo(proto, getLexState()->getLastLine());

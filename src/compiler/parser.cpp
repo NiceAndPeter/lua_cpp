@@ -411,7 +411,7 @@ Proto *Parser::addprototype() {
   Proto *proto = funcstate->getProto();  /* prototype of current function */
   if (funcstate->getNumberOfNestedPrototypes() >= proto->getProtosSize()) {
     auto oldsize = proto->getProtosSize();
-    luaM_growvector(state, proto->getProtosRef(), funcstate->getNumberOfNestedPrototypes(), proto->getProtosSizeRef(), Proto *, MAXARG_Bx, "functions");
+    luaM_growvector<Proto*>(state, proto->getProtosRef(), funcstate->getNumberOfNestedPrototypes(), proto->getProtosSizeRef(), MAXARG_Bx, "functions");
     auto protosSpan = proto->getProtosSpan();
     while (oldsize < static_cast<int>(protosSpan.size()))
       protosSpan[oldsize++] = nullptr;
@@ -475,14 +475,14 @@ void Parser::close_func() {
   funcstate->leaveblock();
   lua_assert(funcstate->getBlock() == nullptr);
   funcstate->finish();
-  luaM_shrinkvector(state, f->getCodeRef(), f->getCodeSizeRef(), funcstate->getPC(), Instruction);
-  luaM_shrinkvector(state, f->getLineInfoRef(), f->getLineInfoSizeRef(), funcstate->getPC(), ls_byte);
-  luaM_shrinkvector(state, f->getAbsLineInfoRef(), f->getAbsLineInfoSizeRef(),
-                       funcstate->getNumberOfAbsoluteLineInfo(), AbsLineInfo);
-  luaM_shrinkvector(state, f->getConstantsRef(), f->getConstantsSizeRef(), funcstate->getNumberOfConstants(), TValue);
-  luaM_shrinkvector(state, f->getProtosRef(), f->getProtosSizeRef(), funcstate->getNumberOfNestedPrototypes(), Proto *);
-  luaM_shrinkvector(state, f->getLocVarsRef(), f->getLocVarsSizeRef(), funcstate->getNumDebugVars(), LocVar);
-  luaM_shrinkvector(state, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), funcstate->getNumUpvalues(), Upvaldesc);
+  luaM_shrinkvector<Instruction>(state, f->getCodeRef(), f->getCodeSizeRef(), funcstate->getPC());
+  luaM_shrinkvector<ls_byte>(state, f->getLineInfoRef(), f->getLineInfoSizeRef(), funcstate->getPC());
+  luaM_shrinkvector<AbsLineInfo>(state, f->getAbsLineInfoRef(), f->getAbsLineInfoSizeRef(),
+                       funcstate->getNumberOfAbsoluteLineInfo());
+  luaM_shrinkvector<TValue>(state, f->getConstantsRef(), f->getConstantsSizeRef(), funcstate->getNumberOfConstants());
+  luaM_shrinkvector<Proto*>(state, f->getProtosRef(), f->getProtosSizeRef(), funcstate->getNumberOfNestedPrototypes());
+  luaM_shrinkvector<LocVar>(state, f->getLocVarsRef(), f->getLocVarsSizeRef(), funcstate->getNumDebugVars());
+  luaM_shrinkvector<Upvaldesc>(state, f->getUpvaluesRef(), f->getUpvaluesSizeRef(), funcstate->getNumUpvalues());
   setFuncState(funcstate->getPrev());
   state->getStackSubsystem().pop();  /* pop kcache table */
   luaC_checkGC(state);

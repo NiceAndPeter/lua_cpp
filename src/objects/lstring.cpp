@@ -98,7 +98,7 @@ void TString::resize(lua_State* L, unsigned int nsize) {
   TString **newvect;
   if (nsize < osize)  /* shrinking table? */
     tablerehash(tb->getHash(), osize, nsize);  /* depopulate shrinking part */
-  newvect = luaM_reallocvector(L, tb->getHash(), osize, nsize, TString*);
+  newvect = luaM_reallocvector<TString*>(L, tb->getHash(), osize, nsize);
   if (l_unlikely(newvect == nullptr)) {  /* reallocation failed? */
     if (nsize < osize)  /* was it shrinking table? */
       tablerehash(tb->getHash(), nsize, osize);  /* restore to original size */
@@ -127,7 +127,7 @@ void TString::init(lua_State* L) {
   global_State *g = G(L);
   unsigned int i, j;
   stringtable *tb = G(L)->getStringTable();
-  tb->setHash(luaM_newvector(L, MINSTRTABSIZE, TString*));
+  tb->setHash(luaM_newvector<TString*>(L, MINSTRTABSIZE));
   tablerehash(tb->getHash(), 0, MINSTRTABSIZE);  /* clear array */
   tb->setSize(MINSTRTABSIZE);
   /* pre-create memory-error message */

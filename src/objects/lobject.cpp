@@ -557,9 +557,8 @@ static void addstr2buff (BuffFS *buff, std::span<const char> str) {
       size_t newsize = buff->buffsize + slen;  /* limited to MAX_SIZE/2 */
       char *newb =
         (buff->b == buff->space)  /* still using static space? */
-        ? luaM_reallocvector(buff->L, nullptr, 0, newsize, char)
-        : luaM_reallocvector(buff->L, buff->b, buff->buffsize, newsize,
-                                                               char);
+        ? luaM_reallocvector<char>(buff->L, nullptr, 0, newsize)
+        : luaM_reallocvector<char>(buff->L, buff->b, buff->buffsize, newsize);
       if (newb == nullptr) {  /* allocation error? */
         buff->err = 1;  /* signal a memory error */
         return;
