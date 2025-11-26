@@ -368,18 +368,45 @@ inline constexpr lu_byte GCSTPCLS = 4;  /* bit true when closing Lua state */
 #define luaC_checkGC(L)		luaC_condGC(L,(void)0,(void)0)
 
 
-#define luaC_objbarrier(L,p,o) (  \
-	(isblack(p) && iswhite(o)) ? \
-	luaC_barrier_(L,obj2gco(p),obj2gco(o)) : cast_void(0))
+/* Forward declarations for barrier implementation functions */
+LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
+LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
 
-#define luaC_barrier(L,p,v) (  \
-	iscollectable(v) ? luaC_objbarrier(L,p,gcvalue(v)) : cast_void(0))
+/*
+** Write barrier for object-to-object references.
+** If 'p' (parent) is black and 'o' (object) is white, mark 'o' gray.
+*/
+inline void luaC_objbarrier(lua_State* L, GCObject* p, GCObject* o) noexcept {
+	if (isblack(p) && iswhite(o))
+		luaC_barrier_(L, obj2gco(p), obj2gco(o));
+}
 
-#define luaC_objbarrierback(L,p,o) (  \
-	(isblack(p) && iswhite(o)) ? luaC_barrierback_(L,p) : cast_void(0))
+/*
+** Write barrier for TValue references.
+** If 'v' is collectable, apply object barrier.
+*/
+inline void luaC_barrier(lua_State* L, GCObject* p, const TValue* v) noexcept {
+	if (iscollectable(v))
+		luaC_objbarrier(L, p, gcvalue(v));
+}
 
-#define luaC_barrierback(L,p,v) (  \
-	iscollectable(v) ? luaC_objbarrierback(L, p, gcvalue(v)) : cast_void(0))
+/*
+** Backward write barrier for generational GC.
+** If 'p' is black and 'o' is white, mark 'p' as gray (move backward).
+*/
+inline void luaC_objbarrierback(lua_State* L, GCObject* p, GCObject* o) noexcept {
+	if (isblack(p) && iswhite(o))
+		luaC_barrierback_(L, p);
+}
+
+/*
+** Backward write barrier for TValue references.
+** If 'v' is collectable, apply backward barrier.
+*/
+inline void luaC_barrierback(lua_State* L, GCObject* p, const TValue* v) noexcept {
+	if (iscollectable(v))
+		luaC_objbarrierback(L, p, gcvalue(v));
+}
 
 /* Use GCObject::fix() method instead of luaC_fix */
 LUAI_FUNC void luaC_freeallobjects (lua_State *L);
@@ -390,8 +417,7 @@ LUAI_FUNC void propagateall (global_State *g);  /* used by GCCollector */
 LUAI_FUNC GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz);
 LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz,
                                                  size_t offset);
-LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
-LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
+/* luaC_barrier_ and luaC_barrierback_ declared above before inline barrier functions */
 /* Use GCObject::checkFinalizer() method instead of luaC_checkfinalizer */
 LUAI_FUNC void luaC_changemode (lua_State *L, GCKind newmode);
 
