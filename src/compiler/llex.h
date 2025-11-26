@@ -46,7 +46,7 @@ enum class UnOpr { OPR_MINUS, OPR_BNOT, OPR_NOT, OPR_LEN, OPR_NOUNOPR };
 ** Single-char tokens (terminal symbols) are represented by their own
 ** numeric code. Other tokens start at the following value.
 */
-#define FIRST_RESERVED	(UCHAR_MAX + 1)
+inline constexpr int FIRST_RESERVED = UCHAR_MAX + 1;
 
 
 #if !defined(LUA_ENV)

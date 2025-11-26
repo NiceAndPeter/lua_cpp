@@ -28,7 +28,7 @@
 #define TAB_R	1			/* read */
 #define TAB_W	2			/* write */
 #define TAB_L	4			/* length */
-#define TAB_RW	(TAB_R | TAB_W)		/* read/write */
+inline constexpr int TAB_RW = TAB_R | TAB_W;  // read/write
 
 
 #define aux_getn(L,n,w)	(checktab(L, n, (w) | TAB_L), luaL_len(L, n))
@@ -239,8 +239,13 @@ typedef unsigned int IdxT;
 
 
 /* Versions of lua_seti/lua_geti specialized for IdxT */
-#define geti(L,idt,idx)	lua_geti(L, idt, l_castU2S(idx))
-#define seti(L,idt,idx)	lua_seti(L, idt, l_castU2S(idx))
+inline void geti(lua_State* L, int idt, IdxT idx) noexcept {
+    lua_geti(L, idt, l_castU2S(idx));
+}
+
+inline void seti(lua_State* L, int idt, IdxT idx) noexcept {
+    lua_seti(L, idt, l_castU2S(idx));
+}
 
 
 /*

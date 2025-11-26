@@ -30,8 +30,13 @@
 #define MSGInvalid	"invalid UTF-8 code"
 
 
-#define iscont(c)	(((c) & 0xC0) == 0x80)
-#define iscontp(p)	iscont(*(p))
+inline constexpr bool iscont(int c) noexcept {
+    return ((c) & 0xC0) == 0x80;
+}
+
+inline bool iscontp(const char* p) noexcept {
+    return iscont(*p);
+}
 
 
 /* from strlib */

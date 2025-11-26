@@ -47,6 +47,25 @@ inline void api_checkpop(lua_State* L, int n) noexcept {
 
 
 /*
+** Test for a valid index (one that is not the 'nilvalue').
+*/
+inline bool isvalid(lua_State* L, const TValue* o) noexcept {
+    return o != G(L)->getNilValue();
+}
+
+
+/* test for pseudo index */
+inline constexpr bool ispseudo(int i) noexcept {
+    return i <= LUA_REGISTRYINDEX;
+}
+
+/* test for upvalue */
+inline constexpr bool isupvalue(int i) noexcept {
+    return i < LUA_REGISTRYINDEX;
+}
+
+
+/*
 ** macros that are executed whenever program enters the Lua core
 ** ('lua_lock') and leaves the core ('lua_unlock')
 */

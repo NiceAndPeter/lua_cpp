@@ -347,8 +347,8 @@ static const luaL_Reg stringmetamethods[] = {
 */
 
 
-#define CAP_UNFINISHED	(-1)
-#define CAP_POSITION	(-2)
+inline constexpr int CAP_UNFINISHED = -1;
+inline constexpr int CAP_POSITION = -2;
 
 
 typedef struct MatchState {
@@ -1005,7 +1005,7 @@ static int str_gsub (lua_State *L) {
 ** Hexadecimal floating-point formatter
 */
 
-#define SIZELENMOD	(sizeof(LUA_NUMBER_FRMLEN)/sizeof(char))
+inline constexpr size_t SIZELENMOD = sizeof(LUA_NUMBER_FRMLEN) / sizeof(char);
 
 
 /*
@@ -1014,7 +1014,7 @@ static int str_gsub (lua_State *L) {
 ** to nibble boundaries by making what is left after that first digit a
 ** multiple of 4.
 */
-#define L_NBFD		((l_floatatt(MANT_DIG) - 1)%4 + 1)
+inline constexpr int L_NBFD = (l_floatatt(MANT_DIG) - 1) % 4 + 1;
 
 
 /*
@@ -1082,7 +1082,7 @@ static int lua_number2strx (lua_State *L, char *buff, unsigned sz,
 ** and '\0') + number of decimal digits to represent maxfloat (which
 ** is maximum exponent + 1). (99+3+1, adding some extra, 110)
 */
-#define MAX_ITEMF	(110 + l_floatatt(MAX_10_EXP))
+inline constexpr int MAX_ITEMF = 110 + l_floatatt(MAX_10_EXP);
 
 
 /*
@@ -1406,10 +1406,10 @@ static int str_format (lua_State *L) {
 #define NB	CHAR_BIT
 
 /* mask for one character (NB 1's) */
-#define MC	((1 << NB) - 1)
+inline constexpr int MC = (1 << NB) - 1;
 
 /* size of a lua_Integer */
-#define SZINT	((int)sizeof(lua_Integer))
+inline constexpr int SZINT = static_cast<int>(sizeof(lua_Integer));
 
 
 /* dummy union to get native endianness */

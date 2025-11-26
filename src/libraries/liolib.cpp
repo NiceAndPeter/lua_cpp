@@ -146,9 +146,9 @@ static int l_checkmode (const char *mode) {
 
 
 #define IO_PREFIX	"_IO_"
-#define IOPREF_LEN	(sizeof(IO_PREFIX)/sizeof(char) - 1)
-#define IO_INPUT	(IO_PREFIX "input")
-#define IO_OUTPUT	(IO_PREFIX "output")
+inline constexpr size_t IOPREF_LEN = sizeof(IO_PREFIX) / sizeof(char) - 1;
+inline constexpr const char* IO_INPUT = IO_PREFIX "input";
+inline constexpr const char* IO_OUTPUT = IO_PREFIX "output";
 
 
 typedef luaL_Stream LStream;

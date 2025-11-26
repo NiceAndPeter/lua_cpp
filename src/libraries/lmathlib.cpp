@@ -24,7 +24,7 @@
 
 
 #undef PI
-#define PI	(l_mathop(3.141592653589793238462643383279502884))
+inline constexpr lua_Number PI = l_mathop(3.141592653589793238462643383279502884);
 
 
 static int math_abs (lua_State *L) {
@@ -371,10 +371,10 @@ static Rand64 nextrand (Rand64 *state) {
 */
 
 /* must throw out the extra (64 - FIGS) bits */
-#define shift64_FIG	(64 - FIGS)
+inline constexpr int shift64_FIG = 64 - FIGS;
 
 /* 2^(-FIGS) == 2^-1 / 2^(FIGS-1) */
-#define scaleFIG	(l_mathop(0.5) / ((Rand64)1 << (FIGS - 1)))
+inline constexpr lua_Number scaleFIG = l_mathop(0.5) / ((Rand64)1 << (FIGS - 1));
 
 static lua_Number I2d (Rand64 x) {
   SRand64 sx = (SRand64)(trim64(x) >> shift64_FIG);
@@ -491,13 +491,13 @@ static Rand64 nextrand (Rand64 *state) {
 */
 
 /* an unsigned 1 with proper type */
-#define UONE		((l_uint32)1)
+inline constexpr l_uint32 UONE = 1;
 
 
 #if FIGS <= 32
 
 /* 2^(-FIGS) */
-#define scaleFIG       (l_mathop(0.5) / (UONE << (FIGS - 1)))
+inline constexpr lua_Number scaleFIG = l_mathop(0.5) / (UONE << (FIGS - 1));
 
 /*
 ** get up to 32 bits from higher half, shifting right to
@@ -511,19 +511,18 @@ static lua_Number I2d (Rand64 x) {
 #else	/* 32 < FIGS <= 64 */
 
 /* 2^(-FIGS) = 1.0 / 2^30 / 2^3 / 2^(FIGS-33) */
-#define scaleFIG  \
-    (l_mathop(1.0) / (UONE << 30) / l_mathop(8.0) / (UONE << (FIGS - 33)))
+inline constexpr lua_Number scaleFIG = l_mathop(1.0) / (UONE << 30) / l_mathop(8.0) / (UONE << (FIGS - 33));
 
 /*
 ** use FIGS - 32 bits from lower half, throwing out the other
 ** (32 - (FIGS - 32)) = (64 - FIGS) bits
 */
-#define shiftLOW	(64 - FIGS)
+inline constexpr int shiftLOW = 64 - FIGS;
 
 /*
 ** higher 32 bits go after those (FIGS - 32) bits: shiftHI = 2^(FIGS - 32)
 */
-#define shiftHI		((lua_Number)(UONE << (FIGS - 33)) * l_mathop(2.0))
+inline constexpr lua_Number shiftHI = static_cast<lua_Number>(UONE << (FIGS - 33)) * l_mathop(2.0);
 
 
 static lua_Number I2d (Rand64 x) {

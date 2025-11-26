@@ -33,7 +33,9 @@
 
 
 /* Both CClosure and LClosure have tt at same offset (from GCBase) */
-#define LuaClosure(f)		((f) != nullptr && (f)->c.getType() == ctb(LuaT::LCL))
+inline bool LuaClosure(const Closure* f) noexcept {
+    return f != nullptr && f->c.getType() == ctb(LuaT::LCL);
+}
 
 static const char strlocal[] = "local";
 static const char strupval[] = "upvalue";

@@ -36,8 +36,8 @@
 */
 
 
-#define LEVELS1	10	/* size of the first part of the stack */
-#define LEVELS2	11	/* size of the second part of the stack */
+inline constexpr int LEVELS1 = 10;  // size of the first part of the stack
+inline constexpr int LEVELS2 = 11;  // size of the second part of the stack
 
 
 
@@ -528,7 +528,9 @@ static void newbox (lua_State *L) {
 ** check whether buffer is using a userdata on the stack as a temporary
 ** buffer
 */
-#define buffonstack(B)	((B)->b != (B)->init.b)
+inline bool buffonstack(const luaL_Buffer* B) noexcept {
+    return B->b != B->init.b;
+}
 
 
 /*
@@ -1143,10 +1145,10 @@ static void warnfon (void *ud, const char *message, int tocont) {
 
 
 /* Size for the buffer, in bytes */
-#define BUFSEEDB	(sizeof(void*) + sizeof(time_t))
+inline constexpr size_t BUFSEEDB = sizeof(void*) + sizeof(time_t);
 
 /* Size for the buffer in int's, rounded up */
-#define BUFSEED		((BUFSEEDB + sizeof(int) - 1) / sizeof(int))
+inline constexpr size_t BUFSEED = (BUFSEEDB + sizeof(int) - 1) / sizeof(int);
 
 /*
 ** Copy the contents of variable 'v' into the buffer pointed by 'b'.

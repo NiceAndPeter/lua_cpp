@@ -222,7 +222,7 @@ static bool isneg (const char **s) {
 
 /* maximum number of significant digits to read (to avoid overflows
    even with single floats) */
-#define MAXSIGDIG	30
+inline constexpr int MAXSIGDIG = 30;
 
 /*
 ** convert a hexadecimal numeric string to a number, following
@@ -334,8 +334,8 @@ static const char *l_str2d (const char *s, lua_Number *result) {
 }
 
 
-#define MAXBY10		static_cast<lua_Unsigned>(LUA_MAXINTEGER / 10)
-#define MAXLASTD	cast_int(LUA_MAXINTEGER % 10)
+inline constexpr lua_Unsigned MAXBY10 = static_cast<lua_Unsigned>(LUA_MAXINTEGER / 10);
+inline constexpr int MAXLASTD = cast_int(LUA_MAXINTEGER % 10);
 
 static const char *l_str2int (const char *s, lua_Integer *result) {
   lua_Unsigned a = 0;
@@ -479,7 +479,7 @@ void luaO_tostring (lua_State *L, TValue *obj) {
 ** (LUA_IDSIZE + LUA_N2SBUFFSZ) + a minimal space for basic messages,
 ** so that 'luaG_addinfo' can work directly on the static buffer.
 */
-#define BUFVFS		cast_uint(LUA_IDSIZE + LUA_N2SBUFFSZ + 95)
+inline constexpr unsigned int BUFVFS = cast_uint(LUA_IDSIZE + LUA_N2SBUFFSZ + 95);
 
 /*
 ** Buffer used by 'luaO_pushvfstring'. 'err' signals an error while

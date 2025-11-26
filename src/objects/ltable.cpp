@@ -73,7 +73,7 @@
 ** the array of nodes, in the same block. Smaller tables do a complete
 ** search when looking for a free slot.
 */
-#define LIMFORLAST    3  /* log2 of real limit (8) */
+inline constexpr int LIMFORLAST = 3;  // log2 of real limit (8)
 
 /*
 ** The union 'Limbox' stores 'lastfree' and ensures that what follows it
@@ -158,28 +158,27 @@ inline Node*& getlastfree(Table* t) noexcept {
 ** MAXABITS is the largest integer such that 2^MAXABITS fits in an
 ** unsigned int.
 */
-#define MAXABITS	(l_numbits(int) - 1)
+inline constexpr int MAXABITS = l_numbits(int) - 1;
 
 
 /*
 ** MAXASIZEB is the maximum number of elements in the array part such
 ** that the size of the array fits in 'size_t'.
 */
-#define MAXASIZEB	(MAX_SIZET/(sizeof(Value) + 1))
+inline constexpr size_t MAXASIZEB = MAX_SIZET / (sizeof(Value) + 1);
 
 
 /*
 ** MAXASIZE is the maximum size of the array part. It is the minimum
 ** between 2^MAXABITS and MAXASIZEB.
 */
-#define MAXASIZE  \
-    (((1u << MAXABITS) < MAXASIZEB) ? (1u << MAXABITS) : cast_uint(MAXASIZEB))
+inline constexpr unsigned int MAXASIZE = ((1u << MAXABITS) < MAXASIZEB) ? (1u << MAXABITS) : cast_uint(MAXASIZEB);
 
 /*
 ** MAXHBITS is the largest integer such that 2^MAXHBITS fits in a
 ** signed int.
 */
-#define MAXHBITS	(MAXABITS - 1)
+inline constexpr int MAXHBITS = MAXABITS - 1;
 
 
 /*
@@ -187,7 +186,7 @@ inline Node*& getlastfree(Table* t) noexcept {
 ** between 2^MAXHBITS and the maximum size such that, measured in bytes,
 ** it fits in a 'size_t'.
 */
-#define MAXHSIZE	luaM_limitN(1 << MAXHBITS, Node)
+inline constexpr size_t MAXHSIZE = luaM_limitN(1 << MAXHBITS, Node);
 
 
 /*

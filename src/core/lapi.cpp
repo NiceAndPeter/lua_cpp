@@ -39,19 +39,6 @@ const char lua_ident[] =
 
 
 /*
-** Test for a valid index (one that is not the 'nilvalue').
-*/
-#define isvalid(L, o)	((o) != G(L)->getNilValue())
-
-
-/* test for pseudo index */
-#define ispseudo(i)		((i) <= LUA_REGISTRYINDEX)
-
-/* test for upvalue */
-#define isupvalue(i)		((i) < LUA_REGISTRYINDEX)
-
-
-/*
 ** NOTE: index2value() and index2stack() moved to LuaStack class (lstack.cpp)
 ** as indexToValue() and indexToStack() methods.
 ** See Phase 94.1 for details.

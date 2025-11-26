@@ -379,13 +379,6 @@ void LuaStack::incTop(lua_State* L) {
 ** Moved from index2value() and index2stack() in lapi.cpp.
 */
 
-/* test for pseudo index */
-#define ispseudo(i)		((i) <= LUA_REGISTRYINDEX)
-
-/* test for upvalue */
-#define isupvalue(i)		((i) < LUA_REGISTRYINDEX)
-
-
 /*
 ** Convert an acceptable index to a pointer to its respective value.
 ** Non-valid indices return the special nil value 'G(L)->getNilValue()'.
