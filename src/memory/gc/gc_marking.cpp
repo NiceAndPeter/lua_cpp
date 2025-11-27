@@ -65,8 +65,11 @@ static inline void linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
     GCCore::linkgclist_(o, pnext, list);
 }
 
-/* Link a generic object using its gclist pointer */
-#define linkobjgclist(o, p) linkgclist_(obj2gco(o), getgclist(o), &(p))
+/* Phase 128: Convert linkobjgclist macro to template function */
+template<typename T>
+inline void linkobjgclist(T* o, GCObject*& p) {
+	linkgclist_(obj2gco(o), getgclist(o), &p);
+}
 
 /* Specialized versions for encapsulated types */
 static inline void linkgclistTable(Table* h, GCObject*& p) {

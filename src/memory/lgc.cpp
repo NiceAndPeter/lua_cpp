@@ -124,11 +124,13 @@ static void linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
   GCCore::linkgclist_(o, pnext, list);
 }
 
-/*
+/* Phase 128: Convert linkgclist and linkobjgclist macros to template functions
 ** Link a collectable object 'o' with a known type into the list 'p'.
-** (Must be a macro to access the 'gclist' field in different types.)
 */
-#define linkgclist(o,p)	linkgclist_(obj2gco(o), &(o)->gclist, &(p))
+template<typename T>
+inline void linkgclist(T* o, GCObject*& p) {
+	linkgclist_(obj2gco(o), &(o)->gclist, &p);
+}
 
 /* Specialized version for Table (with encapsulated gclist) */
 inline void linkgclistTable(Table *h, GCObject *&p) {
@@ -140,11 +142,11 @@ inline void linkgclistThread(lua_State *th, GCObject *&p) {
   linkgclist_(obj2gco(th), th->getGclistPtr(), &p);
 }
 
-
-/*
-** Link a generic collectable object 'o' into the list 'p'.
-*/
-#define linkobjgclist(o,p) linkgclist_(obj2gco(o), getgclist(o), &(p))
+/* Link a generic collectable object 'o' into the list 'p'. */
+template<typename T>
+inline void linkobjgclist(T* o, GCObject*& p) {
+	linkgclist_(obj2gco(o), getgclist(o), &p);
+}
 
 
 

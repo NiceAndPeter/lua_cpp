@@ -273,10 +273,15 @@ inline constexpr l_mem MAX_LMEM = cast(l_mem, (cast(lu_mem, 1) << (l_numbits<l_m
 /* Cast a ptrdiff_t to size_t, when it is known that the minuend
 ** comes from the subtrahend (the base)
 */
-#define ct_diff2sz(df)	((size_t)(df))
+/* Phase 128: Convert ct_diff2sz macro to inline constexpr function */
+inline constexpr size_t ct_diff2sz(ptrdiff_t df) noexcept {
+	return static_cast<size_t>(df);
+}
 
 /* ptrdiff_t to lua_Integer */
-#define ct_diff2S(df)	cast_st2S(ct_diff2sz(df))
+inline constexpr lua_Integer ct_diff2S(ptrdiff_t df) noexcept {
+	return cast_st2S(ct_diff2sz(df));
+}
 
 /*
 ** Special type equivalent to '(void*)' for functions (to suppress some

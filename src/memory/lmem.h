@@ -14,6 +14,7 @@
 #include "lua.h"
 
 
+/* Note: luaM_error must remain a macro due to lua_State forward declaration */
 #define luaM_error(L)	(L)->doThrow(LUA_ERRMEM)
 
 
@@ -54,8 +55,6 @@ inline constexpr int luaM_limitN(int n) noexcept {
 #define luaM_reallocvchar(L,b,on,n)  \
   cast_charp(luaM_saferealloc_(L, (b), (on)*sizeof(char), (n)*sizeof(char)))
 
-#define luaM_freemem(L, b, s)	luaM_free_(L, (b), (s))
-
 /* Forward declarations of underlying memory functions */
 LUAI_FUNC l_noret luaM_toobig (lua_State *L);
 LUAI_FUNC void *luaM_realloc_ (lua_State *L, void *block, size_t oldsize,
@@ -69,6 +68,15 @@ LUAI_FUNC void *luaM_growaux_ (lua_State *L, void *block, int nelems,
 LUAI_FUNC void *luaM_shrinkvector_ (lua_State *L, void *block, int *nelem,
                                     int final_n, unsigned size_elem);
 LUAI_FUNC void *luaM_malloc_ (lua_State *L, size_t size, int tag);
+
+/* Phase 128: Convert luaM_freemem and luaM_newobject macros to inline functions */
+inline void luaM_freemem(lua_State* L, void* b, size_t s) {
+	luaM_free_(L, b, s);
+}
+
+inline void* luaM_newobject(lua_State* L, int tag, size_t s) {
+	return luaM_malloc_(L, s, tag);
+}
 
 /*
 ** Template-based memory management functions for type safety.
@@ -105,8 +113,6 @@ inline T* luaM_newvectorchecked(lua_State* L, size_t n) {
 	luaM_checksize(L, n, sizeof(T));
 	return luaM_newvector<T>(L, n);
 }
-
-#define luaM_newobject(L,tag,s)	luaM_malloc_(L, (s), tag)
 
 /* Allocate a block of size bytes (char array) */
 inline char* luaM_newblock(lua_State* L, size_t size) {
