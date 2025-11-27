@@ -689,7 +689,7 @@ public:
   int lessEqualOthers(const TValue *l, const TValue *r);
 
   // Closure creation helper (VM-internal operation)
-  inline void pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra);
+  void pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra);
 
 private:
   // Private helper methods (implementation details in ldo.cpp)
