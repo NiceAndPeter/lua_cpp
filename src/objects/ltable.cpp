@@ -64,6 +64,7 @@
 #include "lstate.h"
 #include "lstring.h"
 #include "ltable.h"
+#include "lvirtualmachine.h"
 #include "lvm.h"
 
 
@@ -1210,7 +1211,7 @@ LuaT Table::get(const TValue* key, TValue* res) {
       break;
     case LuaT::NUMFLT: {
       lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) /* integral index? */
+      if (VirtualMachine::flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) /* integral index? */
         return getInt(k, res);  /* use specialized version */
       /* else... */
     }  /* FALLTHROUGH */
@@ -1282,7 +1283,7 @@ int Table::pset(const TValue* key, TValue* val) {
     case LuaT::NIL: return HNOTFOUND;
     case LuaT::NUMFLT: {
       lua_Integer k;
-      if (luaV_flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) { /* integral index? */
+      if (VirtualMachine::flttointeger(fltvalue(key), &k, F2Imod::F2Ieq)) { /* integral index? */
         int hres;
         this->fastSeti(k, val, hres);
         return hres;
@@ -1360,7 +1361,7 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
     else if (ttisfloat(key)) {
       lua_Number f = fltvalue(key);
       lua_Integer k;
-      if (luaV_flttointeger(f, &k, F2Imod::F2Ieq)) {
+      if (VirtualMachine::flttointeger(f, &k, F2Imod::F2Ieq)) {
         aux.setInt(k);  /* key is equal to an integer */
         key = &aux;  /* insert it as an integer */
       }

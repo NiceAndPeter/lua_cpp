@@ -27,6 +27,7 @@
 #include "lparser.h"
 #include "lstring.h"
 #include "ltable.h"
+#include "lvirtualmachine.h"
 #include "lvm.h"
 
 
@@ -341,7 +342,7 @@ int FuncState::k2proto(TValue *key, TValue *v) {
   if (!tagisempty(tag)) {  /* is there an index there? */
     auto k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
-    lua_assert(ttisfloat(key) || luaV_rawequalobj(&proto->getConstants()[k], v));
+    lua_assert(ttisfloat(key) || VirtualMachine::rawequalObj(&proto->getConstants()[k], v));
     return k;  /* reuse index */
   }
   else {  /* constant not found; create a new entry */
@@ -397,9 +398,9 @@ int FuncState::numberK(lua_Number r) {
     const lua_Number k =  r * (1 + q);  /* key */
     lua_Integer ik;
     kv.setFloat(k);  /* key as a TValue */
-    if (!luaV_flttointeger(k, &ik, F2Imod::F2Ieq)) {  /* not an integer value? */
+    if (!VirtualMachine::flttointeger(k, &ik, F2Imod::F2Ieq)) {  /* not an integer value? */
       auto n = k2proto(&kv, &o);  /* use key */
-      if (luaV_rawequalobj(&getProto()->getConstants()[n], &o))  /* correct value? */
+      if (VirtualMachine::rawequalObj(&getProto()->getConstants()[n], &o))  /* correct value? */
         return n;
     }
     /* else, either key is still an integer or there was a collision;
@@ -455,7 +456,7 @@ static int fitsBx (lua_Integer i) {
 
 void FuncState::floatCode(int reg, lua_Number flt) {
   lua_Integer fi;
-  if (luaV_flttointeger(flt, &fi, F2Imod::F2Ieq) && fitsBx(fi))
+  if (VirtualMachine::flttointeger(flt, &fi, F2Imod::F2Ieq) && fitsBx(fi))
     codeAsBx(OP_LOADF, reg, cast_int(fi));
   else
     codek(reg, numberK(flt));
@@ -761,7 +762,7 @@ static bool isSCnumber (expdesc *e, int *pi, int *isfloat) {
   lua_Integer i;
   if (e->getKind() == VKINT)
     i = e->getIntValue();
-  else if (e->getKind() == VKFLT && luaV_flttointeger(e->getFloatValue(), &i, F2Imod::F2Ieq))
+  else if (e->getKind() == VKFLT && VirtualMachine::flttointeger(e->getFloatValue(), &i, F2Imod::F2Ieq))
     *isfloat = 1;
   else
     return false;  /* not a number */
@@ -783,8 +784,8 @@ static bool validop (int op, TValue *v1, TValue *v2) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
     case LUA_OPSHL: case LUA_OPSHR: case LUA_OPBNOT: {  /* conversion errors */
       lua_Integer i;
-      return (luaV_tointegerns(v1, &i, LUA_FLOORN2I) &&
-              luaV_tointegerns(v2, &i, LUA_FLOORN2I));
+      return (tointegerns(v1, &i) &&
+              tointegerns(v2, &i));
     }
     case LUA_OPDIV: case LUA_OPIDIV: case LUA_OPMOD:  /* division by 0 */
       return (nvalue(v2) != 0);

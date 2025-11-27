@@ -494,7 +494,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rc = KC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
-        tag = luaV_fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
+        tag = fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { finishGet(upval, rc, ra, tag); });
         break;
@@ -505,12 +505,12 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rc = vRC(i);
         LuaT tag;
         if (ttisinteger(rc)) {  /* fast track for integers? */
-          luaV_fastgeti(rb, ivalue(rc), s2v(ra), tag);
+          fastgeti(rb, ivalue(rc), s2v(ra), tag);
         }
         else
-          tag = luaV_fastget(rb, rc, s2v(ra), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
+          tag = fastget(rb, rc, s2v(ra), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
         if (tagisempty(tag))
-          Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
+          Protect([&]() { finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_GETI: {
@@ -518,11 +518,11 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rb = vRB(i);
         auto c = InstructionView(i).c();
         LuaT tag;
-        luaV_fastgeti(rb, c, s2v(ra), tag);
+        fastgeti(rb, c, s2v(ra), tag);
         if (tagisempty(tag)) {
           TValue key;
           key.setInt(c);
-          Protect([&]() { luaV_finishget(L, rb, &key, ra, tag); });
+          Protect([&]() { finishGet(rb, &key, ra, tag); });
         }
         break;
       }
@@ -532,9 +532,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rc = KC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
-        tag = luaV_fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
+        tag = fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
+          Protect([&]() { finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_SETTABUP: {
@@ -542,11 +542,11 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rb = KB(i);
         auto *rc = RKC(i);
         auto *key = tsvalue(rb);  /* key must be a short string */
-        auto hres = luaV_fastset(upval, key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
+        auto hres = fastset(upval, key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
         if (hres == HOK)
-          luaV_finishfastset(L, upval, rc);
+          finishfastset(upval, rc);
         else
-          Protect([&]() { luaV_finishset(L, upval, rb, rc, hres); });
+          Protect([&]() { finishSet(upval, rb, rc, hres); });
         break;
       }
       case OP_SETTABLE: {
@@ -555,15 +555,15 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rc = RKC(i);  /* value */
         int hres;
         if (ttisinteger(rb)) {  /* fast track for integers? */
-          luaV_fastseti(s2v(ra), ivalue(rb), rc, hres);
+          fastseti(s2v(ra), ivalue(rb), rc, hres);
         }
         else {
-          hres = luaV_fastset(s2v(ra), rb, rc, [](Table* tbl, const TValue* key, TValue* val) { return tbl->pset(key, val); });
+          hres = fastset(s2v(ra), rb, rc, [](Table* tbl, const TValue* key, TValue* val) { return tbl->pset(key, val); });
         }
         if (hres == HOK)
-          luaV_finishfastset(L, s2v(ra), rc);
+          finishfastset(s2v(ra), rc);
         else
-          Protect([&]() { luaV_finishset(L, s2v(ra), rb, rc, hres); });
+          Protect([&]() { finishSet(s2v(ra), rb, rc, hres); });
         break;
       }
       case OP_SETI: {
@@ -571,13 +571,13 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto b = InstructionView(i).b();
         auto *rc = RKC(i);
         int hres;
-        luaV_fastseti(s2v(ra), b, rc, hres);
+        fastseti(s2v(ra), b, rc, hres);
         if (hres == HOK)
-          luaV_finishfastset(L, s2v(ra), rc);
+          finishfastset(s2v(ra), rc);
         else {
           TValue key;
           key.setInt(b);
-          Protect([&]() { luaV_finishset(L, s2v(ra), &key, rc, hres); });
+          Protect([&]() { finishSet(s2v(ra), &key, rc, hres); });
         }
         break;
       }
@@ -586,11 +586,11 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rb = KB(i);
         auto *rc = RKC(i);
         auto *key = tsvalue(rb);  /* key must be a short string */
-        auto hres = luaV_fastset(s2v(ra), key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
+        auto hres = fastset(s2v(ra), key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
         if (hres == HOK)
-          luaV_finishfastset(L, s2v(ra), rc);
+          finishfastset(s2v(ra), rc);
         else
-          Protect([&]() { luaV_finishset(L, s2v(ra), rb, rc, hres); });
+          Protect([&]() { finishSet(s2v(ra), rb, rc, hres); });
         break;
       }
       case OP_NEWTABLE: {
@@ -619,9 +619,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto *rc = KC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         L->getStackSubsystem().setSlot(ra + 1, rb);
-        LuaT tag = luaV_fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
+        LuaT tag = fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
+          Protect([&]() { finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_ADDI: {
@@ -676,7 +676,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
-          pc++; s2v(ra)->setInt(luaV_shiftl(ic, ib));
+          pc++; s2v(ra)->setInt(VirtualMachine::shiftl(ic, ib));
         }
         break;
       }
@@ -686,7 +686,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
-          pc++; s2v(ra)->setInt(luaV_shiftl(ib, -ic));
+          pc++; s2v(ra)->setInt(VirtualMachine::shiftl(ib, -ic));
         }
         break;
       }
@@ -807,14 +807,14 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_LEN: {
         auto ra = RA(i);
-        Protect([&]() { luaV_objlen(L, ra, vRB(i)); });
+        Protect([&]() { objlen(ra, vRB(i)); });
         break;
       }
       case OP_CONCAT: {
         auto ra = RA(i);
         auto n = InstructionView(i).b();  /* number of elements to concatenate */
         L->getStackSubsystem().setTopPtr(ra + n);  /* mark the end of concat operands */
-        ProtectNT([&]() { luaV_concat(L, n); });
+        ProtectNT([&]() { concat(n); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
         break;
       }
@@ -838,7 +838,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto ra = RA(i);
         auto *rb = vRB(i);
         int cond;
-        Protect([&]() { cond = luaV_equalobj(L, s2v(ra), rb); });
+        Protect([&]() { cond = equalObj(s2v(ra), rb); });
         docondjump(cond, ci, i);
         break;
       }
@@ -1183,7 +1183,7 @@ void VirtualMachine::finishOp() {
       int total = cast_int(top - 1 - (base + a));  /* yet to concatenate */
       *s2v(top - 2) = *s2v(top);  /* put TM result in proper position (operator=) */
       L->getStackSubsystem().setTopPtr(top - 1);  /* top is one after last element (at top-2) */
-      luaV_concat(L, total);  /* concat them (may yield again) */
+      concat(total);  /* concat them (may yield again) */
       break;
     }
     case OP_CLOSE: {  /* yielded closing variables */
@@ -1421,7 +1421,7 @@ LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag
       return tag;  /* return tag of the result */
     }
     t = tm;  /* else try to access 'tm[key]' */
-    tag = luaV_fastget(t, key, s2v(val), [](Table* tbl, const TValue* k, TValue* res) { return tbl->get(k, res); });
+    tag = fastget(t, key, s2v(val), [](Table* tbl, const TValue* k, TValue* res) { return tbl->get(k, res); });
     if (!tagisempty(tag))
       return tag;  /* done */
     /* else repeat (tail call 'luaV_finishget') */
@@ -1458,9 +1458,9 @@ void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int hr
       return;
     }
     t = tm;  /* else repeat assignment over 'tm' */
-    hres = luaV_fastset(t, key, val, [](Table* tbl, const TValue* k, TValue* v) { return tbl->pset(k, v); });
+    hres = fastset(t, key, val, [](Table* tbl, const TValue* k, TValue* v) { return tbl->pset(k, v); });
     if (hres == HOK) {
-      luaV_finishfastset(L, t, val);
+      finishfastset(t, val);
       return;  /* done */
     }
     /* else 'return luaV_finishset(L, t, key, val, slot)' (loop) */

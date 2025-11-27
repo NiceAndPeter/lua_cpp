@@ -81,7 +81,7 @@
     return luai_numlt(cast_num(i), f);  /* compare them as floats */
   else {  /* i < f <=> i < ceil(f) */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Imod::F2Iceil))  /* fi = ceil(f) */
+    if (VirtualMachine::flttointeger(f, &fi, F2Imod::F2Iceil))  /* fi = ceil(f) */
       return i < fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f > 0;  /* greater? */
@@ -98,7 +98,7 @@
     return luai_numle(cast_num(i), f);  /* compare them as floats */
   else {  /* i <= f <=> i <= floor(f) */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Imod::F2Ifloor))  /* fi = floor(f) */
+    if (VirtualMachine::flttointeger(f, &fi, F2Imod::F2Ifloor))  /* fi = floor(f) */
       return i <= fi;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f > 0;  /* greater? */
@@ -115,7 +115,7 @@
     return luai_numlt(f, cast_num(i));  /* compare them as floats */
   else {  /* f < i <=> floor(f) < i */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Imod::F2Ifloor))  /* fi = floor(f) */
+    if (VirtualMachine::flttointeger(f, &fi, F2Imod::F2Ifloor))  /* fi = floor(f) */
       return fi < i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f < 0;  /* less? */
@@ -132,7 +132,7 @@
     return luai_numle(f, cast_num(i));  /* compare them as floats */
   else {  /* f <= i <=> ceil(f) <= i */
     lua_Integer fi;
-    if (luaV_flttointeger(f, &fi, F2Imod::F2Iceil))  /* fi = ceil(f) */
+    if (VirtualMachine::flttointeger(f, &fi, F2Imod::F2Iceil))  /* fi = ceil(f) */
       return fi <= i;   /* compare them as integers */
     else  /* 'f' is either greater or less than all integers */
       return f < 0;  /* less? */

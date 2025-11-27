@@ -840,7 +840,7 @@ l_noret luaG_opinterror (lua_State *L, const TValue *p1,
 // lua_State method
 l_noret lua_State::toIntError(const TValue *p1, const TValue *p2) {
   lua_Integer temp;
-  if (!luaV_tointegerns(p1, &temp, LUA_FLOORN2I))
+  if (!tointegerns(p1, &temp))
     p2 = p1;
   runError("number%s has no integer representation", varinfo(this, p2));
 }
