@@ -29,6 +29,7 @@
 #include "ltable.h"
 #include "ltm.h"
 #include "lundump.h"
+#include "lvirtualmachine.h"
 #include "lvm.h"
 #include "lzio.h"
 
@@ -677,7 +678,7 @@ void lua_State::cCall(StkId func, int nResults, l_uint32 inc) {
   }
   if ((ci_result = preCall(func, nResults)) != nullptr) {  /* Lua function? */
     ci_result->callStatusRef() |= CIST_FRESH;  /* mark that it is a "fresh" execute */
-    luaV_execute(this, ci_result);  /* call it */
+    getVM().execute(ci_result);  /* call it */
   }
   getNumberOfCCallsRef() -= inc;
 }
@@ -789,8 +790,8 @@ void lua_State::unrollContinuation(void *ud) {
     if (!ci_current->isLua())  /* C function? */
       finishCCall( ci_current);  /* complete its execution */
     else {  /* Lua function */
-      luaV_finishOp(this);  /* finish interrupted instruction */
-      luaV_execute(this, ci_current);  /* execute down to higher C 'boundary' */
+      getVM().finishOp();  /* finish interrupted instruction */
+      getVM().execute(ci_current);  /* execute down to higher C 'boundary' */
     }
   }
 }
@@ -855,7 +856,7 @@ static void resume (lua_State *L, void *ud) {
       lua_assert(ci->getCallStatus() & CIST_HOOKYIELD);
       (*ci->getSavedPCPtr())--;
       L->getStackSubsystem().setTopPtr(firstArg);  /* discard arguments */
-      luaV_execute(L, ci);  /* just continue running Lua code */
+      L->getVM().execute(ci);  /* just continue running Lua code */
     }
     else {  /* 'common' yield */
       if (ci->getK() != nullptr) {  /* does it have a continuation function? */

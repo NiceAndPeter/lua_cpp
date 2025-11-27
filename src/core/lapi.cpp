@@ -28,6 +28,7 @@
 #include "ltable.h"
 #include "ltm.h"
 #include "lundump.h"
+#include "lvirtualmachine.h"
 #include "lvm.h"
 
 
@@ -288,9 +289,9 @@ LUA_API int lua_compare (lua_State *L, int index1, int index2, int op) {
   const TValue *o2 = L->getStackSubsystem().indexToValue(L,index2);
   if (isvalid(L, o1) && isvalid(L, o2)) {
     switch (op) {
-      case LUA_OPEQ: i = luaV_equalobj(L, o1, o2); break;
-      case LUA_OPLT: i = luaV_lessthan(L, o1, o2); break;
-      case LUA_OPLE: i = luaV_lessequal(L, o1, o2); break;
+      case LUA_OPEQ: i = L->getVM().equalObj(o1, o2); break;
+      case LUA_OPLT: i = L->getVM().lessThan(o1, o2); break;
+      case LUA_OPLE: i = L->getVM().lessEqual(o1, o2); break;
       default: api_check(L, 0, "invalid option");
     }
   }
@@ -607,7 +608,7 @@ static int auxgetstr (lua_State *L, const TValue *t, const char *k) {
   else {
     setsvalue2s(L, L->getTop().p, str);
     api_incr_top(L);
-    tag = luaV_finishget(L, t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
+    tag = L->getVM().finishGet(t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
   }
   lua_unlock(L);
   return novariant(tag);
@@ -641,7 +642,7 @@ LUA_API int lua_gettable (lua_State *L, int idx) {
   TValue *t = L->getStackSubsystem().indexToValue(L,idx);
   LuaT tag = luaV_fastget(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 1), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
   if (tagisempty(tag))
-    tag = luaV_finishget(L, t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
+    tag = L->getVM().finishGet(t, s2v(L->getTop().p - 1), L->getTop().p - 1, tag);
   lua_unlock(L);
   return novariant(tag);
 }
@@ -661,7 +662,7 @@ LUA_API int lua_geti (lua_State *L, int idx, lua_Integer n) {
   if (tagisempty(tag)) {
     TValue key;
     key.setInt(n);
-    tag = luaV_finishget(L, t, &key, L->getTop().p, tag);
+    tag = L->getVM().finishGet(t, &key, L->getTop().p, tag);
   }
   api_incr_top(L);
   lua_unlock(L);
@@ -791,7 +792,7 @@ static void auxsetstr (lua_State *L, const TValue *t, const char *k) {
   else {
     setsvalue2s(L, L->getTop().p, str);  /* push 'str' (to make it a TValue) */
     api_incr_top(L);
-    luaV_finishset(L, t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 2), hres);
+    L->getVM().finishSet(t, s2v(L->getTop().p - 1), s2v(L->getTop().p - 2), hres);
     L->getStackSubsystem().popN(2);  /* pop value and key */
   }
   lua_unlock(L);  /* lock done by caller */
@@ -814,7 +815,7 @@ LUA_API void lua_settable (lua_State *L, int idx) {
   if (hres == HOK)
     luaV_finishfastset(L, t, s2v(L->getTop().p - 1));
   else
-    luaV_finishset(L, t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), hres);
+    L->getVM().finishSet(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), hres);
   L->getStackSubsystem().popN(2);  /* pop index and value */
   lua_unlock(L);
 }
@@ -837,7 +838,7 @@ LUA_API void lua_seti (lua_State *L, int idx, lua_Integer n) {
   else {
     TValue temp;
     temp.setInt(n);
-    luaV_finishset(L, t, &temp, s2v(L->getTop().p - 1), hres);
+    L->getVM().finishSet(t, &temp, s2v(L->getTop().p - 1), hres);
   }
   L->getStackSubsystem().pop();  /* pop value */
   lua_unlock(L);
@@ -1210,7 +1211,7 @@ LUA_API void lua_concat (lua_State *L, int n) {
   lua_lock(L);
   api_checknelems(L, n);
   if (n > 0) {
-    luaV_concat(L, n);
+    L->getVM().concat(n);
     luaC_checkGC(L);
   }
   else {  /* nothing to concatenate */
@@ -1224,7 +1225,7 @@ LUA_API void lua_concat (lua_State *L, int n) {
 LUA_API void lua_len (lua_State *L, int idx) {
   lua_lock(L);
   TValue *t = L->getStackSubsystem().indexToValue(L,idx);
-  luaV_objlen(L, L->getTop().p, t);
+  L->getVM().objlen(L->getTop().p, t);
   api_incr_top(L);
   lua_unlock(L);
 }

@@ -28,6 +28,7 @@
 #include "lobject.h"
 #include "lstate.h"
 #include "lstring.h"
+#include "lvirtualmachine.h"
 #include "lvm.h"
 
 
@@ -121,13 +122,13 @@ static lua_Integer intarith (lua_State *L, int op, lua_Integer v1,
     case LUA_OPADD: return intop(+, v1, v2);
     case LUA_OPSUB:return intop(-, v1, v2);
     case LUA_OPMUL:return intop(*, v1, v2);
-    case LUA_OPMOD: return luaV_mod(L, v1, v2);
-    case LUA_OPIDIV: return luaV_idiv(L, v1, v2);
+    case LUA_OPMOD: return L->getVM().mod(v1, v2);
+    case LUA_OPIDIV: return L->getVM().idiv(v1, v2);
     case LUA_OPBAND: return intop(&, v1, v2);
     case LUA_OPBOR: return intop(|, v1, v2);
     case LUA_OPBXOR: return intop(^, v1, v2);
-    case LUA_OPSHL: return luaV_shiftl(v1, v2);
-    case LUA_OPSHR: return luaV_shiftr(v1, v2);
+    case LUA_OPSHL: return VirtualMachine::shiftl(v1, v2);
+    case LUA_OPSHR: return VirtualMachine::shiftr(v1, v2);
     case LUA_OPUNM: return intop(-, 0, v1);
     case LUA_OPBNOT: return intop(^, ~l_castS2U(0), v1);
     default: lua_assert(0); return 0;
@@ -145,7 +146,7 @@ static lua_Number numarith (lua_State *L, int op, lua_Number v1,
     case LUA_OPPOW: return luai_numpow(L, v1, v2);
     case LUA_OPIDIV: return luai_numidiv(L, v1, v2);
     case LUA_OPUNM: return luai_numunm(L, v1);
-    case LUA_OPMOD: return luaV_modf(L, v1, v2);
+    case LUA_OPMOD: return L->getVM().modf(v1, v2);
     default: lua_assert(0); return 0;
   }
 }

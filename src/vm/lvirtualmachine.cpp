@@ -496,7 +496,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         LuaT tag;
         tag = luaV_fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { luaV_finishget(L, upval, rc, ra, tag); });
+          Protect([&]() { finishGet(upval, rc, ra, tag); });
         break;
       }
       case OP_GETTABLE: {
