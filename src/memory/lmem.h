@@ -19,17 +19,17 @@
 
 /* Forward declarations of underlying memory functions */
 LUAI_FUNC l_noret luaM_toobig (lua_State *L);
-LUAI_FUNC void *luaM_realloc_ (lua_State *L, void *block, size_t oldsize,
+[[nodiscard]] LUAI_FUNC void *luaM_realloc_ (lua_State *L, void *block, size_t oldsize,
                                                           size_t size);
-LUAI_FUNC void *luaM_saferealloc_ (lua_State *L, void *block, size_t oldsize,
+[[nodiscard]] LUAI_FUNC void *luaM_saferealloc_ (lua_State *L, void *block, size_t oldsize,
                                                               size_t size);
 LUAI_FUNC void luaM_free_ (lua_State *L, void *block, size_t osize);
-LUAI_FUNC void *luaM_growaux_ (lua_State *L, void *block, int nelems,
+[[nodiscard]] LUAI_FUNC void *luaM_growaux_ (lua_State *L, void *block, int nelems,
                                int *size, unsigned size_elem, int limit,
                                const char *what);
-LUAI_FUNC void *luaM_shrinkvector_ (lua_State *L, void *block, int *nelem,
+[[nodiscard]] LUAI_FUNC void *luaM_shrinkvector_ (lua_State *L, void *block, int *nelem,
                                     int final_n, unsigned size_elem);
-LUAI_FUNC void *luaM_malloc_ (lua_State *L, size_t size, int tag);
+[[nodiscard]] LUAI_FUNC void *luaM_malloc_ (lua_State *L, size_t size, int tag);
 
 /*
 ** This function tests whether it is safe to multiply 'n' by the size of
@@ -70,7 +70,7 @@ inline constexpr int luaM_limitN(int n) noexcept {
 /*
 ** Arrays of chars do not need any test
 */
-inline char* luaM_reallocvchar(lua_State* L, void* b, size_t on, size_t n) {
+[[nodiscard]] inline char* luaM_reallocvchar(lua_State* L, void* b, size_t on, size_t n) {
 	return cast_charp(luaM_saferealloc_(L, b, on * sizeof(char), n * sizeof(char)));
 }
 
@@ -79,7 +79,7 @@ inline void luaM_freemem(lua_State* L, void* b, size_t s) {
 	luaM_free_(L, b, s);
 }
 
-inline void* luaM_newobject(lua_State* L, int tag, size_t s) {
+[[nodiscard]] inline void* luaM_newobject(lua_State* L, int tag, size_t s) {
 	return luaM_malloc_(L, s, tag);
 }
 
@@ -102,31 +102,31 @@ inline void luaM_freearray(lua_State* L, T* b, size_t n) noexcept {
 
 /* Allocate a single object of type T */
 template<typename T>
-inline T* luaM_new(lua_State* L) {
+[[nodiscard]] inline T* luaM_new(lua_State* L) {
 	return static_cast<T*>(luaM_malloc_(L, sizeof(T), 0));
 }
 
 /* Allocate an array of n objects of type T */
 template<typename T>
-inline T* luaM_newvector(lua_State* L, size_t n) {
+[[nodiscard]] inline T* luaM_newvector(lua_State* L, size_t n) {
 	return static_cast<T*>(luaM_malloc_(L, cast_sizet(n) * sizeof(T), 0));
 }
 
 /* Allocate an array with size check */
 template<typename T>
-inline T* luaM_newvectorchecked(lua_State* L, size_t n) {
+[[nodiscard]] inline T* luaM_newvectorchecked(lua_State* L, size_t n) {
 	luaM_checksize(L, n, sizeof(T));
 	return luaM_newvector<T>(L, n);
 }
 
 /* Allocate a block of size bytes (char array) */
-inline char* luaM_newblock(lua_State* L, size_t size) {
+[[nodiscard]] inline char* luaM_newblock(lua_State* L, size_t size) {
 	return luaM_newvector<char>(L, size);
 }
 
 /* Reallocate an array from oldn to n elements */
 template<typename T>
-inline T* luaM_reallocvector(lua_State* L, T* v, size_t oldn, size_t n) {
+[[nodiscard]] inline T* luaM_reallocvector(lua_State* L, T* v, size_t oldn, size_t n) {
 	return static_cast<T*>(luaM_realloc_(L, v, cast_sizet(oldn) * sizeof(T),
 	                                             cast_sizet(n) * sizeof(T)));
 }

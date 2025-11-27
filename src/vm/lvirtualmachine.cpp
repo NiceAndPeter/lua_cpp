@@ -496,7 +496,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         LuaT tag;
         tag = fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { finishGet(upval, rc, ra, tag); });
+          Protect([&]() { tag = finishGet(upval, rc, ra, tag); });
         break;
       }
       case OP_GETTABLE: {
@@ -510,7 +510,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         else
           tag = fastget(rb, rc, s2v(ra), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
         if (tagisempty(tag))
-          Protect([&]() { finishGet(rb, rc, ra, tag); });
+          Protect([&]() { tag = finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_GETI: {
@@ -522,7 +522,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         if (tagisempty(tag)) {
           TValue key;
           key.setInt(c);
-          Protect([&]() { finishGet(rb, &key, ra, tag); });
+          Protect([&]() { tag = finishGet(rb, &key, ra, tag); });
         }
         break;
       }
@@ -534,7 +534,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         LuaT tag;
         tag = fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { finishGet(rb, rc, ra, tag); });
+          Protect([&]() { tag = finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_SETTABUP: {
@@ -621,7 +621,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         L->getStackSubsystem().setSlot(ra + 1, rb);
         LuaT tag = fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { finishGet(rb, rc, ra, tag); });
+          Protect([&]() { tag = finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_ADDI: {

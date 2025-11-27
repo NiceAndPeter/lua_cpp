@@ -47,10 +47,10 @@ public:
     void finishOp();
 
     // === TYPE CONVERSIONS === (lvm_conversion.cpp)
-    int tonumber(const TValue *obj, lua_Number *n);
-    int tointeger(const TValue *obj, lua_Integer *p, F2Imod mode);
-    int tointegerns(const TValue *obj, lua_Integer *p, F2Imod mode);
-    static int flttointeger(lua_Number n, lua_Integer *p, F2Imod mode);
+    [[nodiscard]] int tonumber(const TValue *obj, lua_Number *n);
+    [[nodiscard]] int tointeger(const TValue *obj, lua_Integer *p, F2Imod mode);
+    [[nodiscard]] int tointegerns(const TValue *obj, lua_Integer *p, F2Imod mode);
+    [[nodiscard]] static int flttointeger(lua_Number n, lua_Integer *p, F2Imod mode);
 
     // === ARITHMETIC === (lvm_arithmetic.cpp)
     [[nodiscard]] lua_Integer idiv(lua_Integer m, lua_Integer n);
@@ -74,12 +74,12 @@ public:
     }
 
     // === TABLE OPERATIONS === (lvm_table.cpp)
-    LuaT finishGet(const TValue *t, TValue *key, StkId val, LuaT tag);
+    [[nodiscard]] LuaT finishGet(const TValue *t, TValue *key, StkId val, LuaT tag);
     void finishSet(const TValue *t, TValue *key, TValue *val, int aux);
 
     // Fast-path table get - inline template for performance
     template<typename F>
-    inline LuaT fastget(const TValue* t, const TValue* k, TValue* res, F&& f) noexcept {
+    [[nodiscard]] inline LuaT fastget(const TValue* t, const TValue* k, TValue* res, F&& f) noexcept {
         if (!ttistable(t))
             return LuaT::NOTABLE;
         return f(hvalue(t), k, res);
@@ -87,7 +87,7 @@ public:
 
     // Overload for TString* keys
     template<typename F>
-    inline LuaT fastget(const TValue* t, TString* k, TValue* res, F&& f) noexcept {
+    [[nodiscard]] inline LuaT fastget(const TValue* t, TString* k, TValue* res, F&& f) noexcept {
         if (!ttistable(t))
             return LuaT::NOTABLE;
         return f(hvalue(t), k, res);
@@ -103,7 +103,7 @@ public:
 
     // Fast-path table set - inline template
     template<typename F>
-    inline int fastset(const TValue* t, const TValue* k, TValue* val, F&& f) noexcept {
+    [[nodiscard]] inline int fastset(const TValue* t, const TValue* k, TValue* val, F&& f) noexcept {
         if (!ttistable(t))
             return HNOTATABLE;
         return f(hvalue(t), k, val);
@@ -111,7 +111,7 @@ public:
 
     // Overload for TString* keys
     template<typename F>
-    inline int fastset(const TValue* t, TString* k, TValue* val, F&& f) noexcept {
+    [[nodiscard]] inline int fastset(const TValue* t, TString* k, TValue* val, F&& f) noexcept {
         if (!ttistable(t))
             return HNOTATABLE;
         return f(hvalue(t), k, val);
