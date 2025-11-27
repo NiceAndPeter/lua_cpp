@@ -39,31 +39,6 @@ inline void luai_threadyield(lua_State* L) noexcept {
 #endif
 
 /*
-** Check if garbage collection is needed and yield thread if necessary.
-**
-** 'c' is the limit of live values in the stack (typically L->top or ci->top)
-**
-** PERFORMANCE vs CORRECTNESS: GC is expensive, so we only check conditionally
-** (luaC_condGC) rather than forcing collection. The GC uses a debt-based system
-** to determine when collection is needed.
-**
-** The macro saves state before GC (because GC can trigger __gc metamethods that
-** might throw errors), then updates trap after (because GC might have changed hooks).
-**
-** luai_threadyield allows the OS to schedule other threads. Without it, tight
-** loops could starve other threads on single-core systems.
-*/
-#define checkGC(L,c)  \
-	{ luaC_condGC(L, (savepc(ci), L->getStackSubsystem().setTopPtr(c)), \
-                         updatetrap(ci)); \
-           luai_threadyield(L); }
-
-
-#define vmdispatch(o)	switch(o)
-#define vmcase(l)	case l:
-#define vmbreak		break
-
-/*
 ** Constants from lvm.cpp needed for VM operations
 */
 
@@ -177,7 +152,6 @@ void VirtualMachine::execute(CallInfo *ci) {
   #undef Protect
   #undef ProtectNT
   #undef halfProtect
-  #undef checkGC
 
   // Undefine VM dispatch macro to avoid naming conflict
   #undef vmfetch
@@ -263,6 +237,20 @@ void VirtualMachine::execute(CallInfo *ci) {
     savestate(L, ci);
     expr();
   };
+
+  /*
+  ** Check if garbage collection is needed and yield thread if necessary.
+  ** 'c_val' is the limit of live values in the stack (typically L->top or ci->top)
+  **
+  ** PERFORMANCE: GC is expensive, so we only check conditionally (luaC_condGC).
+  ** The GC uses a debt-based system to determine when collection is needed.
+  **
+  ** Saves state before GC (because GC can trigger __gc metamethods that might
+  ** throw errors), then updates trap after (because GC might have changed hooks).
+  **
+  ** luai_threadyield allows the OS to schedule other threads, preventing tight
+  ** loops from starving other threads on single-core systems.
+  */
   auto checkGC = [&](lua_State* L_arg, StkId c_val) {
     luaC_condGC(L_arg,
                 (savepc(ci), L_arg->getStackSubsystem().setTopPtr(c_val)),
@@ -433,74 +421,74 @@ void VirtualMachine::execute(CallInfo *ci) {
     lua_assert(base <= L->getTop().p && L->getTop().p <= L->getStackLast().p);
     /* for tests, invalidate top for instructions not expecting it */
     lua_assert(luaP_isIT(i) || (cast_void(L->getStackSubsystem().setTopPtr(base)), 1));
-    vmdispatch (InstructionView(i).opcode()) {
-      vmcase(OP_MOVE) {
+    switch (InstructionView(i).opcode()) {
+      case OP_MOVE: {
         auto ra = RA(i);
         *s2v(ra) = *s2v(RB(i));  /* Use operator= for move */
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADI) {
+      case OP_LOADI: {
         auto ra = RA(i);
         auto b = InstructionView(i).sbx();
         s2v(ra)->setInt(b);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADF) {
+      case OP_LOADF: {
         auto ra = RA(i);
         auto b = InstructionView(i).sbx();
         s2v(ra)->setFloat(cast_num(b));
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADK) {
+      case OP_LOADK: {
         auto ra = RA(i);
         auto *rb = k + InstructionView(i).bx();
         L->getStackSubsystem().setSlot(ra, rb);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADKX) {
+      case OP_LOADKX: {
         auto ra = RA(i);
         auto *rb = k + InstructionView(*pc).ax(); pc++;
         L->getStackSubsystem().setSlot(ra, rb);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADFALSE) {
+      case OP_LOADFALSE: {
         auto ra = RA(i);
         setbfvalue(s2v(ra));
-        vmbreak;
+        break;
       }
-      vmcase(OP_LFALSESKIP) {
+      case OP_LFALSESKIP: {
         auto ra = RA(i);
         setbfvalue(s2v(ra));
         pc++;  /* skip next instruction */
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADTRUE) {
+      case OP_LOADTRUE: {
         auto ra = RA(i);
         setbtvalue(s2v(ra));
-        vmbreak;
+        break;
       }
-      vmcase(OP_LOADNIL) {
+      case OP_LOADNIL: {
         auto ra = RA(i);
         auto b = InstructionView(i).b();
         do {
           setnilvalue(s2v(ra++));
         } while (b--);
-        vmbreak;
+        break;
       }
-      vmcase(OP_GETUPVAL) {
+      case OP_GETUPVAL: {
         auto ra = RA(i);
         auto b = InstructionView(i).b();
         L->getStackSubsystem().setSlot(ra, cl->getUpval(b)->getVP());
-        vmbreak;
+        break;
       }
-      vmcase(OP_SETUPVAL) {
+      case OP_SETUPVAL: {
         auto ra = RA(i);
         auto *uv = cl->getUpval(InstructionView(i).b());
         *uv->getVP() = *s2v(ra);
         luaC_barrier(L, uv, s2v(ra));
-        vmbreak;
+        break;
       }
-      vmcase(OP_GETTABUP) {
+      case OP_GETTABUP: {
         auto ra = RA(i);
         auto *upval = cl->getUpval(InstructionView(i).b())->getVP();
         auto *rc = KC(i);
@@ -509,9 +497,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         tag = luaV_fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, upval, rc, ra, tag); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_GETTABLE) {
+      case OP_GETTABLE: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         auto *rc = vRC(i);
@@ -523,9 +511,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           tag = luaV_fastget(rb, rc, s2v(ra), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_GETI) {
+      case OP_GETI: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         auto c = InstructionView(i).c();
@@ -536,9 +524,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           key.setInt(c);
           Protect([&]() { luaV_finishget(L, rb, &key, ra, tag); });
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_GETFIELD) {
+      case OP_GETFIELD: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         auto *rc = KC(i);
@@ -547,9 +535,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         tag = luaV_fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_SETTABUP) {
+      case OP_SETTABUP: {
         auto *upval = cl->getUpval(InstructionView(i).a())->getVP();
         auto *rb = KB(i);
         auto *rc = RKC(i);
@@ -559,9 +547,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           luaV_finishfastset(L, upval, rc);
         else
           Protect([&]() { luaV_finishset(L, upval, rb, rc, hres); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_SETTABLE) {
+      case OP_SETTABLE: {
         auto ra = RA(i);
         auto *rb = vRB(i);  /* key (table is in 'ra') */
         auto *rc = RKC(i);  /* value */
@@ -576,9 +564,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           luaV_finishfastset(L, s2v(ra), rc);
         else
           Protect([&]() { luaV_finishset(L, s2v(ra), rb, rc, hres); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_SETI) {
+      case OP_SETI: {
         auto ra = RA(i);
         auto b = InstructionView(i).b();
         auto *rc = RKC(i);
@@ -591,9 +579,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           key.setInt(b);
           Protect([&]() { luaV_finishset(L, s2v(ra), &key, rc, hres); });
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_SETFIELD) {
+      case OP_SETFIELD: {
         auto ra = RA(i);
         auto *rb = KB(i);
         auto *rc = RKC(i);
@@ -603,9 +591,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           luaV_finishfastset(L, s2v(ra), rc);
         else
           Protect([&]() { luaV_finishset(L, s2v(ra), rb, rc, hres); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_NEWTABLE) {
+      case OP_NEWTABLE: {
         auto ra = RA(i);
         auto b = cast_uint(InstructionView(i).vb());  /* log2(hash size) + 1 */
         auto c = cast_uint(InstructionView(i).vc());  /* array size */
@@ -623,9 +611,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         if (b != 0 || c != 0)
           t->resize(L, c, b);  /* idem */
         checkGC(L, ra + 1);
-        vmbreak;
+        break;
       }
-      vmcase(OP_SELF) {
+      case OP_SELF: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         auto *rc = KC(i);
@@ -634,55 +622,55 @@ void VirtualMachine::execute(CallInfo *ci) {
         LuaT tag = luaV_fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
           Protect([&]() { luaV_finishget(L, rb, rc, ra, tag); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_ADDI) {
+      case OP_ADDI: {
         op_arithI(l_addi, luai_numadd, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_ADDK) {
+      case OP_ADDK: {
         op_arithK(l_addi, luai_numadd, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_SUBK) {
+      case OP_SUBK: {
         op_arithK(l_subi, luai_numsub, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_MULK) {
+      case OP_MULK: {
         op_arithK(l_muli, luai_nummul, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_MODK) {
+      case OP_MODK: {
         savestate(L, ci);  /* in case of division by 0 */
         op_arithK(luaV_mod, luaV_modf, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_POWK) {
+      case OP_POWK: {
         op_arithfK(luai_numpow, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_DIVK) {
+      case OP_DIVK: {
         op_arithfK(luai_numdiv, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_IDIVK) {
+      case OP_IDIVK: {
         savestate(L, ci);  /* in case of division by 0 */
         op_arithK(luaV_idiv, luai_numidiv, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_BANDK) {
+      case OP_BANDK: {
         op_bitwiseK(l_band, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_BORK) {
+      case OP_BORK: {
         op_bitwiseK(l_bor, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_BXORK) {
+      case OP_BXORK: {
         op_bitwiseK(l_bxor, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_SHLI) {
+      case OP_SHLI: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         auto ic = InstructionView(i).sc();
@@ -690,9 +678,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         if (tointegerns(rb, &ib)) {
           pc++; s2v(ra)->setInt(luaV_shiftl(ic, ib));
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_SHRI) {
+      case OP_SHRI: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         auto ic = InstructionView(i).sc();
@@ -700,59 +688,59 @@ void VirtualMachine::execute(CallInfo *ci) {
         if (tointegerns(rb, &ib)) {
           pc++; s2v(ra)->setInt(luaV_shiftl(ib, -ic));
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_ADD) {
+      case OP_ADD: {
         op_arith(l_addi, luai_numadd, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_SUB) {
+      case OP_SUB: {
         op_arith(l_subi, luai_numsub, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_MUL) {
+      case OP_MUL: {
         op_arith(l_muli, luai_nummul, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_MOD) {
+      case OP_MOD: {
         savestate(L, ci);  /* in case of division by 0 */
         op_arith(luaV_mod, luaV_modf, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_POW) {
+      case OP_POW: {
         op_arithf(luai_numpow, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_DIV) {  /* float division (always with floats) */
+      case OP_DIV: {  /* float division (always with floats) */
         op_arithf(luai_numdiv, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_IDIV) {  /* floor division */
+      case OP_IDIV: {  /* floor division */
         savestate(L, ci);  /* in case of division by 0 */
         op_arith(luaV_idiv, luai_numidiv, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_BAND) {
+      case OP_BAND: {
         op_bitwise(l_band, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_BOR) {
+      case OP_BOR: {
         op_bitwise(l_bor, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_BXOR) {
+      case OP_BXOR: {
         op_bitwise(l_bxor, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_SHL) {
+      case OP_SHL: {
         op_bitwise(luaV_shiftl, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_SHR) {
+      case OP_SHR: {
         op_bitwise(luaV_shiftr, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_MMBIN) {
+      case OP_MMBIN: {
         auto ra = RA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto *rb = vRB(i);
@@ -760,9 +748,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto result = RA(pi);
         lua_assert(OP_ADD <= InstructionView(pi).opcode() && InstructionView(pi).opcode() <= OP_SHR);
         Protect([&]() { luaT_trybinTM(L, s2v(ra), rb, result, tm); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_MMBINI) {
+      case OP_MMBINI: {
         auto ra = RA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto imm = InstructionView(i).sb();
@@ -770,9 +758,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto flip = InstructionView(i).k();
         auto result = RA(pi);
         Protect([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_MMBINK) {
+      case OP_MMBINK: {
         auto ra = RA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto *imm = KB(i);
@@ -780,9 +768,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto flip = InstructionView(i).k();
         auto result = RA(pi);
         Protect([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_UNM) {
+      case OP_UNM: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         lua_Number nb;
@@ -795,9 +783,9 @@ void VirtualMachine::execute(CallInfo *ci) {
         }
         else
           Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_UNM); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_BNOT) {
+      case OP_BNOT: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         lua_Integer ib;
@@ -806,71 +794,71 @@ void VirtualMachine::execute(CallInfo *ci) {
         }
         else
           Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_BNOT); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_NOT) {
+      case OP_NOT: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         if (l_isfalse(rb))
           setbtvalue(s2v(ra));
         else
           setbfvalue(s2v(ra));
-        vmbreak;
+        break;
       }
-      vmcase(OP_LEN) {
+      case OP_LEN: {
         auto ra = RA(i);
         Protect([&]() { luaV_objlen(L, ra, vRB(i)); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_CONCAT) {
+      case OP_CONCAT: {
         auto ra = RA(i);
         auto n = InstructionView(i).b();  /* number of elements to concatenate */
         L->getStackSubsystem().setTopPtr(ra + n);  /* mark the end of concat operands */
         ProtectNT([&]() { luaV_concat(L, n); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
-        vmbreak;
+        break;
       }
-      vmcase(OP_CLOSE) {
+      case OP_CLOSE: {
         auto ra = RA(i);
         lua_assert(!InstructionView(i).b());  /* 'close must be alive */
         Protect([&]() { luaF_close(L, ra, LUA_OK, 1); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_TBC) {
+      case OP_TBC: {
         auto ra = RA(i);
         /* create new to-be-closed upvalue */
         halfProtect([&]() { luaF_newtbcupval(L, ra); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_JMP) {
+      case OP_JMP: {
         dojump(ci, i, 0);
-        vmbreak;
+        break;
       }
-      vmcase(OP_EQ) {
+      case OP_EQ: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         int cond;
         Protect([&]() { cond = luaV_equalobj(L, s2v(ra), rb); });
         docondjump(cond, ci, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LT) {
+      case OP_LT: {
         op_order(cmp_lt, other_lt, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LE) {
+      case OP_LE: {
         op_order(cmp_le, other_le, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_EQK) {
+      case OP_EQK: {
         auto ra = RA(i);
         auto *rb = KB(i);
         /* basic types do not use '__eq'; we can use raw equality */
         auto cond = (*s2v(ra) == *rb);  /* Use operator== for cleaner syntax */
         docondjump(cond, ci, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_EQI) {
+      case OP_EQI: {
         auto ra = RA(i);
         auto im = InstructionView(i).sb();
         int cond;
@@ -881,31 +869,31 @@ void VirtualMachine::execute(CallInfo *ci) {
         else
           cond = 0;  /* other types cannot be equal to a number */
         docondjump(cond, ci, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LTI) {
+      case OP_LTI: {
         op_orderI(l_lti, luai_numlt, 0, TMS::TM_LT, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_LEI) {
+      case OP_LEI: {
         op_orderI(l_lei, luai_numle, 0, TMS::TM_LE, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_GTI) {
+      case OP_GTI: {
         op_orderI(l_gti, luai_numgt, 1, TMS::TM_LT, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_GEI) {
+      case OP_GEI: {
         op_orderI(l_gei, luai_numge, 1, TMS::TM_LE, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_TEST) {
+      case OP_TEST: {
         auto ra = RA(i);
         auto cond = !l_isfalse(s2v(ra));
         docondjump(cond, ci, i);
-        vmbreak;
+        break;
       }
-      vmcase(OP_TESTSET) {
+      case OP_TESTSET: {
         auto ra = RA(i);
         auto *rb = vRB(i);
         if (l_isfalse(rb) == InstructionView(i).k())
@@ -914,9 +902,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           L->getStackSubsystem().setSlot(ra, rb);
           donextjump(ci);
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_CALL) {
+      case OP_CALL: {
         auto ra = RA(i);
         auto b = InstructionView(i).b();
         auto nresults = InstructionView(i).c() - 1;
@@ -931,9 +919,9 @@ void VirtualMachine::execute(CallInfo *ci) {
           ci = newci;
           goto startfunc;
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_TAILCALL) {
+      case OP_TAILCALL: {
         auto ra = RA(i);
         auto b = InstructionView(i).b();  /* number of arguments + 1 (function) */
         auto nparams1 = InstructionView(i).c();
@@ -959,7 +947,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           goto ret;  /* caller returns after the tail call */
         }
       }
-      vmcase(OP_RETURN) {
+      case OP_RETURN: {
         auto ra = RA(i);
         auto n = InstructionView(i).b() - 1;  /* number of results */
         auto nparams1 = InstructionView(i).c();
@@ -981,7 +969,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         updatetrap(ci);  /* 'luaD_poscall' can change hooks */
         goto ret;
       }
-      vmcase(OP_RETURN0) {
+      case OP_RETURN0: {
         if (l_unlikely(L->getHookMask())) {
           auto ra = RA(i);
           L->getStackSubsystem().setTopPtr(ra);
@@ -1000,7 +988,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         }
         goto ret;
       }
-      vmcase(OP_RETURN1) {
+      case OP_RETURN1: {
         if (l_unlikely(L->getHookMask())) {
           auto ra = RA(i);
           L->getStackSubsystem().setTopPtr(ra + 1);
@@ -1031,7 +1019,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           goto returning;  /* continue running caller in this frame */
         }
       }
-      vmcase(OP_FORLOOP) {
+      case OP_FORLOOP: {
         auto ra = RA(i);
         if (ttisinteger(s2v(ra + 1))) {  /* integer loop? */
           auto count = l_castS2U(ivalue(s2v(ra)));
@@ -1047,16 +1035,16 @@ void VirtualMachine::execute(CallInfo *ci) {
         else if (L->floatForLoop(ra))  /* float loop */
           pc -= InstructionView(i).bx();  /* jump back */
         updatetrap(ci);  /* allows a signal to break the loop */
-        vmbreak;
+        break;
       }
-      vmcase(OP_FORPREP) {
+      case OP_FORPREP: {
         auto ra = RA(i);
         savestate(L, ci);  /* in case of errors */
         if (L->forPrep(ra))
           pc += InstructionView(i).bx() + 1;  /* skip the loop */
-        vmbreak;
+        break;
       }
-      vmcase(OP_TFORPREP) {
+      case OP_TFORPREP: {
        /* before: 'ra' has the iterator function, 'ra + 1' has the state,
           'ra + 2' has the initial value for the control variable, and
           'ra + 3' has the closing variable. This opcode then swaps the
@@ -1075,7 +1063,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         lua_assert(InstructionView(i).opcode() == OP_TFORCALL && ra == RA(i));
         goto l_tforcall;
       }
-      vmcase(OP_TFORCALL) {
+      case OP_TFORCALL: {
        l_tforcall: {
         /* 'ra' has the iterator function, 'ra + 1' has the state,
            'ra + 2' has the closing variable, and 'ra + 3' has the control
@@ -1094,14 +1082,14 @@ void VirtualMachine::execute(CallInfo *ci) {
         lua_assert(InstructionView(i).opcode() == OP_TFORLOOP && ra == RA(i));
         goto l_tforloop;
       }}
-      vmcase(OP_TFORLOOP) {
+      case OP_TFORLOOP: {
        l_tforloop: {
         auto ra = RA(i);
         if (!ttisnil(s2v(ra + 3)))  /* continue loop? */
           pc -= InstructionView(i).bx();  /* jump back */
-        vmbreak;
+        break;
       }}
-      vmcase(OP_SETLIST) {
+      case OP_SETLIST: {
         auto ra = RA(i);
         auto n = cast_uint(InstructionView(i).vb());
         auto last = cast_uint(InstructionView(i).vc());
@@ -1127,33 +1115,33 @@ void VirtualMachine::execute(CallInfo *ci) {
           last--;
           luaC_barrierback(L, obj2gco(h), val);
         }
-        vmbreak;
+        break;
       }
-      vmcase(OP_CLOSURE) {
+      case OP_CLOSURE: {
         auto ra = RA(i);
         auto *p = cl->getProto()->getProtos()[InstructionView(i).bx()];
         halfProtect([&]() { L->pushClosure(p, cl->getUpvalPtr(0), base, ra); });
         checkGC(L, ra + 1);
-        vmbreak;
+        break;
       }
-      vmcase(OP_VARARG) {
+      case OP_VARARG: {
         auto ra = RA(i);
         auto n = InstructionView(i).c() - 1;  /* required results */
         Protect([&]() { luaT_getvarargs(L, ci, ra, n); });
-        vmbreak;
+        break;
       }
-      vmcase(OP_VARARGPREP) {
+      case OP_VARARGPREP: {
         ProtectNT([&]() { luaT_adjustvarargs(L, InstructionView(i).a(), ci, cl->getProto()); });
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
           L->hookCall( ci);
           L->setOldPC(1);  /* next opcode will be seen as a "new" line */
         }
         updatebase(ci);  /* function has new base after adjustment */
-        vmbreak;
+        break;
       }
-      vmcase(OP_EXTRAARG) {
+      case OP_EXTRAARG: {
         lua_assert(0);
-        vmbreak;
+        break;
       }
     }
   }
