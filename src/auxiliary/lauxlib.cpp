@@ -1150,11 +1150,15 @@ inline constexpr size_t BUFSEEDB = sizeof(void*) + sizeof(time_t);
 /* Size for the buffer in int's, rounded up */
 inline constexpr size_t BUFSEED = (BUFSEEDB + sizeof(int) - 1) / sizeof(int);
 
-/*
+/* Phase 126.2: Convert addbuff macro to inline template function
 ** Copy the contents of variable 'v' into the buffer pointed by 'b'.
 ** (The '&b[0]' disguises 'b' to fix an absurd warning from clang.)
 */
-#define addbuff(b,v)	(memcpy(&b[0], &(v), sizeof(v)), b += sizeof(v))
+template<typename T>
+inline void addbuff(char*& b, const T& v) noexcept {
+	memcpy(&b[0], &v, sizeof(v));
+	b += sizeof(v);
+}
 
 
 static unsigned int luai_makeseed (void) {

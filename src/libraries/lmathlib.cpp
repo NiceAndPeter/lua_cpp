@@ -336,8 +336,10 @@ static int math_type (lua_State *L) {
 ** final result has to discard the extra bits.
 */
 
-/* avoid using extra bits when needed */
-#define trim64(x)	((x) & 0xffffffffffffffffu)
+/* Phase 126.2: Convert trim64 macro to inline constexpr function */
+inline constexpr Rand64 trim64(Rand64 x) noexcept {
+	return x & 0xffffffffffffffffu;
+}
 
 
 /* rotate left 'x' by 'n' bits */
@@ -385,11 +387,14 @@ static lua_Number I2d (Rand64 x) {
   return res;
 }
 
-/* convert a 'Rand64' to a 'lua_Unsigned' */
-#define I2UInt(x)	((lua_Unsigned)trim64(x))
+/* Phase 126.2: Convert I2UInt and Int2I macros to inline functions */
+inline lua_Unsigned I2UInt(Rand64 x) noexcept {
+	return static_cast<lua_Unsigned>(trim64(x));
+}
 
-/* convert a 'lua_Unsigned' to a 'Rand64' */
-#define Int2I(x)	((Rand64)(x))
+inline Rand64 Int2I(lua_Unsigned x) noexcept {
+	return static_cast<Rand64>(x);
+}
 
 
 #else	/* no 'Rand64'   }{ */
@@ -409,8 +414,10 @@ typedef struct Rand64 {
 ** Moreover, the final result has to discard the extra bits.
 */
 
-/* avoid using extra bits when needed */
-#define trim32(x)	((x) & 0xffffffffu)
+/* Phase 126.2: Convert trim32 macro to inline constexpr function */
+inline constexpr l_uint32 trim32(l_uint32 x) noexcept {
+	return x & 0xffffffffu;
+}
 
 
 /*

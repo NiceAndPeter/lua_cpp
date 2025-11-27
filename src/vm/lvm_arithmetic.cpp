@@ -70,7 +70,7 @@ lua_Number luaV_modf (lua_State *L, lua_Number m, lua_Number n) {
 
 
 /* number of bits in an integer */
-inline constexpr int NBITS = l_numbits(lua_Integer);
+inline constexpr int NBITS = l_numbits<lua_Integer>();
 
 
 /*

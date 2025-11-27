@@ -41,13 +41,13 @@
 */
 
 
-/*
-** Macro to call the allocation function.
-*/
-#define callfrealloc(g,block,os,ns)    ((*g->getFrealloc())(g->getUd(), block, os, ns))
+/* Phase 126.2: Convert callfrealloc macro to inline function */
+inline void* callfrealloc(global_State* g, void* block, size_t os, size_t ns) noexcept {
+	return (*g->getFrealloc())(g->getUd(), block, os, ns);
+}
 
 
-/*
+/* Phase 126.2: Convert cantryagain macro to inline function
 ** When an allocation fails, it will try again after an emergency
 ** collection, except when it cannot run a collection.  The GC should
 ** not be called while the state is not fully built, as the collector
@@ -55,7 +55,9 @@
 ** 'gcstopem' is true, because then the interpreter is in the middle of
 ** a collection step.
 */
-#define cantryagain(g)	(g->isComplete() && !g->getGCStopEm())
+inline bool cantryagain(global_State* g) noexcept {
+	return g->isComplete() && !g->getGCStopEm();
+}
 
 
 

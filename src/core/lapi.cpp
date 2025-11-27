@@ -943,12 +943,14 @@ LUA_API int lua_setiuservalue (lua_State *L, int idx, int n) {
 */
 
 
-#define checkresults(L,na,nr) \
-     (api_check(L, (nr) == LUA_MULTRET \
-               || (L->getCI()->topRef().p - L->getTop().p >= (nr) - (na)), \
-	"results from function overflow current stack size"), \
-      api_check(L, LUA_MULTRET <= (nr) && (nr) <= MAXRESULTS,  \
-                   "invalid number of results"))
+/* Phase 126.2: Convert checkresults macro to inline function */
+inline void checkresults(lua_State* L, int na, int nr) {
+	api_check(L, (nr) == LUA_MULTRET
+	          || (L->getCI()->topRef().p - L->getTop().p >= (nr) - (na)),
+	          "results from function overflow current stack size");
+	api_check(L, LUA_MULTRET <= (nr) && (nr) <= MAXRESULTS,
+	          "invalid number of results");
+}
 
 
 LUA_API void lua_callk (lua_State *L, int nargs, int nresults,

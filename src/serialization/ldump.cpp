@@ -94,7 +94,7 @@ static void dumpByte (DumpState *D, int y) {
 ** size for 'dumpVarint' buffer: each byte can store up to 7 bits.
 ** (The "+6" rounds up the division.)
 */
-inline constexpr int DIBS = (l_numbits(lua_Unsigned) + 6) / 7;
+inline constexpr int DIBS = (l_numbits<lua_Unsigned>() + 6) / 7;
 
 /*
 ** Dumps an unsigned integer using the MSB Varint encoding

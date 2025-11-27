@@ -32,7 +32,7 @@ inline constexpr size_t tstringFallocOffset() noexcept {
 /*
 ** Maximum size for string table.
 */
-inline constexpr int MAXSTRTB = cast_int(luaM_limitN(std::numeric_limits<int>::max(), TString*));
+inline constexpr int MAXSTRTB = cast_int(luaM_limitN<TString*>(std::numeric_limits<int>::max()));
 
 /*
 ** Initial size for the string table (must be power of 2).

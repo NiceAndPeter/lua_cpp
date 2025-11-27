@@ -76,14 +76,22 @@ static void loadAlign (LoadState *S, unsigned align) {
 }
 
 
-#define getaddr(S,n,t)	cast(t *, getaddr_(S,cast_sizet(n) * sizeof(t)))
-
 static const void *getaddr_ (LoadState *S, size_t size) {
   const void *block = luaZ_getaddr(S->Z, size);
   S->offset += size;
   if (block == nullptr)
     error(S, "truncated fixed buffer");
   return block;
+}
+
+/* Phase 126.2: Convert getaddr macro to template function
+** Note: Returns non-const pointer for compatibility with existing code
+** that stores pointers to fixed buffer data. The buffer is read-only but
+** the type system doesn't enforce this for historical reasons.
+*/
+template<typename T>
+inline T* getaddr(LoadState* S, size_t n) {
+	return const_cast<T*>(cast(const T*, getaddr_(S, cast_sizet(n * sizeof(T)))));
 }
 
 
@@ -175,7 +183,7 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
     luaC_objbarrier(L, p, ts);
   }
   else if (S->fixed) {  /* for a fixed buffer, use a fixed string */
-    const char *s = getaddr(S, size + 1, char);  /* get content address */
+    const char *s = getaddr<char>(S, size + 1);  /* get content address */
     *sl = ts = TString::createExternal(L, s, size, nullptr, nullptr);
     luaC_objbarrier(L, p, ts);
   }
@@ -197,7 +205,7 @@ static void loadCode (LoadState *S, Proto *f) {
   int n = loadInt(S);
   loadAlign(S, sizeof(Instruction));
   if (S->fixed) {
-    f->setCode(getaddr(S, n, Instruction));
+    f->setCode(getaddr<Instruction>(S, n));
     f->setCodeSize(n);
   }
   else {
@@ -298,7 +306,7 @@ static void loadUpvalues (LoadState *S, Proto *f) {
 static void loadDebug (LoadState *S, Proto *f) {
   int n = loadInt(S);
   if (S->fixed) {
-    f->setLineInfo(getaddr(S, n, ls_byte));
+    f->setLineInfo(getaddr<ls_byte>(S, n));
     f->setLineInfoSize(n);
   }
   else {
@@ -311,7 +319,7 @@ static void loadDebug (LoadState *S, Proto *f) {
   if (n > 0) {
     loadAlign(S, sizeof(int));
     if (S->fixed) {
-      f->setAbsLineInfo(getaddr(S, n, AbsLineInfo));
+      f->setAbsLineInfo(getaddr<AbsLineInfo>(S, n));
       f->setAbsLineInfoSize(n);
     }
     else {

@@ -158,7 +158,7 @@ inline Node*& getlastfree(Table* t) noexcept {
 ** MAXABITS is the largest integer such that 2^MAXABITS fits in an
 ** unsigned int.
 */
-inline constexpr int MAXABITS = l_numbits(int) - 1;
+inline constexpr int MAXABITS = l_numbits<int>() - 1;
 
 
 /*
@@ -186,7 +186,7 @@ inline constexpr int MAXHBITS = MAXABITS - 1;
 ** between 2^MAXHBITS and the maximum size such that, measured in bytes,
 ** it fits in a 'size_t'.
 */
-inline constexpr size_t MAXHSIZE = luaM_limitN(1 << MAXHBITS, Node);
+inline constexpr size_t MAXHSIZE = luaM_limitN<Node>(1 << MAXHBITS);
 
 
 /*

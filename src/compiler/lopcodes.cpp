@@ -14,8 +14,10 @@
 #include "lopcodes.h"
 
 
-#define opmode(mm,ot,it,t,a,m)  \
-    (((mm) << 7) | ((ot) << 6) | ((it) << 5) | ((t) << 4) | ((a) << 3) | static_cast<int>(m))
+/* Phase 126.2: Convert opmode macro to inline constexpr function */
+inline constexpr int opmode(int mm, int ot, int it, int t, int a, OpMode m) noexcept {
+	return ((mm << 7) | (ot << 6) | (it << 5) | (t << 4) | (a << 3) | static_cast<int>(m));
+}
 
 
 /* ORDER OP */

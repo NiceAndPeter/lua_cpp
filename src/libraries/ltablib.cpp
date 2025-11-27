@@ -31,7 +31,14 @@
 inline constexpr int TAB_RW = TAB_R | TAB_W;  // read/write
 
 
-#define aux_getn(L,n,w)	(checktab(L, n, (w) | TAB_L), luaL_len(L, n))
+/* Forward declaration for aux_getn */
+static void checktab(lua_State *L, int arg, int what);
+
+/* Phase 126.2: Convert aux_getn macro to inline function */
+inline lua_Integer aux_getn(lua_State* L, int n, int w) {
+	checktab(L, n, w | TAB_L);
+	return luaL_len(L, n);
+}
 
 
 static int checkfield (lua_State *L, const char *key, int n) {

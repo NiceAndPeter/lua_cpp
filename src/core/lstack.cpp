@@ -71,16 +71,23 @@ inline constexpr int STACKERRSPACE = 200;
 #endif
 
 
-/*
+/* Phase 126.2: Convert condmovestack macro to inline function
 ** Conditional stack movement for debugging
 */
 #if !defined(HARDSTACKTESTS)
-#define condmovestack(L,pre,pos)	((void)0)
+template<typename Pre, typename Pos>
+inline void condmovestack(lua_State* L, Pre&& pre, Pos&& pos) noexcept {
+	cast_void(L); cast_void(pre); cast_void(pos);
+}
 #else
 /* realloc stack keeping its size */
-#define condmovestack(L,pre,pos)  \
-  { int sz_ = (L)->getStackSubsystem().getSize(); pre; \
-    (L)->getStackSubsystem().realloc(L, sz_, 0); pos; }
+template<typename Pre, typename Pos>
+inline void condmovestack(lua_State* L, Pre&& pre, Pos&& pos) {
+	int sz_ = L->getStackSubsystem().getSize();
+	pre();
+	L->getStackSubsystem().realloc(L, sz_, 0);
+	pos();
+}
 #endif
 
 
@@ -355,7 +362,7 @@ void LuaStack::shrink(lua_State* L) {
     realloc(L, nsize, 0);  /* ok if that fails */
   }
   else  /* don't change stack */
-    condmovestack(L, (void)0, (void)0);  /* (change only for debugging) */
+    condmovestack(L, [](){}, [](){});  /* (change only for debugging) */
 
   luaE_shrinkCI(L);  /* shrink CI list */
 }

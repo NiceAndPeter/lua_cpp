@@ -36,14 +36,16 @@
 
 
 /*
-** Computes the minimum between 'n' and 'MAX_SIZET/sizeof(t)', so that
+** Computes the minimum between 'n' and 'MAX_SIZET/sizeof(T)', so that
 ** the result is not larger than 'n' and cannot overflow a 'size_t'
-** when multiplied by the size of type 't'. (Assumes that 'n' is an
+** when multiplied by the size of type 'T'. (Assumes that 'n' is an
 ** 'int' and that 'int' is not larger than 'size_t'.)
 */
-#define luaM_limitN(n,t)  \
-  ((cast_sizet(n) <= MAX_SIZET/sizeof(t)) ? (n) :  \
-     cast_int((MAX_SIZET/sizeof(t))))
+template<typename T>
+inline constexpr int luaM_limitN(int n) noexcept {
+  return (cast_sizet(n) <= MAX_SIZET/sizeof(T)) ? n :
+     cast_int((MAX_SIZET/sizeof(T)));
+}
 
 
 /*
@@ -122,7 +124,7 @@ inline T* luaM_reallocvector(lua_State* L, T* v, size_t oldn, size_t n) {
 template<typename T>
 inline void luaM_growvector(lua_State* L, T*& v, int nelems, int& size, int limit, const char* e) {
 	v = static_cast<T*>(luaM_growaux_(L, v, nelems, &size, sizeof(T),
-	                                   luaM_limitN(limit, T), e));
+	                                   luaM_limitN<T>(limit), e));
 }
 
 /* Shrink a vector to final_n elements, updating size */

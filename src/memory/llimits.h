@@ -16,9 +16,6 @@
 
 #include "lua.h"
 
-
-#define l_numbits(t)	cast_int(sizeof(t) * CHAR_BIT)
-
 /*
 ** 'l_mem' is a signed integer big enough to count the total memory
 ** used by Lua.  (It is signed due to the use of debt in several
@@ -36,8 +33,7 @@ typedef long l_mem;
 typedef unsigned long lu_mem;
 #endif				/* } */
 
-#define MAX_LMEM  \
-	cast(l_mem, (cast(lu_mem, 1) << (l_numbits(l_mem) - 1)) - 1)
+/* MAX_LMEM defined later in this file after cast functions and l_numbits */
 
 
 /* chars used as small naturals (so that 'char' is reserved for characters) */
@@ -57,15 +53,13 @@ inline constexpr size_t MAX_SIZET = ((size_t)(~(size_t)0));
 /*
 ** Maximum size for strings and userdata visible for Lua; should be
 ** representable as a lua_Integer and as a size_t.
+** Defined later in this file after cast functions.
 */
-#define MAX_SIZE	(sizeof(size_t) < sizeof(lua_Integer) ? MAX_SIZET \
-			  : cast_sizet(LUA_MAXINTEGER))
 
-/*
-** floor of the log2 of the maximum signed value for integral type 't'.
+/* floor of the log2 of the maximum signed value for integral type 't'.
 ** (That is, maximum 'n' such that '2^n' fits in the given signed type.)
+** Defined later in this file after cast functions.
 */
-#define log2maxs(t)	(l_numbits(t) - 2)
 
 
 /*
@@ -235,6 +229,25 @@ template<typename T>
 inline constexpr unsigned int point2uint(T* p) noexcept {
 	return cast_uint((L_P2I)(p) & std::numeric_limits<unsigned int>::max());
 }
+
+/* Phase 126.1: Converted l_numbits from macro to template constexpr function */
+template<typename T>
+inline constexpr int l_numbits() noexcept {
+	return cast_int(sizeof(T) * CHAR_BIT);
+}
+
+/* Phase 126.1: Converted log2maxs from macro to template constexpr function */
+template<typename T>
+inline constexpr int log2maxs() noexcept {
+	return l_numbits<T>() - 2;
+}
+
+/* Phase 126.1: Converted MAX_SIZE from macro to inline constexpr (moved here after dependencies) */
+inline constexpr size_t MAX_SIZE = (sizeof(size_t) < sizeof(lua_Integer) ? MAX_SIZET
+			  : cast_sizet(LUA_MAXINTEGER));
+
+/* Phase 126.1: Converted MAX_LMEM from macro to inline constexpr (moved here after dependencies) */
+inline constexpr l_mem MAX_LMEM = cast(l_mem, (cast(lu_mem, 1) << (l_numbits<l_mem>() - 1)) - 1);
 
 
 /* cast a signed lua_Integer to lua_Unsigned */
