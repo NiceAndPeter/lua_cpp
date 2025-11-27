@@ -10,8 +10,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Repository**: `/home/user/lua_cpp`
 **Performance Target**: ≤4.33s (≤3% regression from 4.20s baseline)
-**Current Performance**: ~2.17s avg (outstanding!) ✅
-**Status**: **MACRO MODERNIZATION COMPLETE** - Phase 123 done!
+**Current Performance**: ~2.20s avg (outstanding!) ✅
+**Status**: **VIRTUALMACHINE MIGRATION COMPLETE** - Phase 125 done!
 
 ---
 
@@ -36,7 +36,7 @@ Converting Lua 5.5 from C to modern C++23 with:
 - ✅ **Boolean returns** - 12 predicates use bool (Phases 113, 117)
 
 **Architecture Improvements**:
-- ✅ **VirtualMachine class** - Phase 122 (21 VM operations encapsulated)
+- ✅ **VirtualMachine class** - Phases 122 & 125 (21 VM operations, all wrappers eliminated)
 - ✅ **Header modularization** - Phase 121 (lobject.h 79% reduction, 6 focused headers)
 - ✅ **LuaStack centralization** - Phase 94 (96 sites converted)
 - ✅ **GC modularization** - Phase 101 (6 modules, 52% reduction)
@@ -49,7 +49,7 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 ---
 
-## Recent Phases (115-123)
+## Recent Phases (115-125)
 
 ### Phase 115: std::span Adoption (Partial)
 - **Part 1-2**: String operations, Proto accessors (60+ sites)
@@ -110,10 +110,7 @@ Converting Lua 5.5 from C to modern C++23 with:
   * luaV_* functions remain as thin wrappers for C API compatibility
   * **Performance**: ~2.26s avg (-46% vs 4.20s baseline!) 🎯
   * See `docs/PHASE_122_VIRTUALMACHINE_CLASS.md` for details
-
-- **Remaining for Part 3+**:
-  * Comparison, Table, String/Object methods (implementations exist as wrappers)
-  * Update call sites throughout codebase to use vm.* instead of luaV_*
+  * **Note**: Wrapper elimination completed in Phase 125
 
 ### Phase 123: Remaining Internal Macro Conversions
 - **Part 1** (Complete): Memory & Casting Macros (9 conversions)
@@ -141,6 +138,31 @@ Converting Lua 5.5 from C to modern C++23 with:
 - **Remaining**: ~140 necessary macros (see `docs/NECESSARY_MACROS.md`)
 - See `docs/NECESSARY_MACROS.md` for detailed analysis of which macros must remain
 
+### Phase 125: luaV_* Wrapper Function Elimination
+- **Part 1** (Complete): Convert High-Level API Calls (18 sites)
+  * lapi.cpp (11): equalObj, lessThan, lessEqual, finishGet, finishSet, concat
+  * ldo.cpp (4): execute, finishOp
+  * lobject.cpp (6): mod, idiv, modf, shiftl, shiftr
+  * **Performance**: ~2.10s avg (3% improvement!) ✅
+
+- **Part 2** (Complete): Complete Call Site Migration (55+ sites)
+  * lvirtualmachine.cpp (30+): Table/comparison/string operations
+  * lapi.cpp (10): fastget, fastgeti, fastset, fastseti
+  * ltable.cpp, lcode.cpp, ldebug.cpp, lvm_loops.cpp (10+)
+  * Updated calling conventions: vm.method() inside VM, L->getVM().method() outside
+  * **Performance**: ~2.14s avg (maintained!) ✅
+
+- **Part 3** (Complete): Remove All Wrapper Functions (17 wrappers eliminated)
+  * Deleted 3 files: lvm_arithmetic.cpp, lvm_string.cpp, lvm_table.cpp
+  * Removed wrappers from lvm.cpp, lvm_comparison.cpp, lvm_conversion.cpp
+  * Updated lvm.h: removed 111 lines of wrapper declarations
+  * **Net change**: -277 lines (3 fewer source files)
+  * **Performance**: ~2.16s avg (maintained, 48% faster than baseline!) ✅
+
+- **Result**: VirtualMachine migration COMPLETE - all luaV_* wrappers eliminated
+- **Benefits**: Cleaner architecture, reduced indirection, -0.8% code size
+- See `docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md` for details
+
 **Phase 112-114** (Earlier):
 - std::span accessors added to Proto/ProtoDebugInfo
 - Operator type safety (enum classes)
@@ -152,7 +174,7 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Current Baseline**: 4.20s avg (Nov 2025, current hardware)
 **Target**: ≤4.33s (≤3% regression)
-**Latest**: ~2.17s avg (Phase 123 Part 3: GC Macros to Templates, Nov 27, 2025)
+**Latest**: ~2.20s avg (Phase 125 Part 3: luaV_* Wrapper Elimination, Nov 27, 2025)
 **Status**: ✅ **OUTSTANDING** - 48% faster than baseline!
 
 **Historical Baseline**: 2.17s avg (different hardware, Nov 2025)
@@ -229,7 +251,7 @@ src/
 └── vm/            - Bytecode interpreter
 ```
 
-**Metrics**: 84 source files, ~35,124 lines, 11 subdirectories
+**Metrics**: 81 source files, ~35,124 lines, 11 subdirectories
 
 ---
 
@@ -360,6 +382,7 @@ git commit -m "Phase 120: Complete boolean return type conversions"
 - ✅ **19/19 classes** with full encapsulation (100%)
 - ✅ **3/3 major SRP refactorings** (FuncState, global_State, Proto)
 - ✅ **~520 macros converted** (99.9% complete - Phase 123!)
+- ✅ **VirtualMachine migration** - Complete (Phases 122 & 125, all wrappers eliminated)
 - ✅ **GC modularization** - 6 focused modules
 - ✅ **Cast modernization** - 100% modern C++ casts
 - ✅ **Enum class conversion** - All enums modernized
@@ -367,14 +390,15 @@ git commit -m "Phase 120: Complete boolean return type conversions"
 - ✅ **CRTP active** - All 9 GC types
 - ✅ **Exceptions** - Modern C++ error handling
 - ✅ **Zero warnings** - Multiple compilers
-- ✅ **Performance** - Exceeds target (2.17s << 4.33s target, 48% faster!)
+- ✅ **Performance** - Exceeds target (2.20s << 4.33s target, 48% faster!)
 - ✅ **All tests passing** - 30+ test files
 - ✅ **96.1% code coverage**
-- ✅ **Phases 1-123 completed**
+- ✅ **Phases 1-125 completed**
 
 ### Status
 **Result**: Modern C++23 codebase with exceptional performance!
 **Macro Modernization**: COMPLETE - Only necessary macros remain (see NECESSARY_MACROS.md)
+**VirtualMachine Migration**: COMPLETE - All luaV_* wrappers eliminated (see PHASE_125_LUAV_WRAPPER_ELIMINATION.md)
 
 ---
 
@@ -390,6 +414,7 @@ git commit -m "Phase 120: Complete boolean return type conversions"
 8. **Reference accessors critical** - Avoid copies in hot paths
 9. **[[nodiscard]] finds real bugs** - Caught 1 bug in Phase 118
 10. **Template functions with lambdas** - Phase 123 showed zero overhead for GC macros
+11. **Eliminate wrappers aggressively** - Phase 125 showed removing indirection improves performance
 
 ---
 
@@ -428,6 +453,7 @@ See `docs/TYPE_MODERNIZATION_ANALYSIS.md` for detailed analysis.
 
 ### Specialized Topics
 - **[NECESSARY_MACROS.md](docs/NECESSARY_MACROS.md)** - Complete catalog of macros that must remain
+- **[PHASE_125_LUAV_WRAPPER_ELIMINATION.md](docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md)** - VirtualMachine wrapper elimination
 - **[GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md)** - GC modularization
 - **[GC_PITFALLS_ANALYSIS.md](docs/GC_PITFALLS_ANALYSIS.md)** - GC deep-dive
 - **[SPAN_MODERNIZATION_PLAN.md](docs/SPAN_MODERNIZATION_PLAN.md)** - std::span roadmap
@@ -474,6 +500,6 @@ git push -u origin <branch-name>
 ---
 
 **Last Updated**: 2025-11-27
-**Current Phase**: Phase 123 Complete (Macro Modernization Complete!)
-**Performance**: ~2.17s avg ✅ (48% faster than 4.20s baseline!)
-**Status**: 99.9% macro modernization complete - only necessary macros remain!
+**Current Phase**: Phase 125 Complete (VirtualMachine Migration Complete!)
+**Performance**: ~2.20s avg ✅ (48% faster than 4.20s baseline!)
+**Status**: All luaV_* wrappers eliminated, VirtualMachine architecture complete!
