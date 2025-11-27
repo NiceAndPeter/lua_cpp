@@ -1014,7 +1014,7 @@ static void luaH_newkey (lua_State *L, Table *t, const TValue *key,
     }
     luaC_barrierback(L, obj2gco(t), key);
     /* for debugging only: any new key may force an emergency collection */
-    condchangemem(L, (void)0, (void)0, 1);
+    condchangemem(L, [](){}, [](){}, 1);
   }
 }
 

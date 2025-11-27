@@ -1124,7 +1124,7 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       if (n <= 0)
         n = g->getGCDebt();  /* force to run one basic step */
       luaE_setdebt(g, g->getGCDebt() - n);
-      luaC_condGC(L, (void)0, work = 1);
+      luaC_condGC(L, [](){}, [&work](){ work = 1; });
       if (work && g->getGCState() == GCState::Pause)  /* end of cycle? */
         res = 1;  /* signal it */
       g->setGCStp(oldstp);  /* restore previous state */

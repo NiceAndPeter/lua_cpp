@@ -253,8 +253,8 @@ void VirtualMachine::execute(CallInfo *ci) {
   */
   auto checkGC = [&](lua_State* L_arg, StkId c_val) {
     luaC_condGC(L_arg,
-                (savepc(ci), L_arg->getStackSubsystem().setTopPtr(c_val)),
-                updatetrap(ci));
+                [&](){ savepc(ci); L_arg->getStackSubsystem().setTopPtr(c_val); },
+                [&](){ updatetrap(ci); });
     luai_threadyield(L_arg);
   };
 

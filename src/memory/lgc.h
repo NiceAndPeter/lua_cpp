@@ -353,19 +353,45 @@ inline constexpr lu_byte GCSTPCLS = 4;  /* bit true when closing Lua state */
 ** GC cycle on every opportunity)
 */
 
+/* Phase 123 Part 3: Convert GC check macros to template functions */
+
+/* Forward declarations needed by template functions */
+LUAI_FUNC void luaC_step (lua_State *L);
+LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
+
 #if !defined(HARDMEMTESTS)
-#define condchangemem(L,pre,pos,emg)	((void)0)
+template<typename PreFunc, typename PostFunc>
+inline void condchangemem([[maybe_unused]] lua_State* L,
+                          [[maybe_unused]] PreFunc pre,
+                          [[maybe_unused]] PostFunc post,
+                          [[maybe_unused]] int emg) {
+	/* Empty in normal builds */
+}
 #else
-#define condchangemem(L,pre,pos,emg)  \
-	{ if (G(L)->isGCRunning()) { pre; luaC_fullgc(L, emg); pos; } }
+template<typename PreFunc, typename PostFunc>
+inline void condchangemem(lua_State* L, PreFunc pre, PostFunc post, int emg) {
+	if (G(L)->isGCRunning()) {
+		pre();
+		luaC_fullgc(L, emg);
+		post();
+	}
+}
 #endif
 
-#define luaC_condGC(L,pre,pos) \
-	{ if (G(L)->getGCDebt() <= 0) { pre; luaC_step(L); pos;}; \
-	  condchangemem(L,pre,pos,0); }
+template<typename PreFunc, typename PostFunc>
+inline void luaC_condGC(lua_State* L, PreFunc pre, PostFunc post) {
+	if (G(L)->getGCDebt() <= 0) {
+		pre();
+		luaC_step(L);
+		post();
+	}
+	condchangemem(L, pre, post, 0);
+}
 
 /* more often than not, 'pre'/'pos' are empty */
-#define luaC_checkGC(L)		luaC_condGC(L,(void)0,(void)0)
+inline void luaC_checkGC(lua_State* L) {
+	luaC_condGC(L, [](){}, [](){});
+}
 
 
 /* Forward declarations for barrier implementation functions */
@@ -410,9 +436,8 @@ inline void luaC_barrierback(lua_State* L, GCObject* p, const TValue* v) noexcep
 
 /* Use GCObject::fix() method instead of luaC_fix */
 LUAI_FUNC void luaC_freeallobjects (lua_State *L);
-LUAI_FUNC void luaC_step (lua_State *L);
+/* luaC_step and luaC_fullgc declared earlier for template functions */
 LUAI_FUNC void luaC_runtilstate (lua_State *L, GCState state, int fast);
-LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
 LUAI_FUNC void propagateall (global_State *g);  /* used by GCCollector */
 LUAI_FUNC GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz);
 LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz,
