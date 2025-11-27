@@ -46,11 +46,10 @@ inline bool eqstr(const TString* a, const TString* b) noexcept {
 }
 
 
-#define check_condition(parser,c,msg)	{ if (!(c)) parser->getLexState()->syntaxError( msg); }
-
-#define new_localvarliteral(parser,v) \
-    new_localvar(  \
-      parser->getLexState()->newString( "" v, (sizeof(v)/sizeof(char)) - 1));
+/* Phase 123: Convert check_condition macro to inline function */
+inline void check_condition(Parser* parser, bool c, const char* msg) {
+	if (!c) parser->getLexState()->syntaxError(msg);
+}
 
 
 inline void enterlevel(LexState* ls) {
@@ -203,9 +202,6 @@ void Parser::checknext(int c) {
 }
 
 
-#define check_condition(parser,c,msg)	{ if (!(c)) parser->getLexState()->syntaxError( msg); }
-
-
 /*
 ** Check that next token is 'what' and skip it. In case of error,
 ** raise an error that the expected 'what' should match a 'who'
@@ -258,11 +254,6 @@ int Parser::new_varkind(TString *name, lu_byte kind) {
 int Parser::new_localvar(TString *name) {
   return new_varkind(name, VDKREG);
 }
-
-#define new_localvarliteral(parser,v) \
-    new_localvar(  \
-      parser->getLexState()->newString( "" v, (sizeof(v)/sizeof(char)) - 1));
-
 
 
 /*
@@ -674,7 +665,7 @@ void Parser::body( expdesc *e, int ismethod, int line) {
   open_func(&new_fs, &bl);
   checknext( '(');
   if (ismethod) {
-    new_localvarliteral(this, "self");  /* create 'self' parameter */
+    new_localvarliteral("self");  /* create 'self' parameter */
     adjustlocalvars(1);
   }
   parlist();
@@ -1145,8 +1136,8 @@ void Parser::fornum( TString *varname, int line) {
   /* fornum -> NAME = exp,exp[,exp] forbody */
   FuncState *funcstate = fs;
   int base = funcstate->getFirstFreeRegister();
-  new_localvarliteral(this, "(for state)");
-  new_localvarliteral(this, "(for state)");
+  new_localvarliteral("(for state)");
+  new_localvarliteral("(for state)");
   new_varkind( varname, RDKCONST);  /* control variable */
   checknext( '=');
   exp1();  /* initial value */
@@ -1170,9 +1161,9 @@ void Parser::forlist( TString *indexname) {
   int nvars = 4;  /* function, state, closing, control */
   int base = funcstate->getFirstFreeRegister();
   /* create internal variables */
-  new_localvarliteral(this, "(for state)");  /* iterator function */
-  new_localvarliteral(this, "(for state)");  /* state */
-  new_localvarliteral(this, "(for state)");  /* closing var. (after swap) */
+  new_localvarliteral("(for state)");  /* iterator function */
+  new_localvarliteral("(for state)");  /* state */
+  new_localvarliteral("(for state)");  /* closing var. (after swap) */
   new_varkind( indexname, RDKCONST);  /* control variable */
   /* other declared variables */
   while (testnext( ',')) {

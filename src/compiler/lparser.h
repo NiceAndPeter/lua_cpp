@@ -730,6 +730,13 @@ public:
   void codename(expdesc *e);
   int new_varkind(TString *name, lu_byte kind);
   int new_localvar(TString *name);
+
+  /* Phase 123: Convert new_localvarliteral macro to template function */
+  template<size_t N>
+  inline int new_localvarliteral(const char (&v)[N]) {
+    return new_localvar(ls->newString(v, N - 1));
+  }
+
   void check_readonly(expdesc *e);
   void adjustlocalvars(int nvars);
 

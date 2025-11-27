@@ -44,8 +44,7 @@ typedef signed char ls_byte;
 /* Type for thread status/error codes */
 typedef lu_byte TStatus;
 
-/* The C API still uses 'int' for status/error codes */
-#define APIstatus(st)	cast_int(st)
+/* The C API still uses 'int' for status/error codes - defined after cast_int */
 
 /* maximum value for size_t */
 inline constexpr size_t MAX_SIZET = ((size_t)(~(size_t)0));
@@ -189,6 +188,11 @@ constexpr inline int cast_int(auto i) noexcept {
     return static_cast<int>(i);
 }
 
+/* The C API uses 'int' for status/error codes */
+inline int APIstatus(TStatus st) noexcept {
+	return cast_int(st);
+}
+
 constexpr inline short cast_short(auto i) noexcept {
     return static_cast<short>(i);
 }
@@ -252,7 +256,9 @@ inline constexpr l_mem MAX_LMEM = cast(l_mem, (cast(lu_mem, 1) << (l_numbits<l_m
 
 /* cast a signed lua_Integer to lua_Unsigned */
 #if !defined(l_castS2U)
-#define l_castS2U(i)	((lua_Unsigned)(i))
+inline constexpr lua_Unsigned l_castS2U(lua_Integer i) noexcept {
+	return static_cast<lua_Unsigned>(i);
+}
 #endif
 
 /*
@@ -261,14 +267,18 @@ inline constexpr l_mem MAX_LMEM = cast(l_mem, (cast(lu_mem, 1) << (l_numbits<l_m
 ** work fine.
 */
 #if !defined(l_castU2S)
-#define l_castU2S(i)	((lua_Integer)(i))
+inline constexpr lua_Integer l_castU2S(lua_Unsigned i) noexcept {
+	return static_cast<lua_Integer>(i);
+}
 #endif
 
 /*
 ** cast a size_t to lua_Integer: These casts are always valid for
 ** sizes of Lua objects (see MAX_SIZE)
 */
-#define cast_st2S(sz)	((lua_Integer)(sz))
+inline constexpr lua_Integer cast_st2S(size_t sz) noexcept {
+	return static_cast<lua_Integer>(sz);
+}
 
 /* Cast a ptrdiff_t to size_t, when it is known that the minuend
 ** comes from the subtrahend (the base)
@@ -425,17 +435,21 @@ inline bool luai_numisnan(lua_Number a) {
 
 /*
 ** lua_numbertointeger converts a float number with an integral value
-** to an integer, or returns 0 if the float is not within the range of
+** to an integer, or returns false if the float is not within the range of
 ** a lua_Integer.  (The range comparisons are tricky because of
 ** rounding. The tests here assume a two-complement representation,
 ** where MININTEGER always has an exact representation as a float;
 ** MAXINTEGER may not have one, and therefore its conversion to float
 ** may have an ill-defined value.)
 */
-#define lua_numbertointeger(n,p) \
-  ((n) >= (LUA_NUMBER)(LUA_MININTEGER) && \
-   (n) < -(LUA_NUMBER)(LUA_MININTEGER) && \
-      (*(p) = (LUA_INTEGER)(n), 1))
+inline bool lua_numbertointeger(lua_Number n, lua_Integer* p) noexcept {
+	if (n >= static_cast<lua_Number>(LUA_MININTEGER) &&
+	    n < -static_cast<lua_Number>(LUA_MININTEGER)) {
+		*p = static_cast<lua_Integer>(n);
+		return true;
+	}
+	return false;
+}
 
 
 
