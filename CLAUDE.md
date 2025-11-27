@@ -420,21 +420,43 @@ git commit -m "Phase 120: Complete boolean return type conversions"
 
 ## Future Work
 
-### High-Value Opportunities
-1. ⚠️ **Complete boolean conversions** (8 remaining functions)
-   - Risk: LOW, Effort: 2 hours
-2. ⚠️ **Optimize std::span usage** (Phase 115 regression)
-   - Risk: MEDIUM, Effort: 4-6 hours
-3. ⚠️ **Expand std::span callsites** (use existing accessors)
-   - Risk: MEDIUM, Effort: 4-6 hours
+### Recommended Next Phases (High Value, Low Risk)
+
+Based on current project status (Phases 1-125 complete), recommended priorities:
+
+1. ✅ **Phase 127: Additional [[nodiscard]] Annotations**
+   - Effort: 2-3 hours | Risk: LOW | Priority: ⭐⭐⭐ 8/10
+   - Add `[[nodiscard]]` to ~25+ more functions (VirtualMachine methods, Table lookups, memory allocation)
+   - Phase 118 proved value by catching a real bug
+   - See `docs/PHASE_SUGGESTIONS.md` for details
+
+2. ✅ **Phase 126: Const Correctness Improvements**
+   - Effort: 3-4 hours | Risk: LOW | Priority: ⭐⭐ 7/10
+   - Add `const` qualifiers to getters and methods that don't modify state
+   - Benefits: Documents immutability, enables compiler optimizations
+
+3. ✅ **Phase 129: Range-Based For Loop Expansion**
+   - Effort: 3-4 hours | Risk: LOW | Priority: ⭐⭐ 7/10
+   - Convert traditional loops to range-based for loops where std::span enables it
+   - Benefits: Modern C++ idiom, more expressive code
+
+4. ⚠️ **Phase 128: Optimize std::span Performance** (if needed)
+   - Effort: 4-6 hours | Risk: MEDIUM | Priority: ⭐⭐ 7/10
+   - Investigate Phase 115 regression (may already be resolved at 2.20s performance)
+   - Only proceed if benchmarking shows regression
+
+### Completed Opportunities
+- ✅ **Expand std::span callsites** - Completed in Phases 121-123 (Nov 21, 2025)
+- ✅ **VirtualMachine direct calls** - Completed in Phase 125 (Nov 27, 2025)
 
 ### Low-Value/High-Risk (DEFER)
-- ⛔ Loop counter conversion (400 instances, high risk)
+- ⛔ Complete boolean conversions (8 remaining - diminishing returns)
+- ⛔ Loop counter conversion (400 instances, high risk, low value)
 - ⛔ Size variable conversion (30 instances, underflow risk)
 - ⛔ Register index strong types (50 signatures, very invasive)
 - ⛔ lua_State SRP refactoring (VM hot path, high risk)
 
-See `docs/TYPE_MODERNIZATION_ANALYSIS.md` for detailed analysis.
+See `docs/TYPE_MODERNIZATION_ANALYSIS.md` and `docs/PHASE_SUGGESTIONS.md` for detailed analysis.
 
 ---
 
@@ -499,7 +521,8 @@ git push -u origin <branch-name>
 
 ---
 
-**Last Updated**: 2025-11-27
-**Current Phase**: Phase 125 Complete (VirtualMachine Migration Complete!)
+**Last Updated**: 2025-11-27 (Documentation updated)
+**Completed Phases**: 1-125
+**Current Status**: Ready for Phase 126, 127, or 129
 **Performance**: ~2.20s avg ✅ (48% faster than 4.20s baseline!)
-**Status**: All luaV_* wrappers eliminated, VirtualMachine architecture complete!
+**Architecture**: VirtualMachine complete, std::span integrated, all wrappers eliminated!
