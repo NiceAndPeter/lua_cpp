@@ -27,6 +27,7 @@
 #include "lstring.h"
 #include "ltable.h"
 #include "ltm.h"
+#include "../vm/lvirtualmachine.h"
 
 
 
@@ -213,6 +214,8 @@ static void f_luaopen (lua_State *L, void *ud) {
   global_State *g = G(L);
   UNUSED(ud);
   stack_init(L, L);  /* init stack */
+  // Phase 122: Allocate VirtualMachine (after stack, as VM may use stack operations)
+  L->initVM();
   init_registry(L, g);
   TString::init(L);
   luaT_init(L);
@@ -238,6 +241,24 @@ static void preinit_thread (lua_State *L, global_State *g) {
 }
 
 
+/*
+** Phase 122: VM lifecycle management
+*/
+
+void lua_State::initVM() {
+  // Allocate VirtualMachine using placement new to avoid C++ new operator
+  // Use luaM_new for Lua's memory management
+  vm_ = new VirtualMachine(this);
+}
+
+void lua_State::closeVM() {
+  if (vm_ != nullptr) {
+    delete vm_;
+    vm_ = nullptr;
+  }
+}
+
+
 lu_mem luaE_threadsize (lua_State *L) {
   lu_mem sz = static_cast<lu_mem>(sizeof(LX))
             + cast_uint(L->getNumberOfCallInfos()) * sizeof(CallInfo);
@@ -259,6 +280,7 @@ static void close_state (lua_State *L) {
     luai_userstateclose(L);
   }
   luaM_freearray(L, G(L)->getStringTable()->getHash(), cast_sizet(G(L)->getStringTable()->getSize()));
+  L->closeVM();  // Phase 122: Free VirtualMachine before freeing stack
   freestack(L);
   lua_assert(g->getTotalBytes() == sizeof(global_State));
   (*g->getFrealloc())(g->getUd(), g, sizeof(global_State), 0);  /* free main block */
@@ -287,6 +309,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
          LUA_EXTRASPACE);
   luai_userstatethread(L, L1);
   stack_init(L1, L);  /* init stack */
+  L1->initVM();  // Phase 122: Allocate VirtualMachine for new thread
   lua_unlock(L);
   return L1;
 }
@@ -297,6 +320,7 @@ void luaE_freethread (lua_State *L, lua_State *L1) {
   luaF_closeupval(L1, L1->getStack().p);  /* close all upvalues */
   lua_assert(L1->getOpenUpval() == nullptr);
   luai_userstatefree(L, L1);
+  L1->closeVM();  // Phase 122: Free VirtualMachine before freeing stack
   freestack(L1);
   luaM_free(L, l);
 }

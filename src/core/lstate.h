@@ -13,6 +13,7 @@
 /* Some header files included here need this definition */
 typedef struct CallInfo CallInfo;
 class global_State;  /* forward declaration */
+class VirtualMachine;  /* forward declaration */
 
 /* Type of protected functions, to be run by 'runprotected' */
 typedef void (*Pfunc) (lua_State *L, void *ud);
@@ -394,6 +395,9 @@ private:
   // Stack subsystem (SRP refactoring - Phase 93)
   LuaStack stack_;  /* stack management subsystem */
 
+  // VM operations subsystem (Phase 122)
+  VirtualMachine* vm_;  /* VM operations encapsulation (pointer to break circular dependency) */
+
   // CallInfo fields (encapsulated)
   CallInfo *ci;  /* call info for current function */
   CallInfo base_ci;  /* CallInfo for first level (C host) */
@@ -433,6 +437,9 @@ public:
     // Link to global state
     l_G = g;
 
+    // VM subsystem - initialize to nullptr, will be allocated separately
+    vm_ = nullptr;
+
     // Stack subsystem - initialize to nullptr, will be allocated by stack_init
     // Note: stack_ members are initialized to nullptr by default (C++ guarantees zero-init for objects)
     stack_.getStack().p = nullptr;
@@ -471,6 +478,10 @@ public:
     // Call depth
     numberOfCCalls = 0;
   }
+
+  // VM subsystem accessor (Phase 122)
+  inline VirtualMachine& getVM() noexcept { return *vm_; }
+  inline const VirtualMachine& getVM() const noexcept { return *vm_; }
 
   // Stack subsystem accessor
   inline LuaStack& getStackSubsystem() noexcept { return stack_; }
@@ -586,6 +597,10 @@ public:
   void resetHookCount() noexcept {
     hookcount = basehookcount;
   }
+
+  // VM lifecycle management (Phase 122)
+  void initVM();    // Allocate VirtualMachine (implemented in lstate.cpp)
+  void closeVM();   // Deallocate VirtualMachine (implemented in lstate.cpp)
 
   // Stack pointer save/restore (for reallocation safety) - delegate to stack_
   inline ptrdiff_t saveStack(StkId pt) const noexcept {

@@ -148,6 +148,7 @@ set(LUA_VM_SOURCES
     src/vm/lvm_loops.cpp
     src/vm/lvm_string.cpp
     src/vm/lvm_table.cpp
+    src/vm/lvirtualmachine.cpp
 )
 
 set(LUA_OBJECT_SOURCES
