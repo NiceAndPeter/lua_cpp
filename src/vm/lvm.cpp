@@ -405,45 +405,46 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
 
 
 /*
-** lua_State VM operation methods (wrappers for compatibility)
+** lua_State VM operation methods (now delegate to VirtualMachine class)
+** Updated in Phase 122 Part 2 to use VirtualMachine instead of luaV_* functions
 */
 
 void lua_State::execute(CallInfo *callinfo) {
-  luaV_execute(this, callinfo);
+  vm_->execute(callinfo);
 }
 
 void lua_State::finishOp() {
-  luaV_finishOp(this);
+  vm_->finishOp();
 }
 
 void lua_State::concat(int total) {
-  luaV_concat(this, total);
+  vm_->concat(total);
 }
 
 void lua_State::objlen(StkId ra, const TValue *rb) {
-  luaV_objlen(this, ra, rb);
+  vm_->objlen(ra, rb);
 }
 
 LuaT lua_State::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag) {
-  return luaV_finishget(this, t, key, val, tag);
+  return vm_->finishGet(t, key, val, tag);
 }
 
 void lua_State::finishSet(const TValue *t, TValue *key, TValue *val, int aux) {
-  luaV_finishset(this, t, key, val, aux);
+  vm_->finishSet(t, key, val, aux);
 }
 
 /*
-** lua_State arithmetic operation methods (wrappers for compatibility)
+** lua_State arithmetic operation methods (now delegate to VirtualMachine class)
 */
 
 lua_Integer lua_State::idiv(lua_Integer m, lua_Integer n) {
-  return luaV_idiv(this, m, n);
+  return vm_->idiv(m, n);
 }
 
 lua_Integer lua_State::mod(lua_Integer m, lua_Integer n) {
-  return luaV_mod(this, m, n);
+  return vm_->mod(m, n);
 }
 
 lua_Number lua_State::modf(lua_Number m, lua_Number n) {
-  return luaV_modf(this, m, n);
+  return vm_->modf(m, n);
 }
