@@ -36,9 +36,12 @@
 /* Mask with all color bits */
 #define maskcolors (bitmask(BLACKBIT) | WHITEBITS)
 
-/* Access to collectable objects in array part of tables */
-#define gcvalarr(t,i)  \
-	(iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr)
+/* Phase 127: Convert gcvalarr macro to inline function
+** Access to collectable objects in array part of tables
+*/
+inline GCObject* gcvalarr(Table* t, unsigned int i) noexcept {
+	return iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr;
+}
 
 /* Note: gcvalueN and valiswhite are now in lgc.h */
 /* Note: markkey and markvalue are defined in gc_marking.h */

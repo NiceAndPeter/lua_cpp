@@ -79,11 +79,12 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
 
 /* Note: gcvalueN is now in lgc.h */
 
-/*
+/* Phase 127: Convert gcvalarr macro to inline function
 ** Access to collectable objects in table array part
 */
-#define gcvalarr(t, i)  \
-    (iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr)
+inline GCObject* gcvalarr(Table* t, unsigned int i) noexcept {
+	return iscollectable(*(t)->getArrayTag(i)) ? (t)->getArrayVal(i)->gc : nullptr;
+}
 
 
 /*

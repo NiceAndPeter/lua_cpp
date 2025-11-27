@@ -262,7 +262,10 @@ inline void seti(lua_State* L, int idt, IdxT idx) noexcept {
 ** good choice.)
 */
 #if !defined(l_randomizePivot)
-#define l_randomizePivot(L)	luaL_makeseed(L)
+/* Phase 127: Convert l_randomizePivot macro to inline function */
+inline unsigned int l_randomizePivot(lua_State* L) {
+	return luaL_makeseed(L);
+}
 #endif					/* } */
 
 

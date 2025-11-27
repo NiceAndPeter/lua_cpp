@@ -77,26 +77,13 @@
 ** are now in lgc.h for use by all GC modules. */
 
 
-/*
+/* Phase 127: Convert gcvalarr macro to inline function
 ** Access to collectable objects in array part of tables
+** Note: markvalue, markkey, markobject, markobjectN are already defined in gc_marking.h
 */
-#define gcvalarr(t,i)  \
-	((*(t)->getArrayTag(i) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr)
-
-
-#define markvalue(g,o) { checkliveness(mainthread(g),o); \
-  if (valiswhite(o)) reallymarkobject(g,gcvalue(o)); }
-
-#define markkey(g, n)	{ if (keyiswhite(n)) reallymarkobject(g,n->getKeyGC()); }
-
-#define markobject(g,t)	{ if (iswhite(t)) reallymarkobject(g, obj2gco(t)); }
-
-/*
-** mark an object that can be nullptr (either because it is really optional,
-** or it was stripped as debug info, or inside an uncompleted structure)
-*/
-#define markobjectN(g,t)	{ if (t) markobject(g,t); }
-
+inline GCObject* gcvalarr(Table* t, unsigned int i) noexcept {
+	return (static_cast<lu_byte>(*(t)->getArrayTag(i)) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr;
+}
 
 static void reallymarkobject (global_State *g, GCObject *o);
 
