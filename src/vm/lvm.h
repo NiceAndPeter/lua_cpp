@@ -96,19 +96,13 @@ inline constexpr bool l_intfitsf(lua_Integer i) noexcept {
 #endif
 
 
-/* Forward declarations for conversion functions (defined in lvm_conversion.cpp) */
-LUAI_FUNC int luaV_tonumber_ (const TValue *obj, lua_Number *n);
-LUAI_FUNC int luaV_tointeger (const TValue *obj, lua_Integer *p, F2Imod mode);
-LUAI_FUNC int luaV_tointegerns (const TValue *obj, lua_Integer *p, F2Imod mode);
-
-
 /* convert an object to a float (including string coercion) */
 inline bool tonumber(const TValue* o, lua_Number* n) noexcept {
 	if (ttisfloat(o)) {
 		*n = fltvalue(o);
 		return true;
 	}
-	return luaV_tonumber_(o, n);
+	return o->toNumber(n);  /* use TValue method */
 }
 
 
@@ -132,7 +126,7 @@ inline bool tointeger(const TValue* o, lua_Integer* i) noexcept {
 		*i = ivalue(o);
 		return true;
 	}
-	return luaV_tointeger(o, i, LUA_FLOORN2I);
+	return o->toInteger(i, LUA_FLOORN2I);  /* use TValue method */
 }
 
 
@@ -142,7 +136,7 @@ inline bool tointegerns(const TValue* o, lua_Integer* i) noexcept {
 		*i = ivalue(o);
 		return true;
 	}
-	return luaV_tointegerns(o, i, LUA_FLOORN2I);
+	return o->toIntegerNoString(i, LUA_FLOORN2I);  /* use TValue method */
 }
 
 
@@ -150,104 +144,7 @@ inline bool tointegerns(const TValue* o, lua_Integer* i) noexcept {
    This must remain a macro to support operator token pasting. */
 #define intop(op,v1,v2) l_castU2S(l_castS2U(v1) op l_castS2U(v2))
 
-/* Forward declaration for luaV_equalobj (defined in lvm.cpp) */
-[[nodiscard]] LUAI_FUNC int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2);
 
-inline int luaV_rawequalobj(const TValue* t1, const TValue* t2) noexcept {
-	return *t1 == *t2;  /* Use operator== for raw equality */
-}
-
-
-/*
-** fast track for 'gettable'
-*/
-template<typename F>
-inline LuaT luaV_fastget(const TValue* t, const TValue* k, TValue* res, F&& f) noexcept {
-	if (!ttistable(t))
-		return LuaT::NOTABLE;
-	return f(hvalue(t), k, res);
-}
-
-/* Overload for TString* keys */
-template<typename F>
-inline LuaT luaV_fastget(const TValue* t, TString* k, TValue* res, F&& f) noexcept {
-	if (!ttistable(t))
-		return LuaT::NOTABLE;
-	return f(hvalue(t), k, res);
-}
-
-
-/*
-** Special case of 'luaV_fastget' for integers, inlining the fast case
-** of 'luaH_getint'.
-*/
-inline void luaV_fastgeti(const TValue* t, lua_Integer k, TValue* res, LuaT& tag) noexcept {
-	if (!ttistable(t))
-		tag = LuaT::NOTABLE;
-	else
-		hvalue(t)->fastGeti(k, res, tag);
-}
-
-
-template<typename F>
-inline int luaV_fastset(const TValue* t, const TValue* k, TValue* val, F&& f) noexcept {
-	if (!ttistable(t))
-		return HNOTATABLE;
-	return f(hvalue(t), k, val);
-}
-
-/* Overload for TString* keys */
-template<typename F>
-inline int luaV_fastset(const TValue* t, TString* k, TValue* val, F&& f) noexcept {
-	if (!ttistable(t))
-		return HNOTATABLE;
-	return f(hvalue(t), k, val);
-}
-
-inline void luaV_fastseti(const TValue* t, lua_Integer k, TValue* val, int& hres) noexcept {
-	if (!ttistable(t))
-		hres = HNOTATABLE;
-	else
-		hvalue(t)->fastSeti(k, val, hres);
-}
-
-
-/*
-** Finish a fast set operation (when fast set succeeds).
-*/
-inline void luaV_finishfastset(lua_State* L, const TValue* t, const TValue* v) noexcept {
-	luaC_barrierback(L, gcvalue(t), v);
-}
-
-
-/*
-** Shift right is the same as shift left with a negative 'y'
-*/
-/* Forward declaration for luaV_shiftl (full declaration below) */
-[[nodiscard]] LUAI_FUNC lua_Integer luaV_shiftl (lua_Integer x, lua_Integer y);
-
-inline lua_Integer luaV_shiftr(lua_Integer x, lua_Integer y) noexcept {
-	return luaV_shiftl(x, intop(-, 0, y));
-}
-
-
-
-[[nodiscard]] LUAI_FUNC int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r);
-[[nodiscard]] LUAI_FUNC int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r);
-#ifndef luaV_flttointeger_declared
-#define luaV_flttointeger_declared
-LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
-#endif
-LUAI_FUNC LuaT luaV_finishget (lua_State *L, const TValue *t, TValue *key,
-                                                StkId val, LuaT tag);
-LUAI_FUNC void luaV_finishset (lua_State *L, const TValue *t, TValue *key,
-                                             TValue *val, int aux);
-LUAI_FUNC void luaV_finishOp (lua_State *L);
-LUAI_FUNC void luaV_execute (lua_State *L, CallInfo *ci);
-LUAI_FUNC void luaV_concat (lua_State *L, int total);
-[[nodiscard]] LUAI_FUNC lua_Integer luaV_idiv (lua_State *L, lua_Integer x, lua_Integer y);
-[[nodiscard]] LUAI_FUNC lua_Integer luaV_mod (lua_State *L, lua_Integer x, lua_Integer y);
-[[nodiscard]] LUAI_FUNC lua_Number luaV_modf (lua_State *L, lua_Number x, lua_Number y);
-LUAI_FUNC void luaV_objlen (lua_State *L, StkId ra, const TValue *rb);
+/* All luaV_* wrapper functions removed - use VirtualMachine methods directly */
 
 #endif

@@ -294,10 +294,9 @@ enum class F2Imod {
 };
 #endif
 
-#ifndef luaV_flttointeger_declared
-#define luaV_flttointeger_declared
-LUAI_FUNC int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode);
-#endif
+/* Forward declaration and extern declaration for VirtualMachine::flttointeger */
+class VirtualMachine;
+extern int VirtualMachine_flttointeger(lua_Number n, lua_Integer *p, F2Imod mode);
 
 /* Forward declarations for comparison helpers (defined in lvm.cpp and lstring.h) */
 /* These handle mixed int/float comparisons correctly */
@@ -381,12 +380,12 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 		switch (ttypetag(&l)) {
 			case LuaT::NUMINT: {  /* int == float? */
 				lua_Integer i2;
-				return (luaV_flttointeger(fltvalue(&r), &i2, F2Imod::F2Ieq) &&
+				return (VirtualMachine_flttointeger(fltvalue(&r), &i2, F2Imod::F2Ieq) &&
 				        ivalue(&l) == i2);
 			}
 			case LuaT::NUMFLT: {  /* float == int? */
 				lua_Integer i1;
-				return (luaV_flttointeger(fltvalue(&l), &i1, F2Imod::F2Ieq) &&
+				return (VirtualMachine_flttointeger(fltvalue(&l), &i1, F2Imod::F2Ieq) &&
 				        i1 == ivalue(&r));
 			}
 			case LuaT::SHRSTR: case LuaT::LNGSTR: {

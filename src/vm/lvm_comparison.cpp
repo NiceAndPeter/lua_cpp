@@ -153,14 +153,6 @@ int lua_State::lessThanOthers(const TValue *l, const TValue *r) {
 
 
 /*
-** Main operation less than; return 'l < r'.
-*/
-int luaV_lessthan (lua_State *L, const TValue *l, const TValue *r) {
-  return L->getVM().lessThan(l, r);
-}
-
-
-/*
 ** return 'l <= r' for non-numbers.
 */
 int lua_State::lessEqualOthers(const TValue *l, const TValue *r) {
@@ -172,18 +164,4 @@ int lua_State::lessEqualOthers(const TValue *l, const TValue *r) {
 }
 
 
-/*
-** Main operation less than or equal to; return 'l <= r'.
-*/
-int luaV_lessequal (lua_State *L, const TValue *l, const TValue *r) {
-  return L->getVM().lessEqual(l, r);
-}
-
-
-/*
-** Main operation for equality of Lua values; return 't1 == t2'.
-** L == nullptr means raw equality (no metamethods)
-*/
-int luaV_equalobj (lua_State *L, const TValue *t1, const TValue *t2) {
-  return L->getVM().equalObj(t1, t2);
-}
+/* luaV_lessequal, luaV_equalobj removed - use VirtualMachine methods directly */

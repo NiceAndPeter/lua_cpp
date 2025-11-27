@@ -642,7 +642,8 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_MODK: {
         savestate(L, ci);  /* in case of division by 0 */
-        op_arithK(luaV_mod, luaV_modf, i);
+        op_arithK([this](lua_State*, lua_Integer a, lua_Integer b) { return mod(a, b); },
+                  [this](lua_State*, lua_Number a, lua_Number b) { return modf(a, b); }, i);
         break;
       }
       case OP_POWK: {
@@ -655,7 +656,7 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_IDIVK: {
         savestate(L, ci);  /* in case of division by 0 */
-        op_arithK(luaV_idiv, luai_numidiv, i);
+        op_arithK([this](lua_State*, lua_Integer a, lua_Integer b) { return idiv(a, b); }, luai_numidiv, i);
         break;
       }
       case OP_BANDK: {
@@ -704,7 +705,8 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_MOD: {
         savestate(L, ci);  /* in case of division by 0 */
-        op_arith(luaV_mod, luaV_modf, i);
+        op_arith([this](lua_State*, lua_Integer a, lua_Integer b) { return mod(a, b); },
+                 [this](lua_State*, lua_Number a, lua_Number b) { return modf(a, b); }, i);
         break;
       }
       case OP_POW: {
@@ -717,7 +719,7 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_IDIV: {  /* floor division */
         savestate(L, ci);  /* in case of division by 0 */
-        op_arith(luaV_idiv, luai_numidiv, i);
+        op_arith([this](lua_State*, lua_Integer a, lua_Integer b) { return idiv(a, b); }, luai_numidiv, i);
         break;
       }
       case OP_BAND: {
@@ -733,11 +735,11 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_SHL: {
-        op_bitwise(luaV_shiftl, i);
+        op_bitwise(VirtualMachine::shiftl, i);
         break;
       }
       case OP_SHR: {
-        op_bitwise(luaV_shiftr, i);
+        op_bitwise(VirtualMachine::shiftr, i);
         break;
       }
       case OP_MMBIN: {
@@ -1236,6 +1238,11 @@ int VirtualMachine::tonumber(const TValue *obj, lua_Number *n) {
   }
   else
     return 0;  /* conversion failed */
+}
+
+/* Wrapper for lobject.h inline functions to call */
+int VirtualMachine_flttointeger(lua_Number n, lua_Integer *p, F2Imod mode) {
+  return VirtualMachine::flttointeger(n, p, mode);
 }
 
 int VirtualMachine::flttointeger(lua_Number n, lua_Integer *p, F2Imod mode) {

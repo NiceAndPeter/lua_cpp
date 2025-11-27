@@ -42,9 +42,9 @@ static int l_strton (const TValue *obj, TValue *result) {
 
 /*
 ** Try to convert a value to a float. The float case is already handled
-** by the macro 'tonumber'.
+** by the inline 'tonumber' function.
 */
-int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
+static int tonumber_ (const TValue *obj, lua_Number *n) {
   TValue v;
   if (ttisinteger(obj)) {
     *n = cast_num(ivalue(obj));
@@ -59,21 +59,15 @@ int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
 }
 
 
-/*
-** try to convert a float to an integer, rounding according to 'mode'.
-** Wrapper: implementation moved to VirtualMachine::flttointeger()
-*/
-int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode) {
-  return VirtualMachine::flttointeger(n, p, mode);
-}
+/* luaV_flttointeger removed - use VirtualMachine::flttointeger() directly */
 
 
 /*
 ** try to convert a value to an integer, rounding according to 'mode',
 ** without string coercion.
-** ("Fast track" handled by macro 'tointegerns'.)
+** ("Fast track" handled by inline 'tointegerns' function.)
 */
-int luaV_tointegerns (const TValue *obj, lua_Integer *p, F2Imod mode) {
+static int tointegerns_ (const TValue *obj, lua_Integer *p, F2Imod mode) {
   if (ttisfloat(obj))
     return VirtualMachine::flttointeger(fltvalue(obj), p, mode);
   else if (ttisinteger(obj)) {
@@ -88,25 +82,25 @@ int luaV_tointegerns (const TValue *obj, lua_Integer *p, F2Imod mode) {
 /*
 ** try to convert a value to an integer.
 */
-int luaV_tointeger (const TValue *obj, lua_Integer *p, F2Imod mode) {
+static int tointeger_ (const TValue *obj, lua_Integer *p, F2Imod mode) {
   TValue v;
   if (l_strton(obj, &v))  /* does 'obj' point to a numerical string? */
     obj = &v;  /* change it to point to its corresponding number */
-  return luaV_tointegerns(obj, p, mode);
+  return tointegerns_(obj, p, mode);
 }
 
 
 /*
-** TValue conversion methods (wrappers for compatibility)
+** TValue conversion methods
 */
 int TValue::toNumber(lua_Number* n) const {
-  return luaV_tonumber_(this, n);
+  return tonumber_(this, n);
 }
 
 int TValue::toInteger(lua_Integer* p, F2Imod mode) const {
-  return luaV_tointeger(this, p, mode);
+  return tointeger_(this, p, mode);
 }
 
 int TValue::toIntegerNoString(lua_Integer* p, F2Imod mode) const {
-  return luaV_tointegerns(this, p, mode);
+  return tointegerns_(this, p, mode);
 }

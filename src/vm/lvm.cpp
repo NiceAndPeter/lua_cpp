@@ -156,12 +156,7 @@ void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
 /*
 ** finish execution of an opcode interrupted by a yield
 */
-/*
-** Wrapper: implementation moved to VirtualMachine::finishOp()
-*/
-void luaV_finishOp (lua_State *L) {
-  L->getVM().finishOp();
-}
+/* luaV_finishOp removed - use VirtualMachine::finishOp() directly */
 
 
 
@@ -394,12 +389,7 @@ inline void luai_threadyield(lua_State* L) noexcept {
 ** 2. An error is thrown (C++ exception)
 ** 3. The function yields (coroutine suspend)
 */
-/*
-** Wrapper: implementation moved to VirtualMachine::execute()
-*/
-void luaV_execute (lua_State *L, CallInfo *ci) {
-  L->getVM().execute(ci);
-}
+/* luaV_execute removed - use VirtualMachine::execute() directly */
 
 /* }================================================================== */
 
