@@ -9,6 +9,8 @@
 
 #include "lprefix.h"
 
+#include <algorithm>
+
 #include "lvirtualmachine.h"
 #include "lapi.h"
 #include "ldebug.h"
@@ -60,6 +62,13 @@ inline void luai_threadyield(lua_State* L) noexcept {
 #define vmdispatch(o)	switch(o)
 #define vmcase(l)	case l:
 #define vmbreak		break
+
+/*
+** Constants from lvm.cpp needed for VM operations
+*/
+
+/* Limit for table tag-method (metamethod) chains to prevent infinite loops */
+inline constexpr int MAXTAGLOOP = 2000;
 
 /*
 ** Arithmetic and bitwise helper functions for execute()
@@ -1322,33 +1331,257 @@ lua_Integer VirtualMachine::shiftl(lua_Integer x, lua_Integer y) {
 // === COMPARISONS ===
 
 int VirtualMachine::lessThan(const TValue *l, const TValue *r) {
-    return luaV_lessthan(L, l, r);
+  if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
+    return *l < *r;  /* Use operator< for cleaner syntax */
+  else return L->lessThanOthers(l, r);
 }
 
 int VirtualMachine::lessEqual(const TValue *l, const TValue *r) {
-    return luaV_lessequal(L, l, r);
+  if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
+    return *l <= *r;  /* Use operator<= for cleaner syntax */
+  else return L->lessEqualOthers(l, r);
 }
 
 int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) {
-    return luaV_equalobj(L, t1, t2);
+  const TValue *tm;
+  if (ttype(t1) != ttype(t2))  /* not the same type? */
+    return 0;
+  else if (ttypetag(t1) != ttypetag(t2)) {
+    switch (ttypetag(t1)) {
+      case LuaT::NUMINT: {  /* integer == float? */
+        lua_Integer i2;
+        return (flttointeger(fltvalue(t2), &i2, F2Imod::F2Ieq) &&
+                ivalue(t1) == i2);
+      }
+      case LuaT::NUMFLT: {  /* float == integer? */
+        lua_Integer i1;
+        return (flttointeger(fltvalue(t1), &i1, F2Imod::F2Ieq) &&
+                i1 == ivalue(t2));
+      }
+      case LuaT::SHRSTR: case LuaT::LNGSTR: {
+        return tsvalue(t1)->equals(tsvalue(t2));
+      }
+      default:
+        return 0;
+    }
+  }
+  else {  /* equal variants */
+    switch (ttypetag(t1)) {
+      case LuaT::NIL: case LuaT::VFALSE: case LuaT::VTRUE:
+        return 1;
+      case LuaT::NUMINT:
+        return (ivalue(t1) == ivalue(t2));
+      case LuaT::NUMFLT:
+        return (fltvalue(t1) == fltvalue(t2));
+      case LuaT::LIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
+      case LuaT::SHRSTR:
+        return eqshrstr(tsvalue(t1), tsvalue(t2));
+      case LuaT::LNGSTR:
+        return tsvalue(t1)->equals(tsvalue(t2));
+      case LuaT::USERDATA: {
+        if (uvalue(t1) == uvalue(t2)) return 1;
+        else if (L == nullptr) return 0;
+        tm = fasttm(L, uvalue(t1)->getMetatable(), TMS::TM_EQ);
+        if (tm == nullptr)
+          tm = fasttm(L, uvalue(t2)->getMetatable(), TMS::TM_EQ);
+        break;  /* will try TM */
+      }
+      case LuaT::TABLE: {
+        if (hvalue(t1) == hvalue(t2)) return 1;
+        else if (L == nullptr) return 0;
+        tm = fasttm(L, hvalue(t1)->getMetatable(), TMS::TM_EQ);
+        if (tm == nullptr)
+          tm = fasttm(L, hvalue(t2)->getMetatable(), TMS::TM_EQ);
+        break;  /* will try TM */
+      }
+      case LuaT::LCF:
+        return (fvalue(t1) == fvalue(t2));
+      default:  /* functions and threads */
+        return (gcvalue(t1) == gcvalue(t2));
+    }
+    if (tm == nullptr)  /* no TM? */
+      return 0;  /* objects are different */
+    else {
+      auto tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */
+      return !tagisfalse(tag);
+    }
+  }
 }
 
 // === TABLE OPERATIONS ===
 
 LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag) {
-    return luaV_finishget(L, t, key, val, tag);
+  const TValue *tm;  /* metamethod */
+  for (int loop = 0; loop < MAXTAGLOOP; loop++) {
+    if (tag == LuaT::NOTABLE) {  /* 't' is not a table? */
+      lua_assert(!ttistable(t));
+      tm = luaT_gettmbyobj(L, t, TMS::TM_INDEX);
+      if (l_unlikely(notm(tm)))
+        luaG_typeerror(L, t, "index");  /* no metamethod */
+      /* else will try the metamethod */
+    }
+    else {  /* 't' is a table */
+      tm = fasttm(L, hvalue(t)->getMetatable(), TMS::TM_INDEX);  /* table's metamethod */
+      if (tm == nullptr) {  /* no metamethod? */
+        setnilvalue(s2v(val));  /* result is nil */
+        return LuaT::NIL;
+      }
+      /* else will try the metamethod */
+    }
+    if (ttisfunction(tm)) {  /* is metamethod a function? */
+      tag = luaT_callTMres(L, tm, t, key, val);  /* call it */
+      return tag;  /* return tag of the result */
+    }
+    t = tm;  /* else try to access 'tm[key]' */
+    tag = luaV_fastget(t, key, s2v(val), [](Table* tbl, const TValue* k, TValue* res) { return tbl->get(k, res); });
+    if (!tagisempty(tag))
+      return tag;  /* done */
+    /* else repeat (tail call 'luaV_finishget') */
+  }
+  luaG_runerror(L, "'__index' chain too long; possible loop");
+  return LuaT::NIL;  /* to avoid warnings */
 }
 
-void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int aux) {
-    luaV_finishset(L, t, key, val, aux);
+void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int hres) {
+  for (int loop = 0; loop < MAXTAGLOOP; loop++) {
+    const TValue *tm;  /* '__newindex' metamethod */
+    if (hres != HNOTATABLE) {  /* is 't' a table? */
+      auto *h = hvalue(t);  /* save 't' table */
+      tm = fasttm(L, h->getMetatable(), TMS::TM_NEWINDEX);  /* get metamethod */
+      if (tm == nullptr) {  /* no metamethod? */
+        sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */
+        L->getStackSubsystem().push();  /* assume EXTRA_STACK */
+        h->finishSet(L, key, val, hres);  /* set new value */
+        L->getStackSubsystem().pop();
+        invalidateTMcache(h);
+        luaC_barrierback(L, obj2gco(h), val);
+        return;
+      }
+      /* else will try the metamethod */
+    }
+    else {  /* not a table; check metamethod */
+      tm = luaT_gettmbyobj(L, t, TMS::TM_NEWINDEX);
+      if (l_unlikely(notm(tm)))
+        luaG_typeerror(L, t, "index");
+    }
+    /* try the metamethod */
+    if (ttisfunction(tm)) {
+      luaT_callTM(L, tm, t, key, val);
+      return;
+    }
+    t = tm;  /* else repeat assignment over 'tm' */
+    hres = luaV_fastset(t, key, val, [](Table* tbl, const TValue* k, TValue* v) { return tbl->pset(k, v); });
+    if (hres == HOK) {
+      luaV_finishfastset(L, t, val);
+      return;  /* done */
+    }
+    /* else 'return luaV_finishset(L, t, key, val, slot)' (loop) */
+  }
+  luaG_runerror(L, "'__newindex' chain too long; possible loop");
 }
 
 // === STRING/OBJECT OPERATIONS ===
 
+/* Helper functions for string concatenation */
+
+/* Function to ensure that element at 'o' is a string (converts if possible) */
+static inline bool tostring(lua_State* L, TValue* o) {
+	if (ttisstring(o)) return true;
+	if (!cvt2str(o)) return false;
+	luaO_tostring(L, o);
+	return true;
+}
+
+static inline bool isemptystr(const TValue* o) noexcept {
+	return ttisshrstring(o) && tsvalue(o)->length() == 0;
+}
+
+/* copy strings in stack from top - n up to top - 1 to buffer */
+static void copy2buff (StkId top, int n, char *buff) {
+  auto tl = size_t{0};  /* size already copied */
+  do {
+    auto *st = tsvalue(s2v(top - n));
+    size_t l;  /* length of string being copied */
+    auto *s = getlstr(st, l);
+    std::copy_n(s, l, buff + tl);
+    tl += l;
+  } while (--n > 0);
+}
+
 void VirtualMachine::concat(int total) {
-    luaV_concat(L, total);
+  if (total == 1)
+    return;  /* "all" values already concatenated */
+  do {
+    auto top = L->getTop().p;
+    auto n = 2;  /* number of elements handled in this pass (at least 2) */
+    if (!(ttisstring(s2v(top - 2)) || cvt2str(s2v(top - 2))) ||
+        !tostring(L, s2v(top - 1))) {
+      luaT_tryconcatTM(L);  /* may invalidate 'top' */
+      top = L->getTop().p;  /* recapture after potential GC */
+    }
+    else if (isemptystr(s2v(top - 1))) {  /* second operand is empty? */
+      cast_void(tostring(L, s2v(top - 2)));  /* result is first operand */
+      top = L->getTop().p;  /* recapture after potential GC */
+    }
+    else if (isemptystr(s2v(top - 2))) {  /* first operand is empty string? */
+      *s2v(top - 2) = *s2v(top - 1);  /* result is second op. (operator=) */
+    }
+    else {
+      /* at least two non-empty string values; get as many as possible */
+      auto tl = tsslen(tsvalue(s2v(top - 1)));
+      TString *ts;
+      /* collect total length and number of strings */
+      for (n = 1; n < total && tostring(L, s2v(top - n - 1)); n++) {
+        top = L->getTop().p;  /* recapture after tostring() which can trigger GC */
+        auto l = tsslen(tsvalue(s2v(top - n - 1)));
+        if (l_unlikely(l >= MAX_SIZE - sizeof(TString) - tl)) {
+          L->getStackSubsystem().setTopPtr(top - total);  /* pop strings to avoid wasting stack */
+          luaG_runerror(L, "string length overflow");
+        }
+        tl += l;
+      }
+      if (tl <= LUAI_MAXSHORTLEN) {  /* is result a short string? */
+        char buff[LUAI_MAXSHORTLEN];
+        copy2buff(top, n, buff);  /* copy strings to buffer */
+        ts = TString::create(L, buff, tl);
+        top = L->getTop().p;  /* recapture after potential GC */
+      }
+      else {  /* long string; copy strings directly to final result */
+        ts = TString::createLongString(L, tl);
+        top = L->getTop().p;  /* recapture after potential GC */
+        copy2buff(top, n, getlngstr(ts));
+      }
+      setsvalue2s(L, top - n, ts);  /* create result */
+    }
+    total -= n - 1;  /* got 'n' strings to create one new */
+    L->getStackSubsystem().popN(n - 1);  /* popped 'n' strings and pushed one */
+  } while (total > 1);  /* repeat until only 1 result left */
 }
 
 void VirtualMachine::objlen(StkId ra, const TValue *rb) {
-    luaV_objlen(L, ra, rb);
+  const TValue *tm;
+  switch (ttypetag(rb)) {
+    case LuaT::TABLE: {
+      Table *h = hvalue(rb);
+      tm = fasttm(L, h->getMetatable(), TMS::TM_LEN);
+      if (tm) break;  /* metamethod? break switch to call it */
+      s2v(ra)->setInt(l_castU2S(h->getn(L)));  /* else primitive len */
+      return;
+    }
+    case LuaT::SHRSTR: {
+      s2v(ra)->setInt(static_cast<lua_Integer>(tsvalue(rb)->length()));
+      return;
+    }
+    case LuaT::LNGSTR: {
+      s2v(ra)->setInt(cast_st2S(tsvalue(rb)->getLnglen()));
+      return;
+    }
+    default: {  /* try metamethod */
+      tm = luaT_gettmbyobj(L, rb, TMS::TM_LEN);
+      if (l_unlikely(notm(tm)))  /* no metamethod? */
+        luaG_typeerror(L, rb, "get length of");
+      break;
+    }
+  }
+  luaT_callTMres(L, tm, rb, rb, ra);
 }

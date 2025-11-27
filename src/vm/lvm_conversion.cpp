@@ -17,6 +17,7 @@
 #include "lstate.h"
 #include "lstring.h"
 #include "lvm.h"
+#include "lvirtualmachine.h"
 
 
 /*
@@ -60,15 +61,10 @@ int luaV_tonumber_ (const TValue *obj, lua_Number *n) {
 
 /*
 ** try to convert a float to an integer, rounding according to 'mode'.
+** Wrapper: implementation moved to VirtualMachine::flttointeger()
 */
 int luaV_flttointeger (lua_Number n, lua_Integer *p, F2Imod mode) {
-  lua_Number f = l_floor(n);
-  if (n != f) {  /* not an integral value? */
-    if (mode == F2Imod::F2Ieq) return 0;  /* fails if mode demands integral value */
-    else if (mode == F2Imod::F2Iceil)  /* needs ceiling? */
-      f += 1;  /* convert floor to ceiling (remember: n != f) */
-  }
-  return lua_numbertointeger(f, p);
+  return VirtualMachine::flttointeger(n, p, mode);
 }
 
 
