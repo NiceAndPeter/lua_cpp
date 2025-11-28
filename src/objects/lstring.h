@@ -169,20 +169,20 @@ public:
   }
 
   // Instance methods (implemented in lstring.cpp)
-  unsigned hashLongStr();
-  bool equals(const TString* other) const;
+  [[nodiscard]] unsigned hashLongStr();
+  [[nodiscard]] bool equals(const TString* other) const;
   void remove(lua_State* L);           // Phase 25a: from luaS_remove
-  TString* normalize(lua_State* L);    // Phase 25a: from luaS_normstr
+  [[nodiscard]] TString* normalize(lua_State* L);    // Phase 25a: from luaS_normstr
 
   // Phase 122: Static helpers and factory methods (from luaS_*)
-  static unsigned computeHash(const char* str, size_t l, unsigned seed);
-  static unsigned computeHash(std::span<const char> str, unsigned seed);
-  static size_t calculateLongStringSize(size_t len, int kind);
-  static TString* create(lua_State* L, const char* str, size_t l);
-  static TString* create(lua_State* L, std::span<const char> str);
-  static TString* create(lua_State* L, const char* str);  // null-terminated
-  static TString* createLongString(lua_State* L, size_t l);
-  static TString* createExternal(lua_State* L, const char* s, size_t len,
+  [[nodiscard]] static unsigned computeHash(const char* str, size_t l, unsigned seed);
+  [[nodiscard]] static unsigned computeHash(std::span<const char> str, unsigned seed);
+  [[nodiscard]] static size_t calculateLongStringSize(size_t len, int kind);
+  [[nodiscard]] static TString* create(lua_State* L, const char* str, size_t l);
+  [[nodiscard]] static TString* create(lua_State* L, std::span<const char> str);
+  [[nodiscard]] static TString* create(lua_State* L, const char* str);  // null-terminated
+  [[nodiscard]] static TString* createLongString(lua_State* L, size_t l);
+  [[nodiscard]] static TString* createExternal(lua_State* L, const char* s, size_t len,
                                   lua_Alloc falloc, void* ud);
 
   // Phase 122: Global string table management
@@ -304,7 +304,7 @@ inline bool eqshrstr(const TString* a, const TString* b) noexcept {
 
 
 // Phase 122: Non-TString functions
-LUAI_FUNC Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue);
+[[nodiscard]] LUAI_FUNC Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue);
 
 /* Phase 26: Removed luaS_remove - now TString::remove() method */
 /* Phase 26: Removed luaS_normstr - now TString::normalize() method */

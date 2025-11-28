@@ -976,7 +976,7 @@ struct CloseP {
 */
 static void closepaux (lua_State *L, void *ud) {
   CloseP *pcl = static_cast<CloseP*>(ud);
-  luaF_close(L, pcl->level, pcl->status, 0);
+  pcl->level = luaF_close(L, pcl->level, pcl->status, 0);
 }
 
 

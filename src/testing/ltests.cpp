@@ -1090,7 +1090,7 @@ static int hash_query (lua_State *L) {
     luaL_argcheck(L, lua_type(L, 1) == LUA_TSTRING, 1, "string expected");
     ts = tsvalue(obj_at(L, 1));
     if (ts->getType() == ctb(LuaT::LNGSTR))
-      ts->hashLongStr();  /* make sure long string has a hash */
+      (void)ts->hashLongStr();  /* make sure long string has a hash - hash also stored in object */
     lua_pushinteger(L, cast_int(ts->getHash()));
   }
   else {

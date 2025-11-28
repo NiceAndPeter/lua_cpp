@@ -274,7 +274,7 @@ static void close_state (lua_State *L) {
     luaC_freeallobjects(L);  /* just collect its objects */
   else {  /* closing a fully built state */
     resetCI(L);
-    L->closeProtected( 1, LUA_OK);  /* close all upvalues */
+    (void)L->closeProtected( 1, LUA_OK);  /* close all upvalues - ignore status during shutdown */
     L->getStackSubsystem().setTopPtr(L->getStack().p + 1);  /* empty the stack to run finalizers */
     luaC_freeallobjects(L);  /* collect all objects */
     luai_userstateclose(L);
@@ -335,7 +335,8 @@ TStatus luaE_resetthread (lua_State *L, TStatus status) {
     L->setErrorObj( status, L->getStack().p + 1);
   else
     L->getStackSubsystem().setTopPtr(L->getStack().p + 1);
-  L->reallocStack(cast_int(L->getCI()->topRef().p - L->getStack().p), 0);
+  if (!L->reallocStack(cast_int(L->getCI()->topRef().p - L->getStack().p), 0))
+    status = LUA_ERRMEM;  /* stack reallocation failed */
   return status;
 }
 

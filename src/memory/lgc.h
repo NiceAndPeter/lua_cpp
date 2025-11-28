@@ -439,17 +439,17 @@ LUAI_FUNC void luaC_freeallobjects (lua_State *L);
 /* luaC_step and luaC_fullgc declared earlier for template functions */
 LUAI_FUNC void luaC_runtilstate (lua_State *L, GCState state, int fast);
 LUAI_FUNC void propagateall (global_State *g);  /* used by GCCollector */
-LUAI_FUNC GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz);
-LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz,
+[[nodiscard]] LUAI_FUNC GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz);
+[[nodiscard]] LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz,
                                                  size_t offset);
 /* luaC_barrier_ and luaC_barrierback_ declared above before inline barrier functions */
 /* Use GCObject::checkFinalizer() method instead of luaC_checkfinalizer */
 LUAI_FUNC void luaC_changemode (lua_State *L, GCKind newmode);
 
 /* Weak table functions (will be moved to gc_weak module in Phase 4) */
-LUAI_FUNC int getmode (global_State *g, Table *h);
+[[nodiscard]] LUAI_FUNC int getmode (global_State *g, Table *h);
 LUAI_FUNC void traverseweakvalue (global_State *g, Table *h);
-LUAI_FUNC int traverseephemeron (global_State *g, Table *h, int inv);
+[[nodiscard]] LUAI_FUNC int traverseephemeron (global_State *g, Table *h, int inv);
 
 /* Sweeping helper (will be moved to gc_sweeping module in Phase 2) */
 LUAI_FUNC void freeobj (lua_State *L, GCObject *o);

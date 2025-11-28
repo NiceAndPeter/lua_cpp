@@ -150,7 +150,7 @@ public:
   CClosure(int nupvals);
 
   // Factory method
-  static CClosure* create(lua_State* L, int nupvals);
+  [[nodiscard]] static CClosure* create(lua_State* L, int nupvals);
 
   // Inline accessors
   lua_CFunction getFunction() const noexcept { return f; }
@@ -188,7 +188,7 @@ public:
   LClosure(int nupvals);
 
   // Factory method
-  static LClosure* create(lua_State* L, int nupvals);
+  [[nodiscard]] static LClosure* create(lua_State* L, int nupvals);
 
   // Inline accessors
   Proto* getProto() const noexcept { return p; }
@@ -265,16 +265,16 @@ inline constexpr int MAXMISS = 10;
 inline constexpr int CLOSEKTOP = (LUA_ERRERR + 1);
 
 
-LUAI_FUNC Proto *luaF_newproto (lua_State *L);
+[[nodiscard]] LUAI_FUNC Proto *luaF_newproto (lua_State *L);
 /* Phase 26: Removed luaF_initupvals - now LClosure::initUpvals() method */
-LUAI_FUNC UpVal *luaF_findupval (lua_State *L, StkId level);
+[[nodiscard]] LUAI_FUNC UpVal *luaF_findupval (lua_State *L, StkId level);
 LUAI_FUNC void luaF_newtbcupval (lua_State *L, StkId level);
 LUAI_FUNC void luaF_closeupval (lua_State *L, StkId level);
-LUAI_FUNC StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy);
+[[nodiscard]] LUAI_FUNC StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy);
 LUAI_FUNC void luaF_unlinkupval (UpVal *uv);
-LUAI_FUNC lu_mem luaF_protosize (Proto *p);
+[[nodiscard]] LUAI_FUNC lu_mem luaF_protosize (Proto *p);
 LUAI_FUNC void luaF_freeproto (lua_State *L, Proto *f);
-LUAI_FUNC const char *luaF_getlocalname (const Proto *func, int local_number,
+[[nodiscard]] LUAI_FUNC const char *luaF_getlocalname (const Proto *func, int local_number,
                                          int pc);
 
 

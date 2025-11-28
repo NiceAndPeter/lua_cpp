@@ -823,7 +823,7 @@ void VirtualMachine::execute(CallInfo *ci) {
       case OP_CLOSE: {
         auto ra = RA(i);
         lua_assert(!InstructionView(i).b());  /* 'close must be alive */
-        Protect([&]() { luaF_close(L, ra, LUA_OK, 1); });
+        Protect([&]() { ra = luaF_close(L, ra, LUA_OK, 1); });
         break;
       }
       case OP_TBC: {
@@ -960,7 +960,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           ci->setNRes(n);  /* save number of returns */
           if (L->getTop().p < ci->topRef().p)
             L->getStackSubsystem().setTopPtr(ci->topRef().p);
-          luaF_close(L, base, CLOSEKTOP, 1);
+          base = luaF_close(L, base, CLOSEKTOP, 1);
           updatetrap(ci);
           updatestack(ra, ci, i);
         }

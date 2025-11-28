@@ -617,8 +617,8 @@ public:
   // Stack operation methods - delegate to stack_ subsystem
   inline void inctop() { stack_.incTop(this); }
   inline void shrinkStack() { stack_.shrink(this); }
-  inline int growStack(int n, int raiseerror) { return stack_.grow(this, n, raiseerror); }
-  inline int reallocStack(int newsize, int raiseerror) { return stack_.realloc(this, newsize, raiseerror); }
+  [[nodiscard]] inline int growStack(int n, int raiseerror) { return stack_.grow(this, n, raiseerror); }
+  [[nodiscard]] inline int reallocStack(int newsize, int raiseerror) { return stack_.realloc(this, newsize, raiseerror); }
 
   // Error handling methods (implemented in ldo.cpp)
   l_noret doThrow(TStatus errcode);
@@ -631,24 +631,24 @@ public:
   void hookCall(CallInfo *ci);
 
   // Call operation methods (implemented in ldo.cpp)
-  CallInfo* preCall(StkId func, int nResults);
+  [[nodiscard]] CallInfo* preCall(StkId func, int nResults);
   void postCall(CallInfo *ci, int nres);
-  int preTailCall(CallInfo *ci, StkId func, int narg1, int delta);
+  [[nodiscard]] int preTailCall(CallInfo *ci, StkId func, int narg1, int delta);
   void call(StkId func, int nResults);
   void callNoYield(StkId func, int nResults);
 
   // Protected operation methods (implemented in ldo.cpp)
-  TStatus rawRunProtected(Pfunc f, void *ud);
-  TStatus pCall(Pfunc func, void *u, ptrdiff_t oldtop, ptrdiff_t ef);
-  TStatus closeProtected(ptrdiff_t level, TStatus status);
-  TStatus protectedParser(ZIO *z, const char *name, const char *mode);
+  [[nodiscard]] TStatus rawRunProtected(Pfunc f, void *ud);
+  [[nodiscard]] TStatus pCall(Pfunc func, void *u, ptrdiff_t oldtop, ptrdiff_t ef);
+  [[nodiscard]] TStatus closeProtected(ptrdiff_t level, TStatus status);
+  [[nodiscard]] TStatus protectedParser(ZIO *z, const char *name, const char *mode);
 
   // Internal helper methods (used by Pfunc callbacks in ldo.cpp)
   void cCall(StkId func, int nResults, l_uint32 inc);
   void unrollContinuation(void *ud);
-  TStatus finishPCallK(CallInfo *ci);
+  [[nodiscard]] TStatus finishPCallK(CallInfo *ci);
   void finishCCall(CallInfo *ci);
-  CallInfo* findPCall();
+  [[nodiscard]] CallInfo* findPCall();
 
   // Error and debug methods (implemented in ldebug.cpp)
   const char* findLocal(CallInfo *ci, int n, StkId *pos);
