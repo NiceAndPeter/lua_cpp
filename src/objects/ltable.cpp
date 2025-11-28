@@ -410,7 +410,7 @@ static bool equalkey (const TValue *k1, const Node *n2, int deadok) {
 ** which may be in array part, nor for floats with integral values.)
 ** See explanation about 'deadok' in function 'equalkey'.
 */
-static TValue *getgeneric (Table *t, const TValue *key, int deadok) {
+static TValue *getgeneric (const Table *t, const TValue *key, int deadok) {
   Node *n = mainpositionTV(t, key);
   const Node *base = gnode(t, 0);
   const Node *limit = base + t->nodeSize();
@@ -459,7 +459,7 @@ inline unsigned ikeyinarray(const Table* t, lua_Integer k) noexcept {
 ** Check whether a key is in the array part of a table and return its
 ** index there, or zero.
 */
-static unsigned keyinarray (Table *t, const TValue *key) {
+static unsigned keyinarray (const Table *t, const TValue *key) {
   return (ttisinteger(key)) ? ikeyinarray(t, ivalue(key)) : 0;
 }
 
@@ -469,7 +469,7 @@ static unsigned keyinarray (Table *t, const TValue *key) {
 ** elements in the array part, then elements in the hash part. The
 ** beginning of a traversal is signaled by 0.
 */
-static unsigned findindex (lua_State *L, Table *t, TValue *key,
+static unsigned findindex (lua_State *L, const Table *t, TValue *key,
                                unsigned asize) {
   if (ttisnil(key)) return 0;  /* first iteration */
   unsigned int i = keyinarray(t, key);
@@ -1020,7 +1020,7 @@ static void luaH_newkey (lua_State *L, Table *t, const TValue *key,
 }
 
 
-static TValue *getintfromhash (Table *t, lua_Integer key) {
+static TValue *getintfromhash (const Table *t, lua_Integer key) {
   Node *n = hashint(t, key);
   lua_assert(!ikeyinarray(t, key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
@@ -1050,7 +1050,7 @@ static LuaT finishnodeget (const TValue *val, TValue *res) {
 }
 
 
-static TValue *Hgetlongstr (Table *t, TString *key) {
+static TValue *Hgetlongstr (const Table *t, TString *key) {
   TValue ko;
   lua_assert(!strisshr(key));
   setsvalue(static_cast<lua_State*>(nullptr), &ko, key);
@@ -1058,7 +1058,7 @@ static TValue *Hgetlongstr (Table *t, TString *key) {
 }
 
 
-static TValue *Hgetstr (Table *t, TString *key) {
+static TValue *Hgetstr (const Table *t, TString *key) {
   if (strisshr(key))
     return t->HgetShortStr(key);
   else
@@ -1198,7 +1198,7 @@ Node *luaH_mainposition (const Table *t, const TValue *key) {
 ** Table method implementations
 */
 
-LuaT Table::get(const TValue* key, TValue* res) {
+LuaT Table::get(const TValue* key, TValue* res) const {
   const TValue *slot;
   switch (ttypetag(key)) {
     case LuaT::SHRSTR:
@@ -1222,7 +1222,7 @@ LuaT Table::get(const TValue* key, TValue* res) {
   return finishnodeget(slot, res);
 }
 
-LuaT Table::getInt(lua_Integer key, TValue* res) {
+LuaT Table::getInt(lua_Integer key, TValue* res) const {
   unsigned k = ikeyinarray(this, key);
   if (k > 0) {
     LuaT tag = *this->getArrayTag(k - 1);
@@ -1234,30 +1234,15 @@ LuaT Table::getInt(lua_Integer key, TValue* res) {
     return finishnodeget(getintfromhash(this, key), res);
 }
 
-LuaT Table::getShortStr(TString* key, TValue* res) {
+LuaT Table::getShortStr(TString* key, TValue* res) const {
   return finishnodeget(HgetShortStr(key), res);
 }
 
-LuaT Table::getStr(TString* key, TValue* res) {
+LuaT Table::getStr(TString* key, TValue* res) const {
   return finishnodeget(Hgetstr(this, key), res);
 }
 
-TValue* Table::HgetShortStr(TString* key) {
-  Node *n = hashstr(this, key);
-  lua_assert(strisshr(key));
-  for (;;) {  /* check whether 'key' is somewhere in the chain */
-    if (n->isKeyShrStr() && eqshrstr(n->getKeyStrValue(), key))
-      return gval(n);  /* that's it */
-    else {
-      int nx = gnext(n);
-      if (nx == 0)
-        return &absentkey;  /* not found */
-      n += nx;
-    }
-  }
-}
-
-const TValue* Table::HgetShortStr(TString* key) const {
+TValue* Table::HgetShortStr(TString* key) const {
   Node *n = hashstr(this, key);
   lua_assert(strisshr(key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
@@ -1432,7 +1417,7 @@ lu_mem Table::size() const {
   return sz;
 }
 
-int Table::tableNext(lua_State* L, StkId key) {
+int Table::tableNext(lua_State* L, StkId key) const {
   unsigned int arraysize = this->arraySize();
   unsigned int i = findindex(L, this, s2v(key), arraysize);  /* find original key */
   for (; i < arraysize; i++) {  /* try first array part */

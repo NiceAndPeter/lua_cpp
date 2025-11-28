@@ -264,11 +264,11 @@ public:
   const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
 
   // Method declarations (implemented in ltable.cpp)
-  [[nodiscard]] LuaT get(const TValue* key, TValue* res);
-  [[nodiscard]] LuaT getInt(lua_Integer key, TValue* res);
-  [[nodiscard]] LuaT getShortStr(TString* key, TValue* res);
-  [[nodiscard]] LuaT getStr(TString* key, TValue* res);
-  [[nodiscard]] TValue* HgetShortStr(TString* key);
+  [[nodiscard]] LuaT get(const TValue* key, TValue* res) const;
+  [[nodiscard]] LuaT getInt(lua_Integer key, TValue* res) const;
+  [[nodiscard]] LuaT getShortStr(TString* key, TValue* res) const;
+  [[nodiscard]] LuaT getStr(TString* key, TValue* res) const;
+  [[nodiscard]] TValue* HgetShortStr(TString* key) const;
 
   [[nodiscard]] int pset(const TValue* key, TValue* val);
   [[nodiscard]] int psetInt(lua_Integer key, TValue* val);
@@ -282,7 +282,7 @@ public:
   void resize(lua_State* L, unsigned nasize, unsigned nhsize);
   void resizeArray(lua_State* L, unsigned nasize);
   [[nodiscard]] lu_mem size() const;
-  [[nodiscard]] int tableNext(lua_State* L, StkId key);  // renamed from next() to avoid conflict with GC field
+  [[nodiscard]] int tableNext(lua_State* L, StkId key) const;  // renamed from next() to avoid conflict with GC field
   [[nodiscard]] lua_Unsigned getn(lua_State* L);
 
   // Phase 33: Factory and helper methods
@@ -293,9 +293,6 @@ public:
   // Phase 122: Hot-path fast access methods (defined in lobject.h due to TMS dependency)
   inline void fastGeti(lua_Integer k, TValue* res, LuaT& tag) noexcept;
   inline void fastSeti(lua_Integer k, TValue* val, int& hres) noexcept;
-
-  // Phase 122: Const overload for HgetShortStr (for metamethod lookup)
-  [[nodiscard]] const TValue* HgetShortStr(TString* key) const;
 };
 
 

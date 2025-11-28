@@ -1226,7 +1226,7 @@ static int l_strton (const TValue *obj, TValue *result) {
   }
 }
 
-int VirtualMachine::tonumber(const TValue *obj, lua_Number *n) {
+int VirtualMachine::tonumber(const TValue *obj, lua_Number *n) const {
   TValue v;
   if (ttisinteger(obj)) {
     *n = cast_num(ivalue(obj));
@@ -1255,7 +1255,7 @@ int VirtualMachine::flttointeger(lua_Number n, lua_Integer *p, F2Imod mode) {
   return lua_numbertointeger(f, p);
 }
 
-int VirtualMachine::tointegerns(const TValue *obj, lua_Integer *p, F2Imod mode) {
+int VirtualMachine::tointegerns(const TValue *obj, lua_Integer *p, F2Imod mode) const {
   if (ttisfloat(obj))
     return flttointeger(fltvalue(obj), p, mode);
   else if (ttisinteger(obj)) {
@@ -1266,7 +1266,7 @@ int VirtualMachine::tointegerns(const TValue *obj, lua_Integer *p, F2Imod mode) 
     return 0;
 }
 
-int VirtualMachine::tointeger(const TValue *obj, lua_Integer *p, F2Imod mode) {
+int VirtualMachine::tointeger(const TValue *obj, lua_Integer *p, F2Imod mode) const {
   TValue v;
   if (l_strton(obj, &v))  /* does 'obj' point to a numerical string? */
     obj = &v;  /* change it to point to its corresponding number */
@@ -1275,7 +1275,7 @@ int VirtualMachine::tointeger(const TValue *obj, lua_Integer *p, F2Imod mode) {
 
 // === ARITHMETIC ===
 
-lua_Integer VirtualMachine::idiv(lua_Integer m, lua_Integer n) {
+lua_Integer VirtualMachine::idiv(lua_Integer m, lua_Integer n) const {
   if (l_unlikely(l_castS2U(n) + 1u <= 1u)) {  /* special cases: -1 or 0 */
     if (n == 0)
       luaG_runerror(L, "attempt to divide by zero");
@@ -1289,7 +1289,7 @@ lua_Integer VirtualMachine::idiv(lua_Integer m, lua_Integer n) {
   }
 }
 
-lua_Integer VirtualMachine::mod(lua_Integer m, lua_Integer n) {
+lua_Integer VirtualMachine::mod(lua_Integer m, lua_Integer n) const {
   if (l_unlikely(l_castS2U(n) + 1u <= 1u)) {  /* special cases: -1 or 0 */
     if (n == 0)
       luaG_runerror(L, "attempt to perform 'n%%0'");
@@ -1303,7 +1303,7 @@ lua_Integer VirtualMachine::mod(lua_Integer m, lua_Integer n) {
   }
 }
 
-lua_Number VirtualMachine::modf(lua_Number m, lua_Number n) {
+lua_Number VirtualMachine::modf(lua_Number m, lua_Number n) const {
   lua_Number r;
   luai_nummod(L, m, n, r);
   return r;
@@ -1325,19 +1325,19 @@ lua_Integer VirtualMachine::shiftl(lua_Integer x, lua_Integer y) {
 
 // === COMPARISONS ===
 
-int VirtualMachine::lessThan(const TValue *l, const TValue *r) {
+int VirtualMachine::lessThan(const TValue *l, const TValue *r) const {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return *l < *r;  /* Use operator< for cleaner syntax */
   else return L->lessThanOthers(l, r);
 }
 
-int VirtualMachine::lessEqual(const TValue *l, const TValue *r) {
+int VirtualMachine::lessEqual(const TValue *l, const TValue *r) const {
   if (ttisnumber(l) && ttisnumber(r))  /* both operands are numbers? */
     return *l <= *r;  /* Use operator<= for cleaner syntax */
   else return L->lessEqualOthers(l, r);
 }
 
-int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) {
+int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) const {
   const TValue *tm;
   if (ttype(t1) != ttype(t2))  /* not the same type? */
     return 0;
@@ -1405,7 +1405,7 @@ int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) {
 
 // === TABLE OPERATIONS ===
 
-LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag) {
+LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag) const {
   const TValue *tm;  /* metamethod */
   for (int loop = 0; loop < MAXTAGLOOP; loop++) {
     if (tag == LuaT::NOTABLE) {  /* 't' is not a table? */
@@ -1437,7 +1437,7 @@ LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag
   return LuaT::NIL;  /* to avoid warnings */
 }
 
-void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int hres) {
+void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int hres) const {
   for (int loop = 0; loop < MAXTAGLOOP; loop++) {
     const TValue *tm;  /* '__newindex' metamethod */
     if (hres != HNOTATABLE) {  /* is 't' a table? */
