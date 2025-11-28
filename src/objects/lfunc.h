@@ -162,7 +162,7 @@ public:
   TValue* getUpvalue(int idx) noexcept { return &upvalue[idx]; }
   const TValue* getUpvalue(int idx) const noexcept { return &upvalue[idx]; }
 
-  GCObject* getGclist() noexcept { return gclist; }
+  GCObject* getGclist() const noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
@@ -201,7 +201,7 @@ public:
   void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }
   UpVal** getUpvalPtr(int idx) noexcept { return &upvals[idx]; }
 
-  GCObject* getGclist() noexcept { return gclist; }
+  GCObject* getGclist() const noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }

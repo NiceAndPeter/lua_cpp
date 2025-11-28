@@ -393,7 +393,7 @@ public:
   Table* getMetatable() const noexcept { return metatable; }
   void setMetatable(Table* mt) noexcept { metatable = mt; }
   Table** getMetatablePtr() noexcept { return &metatable; }
-  GCObject* getGclist() noexcept { return gclist; }
+  GCObject* getGclist() const noexcept { return gclist; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
