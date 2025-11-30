@@ -10,8 +10,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Repository**: `/home/user/lua_cpp`
 **Performance Target**: ≤4.33s (≤3% regression from 4.20s baseline)
-**Current Performance**: ~2.15s avg (outstanding!) ✅
-**Status**: **CONST CORRECTNESS & SAFETY COMPLETE** - Phase 127 done!
+**Current Performance**: ~2.20s avg (outstanding!) ✅
+**Status**: **CODE MODERNIZATION CONTINUING** - Phase 129 Part 1 done!
 
 ---
 
@@ -193,6 +193,17 @@ Converting Lua 5.5 from C to modern C++23 with:
 - **Performance**: ~2.15s avg (maintained - no regression) ✅
 - **Status**: ✅ COMPLETE
 
+### Phase 129: Range-Based For Loop Expansion
+- **Part 1** (Complete): High-value, low-risk conversions in lundump.cpp
+  * Converted 4 traditional for loops to C++23 range-based for loops
+  * **Upvalues loading loop** (line 297-301): Direct iteration over Upvaldesc references
+  * **LocVars loading loop** (line 339-343): Direct iteration over LocVar references
+  * **Upvalues string loading** (line 348-349): Conditional iteration with proper scoping
+  * **Constants value loading** (line 232-245): Hybrid approach with pointer extraction
+  * **Bug fixed**: Properly scoped upvalues string loading to only execute when debug info present
+  * **Benefits**: Modern C++ idiom, reduced cognitive load, fewer index errors
+  * **Performance**: ~2.20s avg (maintained - no regression) ✅
+
 **Phase 112-114** (Earlier):
 - std::span accessors added to Proto/ProtoDebugInfo
 - Operator type safety (enum classes)
@@ -204,8 +215,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Current Baseline**: 4.20s avg (Nov 2025, current hardware)
 **Target**: ≤4.33s (≤3% regression)
-**Latest**: ~2.15s avg (Phase 127: [[nodiscard]] Annotations, Nov 28, 2025)
-**Status**: ✅ **OUTSTANDING** - 49% faster than baseline!
+**Latest**: ~2.20s avg (Phase 129 Part 1: Range-based for loops, Nov 30, 2025)
+**Status**: ✅ **OUTSTANDING** - 48% faster than baseline!
 
 **Historical Baseline**: 2.17s avg (different hardware, Nov 2025)
 
@@ -420,10 +431,11 @@ git commit -m "Phase 120: Complete boolean return type conversions"
 - ✅ **CRTP active** - All 9 GC types
 - ✅ **Exceptions** - Modern C++ error handling
 - ✅ **Zero warnings** - Multiple compilers
-- ✅ **Performance** - Exceeds target (2.15s << 4.33s target, 49% faster!)
+- ✅ **Performance** - Exceeds target (2.20s << 4.33s target, 48% faster!)
 - ✅ **All tests passing** - 30+ test files
 - ✅ **96.1% code coverage**
 - ✅ **Phases 1-127 completed**
+- ✅ **Phase 129 Part 1** - Range-based for loops (4 conversions in lundump.cpp)
 
 ### Status
 **Result**: Modern C++23 codebase with exceptional performance!
@@ -465,9 +477,10 @@ Based on current project status (Phases 1-127 complete), recommended priorities:
    - Add `const` qualifiers to getters and methods that don't modify state
    - Benefits: Documents immutability, enables compiler optimizations
 
-3. ✅ **Phase 129: Range-Based For Loop Expansion**
-   - Effort: 3-4 hours | Risk: LOW | Priority: ⭐⭐ 7/10
-   - Convert traditional loops to range-based for loops where std::span enables it
+3. ✅ **Phase 129: Range-Based For Loop Expansion** (Part 1 Complete)
+   - **Part 1**: ✅ COMPLETE - 4 conversions in lundump.cpp (high-value, low-risk)
+   - **Part 2**: Optional - 2 conversions in ldebug.cpp (medium-risk, requires subspan)
+   - Effort: 2-3 hours for Part 2 | Risk: MEDIUM | Priority: ⭐ 6/10
    - Benefits: Modern C++ idiom, more expressive code
 
 4. ⚠️ **Phase 128: Optimize std::span Performance** (if needed)
@@ -480,6 +493,7 @@ Based on current project status (Phases 1-127 complete), recommended priorities:
 - ✅ **VirtualMachine direct calls** - Completed in Phase 125 (Nov 27, 2025)
 - ✅ **Const correctness improvements** - Completed in Phase 126 (Nov 28, 2025)
 - ✅ **Additional [[nodiscard]] annotations** - Completed in Phase 127 (Nov 28, 2025)
+- ✅ **Range-based for loops (Part 1)** - Completed in Phase 129 Part 1 (Nov 30, 2025)
 
 ### Low-Value/High-Risk (DEFER)
 - ⛔ Complete boolean conversions (8 remaining - diminishing returns)
@@ -553,8 +567,8 @@ git push -u origin <branch-name>
 
 ---
 
-**Last Updated**: 2025-11-28 (Documentation updated for Phases 126-127)
-**Completed Phases**: 1-127
-**Current Status**: Ready for Phase 129 or other improvements
-**Performance**: ~2.15s avg ✅ (49% faster than 4.20s baseline!)
-**Architecture**: VirtualMachine complete, const-correct, [[nodiscard]] safety, all wrappers eliminated!
+**Last Updated**: 2025-11-30 (Documentation updated for Phase 129 Part 1)
+**Completed Phases**: 1-127, 129 Part 1
+**Current Status**: Ready for Phase 129 Part 2 or other improvements
+**Performance**: ~2.20s avg ✅ (48% faster than 4.20s baseline!)
+**Architecture**: VirtualMachine complete, const-correct, [[nodiscard]] safety, modern C++23 idioms!
