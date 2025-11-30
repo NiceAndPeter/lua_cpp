@@ -116,7 +116,7 @@ void FuncState::fixjump(int position, int dest) {
 ** followed by a jump. Return jump position.
 */
 int FuncState::condjump(OpCode o, int A, int B, int C, int k) {
-  codeABCk(o, A, B, C, k);
+  codeABCk(o, A, B, C, k);  /* emit test instruction - position not needed */
   return jump();
 }
 
@@ -263,7 +263,7 @@ int FuncState::codek(int reg, int k) {
     return codeABx(OP_LOADK, reg, k);
   else {
     auto p = codeABx(OP_LOADKX, reg, 0);
-    codeextraarg(k);
+    codeextraarg(k);  /* emit extra arg - position not needed */
     return p;
   }
 }
@@ -457,9 +457,9 @@ static int fitsBx (lua_Integer i) {
 void FuncState::floatCode(int reg, lua_Number flt) {
   lua_Integer fi;
   if (VirtualMachine::flttointeger(flt, &fi, F2Imod::F2Ieq) && fitsBx(fi))
-    codeAsBx(OP_LOADF, reg, cast_int(fi));
+    codeAsBx(OP_LOADF, reg, cast_int(fi));  /* emit instruction - position not needed */
   else
-    codek(reg, numberK(flt));
+    codek(reg, numberK(flt));  /* emit instruction - position not needed */
 }
 
 /*
@@ -649,7 +649,7 @@ int FuncState::exp2RK(expdesc *e) {
   if (exp2K(e))
     return 1;
   else {  /* not a constant in the right range: put it in a register */
-    exp2anyreg(e);
+    exp2anyreg(e);  /* put in register - specific register not needed */
     return 0;
   }
 }
@@ -1283,7 +1283,7 @@ void FuncState::exp2val(expdesc *e) {
 }
 
 void FuncState::self(expdesc *e, expdesc *key) {
-  exp2anyreg(e);
+  exp2anyreg(e);  /* result available via e->getInfo() */
   int ereg = e->getInfo();  /* register where 'e' (the receiver) was placed */
   freeExpression(e);
   int base = getFirstFreeRegister();
@@ -1297,7 +1297,7 @@ void FuncState::self(expdesc *e, expdesc *key) {
     codeABCk(OP_SELF, base, ereg, key->getInfo(), 0);
   }
   else {  /* cannot use 'self' opcode; use move+gettable */
-    exp2anyreg(key);  /* put method name in a register */
+    exp2anyreg(key);  /* put method name in a register - result via key->getInfo() */
     codeABC(OP_MOVE, base + 1, ereg, 0);  /* copy self to base+1 */
     codeABC(OP_GETTABLE, base, ereg, key->getInfo());  /* get method */
   }
@@ -1309,7 +1309,7 @@ void FuncState::indexed(expdesc *t, expdesc *k) {
   lua_assert(!hasjumps(t) &&
              (t->getKind() == VLOCAL || t->getKind() == VNONRELOC || t->getKind() == VUPVAL));
   if (t->getKind() == VUPVAL && !isKstr(k))  /* upvalue indexed by non 'Kstr'? */
-    exp2anyreg(t);  /* put it in a register */
+    exp2anyreg(t);  /* put it in a register - result via t->getInfo() */
   if (t->getKind() == VUPVAL) {
     lu_byte temp = cast_byte(t->getInfo());  /* upvalue index */
     t->setIndexedTableReg(temp);  /* (can't do a direct assignment; values overlap) */
