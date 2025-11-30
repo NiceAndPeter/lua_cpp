@@ -229,8 +229,8 @@ static void loadConstants (LoadState *S, Proto *f) {
   for (TValue& v : constantsSpan) {
     setnilvalue(&v);
   }
-  for (size_t i = 0; i < static_cast<size_t>(n); i++) {
-    TValue *o = &constantsSpan[i];
+  for (TValue& o_ref : constantsSpan) {
+    TValue *o = &o_ref;
     LuaT t = static_cast<LuaT>(loadByte(S));
     switch (t) {
       case LuaT::NIL:
@@ -294,10 +294,10 @@ static void loadUpvalues (LoadState *S, Proto *f) {
   for (Upvaldesc& uv : upvaluesSpan) {
     uv.setName(nullptr);
   }
-  for (size_t i = 0; i < static_cast<size_t>(n); i++) {  /* following calls can raise errors */
-    upvaluesSpan[i].setInStack(loadByte(S));
-    upvaluesSpan[i].setIndex(loadByte(S));
-    upvaluesSpan[i].setKind(loadByte(S));
+  for (Upvaldesc& uv : upvaluesSpan) {  /* following calls can raise errors */
+    uv.setInStack(loadByte(S));
+    uv.setIndex(loadByte(S));
+    uv.setKind(loadByte(S));
   }
 }
 
@@ -336,17 +336,18 @@ static void loadDebug (LoadState *S, Proto *f) {
   for (LocVar& lv : locVarsSpan) {
     lv.setVarName(nullptr);
   }
-  for (size_t i = 0; i < static_cast<size_t>(n); i++) {
-    loadString(S, f, locVarsSpan[i].getVarNamePtr());
-    locVarsSpan[i].setStartPC(loadInt(S));
-    locVarsSpan[i].setEndPC(loadInt(S));
+  for (LocVar& lv : locVarsSpan) {
+    loadString(S, f, lv.getVarNamePtr());
+    lv.setStartPC(loadInt(S));
+    lv.setEndPC(loadInt(S));
   }
   n = loadInt(S);
-  if (n != 0)  /* does it have debug information? */
+  if (n != 0) {  /* does it have debug information? */
     n = f->getUpvaluesSize();  /* must be this many */
-  auto upvaluesSpan = f->getUpvaluesSpan();
-  for (size_t i = 0; i < static_cast<size_t>(n); i++)
-    loadString(S, f, upvaluesSpan[i].getNamePtr());
+    auto upvaluesSpan = f->getUpvaluesSpan();
+    for (Upvaldesc& uv : upvaluesSpan)
+      loadString(S, f, uv.getNamePtr());
+  }
 }
 
 
