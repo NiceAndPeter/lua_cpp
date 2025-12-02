@@ -52,7 +52,7 @@ inline GCObject* gcvalarr(Table* t, unsigned int i) noexcept {
 ** For other objects: if really collected, cannot keep them; for objects
 ** being finalized, keep them in keys, but not in values.
 */
-static bool iscleared(global_State* g, const GCObject* o) {
+static bool iscleared(global_State& g, const GCObject* o) {
     if (o == nullptr) return false;  /* non-collectable value */
     else if (novariant(o->getType()) == LUA_TSTRING) {
         markobject(g, o);  /* strings are 'values', so are never weak */
@@ -111,10 +111,10 @@ static inline void linkgclistTable(Table* h, GCObject*& p) {
 ** Link object to appropriate gray list based on generational mode.
 ** Handles Touched1/Touched2 ages for generational collector.
 */
-void GCWeak::genlink(global_State* g, GCObject* o) {
+void GCWeak::genlink(global_State& g, GCObject* o) {
     lua_assert(isblack(o));
     if (getage(o) == GCAge::Touched1) {  /* touched in this cycle? */
-        linkobjgclist(o, *g->getGrayAgainPtr());  /* link it back in 'grayagain' */
+        linkobjgclist(o, *g.getGrayAgainPtr());  /* link it back in 'grayagain' */
     }  /* everything else does not need to be linked back */
     else if (getage(o) == GCAge::Touched2)
         setage(o, GCAge::Old);  /* advance age */
@@ -131,8 +131,8 @@ void GCWeak::genlink(global_State* g, GCObject* o) {
 ** Get weak mode of table from its metatable's __mode field.
 ** Returns: (result & 1) iff weak values; (result & 2) iff weak keys
 */
-int GCWeak::getmode(global_State* g, Table* h) {
-    const TValue* mode = gfasttm(g, h->getMetatable(), TMS::TM_MODE);
+int GCWeak::getmode(global_State& g, Table* h) {
+    const TValue* mode = gfasttm(&g, h->getMetatable(), TMS::TM_MODE);
     if (mode == nullptr || !ttisshrstring(mode))
         return 0;  /* ignore non-(short)string modes */
     else {
@@ -154,7 +154,7 @@ int GCWeak::getmode(global_State* g, Table* h) {
 ** Traverse array part of a table.
 ** Returns true if any object was marked during traversal.
 */
-static int traversearray(global_State* g, Table* h) {
+static int traversearray(global_State& g, Table* h) {
     unsigned asize = h->arraySize();
     int marked = 0;  /* true if some object is marked in this traversal */
     unsigned i;
@@ -176,7 +176,7 @@ static int traversearray(global_State* g, Table* h) {
 ** put it in 'weak' list, to be cleared; otherwise, call 'genlink' to
 ** check table age in generational mode.
 */
-void GCWeak::traverseweakvalue(global_State* g, Table* h) {
+void GCWeak::traverseweakvalue(global_State& g, Table* h) {
     Node* n;
     Node* limit = gnodelast(h);
     /* if there is array part, assume it may have white values
@@ -194,10 +194,10 @@ void GCWeak::traverseweakvalue(global_State* g, Table* h) {
         }
     }
 
-    if (g->getGCState() == GCState::Propagate)
-        linkgclistTable(h, *g->getGrayAgainPtr());  /* must retraverse it in atomic phase */
+    if (g.getGCState() == GCState::Propagate)
+        linkgclistTable(h, *g.getGrayAgainPtr());  /* must retraverse it in atomic phase */
     else if (hasclears)
-        linkgclistTable(h, *g->getWeakPtr());  /* has to be cleared later */
+        linkgclistTable(h, *g.getWeakPtr());  /* has to be cleared later */
     else
         genlink(g, obj2gco(h));
 }
@@ -214,7 +214,7 @@ void GCWeak::traverseweakvalue(global_State* g, Table* h) {
 ** (in the atomic phase). In generational mode, some tables must be kept
 ** in some gray list for post-processing; this is done by 'genlink'.
 */
-int GCWeak::traverseephemeron(global_State* g, Table* h, int inv) {
+int GCWeak::traverseephemeron(global_State& g, Table* h, int inv) {
     int hasclears = 0;  /* true if table has white keys */
     int hasww = 0;  /* true if table has entry "white-key -> white-value" */
     unsigned int i;
@@ -239,12 +239,12 @@ int GCWeak::traverseephemeron(global_State* g, Table* h, int inv) {
     }
 
     /* link table into proper list */
-    if (g->getGCState() == GCState::Propagate)
-        linkgclistTable(h, *g->getGrayAgainPtr());  /* must retraverse it in atomic phase */
+    if (g.getGCState() == GCState::Propagate)
+        linkgclistTable(h, *g.getGrayAgainPtr());  /* must retraverse it in atomic phase */
     else if (hasww)  /* table has white->white entries? */
-        linkgclistTable(h, *g->getEphemeronPtr());  /* have to propagate again */
+        linkgclistTable(h, *g.getEphemeronPtr());  /* have to propagate again */
     else if (hasclears)  /* table has white keys? */
-        linkgclistTable(h, *g->getAllWeakPtr());  /* may have to clean white keys */
+        linkgclistTable(h, *g.getAllWeakPtr());  /* may have to clean white keys */
     else
         genlink(g, obj2gco(h));  /* check whether collector still needs to see it */
 
@@ -264,13 +264,13 @@ int GCWeak::traverseephemeron(global_State* g, Table* h, int inv) {
 ** inverts the direction of the traversals, trying to speed up
 ** convergence on chains in the same table.
 */
-void GCWeak::convergeephemerons(global_State* g) {
+void GCWeak::convergeephemerons(global_State& g) {
     int changed;
     int dir = 0;
     do {
         GCObject* w;
-        GCObject* next = g->getEphemeron();  /* get ephemeron list */
-        g->setEphemeron(nullptr);  /* tables may return to this list when traversed */
+        GCObject* next = g.getEphemeron();  /* get ephemeron list */
+        g.setEphemeron(nullptr);  /* tables may return to this list when traversed */
         changed = 0;
         while ((w = next) != nullptr) {  /* for each ephemeron table */
             Table* h = gco2t(w);
@@ -296,7 +296,7 @@ void GCWeak::convergeephemerons(global_State* g) {
 ** Clear entries with unmarked keys from all weak tables in list 'l'.
 ** Called in atomic phase after marking completes.
 */
-void GCWeak::clearbykeys(global_State* g, GCObject* l) {
+void GCWeak::clearbykeys(global_State& g, GCObject* l) {
     for (; l; l = gco2t(l)->getGclist()) {
         Table* h = gco2t(l);
         Node* limit = gnodelast(h);
@@ -316,7 +316,7 @@ void GCWeak::clearbykeys(global_State* g, GCObject* l) {
 ** up to element 'f'.
 ** Called in atomic phase after marking completes.
 */
-void GCWeak::clearbyvalues(global_State* g, GCObject* l, GCObject* f) {
+void GCWeak::clearbyvalues(global_State& g, GCObject* l, GCObject* f) {
     for (; l != f; l = gco2t(l)->getGclist()) {
         Table* h = gco2t(l);
         Node* n;

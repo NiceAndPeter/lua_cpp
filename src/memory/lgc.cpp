@@ -264,13 +264,13 @@ static void reallymarkobject (global_State& g, GCObject *o) {
         set2gray(uv);  /* open upvalues are kept gray */
       else
         set2black(uv);  /* closed upvalues are visited here */
-      markvalue(&g, uv->getVP());  /* mark its content */
+      markvalue(g, uv->getVP());  /* mark its content */
       break;
     }
     case static_cast<int>(ctb(LuaT::USERDATA)): {
       Udata *u = gco2u(o);
       if (u->getNumUserValues() == 0) {  /* no user values? */
-        markobjectN(&g, u->getMetatable());  /* mark its metatable */
+        markobjectN(g, u->getMetatable());  /* mark its metatable */
         set2black(u);  /* nothing else to mark */
         break;
       }
@@ -325,7 +325,7 @@ static void reallymarkobject (global_State& g, GCObject *o) {
 ** See gc_weak.cpp for implementation.
 */
 void traverseweakvalue (global_State& g, Table *h) {
-  GCWeak::traverseweakvalue(&g, h);
+  GCWeak::traverseweakvalue(g, h);
 }
 
 
@@ -340,7 +340,7 @@ void traverseweakvalue (global_State& g, Table *h) {
 */
 /* Wrapper for GCMarking::propagatemark() - now in gc_marking module */
 static l_mem propagatemark(global_State& g) {
-  return GCMarking::propagatemark(&g);
+  return GCMarking::propagatemark(g);
 }
 
 
@@ -507,7 +507,7 @@ static void callallpendingfinalizers (lua_State& L) {
 ** See gc_finalizer.cpp for implementation.
 */
 static void separatetobefnz (global_State& g, int all) {
-  GCFinalizer::separatetobefnz(&g, all);
+  GCFinalizer::separatetobefnz(g, all);
 }
 
 
@@ -516,7 +516,7 @@ static void separatetobefnz (global_State& g, int all) {
 ** See gc_finalizer.cpp for implementation.
 */
 static void correctpointers (global_State& g, GCObject *o) {
-  GCFinalizer::correctpointers(&g, o);
+  GCFinalizer::correctpointers(g, o);
 }
 
 

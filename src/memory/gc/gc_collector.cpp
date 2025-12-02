@@ -46,33 +46,33 @@ void GCCollector::atomic(lua_State* L) {
   lua_assert(g->getEphemeron() == nullptr && g->getWeak() == nullptr);
   lua_assert(!iswhite(mainthread(g)));
   g->setGCState(GCState::Atomic);
-  markobject(g, L);  /* mark running thread */
+  markobject(*g, L);  /* mark running thread */
   /* registry and global metatables may be changed by API */
-  markvalue(g, g->getRegistry());
-  GCMarking::markmt(g);  /* mark global metatables */
+  markvalue(*g, g->getRegistry());
+  GCMarking::markmt(*g);  /* mark global metatables */
   propagateall(*g);  /* empties 'gray' list */
   /* remark occasional upvalues of (maybe) dead threads */
-  GCMarking::remarkupvals(g);
+  GCMarking::remarkupvals(*g);
   propagateall(*g);  /* propagate changes */
   g->setGray(grayagain);
   propagateall(*g);  /* traverse 'grayagain' list */
-  GCWeak::convergeephemerons(g);
+  GCWeak::convergeephemerons(*g);
   /* at this point, all strongly accessible objects are marked. */
   /* Clear values from weak tables, before checking finalizers */
-  GCWeak::clearbyvalues(g, g->getWeak(), nullptr);
-  GCWeak::clearbyvalues(g, g->getAllWeak(), nullptr);
+  GCWeak::clearbyvalues(*g, g->getWeak(), nullptr);
+  GCWeak::clearbyvalues(*g, g->getAllWeak(), nullptr);
   origweak = g->getWeak(); origall = g->getAllWeak();
-  GCFinalizer::separatetobefnz(g, 0);  /* separate objects to be finalized */
-  GCMarking::markbeingfnz(g);  /* mark objects that will be finalized */
+  GCFinalizer::separatetobefnz(*g, 0);  /* separate objects to be finalized */
+  GCMarking::markbeingfnz(*g);  /* mark objects that will be finalized */
   propagateall(*g);  /* remark, to propagate 'resurrection' */
-  GCWeak::convergeephemerons(g);
+  GCWeak::convergeephemerons(*g);
   /* at this point, all resurrected objects are marked. */
   /* remove dead objects from weak tables */
-  GCWeak::clearbykeys(g, g->getEphemeron());  /* clear keys from all ephemeron */
-  GCWeak::clearbykeys(g, g->getAllWeak());  /* clear keys from all 'allweak' */
+  GCWeak::clearbykeys(*g, g->getEphemeron());  /* clear keys from all ephemeron */
+  GCWeak::clearbykeys(*g, g->getAllWeak());  /* clear keys from all 'allweak' */
   /* clear values from resurrected weak tables */
-  GCWeak::clearbyvalues(g, g->getWeak(), origweak);
-  GCWeak::clearbyvalues(g, g->getAllWeak(), origall);
+  GCWeak::clearbyvalues(*g, g->getWeak(), origweak);
+  GCWeak::clearbyvalues(*g, g->getAllWeak(), origall);
   TString::clearCache(g);
   g->setCurrentWhite(cast_byte(otherwhite(g)));  /* flip current white */
   lua_assert(g->getGray() == nullptr);
@@ -85,7 +85,7 @@ void GCCollector::atomic(lua_State* L) {
 */
 void GCCollector::finishgencycle(lua_State* L, global_State* g) {
   g->correctGrayLists();
-  GCFinalizer::checkSizes(L, g);
+  GCFinalizer::checkSizes(L, *g);
   g->setGCState(GCState::Propagate);  /* skip restart */
   if (!g->getGCEmergency())
     GCFinalizer::callallpendingfinalizers(L);
@@ -140,33 +140,33 @@ void GCCollector::youngcollection(lua_State* L, global_State* g) {
   GCObject *dummy;  /* dummy out parameter to 'sweepgen' */
   lua_assert(g->getGCState() == GCState::Propagate);
   if (g->getFirstOld1()) {  /* are there regular OLD1 objects? */
-    GCMarking::markold(g, g->getFirstOld1(), g->getReallyOld());  /* mark them */
+    GCMarking::markold(*g, g->getFirstOld1(), g->getReallyOld());  /* mark them */
     g->setFirstOld1(nullptr);  /* no more OLD1 objects (for now) */
   }
-  GCMarking::markold(g, g->getFinObj(), g->getFinObjROld());
-  GCMarking::markold(g, g->getToBeFnz(), nullptr);
+  GCMarking::markold(*g, g->getFinObj(), g->getFinObjROld());
+  GCMarking::markold(*g, g->getToBeFnz(), nullptr);
 
   atomic(L);  /* will lose 'g->marked' */
 
   /* sweep nursery and get a pointer to its last live element */
   g->setGCState(GCState::SweepAllGC);
-  psurvival = GCSweeping::sweepgen(L, g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
+  psurvival = GCSweeping::sweepgen(L, *g, g->getAllGCPtr(), g->getSurvival(), g->getFirstOld1Ptr(), &addedold1);
   /* sweep 'survival' */
-  GCSweeping::sweepgen(L, g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
+  GCSweeping::sweepgen(L, *g, psurvival, g->getOld1(), g->getFirstOld1Ptr(), &addedold1);
   g->setReallyOld(g->getOld1());
   g->setOld1(*psurvival);  /* 'survival' survivals are old now */
   g->setSurvival(g->getAllGC());  /* all news are survivals */
 
   /* repeat for 'finobj' lists */
   dummy = nullptr;  /* no 'firstold1' optimization for 'finobj' lists */
-  psurvival = GCSweeping::sweepgen(L, g, g->getFinObjPtr(), g->getFinObjSur(), &dummy, &addedold1);
+  psurvival = GCSweeping::sweepgen(L, *g, g->getFinObjPtr(), g->getFinObjSur(), &dummy, &addedold1);
   /* sweep 'survival' */
-  GCSweeping::sweepgen(L, g, psurvival, g->getFinObjOld1(), &dummy, &addedold1);
+  GCSweeping::sweepgen(L, *g, psurvival, g->getFinObjOld1(), &dummy, &addedold1);
   g->setFinObjROld(g->getFinObjOld1());
   g->setFinObjOld1(*psurvival);  /* 'survival' survivals are old now */
   g->setFinObjSur(g->getFinObj());  /* all news are survivals */
 
-  GCSweeping::sweepgen(L, g, g->getToBeFnzPtr(), nullptr, &dummy, &addedold1);
+  GCSweeping::sweepgen(L, *g, g->getToBeFnzPtr(), nullptr, &dummy, &addedold1);
 
   /* keep total number of added old1 bytes */
   g->setGCMarked(marked + addedold1);
@@ -259,7 +259,7 @@ l_mem GCCollector::singlestep(lua_State* L, int fast) {
   g->setGCStopEm(1);  /* no emergency collections while collecting */
   switch (g->getGCState()) {
     case GCState::Pause: {
-      GCMarking::restartcollection(g);
+      GCMarking::restartcollection(*g);
       g->setGCState(GCState::Propagate);
       stepresult = 1;
       break;
@@ -270,7 +270,7 @@ l_mem GCCollector::singlestep(lua_State* L, int fast) {
         stepresult = 1;
       }
       else
-        stepresult = GCMarking::propagatemark(g);  /* traverse one gray object */
+        stepresult = GCMarking::propagatemark(*g);  /* traverse one gray object */
       break;
     }
     case GCState::EnterAtomic: {
@@ -284,22 +284,22 @@ l_mem GCCollector::singlestep(lua_State* L, int fast) {
       break;
     }
     case GCState::SweepAllGC: {  /* sweep "regular" objects */
-      GCSweeping::sweepstep(L, g, GCState::SweepFinObj, g->getFinObjPtr(), fast);
+      GCSweeping::sweepstep(L, *g, GCState::SweepFinObj, g->getFinObjPtr(), fast);
       stepresult = GCSWEEPMAX;
       break;
     }
     case GCState::SweepFinObj: {  /* sweep objects with finalizers */
-      GCSweeping::sweepstep(L, g, GCState::SweepToBeFnz, g->getToBeFnzPtr(), fast);
+      GCSweeping::sweepstep(L, *g, GCState::SweepToBeFnz, g->getToBeFnzPtr(), fast);
       stepresult = GCSWEEPMAX;
       break;
     }
     case GCState::SweepToBeFnz: {  /* sweep objects to be finalized */
-      GCSweeping::sweepstep(L, g, GCState::SweepEnd, nullptr, fast);
+      GCSweeping::sweepstep(L, *g, GCState::SweepEnd, nullptr, fast);
       stepresult = GCSWEEPMAX;
       break;
     }
     case GCState::SweepEnd: {  /* finish sweeps */
-      GCFinalizer::checkSizes(L, g);
+      GCFinalizer::checkSizes(L, *g);
       g->setGCState(GCState::CallFin);
       stepresult = GCSWEEPMAX;
       break;

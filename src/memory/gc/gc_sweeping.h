@@ -59,7 +59,7 @@ public:
     ** Advances ages of surviving objects and removes dead ones.
     ** Returns pointer to where sweeping stopped.
     */
-    static GCObject** sweepgen(lua_State* L, global_State* g, GCObject** p,
+    static GCObject** sweepgen(lua_State* L, global_State& g, GCObject** p,
                                GCObject* limit, GCObject** pfirstold1,
                                l_mem* paddedold);
 
@@ -73,7 +73,7 @@ public:
     ** Perform one step of sweeping.
     ** Advances to 'nextstate' when current sweep completes.
     */
-    static void sweepstep(lua_State* L, global_State* g,
+    static void sweepstep(lua_State* L, global_State& g,
                           GCState nextstate, GCObject** nextlist, int fast);
 
     /*

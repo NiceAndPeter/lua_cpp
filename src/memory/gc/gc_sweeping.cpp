@@ -164,7 +164,7 @@ void GCSweeping::sweep2old(lua_State* L, GCObject** p) {
 ** They will all be advanced in 'correctgraylist'. That function will also
 ** remove objects turned white here from any gray list.
 */
-GCObject** GCSweeping::sweepgen(lua_State* L, global_State* g, GCObject** p,
+GCObject** GCSweeping::sweepgen(lua_State* L, global_State& g, GCObject** p,
                                  GCObject* limit, GCObject** pfirstold1,
                                  l_mem* paddedold) {
     static const GCAge nextage[] = {
@@ -178,12 +178,12 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State* g, GCObject** p,
     };
 
     l_mem addedold = 0;
-    int white = g->getWhite();
+    int white = g.getWhite();
     GCObject* curr;
 
     while ((curr = *p) != limit) {
         if (iswhite(curr)) {  /* is 'curr' dead? */
-            lua_assert(!isold(curr) && isdead(g, curr));
+            lua_assert(!isold(curr) && isdead(&g, curr));
             *p = curr->getNext();  /* remove 'curr' from list */
             freeobj(*L, curr);  /* erase 'curr' */
         }
@@ -234,13 +234,13 @@ void GCSweeping::entersweep(lua_State* L) {
 ** Sweeps up to GCSWEEPMAX objects (or all remaining if 'fast' is true).
 ** When current sweep completes, advances to 'nextstate' and sets up 'nextlist'.
 */
-void GCSweeping::sweepstep(lua_State* L, global_State* g,
+void GCSweeping::sweepstep(lua_State* L, global_State& g,
                            GCState nextstate, GCObject** nextlist, int fast) {
-    if (g->getSweepGC())
-        g->setSweepGC(sweeplist(L, g->getSweepGC(), fast ? MAX_LMEM : GCSWEEPMAX));
+    if (g.getSweepGC())
+        g.setSweepGC(sweeplist(L, g.getSweepGC(), fast ? MAX_LMEM : GCSWEEPMAX));
     else {  /* enter next state */
-        g->setGCState(nextstate);
-        g->setSweepGC(nextlist);
+        g.setGCState(nextstate);
+        g.setSweepGC(nextlist);
     }
 }
 

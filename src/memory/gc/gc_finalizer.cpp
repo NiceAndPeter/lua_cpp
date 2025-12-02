@@ -43,10 +43,10 @@
 ** If possible, shrink string table.
 ** Called during finalization to optimize memory usage.
 */
-void GCFinalizer::checkSizes(lua_State* L, global_State* g) {
-    if (!g->getGCEmergency()) {
-        if (g->getStringTable()->getNumElements() < g->getStringTable()->getSize() / 4)
-            TString::resize(L, g->getStringTable()->getSize() / 2);
+void GCFinalizer::checkSizes(lua_State* L, global_State& g) {
+    if (!g.getGCEmergency()) {
+        if (g.getStringTable()->getNumElements() < g.getStringTable()->getSize() / 4)
+            TString::resize(L, g.getStringTable()->getSize() / 2);
     }
 }
 
@@ -74,11 +74,11 @@ void GCFinalizer::checkpointer(GCObject** p, GCObject* o) {
 ** Correct pointers to objects inside 'allgc' list when
 ** object 'o' is being removed from the list.
 */
-void GCFinalizer::correctpointers(global_State* g, GCObject* o) {
-    checkpointer(g->getSurvivalPtr(), o);
-    checkpointer(g->getOld1Ptr(), o);
-    checkpointer(g->getReallyOldPtr(), o);
-    checkpointer(g->getFirstOld1Ptr(), o);
+void GCFinalizer::correctpointers(global_State& g, GCObject* o) {
+    checkpointer(g.getSurvivalPtr(), o);
+    checkpointer(g.getOld1Ptr(), o);
+    checkpointer(g.getReallyOldPtr(), o);
+    checkpointer(g.getFirstOld1Ptr(), o);
 }
 
 
@@ -92,17 +92,17 @@ void GCFinalizer::correctpointers(global_State* g, GCObject* o) {
 ** Get the next udata to be finalized from the 'tobefnz' list, and
 ** link it back into the 'allgc' list.
 */
-GCObject* GCFinalizer::udata2finalize(global_State* g) {
-    GCObject* o = g->getToBeFnz();  /* get first element */
+GCObject* GCFinalizer::udata2finalize(global_State& g) {
+    GCObject* o = g.getToBeFnz();  /* get first element */
     lua_assert(tofinalize(o));
-    g->setToBeFnz(o->getNext());  /* remove it from 'tobefnz' list */
-    o->setNext(g->getAllGC());  /* return it to 'allgc' list */
-    g->setAllGC(o);
+    g.setToBeFnz(o->getNext());  /* remove it from 'tobefnz' list */
+    o->setNext(g.getAllGC());  /* return it to 'allgc' list */
+    g.setAllGC(o);
     o->clearMarkedBit(FINALIZEDBIT);  /* object is "normal" again */
-    if (g->isSweepPhase())
-        makewhite(g, o);  /* "sweep" object */
+    if (g.isSweepPhase())
+        makewhite(&g, o);  /* "sweep" object */
     else if (getage(o) == GCAge::Old1)
-        g->setFirstOld1(o);  /* it is the first OLD1 object in the list */
+        g.setFirstOld1(o);  /* it is the first OLD1 object in the list */
     return o;
 }
 
@@ -151,7 +151,7 @@ void GCFinalizer::GCTM(lua_State* L) {
     const TValue* tm;
     TValue v;
     lua_assert(!g->getGCEmergency());
-    setgcovalue(L, &v, udata2finalize(g));
+    setgcovalue(L, &v, udata2finalize(*g));
     tm = luaT_gettmbyobj(L, &v, TMS::TM_GC);
 
     if (!notm(tm)) {  /* is there a finalizer? */
@@ -191,18 +191,18 @@ void GCFinalizer::GCTM(lua_State* L) {
 ** don't need to be traversed. In incremental mode, 'finobjold1' is nullptr,
 ** so the whole list is traversed.)
 */
-void GCFinalizer::separatetobefnz(global_State* g, int all) {
+void GCFinalizer::separatetobefnz(global_State& g, int all) {
     GCObject* curr;
-    GCObject** p = g->getFinObjPtr();
-    GCObject** lastnext = findlast(g->getToBeFnzPtr());
+    GCObject** p = g.getFinObjPtr();
+    GCObject** lastnext = findlast(g.getToBeFnzPtr());
 
-    while ((curr = *p) != g->getFinObjOld1()) {  /* traverse all finalizable objects */
+    while ((curr = *p) != g.getFinObjOld1()) {  /* traverse all finalizable objects */
         lua_assert(tofinalize(curr));
         if (!(iswhite(curr) || all))  /* not being collected? */
             p = curr->getNextPtr();  /* don't bother with it */
         else {
-            if (curr == g->getFinObjSur())  /* removing 'finobjsur'? */
-                g->setFinObjSur(curr->getNext());  /* correct it */
+            if (curr == g.getFinObjSur())  /* removing 'finobjsur'? */
+                g.setFinObjSur(curr->getNext());  /* correct it */
             *p = curr->getNext();  /* remove 'curr' from 'finobj' list */
             curr->setNext(*lastnext);  /* link at the end of 'tobefnz' list */
             *lastnext = curr;
