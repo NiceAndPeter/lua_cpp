@@ -85,7 +85,7 @@ inline GCObject* gcvalarr(Table* t, unsigned int i) noexcept {
 	return (static_cast<lu_byte>(*(t)->getArrayTag(i)) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr;
 }
 
-static void reallymarkobject (global_State *g, GCObject *o);
+static void reallymarkobject (global_State& g, GCObject *o);
 
 
 /*
@@ -166,11 +166,11 @@ inline void linkobjgclist(T* o, GCObject*& p) {
 ** be done is generational mode, as its sweep does not distinguish
 ** white from dead.)
 */
-void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
+void luaC_barrier_ (lua_State& L, GCObject *o, GCObject *v) {
   global_State *g = G(L);
   lua_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
   if (g->keepInvariant()) {  /* must keep invariant? */
-    reallymarkobject(g, v);  /* restore invariant */
+    reallymarkobject(*g, v);  /* restore invariant */
     if (isold(o)) {
       lua_assert(!isold(v));  /* white object could not be old */
       setage(v, GCAge::Old0);  /* restore generational invariant */
@@ -188,7 +188,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
 ** barrier that moves collector backward, that is, mark the black object
 ** pointing to a white object as gray again.
 */
-void luaC_barrierback_ (lua_State *L, GCObject *o) {
+void luaC_barrierback_ (lua_State& L, GCObject *o) {
   global_State *g = G(L);
   lua_assert(isblack(o) && !isdead(g, o));
   lua_assert((g->getGCKind() != GCKind::GenerationalMinor)
@@ -208,9 +208,9 @@ void luaC_barrierback_ (lua_State *L, GCObject *o) {
 ** create a new collectable object (with given type, size, and offset)
 ** and link it to 'allgc' list.
 */
-GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz, size_t offset) {
+GCObject *luaC_newobjdt (lua_State& L, LuaT tt, size_t sz, size_t offset) {
   global_State *g = G(L);
-  char *p = cast_charp(luaM_newobject(L, novariant(tt), sz));
+  char *p = cast_charp(luaM_newobject(&L, novariant(tt), sz));
   GCObject *o = reinterpret_cast<GCObject*>(p + offset);
   o->setMarked(g->getWhite());
   o->setType(tt);
@@ -223,7 +223,7 @@ GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz, size_t offset) {
 /*
 ** create a new collectable object with no offset.
 */
-GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz) {
+GCObject *luaC_newobj (lua_State& L, LuaT tt, size_t sz) {
   return luaC_newobjdt(L, tt, sz, 0);
 }
 
@@ -250,8 +250,8 @@ GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz) {
 ** for at most two levels: An upvalue cannot refer to another upvalue
 ** (only closures can), and a userdata's metatable must be a table.
 */
-static void reallymarkobject (global_State *g, GCObject *o) {
-  g->setGCMarked(g->getGCMarked() + objsize(o));
+static void reallymarkobject (global_State& g, GCObject *o) {
+  g.setGCMarked(g.getGCMarked() + objsize(o));
   switch (static_cast<int>(o->getType())) {
     case static_cast<int>(ctb(LuaT::SHRSTR)):
     case static_cast<int>(ctb(LuaT::LNGSTR)): {
@@ -264,13 +264,13 @@ static void reallymarkobject (global_State *g, GCObject *o) {
         set2gray(uv);  /* open upvalues are kept gray */
       else
         set2black(uv);  /* closed upvalues are visited here */
-      markvalue(g, uv->getVP());  /* mark its content */
+      markvalue(&g, uv->getVP());  /* mark its content */
       break;
     }
     case static_cast<int>(ctb(LuaT::USERDATA)): {
       Udata *u = gco2u(o);
       if (u->getNumUserValues() == 0) {  /* no user values? */
-        markobjectN(g, u->getMetatable());  /* mark its metatable */
+        markobjectN(&g, u->getMetatable());  /* mark its metatable */
         set2black(u);  /* nothing else to mark */
         break;
       }
@@ -278,7 +278,7 @@ static void reallymarkobject (global_State *g, GCObject *o) {
     }  /* FALLTHROUGH */
     case static_cast<int>(ctb(LuaT::LCL)): case static_cast<int>(ctb(LuaT::CCL)): case static_cast<int>(ctb(LuaT::TABLE)):
     case static_cast<int>(ctb(LuaT::THREAD)): case static_cast<int>(ctb(LuaT::PROTO)): {
-      linkobjgclist(o, *g->getGrayPtr());  /* to be visited later */
+      linkobjgclist(o, *g.getGrayPtr());  /* to be visited later */
       break;
     }
     default: lua_assert(0); break;
@@ -324,8 +324,8 @@ static void reallymarkobject (global_State *g, GCObject *o) {
 ** Wrapper for traverseweakvalue - delegates to GCWeak module.
 ** See gc_weak.cpp for implementation.
 */
-void traverseweakvalue (global_State *g, Table *h) {
-  GCWeak::traverseweakvalue(g, h);
+void traverseweakvalue (global_State& g, Table *h) {
+  GCWeak::traverseweakvalue(&g, h);
 }
 
 
@@ -339,14 +339,14 @@ void traverseweakvalue (global_State *g, Table *h) {
 ** of the number of slots traversed.
 */
 /* Wrapper for GCMarking::propagatemark() - now in gc_marking module */
-static l_mem propagatemark(global_State* g) {
-  return GCMarking::propagatemark(g);
+static l_mem propagatemark(global_State& g) {
+  return GCMarking::propagatemark(&g);
 }
 
 
 /* Made non-static for use by GCCollector module */
-void propagateall (global_State *g) {
-  while (g->getGray())
+void propagateall (global_State& g) {
+  while (g.getGray())
     propagatemark(g);
 }
 
@@ -377,54 +377,54 @@ static void freeupval(lua_State* L, UpVal* uv) {
 
 // Phase 50: Call destructors before freeing memory (proper RAII)
 // Made non-static for use by gc_sweeping module (Phase 2)
-void freeobj (lua_State *L, GCObject *o) {
+void freeobj (lua_State& L, GCObject *o) {
   assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
   switch (static_cast<int>(o->getType())) {
     case static_cast<int>(ctb(LuaT::PROTO)): {
       Proto *p = gco2p(o);
-      p->free(L);  /* Phase 25b - frees internal arrays */
+      p->free(&L);  /* Phase 25b - frees internal arrays */
       // Proto destructor is trivial, but call it for completeness
       p->~Proto();
       break;
     }
     case static_cast<int>(ctb(LuaT::UPVAL)): {
       UpVal *uv = gco2upv(o);
-      freeupval(L, uv);  // Note: freeupval calls destructor internally
+      freeupval(&L, uv);  // Note: freeupval calls destructor internally
       break;
     }
     case static_cast<int>(ctb(LuaT::LCL)): {
       LClosure *cl = gco2lcl(o);
       cl->~LClosure();  // Call destructor
-      luaM_freemem(L, cl, sizeLclosure(cl->getNumUpvalues()));
+      luaM_freemem(&L, cl, sizeLclosure(cl->getNumUpvalues()));
       break;
     }
     case static_cast<int>(ctb(LuaT::CCL)): {
       CClosure *cl = gco2ccl(o);
       cl->~CClosure();  // Call destructor
-      luaM_freemem(L, cl, sizeCclosure(cl->getNumUpvalues()));
+      luaM_freemem(&L, cl, sizeCclosure(cl->getNumUpvalues()));
       break;
     }
     case static_cast<int>(ctb(LuaT::TABLE)): {
       Table *t = gco2t(o);
-      t->destroy(L);  // Destroy table and cleanup
+      t->destroy(&L);  // Destroy table and cleanup
       break;
     }
     case static_cast<int>(ctb(LuaT::THREAD)):
-      luaE_freethread(L, gco2th(o));
+      luaE_freethread(&L, gco2th(o));
       break;
     case static_cast<int>(ctb(LuaT::USERDATA)): {
       Udata *u = gco2u(o);
       u->~Udata();  // Call destructor
-      luaM_freemem(L, o, sizeudata(u->getNumUserValues(), u->getLen()));
+      luaM_freemem(&L, o, sizeudata(u->getNumUserValues(), u->getLen()));
       break;
     }
     case static_cast<int>(ctb(LuaT::SHRSTR)): {
       TString *ts = gco2ts(o);
       size_t sz = sizestrshr(cast_uint(ts->getShrlen()));
-      ts->remove(L);  /* use method instead of free function */
+      ts->remove(&L);  /* use method instead of free function */
       // DON'T call destructor for TString - it's empty and might cause issues with variable-size objects
       // ts->~TString();
-      luaM_freemem(L, ts, sz);
+      luaM_freemem(&L, ts, sz);
       break;
     }
     case static_cast<int>(ctb(LuaT::LNGSTR)): {
@@ -432,7 +432,7 @@ void freeobj (lua_State *L, GCObject *o) {
       if (ts->getShrlen() == LSTRMEM)  /* must free external string? */
         (*ts->getFalloc())(ts->getUserData(), ts->getContentsField(), ts->getLnglen() + 1, 0);
       ts->~TString();  // Call destructor
-      luaM_freemem(L, ts, TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen()));
+      luaM_freemem(&L, ts, TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen()));
       break;
     }
     default: lua_assert(0);
@@ -494,8 +494,8 @@ void freeobj (lua_State *L, GCObject *o) {
 ** Wrapper for callallpendingfinalizers - delegates to GCFinalizer module.
 ** See gc_finalizer.cpp for implementation.
 */
-static void callallpendingfinalizers (lua_State *L) {
-  GCFinalizer::callallpendingfinalizers(L);
+static void callallpendingfinalizers (lua_State& L) {
+  GCFinalizer::callallpendingfinalizers(&L);
 }
 
 
@@ -506,8 +506,8 @@ static void callallpendingfinalizers (lua_State *L) {
 ** Wrapper for separatetobefnz - delegates to GCFinalizer module.
 ** See gc_finalizer.cpp for implementation.
 */
-static void separatetobefnz (global_State *g, int all) {
-  GCFinalizer::separatetobefnz(g, all);
+static void separatetobefnz (global_State& g, int all) {
+  GCFinalizer::separatetobefnz(&g, all);
 }
 
 
@@ -515,8 +515,8 @@ static void separatetobefnz (global_State *g, int all) {
 ** Wrapper for correctpointers - delegates to GCFinalizer module.
 ** See gc_finalizer.cpp for implementation.
 */
-static void correctpointers (global_State *g, GCObject *o) {
-  GCFinalizer::correctpointers(g, o);
+static void correctpointers (global_State& g, GCObject *o) {
+  GCFinalizer::correctpointers(&g, o);
 }
 
 
@@ -618,8 +618,8 @@ static void minor2inc (lua_State *L, global_State *g, GCKind kind) {
 /*
 ** Wrapper for GCCollector::youngcollection() - now in gc_collector module
 */
-static void youngcollection (lua_State *L, global_State *g) {
-  GCCollector::youngcollection(L, g);
+static void youngcollection (lua_State& L, global_State& g) {
+  GCCollector::youngcollection(&L, &g);
 }
 
 
@@ -641,24 +641,24 @@ static void setminordebt(global_State* g) {
 /*
 ** Wrapper for GCCollector::entergen() - now in gc_collector module
 */
-static void entergen (lua_State *L, global_State *g) {
-  GCCollector::entergen(L, g);
+static void entergen (lua_State& L, global_State& g) {
+  GCCollector::entergen(&L, &g);
 }
 
 
 /*
 ** Change collector mode to 'newmode'.
 */
-void luaC_changemode (lua_State *L, GCKind newmode) {
+void luaC_changemode (lua_State& L, GCKind newmode) {
   global_State *g = G(L);
   if (g->getGCKind() == GCKind::GenerationalMajor)  /* doing major collections? */
     g->setGCKind(GCKind::Incremental);  /* already incremental but in name */
   if (newmode != g->getGCKind()) {  /* does it need to change? */
     if (newmode == GCKind::Incremental)  /* entering incremental mode? */
-      minor2inc(L, g, GCKind::Incremental);  /* entering incremental mode */
+      minor2inc(&L, g, GCKind::Incremental);  /* entering incremental mode */
     else {
       lua_assert(newmode == GCKind::GenerationalMinor);
-      entergen(L, g);
+      entergen(L, *g);
     }
   }
 }
@@ -667,8 +667,8 @@ void luaC_changemode (lua_State *L, GCKind newmode) {
 /*
 ** Wrapper for GCCollector::fullgen() - now in gc_collector module
 */
-static void fullgen (lua_State *L, global_State *g) {
-  GCCollector::fullgen(L, g);
+static void fullgen (lua_State& L, global_State& g) {
+  GCCollector::fullgen(&L, &g);
 }
 
 
@@ -691,8 +691,8 @@ static void fullgen (lua_State *L, global_State *g) {
 ** Wrapper for deletelist - delegates to GCSweeping module.
 ** See gc_sweeping.cpp for implementation.
 */
-static void deletelist (lua_State *L, GCObject *p, GCObject *limit) {
-  GCSweeping::deletelist(L, p, limit);
+static void deletelist (lua_State& L, GCObject *p, GCObject *limit) {
+  GCSweeping::deletelist(&L, p, limit);
 }
 
 
@@ -700,11 +700,11 @@ static void deletelist (lua_State *L, GCObject *p, GCObject *limit) {
 ** Call all finalizers of the objects in the given Lua state, and
 ** then free all objects, except for the main thread.
 */
-void luaC_freeallobjects (lua_State *L) {
+void luaC_freeallobjects (lua_State& L) {
   global_State *g = G(L);
   g->setGCStp(GCSTPCLS);  /* no extra finalizers after here */
   luaC_changemode(L, GCKind::Incremental);
-  separatetobefnz(g, 1);  /* separate all objects with finalizers */
+  separatetobefnz(*g, 1);  /* separate all objects with finalizers */
   lua_assert(g->getFinObj() == nullptr);
   callallpendingfinalizers(L);
   deletelist(L, g->getAllGC(), obj2gco(mainthread(g)));
@@ -723,8 +723,8 @@ void luaC_freeallobjects (lua_State *L) {
 /*
 ** Wrapper for GCCollector::singlestep() - now in gc_collector module
 */
-static l_mem singlestep (lua_State *L, int fast) {
-  return GCCollector::singlestep(L, fast);
+static l_mem singlestep (lua_State& L, int fast) {
+  return GCCollector::singlestep(&L, fast);
 }
 
 /* Special return values (now in GCCollector class as constants) */
@@ -738,7 +738,7 @@ static l_mem singlestep (lua_State *L, int fast) {
 ** (The option 'fast' is only for testing; in normal code, 'fast'
 ** here is always true.)
 */
-void luaC_runtilstate (lua_State *L, GCState state, int fast) {
+void luaC_runtilstate (lua_State& L, GCState state, int fast) {
   global_State *g = G(L);
   lua_assert(g->getGCKind() == GCKind::Incremental);
   while (state != g->getGCState())
@@ -750,8 +750,8 @@ void luaC_runtilstate (lua_State *L, GCState state, int fast) {
 /*
 ** Wrapper for GCCollector::incstep() - now in gc_collector module
 */
-static void incstep (lua_State *L, global_State *g) {
-  GCCollector::incstep(L, g);
+static void incstep (lua_State& L, global_State& g) {
+  GCCollector::incstep(&L, &g);
 }
 
 
@@ -764,7 +764,7 @@ static void incstep (lua_State *L, global_State *g) {
 ** stopped by the user, set a reasonable debt to avoid it being called
 ** at every single check.)
 */
-void luaC_step (lua_State *L) {
+void luaC_step (lua_State& L) {
   global_State *g = G(L);
   lua_assert(!g->getGCEmergency());
   if (!g->isGCRunning()) {  /* not running? */
@@ -772,17 +772,17 @@ void luaC_step (lua_State *L) {
       luaE_setdebt(g, 20000);
   }
   else {
-    luai_tracegc(L, 1);  /* for internal debugging */
+    luai_tracegc(&L, 1);  /* for internal debugging */
     switch (g->getGCKind()) {
       case GCKind::Incremental: case GCKind::GenerationalMajor:
-        incstep(L, g);
+        incstep(L, *g);
         break;
       case GCKind::GenerationalMinor:
-        youngcollection(L, g);
+        youngcollection(L, *g);
         setminordebt(g);
         break;
     }
-    luai_tracegc(L, 0);  /* for internal debugging */
+    luai_tracegc(&L, 0);  /* for internal debugging */
   }
 }
 
@@ -790,8 +790,8 @@ void luaC_step (lua_State *L) {
 /*
 ** Wrapper for GCCollector::fullinc() - now in gc_collector module
 */
-static void fullinc (lua_State *L, global_State *g) {
-  GCCollector::fullinc(L, g);
+static void fullinc (lua_State& L, global_State& g) {
+  GCCollector::fullinc(&L, &g);
 }
 
 
@@ -800,16 +800,16 @@ static void fullinc (lua_State *L, global_State *g) {
 ** some operations which could change the interpreter state in some
 ** unexpected ways (running finalizers and shrinking some structures).
 */
-void luaC_fullgc (lua_State *L, int isemergency) {
+void luaC_fullgc (lua_State& L, int isemergency) {
   global_State *g = G(L);
   lua_assert(!g->getGCEmergency());
   g->setGCEmergency(cast_byte(isemergency));  /* set flag */
   switch (g->getGCKind()) {
-    case GCKind::GenerationalMinor: fullgen(L, g); break;
-    case GCKind::Incremental: fullinc(L, g); break;
+    case GCKind::GenerationalMinor: fullgen(L, *g); break;
+    case GCKind::Incremental: fullinc(L, *g); break;
     case GCKind::GenerationalMajor:
       g->setGCKind(GCKind::Incremental);
-      fullinc(L, g);
+      fullinc(L, *g);
       g->setGCKind(GCKind::GenerationalMajor);
       break;
   }
@@ -912,7 +912,7 @@ void GCObject::checkFinalizer(lua_State* L, Table* mt) {
         g->setSweepGC(GCSweeping::sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
     }
     else
-      correctpointers(g, this);
+      correctpointers(*g, this);
     /* search for pointer pointing to 'this' */
     for (p = g->getAllGCPtr(); *p != this; p = (*p)->getNextPtr()) { /* empty */ }
     *p = getNext();  /* remove 'this' from 'allgc' list */

@@ -165,7 +165,7 @@ static void *tryagain (lua_State *L, void *block,
                        size_t osize, size_t nsize) {
   global_State *g = G(L);
   if (cantryagain(g)) {
-    luaC_fullgc(L, 1);  /* try to free some memory... */
+    luaC_fullgc(*L, 1);  /* try to free some memory... */
     return callfrealloc(g, block, osize, nsize);  /* try again */
   }
   else return nullptr;  /* cannot run an emergency collection */

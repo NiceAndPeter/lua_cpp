@@ -1105,7 +1105,7 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
       break;
     }
     case LUA_GCCOLLECT: {
-      luaC_fullgc(L, 0);
+      luaC_fullgc(*L, 0);
       break;
     }
     case LUA_GCCOUNT: {
@@ -1137,12 +1137,12 @@ LUA_API int lua_gc (lua_State *L, int what, ...) {
     }
     case LUA_GCGEN: {
       res = (g->getGCKind() == GCKind::Incremental) ? LUA_GCINC : LUA_GCGEN;
-      luaC_changemode(L, GCKind::GenerationalMinor);
+      luaC_changemode(*L, GCKind::GenerationalMinor);
       break;
     }
     case LUA_GCINC: {
       res = (g->getGCKind() == GCKind::Incremental) ? LUA_GCINC : LUA_GCGEN;
-      luaC_changemode(L, GCKind::Incremental);
+      luaC_changemode(*L, GCKind::Incremental);
       break;
     }
     case LUA_GCPARAM: {

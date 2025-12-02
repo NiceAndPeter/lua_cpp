@@ -1215,6 +1215,9 @@ public:
 /* Get global state from lua_State (returns reference to allow assignment) */
 inline global_State*& G(lua_State* L) noexcept { return L->getGlobalStateRef(); }
 inline global_State* G(const lua_State* L) noexcept { return L->getGlobalState(); }
+/* Reference overloads for pointer-to-reference conversion */
+inline global_State*& G(lua_State& L) noexcept { return L.getGlobalStateRef(); }
+inline global_State* G(const lua_State& L) noexcept { return L.getGlobalState(); }
 
 /* Get main thread from global_State */
 inline lua_State* mainthread(global_State* g) noexcept { return &g->getMainThread()->l; }

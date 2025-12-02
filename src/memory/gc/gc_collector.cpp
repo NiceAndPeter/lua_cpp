@@ -50,12 +50,12 @@ void GCCollector::atomic(lua_State* L) {
   /* registry and global metatables may be changed by API */
   markvalue(g, g->getRegistry());
   GCMarking::markmt(g);  /* mark global metatables */
-  propagateall(g);  /* empties 'gray' list */
+  propagateall(*g);  /* empties 'gray' list */
   /* remark occasional upvalues of (maybe) dead threads */
   GCMarking::remarkupvals(g);
-  propagateall(g);  /* propagate changes */
+  propagateall(*g);  /* propagate changes */
   g->setGray(grayagain);
-  propagateall(g);  /* traverse 'grayagain' list */
+  propagateall(*g);  /* traverse 'grayagain' list */
   GCWeak::convergeephemerons(g);
   /* at this point, all strongly accessible objects are marked. */
   /* Clear values from weak tables, before checking finalizers */
@@ -64,7 +64,7 @@ void GCCollector::atomic(lua_State* L) {
   origweak = g->getWeak(); origall = g->getAllWeak();
   GCFinalizer::separatetobefnz(g, 0);  /* separate objects to be finalized */
   GCMarking::markbeingfnz(g);  /* mark objects that will be finalized */
-  propagateall(g);  /* remark, to propagate 'resurrection' */
+  propagateall(*g);  /* remark, to propagate 'resurrection' */
   GCWeak::convergeephemerons(g);
   /* at this point, all resurrected objects are marked. */
   /* remove dead objects from weak tables */
@@ -214,8 +214,8 @@ void GCCollector::atomic2gen(lua_State* L, global_State* g) {
 ** Runs to end of atomic cycle, converts all objects to old.
 */
 void GCCollector::entergen(lua_State* L, global_State* g) {
-  luaC_runtilstate(L, GCState::Pause, 1);  /* prepare to start a new cycle */
-  luaC_runtilstate(L, GCState::Propagate, 1);  /* start new cycle */
+  luaC_runtilstate(*L, GCState::Pause, 1);  /* prepare to start a new cycle */
+  luaC_runtilstate(*L, GCState::Propagate, 1);  /* start new cycle */
   atomic(L);  /* propagates all and then do the atomic stuff */
   atomic2gen(L, g);
   g->setMinorDebt();  /* set debt assuming next cycle will be minor */
@@ -240,9 +240,9 @@ void GCCollector::fullinc(lua_State* L, global_State* g) {
   if (g->keepInvariant())  /* black objects? */
     GCSweeping::entersweep(L); /* sweep everything to turn them back to white */
   /* finish any pending sweep phase to start a new cycle */
-  luaC_runtilstate(L, GCState::Pause, 1);
-  luaC_runtilstate(L, GCState::CallFin, 1);  /* run up to finalizers */
-  luaC_runtilstate(L, GCState::Pause, 1);  /* finish collection */
+  luaC_runtilstate(*L, GCState::Pause, 1);
+  luaC_runtilstate(*L, GCState::CallFin, 1);  /* run up to finalizers */
+  luaC_runtilstate(*L, GCState::Pause, 1);  /* finish collection */
   g->setPause();
 }
 

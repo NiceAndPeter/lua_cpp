@@ -110,7 +110,7 @@ l_mem GCMarking::traversetable(global_State* g, Table* h) {
             traversestrongtable(g, h);
             break;
         case 1:  /* weak values */
-            traverseweakvalue(g, h);
+            traverseweakvalue(*g, h);
             break;
         case 2:  /* weak keys (ephemeron) */
             GCWeak::traverseephemeron(g, h, 0);

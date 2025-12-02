@@ -502,11 +502,11 @@ static size_t sizehash (const Table *t) {
 }
 
 
-static void freehash (lua_State *L, Table *t) {
-  if (!t->isDummy()) {
+static void freehash (lua_State& L, Table& t) {
+  if (!t.isDummy()) {
     /* get pointer to the beginning of Node array */
-    char *arr = cast_charp(t->getNodeArray()) - extraLastfree(t);
-    luaM_freearray(L, arr, sizehash(t));
+    char *arr = cast_charp(t.getNodeArray()) - extraLastfree(&t);
+    luaM_freearray(&L, arr, sizehash(&t));
   }
 }
 
@@ -718,26 +718,26 @@ static Value *resizearray (lua_State *L , Table *t,
 ** comparison ensures that the shift in the second one does not
 ** overflow.
 */
-static void setnodevector (lua_State *L, Table *t, unsigned size) {
+static void setnodevector (lua_State& L, Table& t, unsigned size) {
   if (size == 0) {  /* no elements to hash part? */
-    t->setNodeArray(dummynode);  /* use common 'dummynode' */
-    t->setLogSizeOfNodeArray(0);
-    t->setDummy();  /* signal that it is using dummy node */
+    t.setNodeArray(dummynode);  /* use common 'dummynode' */
+    t.setLogSizeOfNodeArray(0);
+    t.setDummy();  /* signal that it is using dummy node */
   }
   else {
     unsigned int lsize = luaO_ceillog2(size);
     if (lsize > MAXHBITS)
-      luaG_runerror(L, "table overflow");
+      luaG_runerror(&L, "table overflow");
     if ((1u << lsize) > MAXHSIZE)
-      luaG_runerror(L, "table overflow");
+      luaG_runerror(&L, "table overflow");
     size = Table::powerOfTwo(lsize);
     bool needsLastfree = (lsize >= LIMFORLAST);
-    Node* nodes = NodeArray::allocate(L, size, needsLastfree);
-    t->setNodeArray(nodes);
-    t->setLogSizeOfNodeArray(cast_byte(lsize));
-    t->setNoDummy();
+    Node* nodes = NodeArray::allocate(&L, size, needsLastfree);
+    t.setNodeArray(nodes);
+    t.setLogSizeOfNodeArray(cast_byte(lsize));
+    t.setNoDummy();
     for (unsigned int i = 0; i < size; i++) {
-      Node *n = gnode(t, i);
+      Node *n = gnode(&t, i);
       gnext(n) = 0;
       n->setKeyNil();
       setempty(gval(n));
@@ -749,16 +749,16 @@ static void setnodevector (lua_State *L, Table *t, unsigned size) {
 /*
 ** (Re)insert all elements from the hash part of 'ot' into table 't'.
 */
-static void reinserthash (lua_State *L, Table *ot, Table *t) {
-  unsigned size = ot->nodeSize();
+static void reinserthash (lua_State& L, Table& ot, Table& t) {
+  unsigned size = ot.nodeSize();
   for (unsigned j = 0; j < size; j++) {
-    Node *old = gnode(ot, j);
+    Node *old = gnode(&ot, j);
     if (!isempty(gval(old))) {
       /* doesn't need barrier/invalidate cache, as entry was
          already present in the table */
       TValue k;
-      old->getKey(L, &k);
-      newcheckedkey(t, &k, gval(old));
+      old->getKey(&L, &k);
+      newcheckedkey(&t, &k, gval(old));
     }
   }
 }
@@ -1379,7 +1379,7 @@ void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {
   /* create new hash part with appropriate size into 'newt' */
   Table newt;  /* to keep the new hash part */
   newt.setFlags(0);
-  setnodevector(L, &newt, nhsize);
+  setnodevector(*L, newt, nhsize);
   unsigned oldasize = this->arraySize();
   if (nasize < oldasize) {  /* will array shrink? */
     /* re-insert into the new hash the elements from vanishing slice */
@@ -1390,7 +1390,7 @@ void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {
   /* allocate new array */
   Value *newarray = resizearray(L, this, oldasize, nasize);
   if (l_unlikely(newarray == nullptr && nasize > 0)) {  /* allocation failed? */
-    freehash(L, &newt);  /* release new hash part */
+    freehash(*L, newt);  /* release new hash part */
     luaM_error(L);  /* raise error (with array unchanged) */
   }
   /* allocation ok; initialize new part of the array */
@@ -1401,8 +1401,8 @@ void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {
     *this->getLenHint() = nasize / 2u;  /* set an initial hint */
   clearNewSlice(this, oldasize, nasize);
   /* re-insert elements from old hash part into new parts */
-  reinserthash(L, &newt, this);  /* 'newt' now has the old hash */
-  freehash(L, &newt);  /* free old hash part */
+  reinserthash(*L, newt, *this);  /* 'newt' now has the old hash */
+  freehash(*L, newt);  /* free old hash part */
 }
 
 void Table::resizeArray(lua_State* L, unsigned nasize) {
@@ -1490,14 +1490,14 @@ Table* Table::create(lua_State* L) {
   t->setFlags(maskflags);  /* table has no metamethod fields */
 
   // Initialize node vector (needs L for allocation)
-  setnodevector(L, t, 0);
+  setnodevector(*L, *t, 0);
 
   return t;
 }
 
 void Table::destroy(lua_State* L) {
   // Explicit destructor: free resources
-  freehash(L, this);
+  freehash(*L, *this);
   resizearray(L, this, arraySize(), 0);
   luaM_free(L, this);
 }

@@ -271,12 +271,12 @@ lu_mem luaE_threadsize (lua_State *L) {
 static void close_state (lua_State *L) {
   global_State *g = G(L);
   if (!g->isComplete())  /* closing a partially built state? */
-    luaC_freeallobjects(L);  /* just collect its objects */
+    luaC_freeallobjects(*L);  /* just collect its objects */
   else {  /* closing a fully built state */
     resetCI(L);
     (void)L->closeProtected( 1, LUA_OK);  /* close all upvalues - ignore status during shutdown */
     L->getStackSubsystem().setTopPtr(L->getStack().p + 1);  /* empty the stack to run finalizers */
-    luaC_freeallobjects(L);  /* collect all objects */
+    luaC_freeallobjects(*L);  /* collect all objects */
     luai_userstateclose(L);
   }
   luaM_freearray(L, G(L)->getStringTable()->getHash(), cast_sizet(G(L)->getStringTable()->getSize()));
@@ -294,7 +294,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   lua_lock(L);
   luaC_checkGC(L);
   /* create new thread */
-  o = luaC_newobjdt(L, ctb(LuaT::THREAD), sizeof(LX), lxOffset());
+  o = luaC_newobjdt(*L, ctb(LuaT::THREAD), sizeof(LX), lxOffset());
   L1 = gco2th(o);
   /* anchor it on L stack */
   setthvalue2s(L, L->getTop().p, L1);

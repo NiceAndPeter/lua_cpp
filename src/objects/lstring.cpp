@@ -180,7 +180,7 @@ static TString *createstrobj (lua_State *L, size_t totalsize, LuaT tag,
   // We need to call luaC_newobj directly or change the approach.
 
   // Allocate exactly the size we need
-  GCObject *o = luaC_newobj(L, tag, totalsize);
+  GCObject *o = luaC_newobj(*L, tag, totalsize);
   TString *ts = gco2ts(o);
 
   // Manually initialize fields (can't use constructor - it might write to all fields)
@@ -220,7 +220,7 @@ TString* TString::createLongString(lua_State* L, size_t l) {
 
 static void growstrtab (lua_State *L, stringtable *tb) {
   if (l_unlikely(tb->getNumElements() == std::numeric_limits<int>::max())) {  /* too many strings? */
-    luaC_fullgc(L, 1);  /* try to free some... */
+    luaC_fullgc(*L, 1);  /* try to free some... */
     if (tb->getNumElements() == std::numeric_limits<int>::max())  /* still too many? */
       luaM_error(L);  /* cannot even create a message... */
   }
@@ -311,7 +311,7 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
   size_t totalsize = sizeudata(nuvalue, s);
 
   // Allocate exactly what we need (may be less than sizeof(Udata) for small data)
-  GCObject *o = luaC_newobj(L, ctb(LuaT::USERDATA), totalsize);
+  GCObject *o = luaC_newobj(*L, ctb(LuaT::USERDATA), totalsize);
   u = gco2u(o);
 
   // Manually initialize fields (can't use constructor reliably for variable-size objects)

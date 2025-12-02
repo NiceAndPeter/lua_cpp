@@ -356,8 +356,8 @@ inline constexpr lu_byte GCSTPCLS = 4;  /* bit true when closing Lua state */
 /* Phase 123 Part 3: Convert GC check macros to template functions */
 
 /* Forward declarations needed by template functions */
-LUAI_FUNC void luaC_step (lua_State *L);
-LUAI_FUNC void luaC_fullgc (lua_State *L, int isemergency);
+LUAI_FUNC void luaC_step (lua_State& L);
+LUAI_FUNC void luaC_fullgc (lua_State& L, int isemergency);
 
 #if !defined(HARDMEMTESTS)
 template<typename PreFunc, typename PostFunc>
@@ -372,7 +372,7 @@ template<typename PreFunc, typename PostFunc>
 inline void condchangemem(lua_State* L, PreFunc pre, PostFunc post, int emg) {
 	if (G(L)->isGCRunning()) {
 		pre();
-		luaC_fullgc(L, emg);
+		luaC_fullgc(*L, emg);
 		post();
 	}
 }
@@ -382,7 +382,7 @@ template<typename PreFunc, typename PostFunc>
 inline void luaC_condGC(lua_State* L, PreFunc pre, PostFunc post) {
 	if (G(L)->getGCDebt() <= 0) {
 		pre();
-		luaC_step(L);
+		luaC_step(*L);
 		post();
 	}
 	condchangemem(L, pre, post, 0);
@@ -395,8 +395,8 @@ inline void luaC_checkGC(lua_State* L) {
 
 
 /* Forward declarations for barrier implementation functions */
-LUAI_FUNC void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v);
-LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
+LUAI_FUNC void luaC_barrier_ (lua_State& L, GCObject *o, GCObject *v);
+LUAI_FUNC void luaC_barrierback_ (lua_State& L, GCObject *o);
 
 /*
 ** Write barrier for object-to-object references.
@@ -404,7 +404,7 @@ LUAI_FUNC void luaC_barrierback_ (lua_State *L, GCObject *o);
 */
 inline void luaC_objbarrier(lua_State* L, GCObject* p, GCObject* o) noexcept {
 	if (isblack(p) && iswhite(o))
-		luaC_barrier_(L, obj2gco(p), obj2gco(o));
+		luaC_barrier_(*L, obj2gco(p), obj2gco(o));
 }
 
 /*
@@ -422,7 +422,7 @@ inline void luaC_barrier(lua_State* L, GCObject* p, const TValue* v) noexcept {
 */
 inline void luaC_objbarrierback(lua_State* L, GCObject* p, GCObject* o) noexcept {
 	if (isblack(p) && iswhite(o))
-		luaC_barrierback_(L, p);
+		luaC_barrierback_(*L, p);
 }
 
 /*
@@ -435,24 +435,24 @@ inline void luaC_barrierback(lua_State* L, GCObject* p, const TValue* v) noexcep
 }
 
 /* Use GCObject::fix() method instead of luaC_fix */
-LUAI_FUNC void luaC_freeallobjects (lua_State *L);
+LUAI_FUNC void luaC_freeallobjects (lua_State& L);
 /* luaC_step and luaC_fullgc declared earlier for template functions */
-LUAI_FUNC void luaC_runtilstate (lua_State *L, GCState state, int fast);
-LUAI_FUNC void propagateall (global_State *g);  /* used by GCCollector */
-[[nodiscard]] LUAI_FUNC GCObject *luaC_newobj (lua_State *L, LuaT tt, size_t sz);
-[[nodiscard]] LUAI_FUNC GCObject *luaC_newobjdt (lua_State *L, LuaT tt, size_t sz,
+LUAI_FUNC void luaC_runtilstate (lua_State& L, GCState state, int fast);
+LUAI_FUNC void propagateall (global_State& g);  /* used by GCCollector */
+[[nodiscard]] LUAI_FUNC GCObject *luaC_newobj (lua_State& L, LuaT tt, size_t sz);
+[[nodiscard]] LUAI_FUNC GCObject *luaC_newobjdt (lua_State& L, LuaT tt, size_t sz,
                                                  size_t offset);
 /* luaC_barrier_ and luaC_barrierback_ declared above before inline barrier functions */
 /* Use GCObject::checkFinalizer() method instead of luaC_checkfinalizer */
-LUAI_FUNC void luaC_changemode (lua_State *L, GCKind newmode);
+LUAI_FUNC void luaC_changemode (lua_State& L, GCKind newmode);
 
 /* Weak table functions (will be moved to gc_weak module in Phase 4) */
 [[nodiscard]] LUAI_FUNC int getmode (global_State *g, Table *h);
-LUAI_FUNC void traverseweakvalue (global_State *g, Table *h);
+LUAI_FUNC void traverseweakvalue (global_State& g, Table *h);
 [[nodiscard]] LUAI_FUNC int traverseephemeron (global_State *g, Table *h, int inv);
 
 /* Sweeping helper (will be moved to gc_sweeping module in Phase 2) */
-LUAI_FUNC void freeobj (lua_State *L, GCObject *o);
+LUAI_FUNC void freeobj (lua_State& L, GCObject *o);
 
 
 /*
@@ -463,37 +463,37 @@ LUAI_FUNC void freeobj (lua_State *L, GCObject *o);
 
 // CClosure placement new operator
 inline void* CClosure::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
-  return luaC_newobj(L, tt, size + extra);
+  return luaC_newobj(*L, tt, size + extra);
 }
 
 // LClosure placement new operator
 inline void* LClosure::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
-  return luaC_newobj(L, tt, size + extra);
+  return luaC_newobj(*L, tt, size + extra);
 }
 
 // Udata placement new operator
 inline void* Udata::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
-  return luaC_newobj(L, tt, size + extra);
+  return luaC_newobj(*L, tt, size + extra);
 }
 
 // TString placement new operator
 inline void* TString::operator new(size_t size, lua_State* L, LuaT tt, size_t extra) {
-  return luaC_newobj(L, tt, size + extra);
+  return luaC_newobj(*L, tt, size + extra);
 }
 
 // Proto placement new operator
 inline void* Proto::operator new(size_t size, lua_State* L, LuaT tt) {
-  return luaC_newobj(L, tt, size);
+  return luaC_newobj(*L, tt, size);
 }
 
 // UpVal placement new operator
 inline void* UpVal::operator new(size_t size, lua_State* L, LuaT tt) {
-  return luaC_newobj(L, tt, size);
+  return luaC_newobj(*L, tt, size);
 }
 
 // Table placement new operator
 inline void* Table::operator new(size_t size, lua_State* L, LuaT tt) {
-  return luaC_newobj(L, tt, size);
+  return luaC_newobj(*L, tt, size);
 }
 
 /* }================================================================== */
