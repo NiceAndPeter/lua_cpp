@@ -171,8 +171,8 @@ static void dumpString (DumpState *D, TString *ts) {
 }
 
 
-static void dumpCode (DumpState *D, const Proto *f) {
-  auto code = f->getCodeSpan();
+static void dumpCode (DumpState *D, const Proto& f) {
+  auto code = f.getCodeSpan();
   dumpInt(D, static_cast<int>(code.size()));
   dumpAlign(D, sizeof(code[0]));
   lua_assert(code.data() != nullptr);
@@ -180,10 +180,10 @@ static void dumpCode (DumpState *D, const Proto *f) {
 }
 
 
-static void dumpFunction (DumpState *D, const Proto *f);
+static void dumpFunction (DumpState *D, const Proto& f);
 
-static void dumpConstants (DumpState *D, const Proto *f) {
-  auto constants = f->getConstantsSpan();
+static void dumpConstants (DumpState *D, const Proto& f) {
+  auto constants = f.getConstantsSpan();
   dumpInt(D, static_cast<int>(constants.size()));
   for (const auto& constant : constants) {
     LuaT tt = ttypetag(&constant);
@@ -206,17 +206,17 @@ static void dumpConstants (DumpState *D, const Proto *f) {
 }
 
 
-static void dumpProtos (DumpState *D, const Proto *f) {
-  auto protos = f->getProtosSpan();
+static void dumpProtos (DumpState *D, const Proto& f) {
+  auto protos = f.getProtosSpan();
   dumpInt(D, static_cast<int>(protos.size()));
   for (Proto* proto : protos) {
-    dumpFunction(D, proto);
+    dumpFunction(D, *proto);
   }
 }
 
 
-static void dumpUpvalues (DumpState *D, const Proto *f) {
-  auto upvalues = f->getUpvaluesSpan();
+static void dumpUpvalues (DumpState *D, const Proto& f) {
+  auto upvalues = f.getUpvaluesSpan();
   dumpInt(D, static_cast<int>(upvalues.size()));
   for (const auto& uv : upvalues) {
     dumpByte(D, uv.getInStackRaw());
@@ -226,14 +226,14 @@ static void dumpUpvalues (DumpState *D, const Proto *f) {
 }
 
 
-static void dumpDebug (DumpState *D, const Proto *f) {
+static void dumpDebug (DumpState *D, const Proto& f) {
   int n;
-  auto lineinfo = f->getDebugInfo().getLineInfoSpan();
+  auto lineinfo = f.getDebugInfo().getLineInfoSpan();
   n = (D->strip) ? 0 : static_cast<int>(lineinfo.size());
   dumpInt(D, n);
   if (lineinfo.data() != nullptr)
     dumpVector(D, lineinfo.data(), cast_uint(n));
-  auto abslineinfo = f->getDebugInfo().getAbsLineInfoSpan();
+  auto abslineinfo = f.getDebugInfo().getAbsLineInfoSpan();
   n = (D->strip) ? 0 : static_cast<int>(abslineinfo.size());
   dumpInt(D, n);
   if (n > 0) {
@@ -241,7 +241,7 @@ static void dumpDebug (DumpState *D, const Proto *f) {
     dumpAlign(D, sizeof(int));
     dumpVector(D, abslineinfo.data(), cast_uint(n));
   }
-  auto locvars = f->getDebugInfo().getLocVarsSpan();
+  auto locvars = f.getDebugInfo().getLocVarsSpan();
   n = (D->strip) ? 0 : static_cast<int>(locvars.size());
   dumpInt(D, n);
   for (const auto& lv : locvars.subspan(0, static_cast<size_t>(n))) {
@@ -249,7 +249,7 @@ static void dumpDebug (DumpState *D, const Proto *f) {
     dumpInt(D, lv.getStartPC());
     dumpInt(D, lv.getEndPC());
   }
-  auto upvalues = f->getUpvaluesSpan();
+  auto upvalues = f.getUpvaluesSpan();
   n = (D->strip) ? 0 : static_cast<int>(upvalues.size());
   dumpInt(D, n);
   for (const auto& uv : upvalues.subspan(0, static_cast<size_t>(n))) {
@@ -258,17 +258,17 @@ static void dumpDebug (DumpState *D, const Proto *f) {
 }
 
 
-static void dumpFunction (DumpState *D, const Proto *f) {
-  dumpInt(D, f->getLineDefined());
-  dumpInt(D, f->getLastLineDefined());
-  dumpByte(D, f->getNumParams());
-  dumpByte(D, f->getFlag());
-  dumpByte(D, f->getMaxStackSize());
+static void dumpFunction (DumpState *D, const Proto& f) {
+  dumpInt(D, f.getLineDefined());
+  dumpInt(D, f.getLastLineDefined());
+  dumpByte(D, f.getNumParams());
+  dumpByte(D, f.getFlag());
+  dumpByte(D, f.getMaxStackSize());
   dumpCode(D, f);
   dumpConstants(D, f);
   dumpUpvalues(D, f);
   dumpProtos(D, f);
-  dumpString(D, D->strip ? nullptr : f->getSource());
+  dumpString(D, D->strip ? nullptr : f.getSource());
   dumpDebug(D, f);
 }
 
@@ -307,7 +307,7 @@ int luaU_dump (lua_State *L, const Proto *f, lua_Writer w, void *data,
   D.nstr = 0;
   dumpHeader(&D);
   dumpByte(&D, f->getUpvaluesSize());
-  dumpFunction(&D, f);
+  dumpFunction(&D, *f);
   dumpBlock(&D, nullptr, 0);  /* signal end of dump */
   return D.status;
 }

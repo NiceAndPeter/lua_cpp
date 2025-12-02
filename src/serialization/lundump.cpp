@@ -158,7 +158,7 @@ static lua_Integer loadInteger (LoadState *S) {
 ** possible GC activity, to anchor the string. (Both 'loadVector' and
 ** 'luaH_setint' can call the GC.)
 */
-static void loadString (LoadState *S, Proto *p, TString **sl) {
+static void loadString (LoadState *S, Proto& p, TString **sl) {
   lua_State *L = S->L;
   TString *ts;
   TValue sv;
@@ -173,23 +173,23 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
     if (novariant(S->h->getInt(l_castU2S(idx), &stv)) != LUA_TSTRING)
       error(S, "invalid string index");
     *sl = ts = tsvalue(&stv);  /* get its value */
-    luaC_objbarrier(L, p, ts);
+    luaC_objbarrier(L, &p, ts);
     return;  /* do not save it again */
   }
   else if ((size -= 2) <= LUAI_MAXSHORTLEN) {  /* short string? */
     char buff[LUAI_MAXSHORTLEN + 1];  /* extra space for '\0' */
     loadVector(S, buff, size + 1);  /* load string into buffer */
     *sl = ts = TString::create(L, buff, size);  /* create string */
-    luaC_objbarrier(L, p, ts);
+    luaC_objbarrier(L, &p, ts);
   }
   else if (S->fixed) {  /* for a fixed buffer, use a fixed string */
     const char *s = getaddr<char>(S, size + 1);  /* get content address */
     *sl = ts = TString::createExternal(L, s, size, nullptr, nullptr);
-    luaC_objbarrier(L, p, ts);
+    luaC_objbarrier(L, &p, ts);
   }
   else {  /* create internal copy */
     *sl = ts = TString::createLongString(L, size);  /* create string */
-    luaC_objbarrier(L, p, ts);
+    luaC_objbarrier(L, &p, ts);
     loadVector(S, getlngstr(ts), size + 1);  /* load directly in final place */
   }
   /* add string to list of saved strings */
@@ -201,31 +201,31 @@ static void loadString (LoadState *S, Proto *p, TString **sl) {
 
 
 // Phase 115.2: Use span accessors
-static void loadCode (LoadState *S, Proto *f) {
+static void loadCode (LoadState *S, Proto& f) {
   int n = loadInt(S);
   loadAlign(S, sizeof(Instruction));
   if (S->fixed) {
-    f->setCode(getaddr<Instruction>(S, n));
-    f->setCodeSize(n);
+    f.setCode(getaddr<Instruction>(S, n));
+    f.setCodeSize(n);
   }
   else {
-    f->setCode(luaM_newvectorchecked<Instruction>(S->L, n));
-    f->setCodeSize(n);
-    auto codeSpan = f->getCodeSpan();  // Get span after allocation
+    f.setCode(luaM_newvectorchecked<Instruction>(S->L, n));
+    f.setCodeSize(n);
+    auto codeSpan = f.getCodeSpan();  // Get span after allocation
     loadVector(S, codeSpan.data(), codeSpan.size());
   }
 }
 
 
-static void loadFunction(LoadState *S, Proto *f);
+static void loadFunction(LoadState *S, Proto& f);
 
 
 // Phase 115.2: Use span accessors
-static void loadConstants (LoadState *S, Proto *f) {
+static void loadConstants (LoadState *S, Proto& f) {
   int n = loadInt(S);
-  f->setConstants(luaM_newvectorchecked<TValue>(S->L, n));
-  f->setConstantsSize(n);
-  auto constantsSpan = f->getConstantsSpan();
+  f.setConstants(luaM_newvectorchecked<TValue>(S->L, n));
+  f.setConstantsSize(n);
+  auto constantsSpan = f.getConstantsSpan();
   for (TValue& v : constantsSpan) {
     setnilvalue(&v);
   }
@@ -250,12 +250,12 @@ static void loadConstants (LoadState *S, Proto *f) {
         break;
       case LuaT::SHRSTR:
       case LuaT::LNGSTR: {
-        lua_assert(f->getSource() == nullptr);
-        loadString(S, f, f->getSourcePtr());  /* use 'source' to anchor string */
-        if (f->getSource() == nullptr)
+        lua_assert(f.getSource() == nullptr);
+        loadString(S, f, f.getSourcePtr());  /* use 'source' to anchor string */
+        if (f.getSource() == nullptr)
           error(S, "bad format for constant string");
-        setsvalue2n(S->L, o, f->getSource());  /* save it in the right place */
-        f->setSource(nullptr);
+        setsvalue2n(S->L, o, f.getSource());  /* save it in the right place */
+        f.setSource(nullptr);
         break;
       }
       default: error(S, "invalid constant");
@@ -264,16 +264,16 @@ static void loadConstants (LoadState *S, Proto *f) {
 }
 
 
-static void loadProtos (LoadState *S, Proto *f) {
+static void loadProtos (LoadState *S, Proto& f) {
   int i;
   int n = loadInt(S);
-  f->setProtos(luaM_newvectorchecked<Proto*>(S->L, n));
-  f->setProtosSize(n);
-  std::fill_n(f->getProtos(), n, nullptr);
+  f.setProtos(luaM_newvectorchecked<Proto*>(S->L, n));
+  f.setProtosSize(n);
+  std::fill_n(f.getProtos(), n, nullptr);
   for (i = 0; i < n; i++) {
-    f->getProtos()[i] = luaF_newproto(S->L);
-    luaC_objbarrier(S->L, f, f->getProtos()[i]);
-    loadFunction(S, f->getProtos()[i]);
+    f.getProtos()[i] = luaF_newproto(S->L);
+    luaC_objbarrier(S->L, &f, f.getProtos()[i]);
+    loadFunction(S, *f.getProtos()[i]);
   }
 }
 
@@ -285,11 +285,11 @@ static void loadProtos (LoadState *S, Proto *f) {
 ** in that case all prototypes must be consistent for the GC.
 */
 // Phase 115.2: Use span accessors
-static void loadUpvalues (LoadState *S, Proto *f) {
+static void loadUpvalues (LoadState *S, Proto& f) {
   int n = loadInt(S);
-  f->setUpvalues(luaM_newvectorchecked<Upvaldesc>(S->L, n));
-  f->setUpvaluesSize(n);
-  auto upvaluesSpan = f->getUpvaluesSpan();
+  f.setUpvalues(luaM_newvectorchecked<Upvaldesc>(S->L, n));
+  f.setUpvaluesSize(n);
+  auto upvaluesSpan = f.getUpvaluesSpan();
   /* make array valid for GC */
   for (Upvaldesc& uv : upvaluesSpan) {
     uv.setName(nullptr);
@@ -303,36 +303,36 @@ static void loadUpvalues (LoadState *S, Proto *f) {
 
 
 // Phase 115.2: Use span accessors
-static void loadDebug (LoadState *S, Proto *f) {
+static void loadDebug (LoadState *S, Proto& f) {
   int n = loadInt(S);
   if (S->fixed) {
-    f->setLineInfo(getaddr<ls_byte>(S, n));
-    f->setLineInfoSize(n);
+    f.setLineInfo(getaddr<ls_byte>(S, n));
+    f.setLineInfoSize(n);
   }
   else {
-    f->setLineInfo(luaM_newvectorchecked<ls_byte>(S->L, n));
-    f->setLineInfoSize(n);
-    auto lineInfoSpan = f->getDebugInfo().getLineInfoSpan();
+    f.setLineInfo(luaM_newvectorchecked<ls_byte>(S->L, n));
+    f.setLineInfoSize(n);
+    auto lineInfoSpan = f.getDebugInfo().getLineInfoSpan();
     loadVector(S, lineInfoSpan.data(), lineInfoSpan.size());
   }
   n = loadInt(S);
   if (n > 0) {
     loadAlign(S, sizeof(int));
     if (S->fixed) {
-      f->setAbsLineInfo(getaddr<AbsLineInfo>(S, n));
-      f->setAbsLineInfoSize(n);
+      f.setAbsLineInfo(getaddr<AbsLineInfo>(S, n));
+      f.setAbsLineInfoSize(n);
     }
     else {
-      f->setAbsLineInfo(luaM_newvectorchecked<AbsLineInfo>(S->L, n));
-      f->setAbsLineInfoSize(n);
-      auto absLineInfoSpan = f->getDebugInfo().getAbsLineInfoSpan();
+      f.setAbsLineInfo(luaM_newvectorchecked<AbsLineInfo>(S->L, n));
+      f.setAbsLineInfoSize(n);
+      auto absLineInfoSpan = f.getDebugInfo().getAbsLineInfoSpan();
       loadVector(S, absLineInfoSpan.data(), absLineInfoSpan.size());
     }
   }
   n = loadInt(S);
-  f->setLocVars(luaM_newvectorchecked<LocVar>(S->L, n));
-  f->setLocVarsSize(n);
-  auto locVarsSpan = f->getDebugInfo().getLocVarsSpan();
+  f.setLocVars(luaM_newvectorchecked<LocVar>(S->L, n));
+  f.setLocVarsSize(n);
+  auto locVarsSpan = f.getDebugInfo().getLocVarsSpan();
   for (LocVar& lv : locVarsSpan) {
     lv.setVarName(nullptr);
   }
@@ -343,27 +343,27 @@ static void loadDebug (LoadState *S, Proto *f) {
   }
   n = loadInt(S);
   if (n != 0) {  /* does it have debug information? */
-    n = f->getUpvaluesSize();  /* must be this many */
-    auto upvaluesSpan = f->getUpvaluesSpan();
+    n = f.getUpvaluesSize();  /* must be this many */
+    auto upvaluesSpan = f.getUpvaluesSpan();
     for (Upvaldesc& uv : upvaluesSpan)
       loadString(S, f, uv.getNamePtr());
   }
 }
 
 
-static void loadFunction (LoadState *S, Proto *f) {
-  f->setLineDefined(loadInt(S));
-  f->setLastLineDefined(loadInt(S));
-  f->setNumParams(loadByte(S));
-  f->setFlag(loadByte(S) & PF_ISVARARG);  /* get only the meaningful flags */
+static void loadFunction (LoadState *S, Proto& f) {
+  f.setLineDefined(loadInt(S));
+  f.setLastLineDefined(loadInt(S));
+  f.setNumParams(loadByte(S));
+  f.setFlag(loadByte(S) & PF_ISVARARG);  /* get only the meaningful flags */
   if (S->fixed)
-    f->setFlag(f->getFlag() | PF_FIXED);  /* signal that code is fixed */
-  f->setMaxStackSize(loadByte(S));
+    f.setFlag(f.getFlag() | PF_FIXED);  /* signal that code is fixed */
+  f.setMaxStackSize(loadByte(S));
   loadCode(S, f);
   loadConstants(S, f);
   loadUpvalues(S, f);
   loadProtos(S, f);
-  loadString(S, f, f->getSourcePtr());
+  loadString(S, f, f.getSourcePtr());
   loadDebug(S, f);
 }
 
@@ -441,7 +441,7 @@ LClosure *luaU_undump (lua_State *L, ZIO *Z, const char *name, int fixed) {
   L->inctop();  /* Phase 25e */
   cl->setProto(luaF_newproto(L));
   luaC_objbarrier(L, cl, cl->getProto());
-  loadFunction(&S, cl->getProto());
+  loadFunction(&S, *cl->getProto());
   if (cl->getNumUpvalues() != cl->getProto()->getUpvaluesSize())
     error(&S, "corrupted chunk");
   luai_verifycode(L, cl->getProto());
