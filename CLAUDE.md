@@ -10,8 +10,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Repository**: `/home/user/lua_cpp`
 **Performance Target**: ≤4.33s (≤3% regression from 4.20s baseline)
-**Current Performance**: ~2.17s avg (outstanding!) ✅
-**Status**: **CODE MODERNIZATION CONTINUING** - Phase 130 Part 1 done!
+**Current Performance**: ~2.14s avg (outstanding!) ✅
+**Status**: **CODE MODERNIZATION CONTINUING** - Phase 130 Part 2 done!
 
 ---
 
@@ -215,6 +215,16 @@ Converting Lua 5.5 from C to modern C++23 with:
   * **Benefits**: Type safety (references cannot be null), code clarity, modern C++23 idiom
   * **Performance**: ~2.17s avg (48% faster than baseline!) ✅
   * **Status**: ✅ COMPLETE
+
+- **Part 2** (Complete): Table* & Proto* → References (Object Helpers)
+  * Converted ~45 static helper functions from pointer to reference
+  * **ltable.cpp**: ~30 Table* functions (hash/array/GC helpers like getgeneric, findindex, rehash, etc.)
+  * **lundump.cpp**: ~8 Proto* functions (loadCode, loadConstants, loadProtos, loadUpvalues, loadDebug, loadFunction)
+  * **ldump.cpp**: ~7 Proto* functions (dumpCode, dumpConstants, dumpProtos, dumpUpvalues, dumpDebug, dumpFunction)
+  * Updated ~100+ call sites in Table member methods and serialization code
+  * **Benefits**: Type safety, modern C++23 idiom, clearer non-null semantics
+  * **Performance**: ~2.14s avg (49% faster than baseline!) ✅
+  * **Status**: ✅ COMPLETE
   * See `docs/PHASE_130_POINTER_TO_REFERENCE.md` for complete plan
 
 **Phase 112-114** (Earlier):
@@ -228,8 +238,8 @@ Converting Lua 5.5 from C to modern C++23 with:
 
 **Current Baseline**: 4.20s avg (Nov 2025, current hardware)
 **Target**: ≤4.33s (≤3% regression)
-**Latest**: ~2.17s avg (Phase 130 Part 1: expdesc* → expdesc&, Dec 2, 2025)
-**Status**: ✅ **OUTSTANDING** - 48% faster than baseline!
+**Latest**: ~2.14s avg (Phase 130 Part 2: Table* & Proto* → References, Dec 2, 2025)
+**Status**: ✅ **OUTSTANDING** - 49% faster than baseline!
 
 **Historical Baseline**: 2.17s avg (different hardware, Nov 2025)
 
@@ -580,8 +590,8 @@ git push -u origin <branch-name>
 
 ---
 
-**Last Updated**: 2025-12-02 (Documentation updated for Phase 130 Part 1)
-**Completed Phases**: 1-127, 129 Part 1, 130 Part 1
-**Current Status**: Ready for Phase 130 Part 2+ or other improvements
-**Performance**: ~2.17s avg ✅ (48% faster than 4.20s baseline!)
+**Last Updated**: 2025-12-02 (Documentation updated for Phase 130 Part 2)
+**Completed Phases**: 1-127, 129 Part 1, 130 Parts 1-2
+**Current Status**: Ready for Phase 130 Part 3+ or other improvements
+**Performance**: ~2.14s avg ✅ (49% faster than 4.20s baseline!)
 **Architecture**: VirtualMachine complete, const-correct, [[nodiscard]] safety, pointer-to-reference modernization, modern C++23 idioms!
