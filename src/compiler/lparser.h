@@ -563,23 +563,23 @@ public:
   int codeABCk(int o, int A, int B, int C, int k);
   int codeABC(int o, int A, int B, int C) { return codeABCk(o, A, B, C, 0); }
   int codevABCk(int o, int A, int B, int C, int k);
-  int exp2const(const expdesc *e, TValue *v);
+  int exp2const(const expdesc& e, TValue *v);
   void fixline(int line);
   void nil(int from, int n);
   void reserveregs(int n);
   void checkstack(int n);
   void intCode(int reg, lua_Integer n);
-  void dischargevars(expdesc *e);
-  int exp2anyreg(expdesc *e);
-  void exp2anyregup(expdesc *e);
-  void exp2nextreg(expdesc *e);
-  void exp2val(expdesc *e);
-  void self(expdesc *e, expdesc *key);
-  void indexed(expdesc *t, expdesc *k);
-  void goiftrue(expdesc *e);
-  void storevar(expdesc *var, expdesc *e);
-  void setreturns(expdesc *e, int nresults);
-  void setoneret(expdesc *e);
+  void dischargevars(expdesc& e);
+  int exp2anyreg(expdesc& e);
+  void exp2anyregup(expdesc& e);
+  void exp2nextreg(expdesc& e);
+  void exp2val(expdesc& e);
+  void self(expdesc& e, expdesc& key);
+  void indexed(expdesc& t, expdesc& k);
+  void goiftrue(expdesc& e);
+  void storevar(expdesc& var, expdesc& e);
+  void setreturns(expdesc& e, int nresults);
+  void setoneret(expdesc& e);
   int jump();
   void ret(int first, int nret);
   void patchlist(int list, int target);
@@ -587,9 +587,9 @@ public:
   void concat(int *l1, int l2);
   int getlabel();
   // Operator functions use strongly-typed enum classes for type safety
-  void prefix(UnOpr op, expdesc *v, int line);
-  void infix(BinOpr op, expdesc *v);
-  void posfix(BinOpr op, expdesc *v1, expdesc *v2, int line);
+  void prefix(UnOpr op, expdesc& v, int line);
+  void infix(BinOpr op, expdesc& v);
+  void posfix(BinOpr op, expdesc& v1, expdesc& v2, int line);
   void settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize);
   void setlist(int base, int nelems, int tostore);
   void finish();
@@ -610,9 +610,9 @@ public:
   Instruction *previousinstruction();
   void freeRegister(int reg);
   void freeRegisters(int r1, int r2);
-  void freeExpression(expdesc *e);
-  void freeExpressions(expdesc *e1, expdesc *e2);
-  TValue *const2val(const expdesc *e);
+  void freeExpression(expdesc& e);
+  void freeExpressions(expdesc& e1, expdesc& e2);
+  TValue *const2val(const expdesc& e);
   int codeextraarg(int A);
   // Phase 78: Constant management (public for now as used by unconverted functions)
   int addk(Proto *proto, TValue *v);
@@ -624,34 +624,34 @@ public:
   int boolT();
   int nilK();
   void floatCode(int reg, lua_Number flt);
-  int str2K(expdesc *e);
-  int exp2K(expdesc *e);
+  int str2K(expdesc& e);
+  int exp2K(expdesc& e);
   // Phase 79: Expression & code generation (public for now as used by unconverted functions)
-  void discharge2reg(expdesc *e, int reg);
-  void discharge2anyreg(expdesc *e);
+  void discharge2reg(expdesc& e, int reg);
+  void discharge2anyreg(expdesc& e);
   int code_loadbool(int A, OpCode op);
   int need_value(int list);
-  void exp2reg(expdesc *e, int reg);
-  int exp2RK(expdesc *e);
-  void codeABRK(OpCode o, int A, int B, expdesc *ec);
-  void negatecondition(expdesc *e);
-  int jumponcond(expdesc *e, int cond);
-  void codenot(expdesc *e);
-  int isKstr(expdesc *e);
-  int constfolding(int op, expdesc *e1, const expdesc *e2);
-  void codeunexpval(OpCode op, expdesc *e, int line);
-  void finishbinexpval(expdesc *e1, expdesc *e2, OpCode op, int v2, int flip, int line, OpCode mmop, TMS event);
-  void codebinexpval(BinOpr opr, expdesc *e1, expdesc *e2, int line);
-  void codebini(OpCode op, expdesc *e1, expdesc *e2, int flip, int line, TMS event);
-  void codebinK(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line);
-  int finishbinexpneg(expdesc *e1, expdesc *e2, OpCode op, int line, TMS event);
-  void codebinNoK(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line);
-  void codearith(BinOpr opr, expdesc *e1, expdesc *e2, int flip, int line);
-  void codecommutative(BinOpr op, expdesc *e1, expdesc *e2, int line);
-  void codebitwise(BinOpr opr, expdesc *e1, expdesc *e2, int line);
-  void codeorder(BinOpr opr, expdesc *e1, expdesc *e2);
-  void codeeq(BinOpr opr, expdesc *e1, expdesc *e2);
-  void codeconcat(expdesc *e1, expdesc *e2, int line);
+  void exp2reg(expdesc& e, int reg);
+  int exp2RK(expdesc& e);
+  void codeABRK(OpCode o, int A, int B, expdesc& ec);
+  void negatecondition(expdesc& e);
+  int jumponcond(expdesc& e, int cond);
+  void codenot(expdesc& e);
+  int isKstr(expdesc& e);
+  int constfolding(int op, expdesc& e1, const expdesc& e2);
+  void codeunexpval(OpCode op, expdesc& e, int line);
+  void finishbinexpval(expdesc& e1, expdesc& e2, OpCode op, int v2, int flip, int line, OpCode mmop, TMS event);
+  void codebinexpval(BinOpr opr, expdesc& e1, expdesc& e2, int line);
+  void codebini(OpCode op, expdesc& e1, expdesc& e2, int flip, int line, TMS event);
+  void codebinK(BinOpr opr, expdesc& e1, expdesc& e2, int flip, int line);
+  int finishbinexpneg(expdesc& e1, expdesc& e2, OpCode op, int line, TMS event);
+  void codebinNoK(BinOpr opr, expdesc& e1, expdesc& e2, int flip, int line);
+  void codearith(BinOpr opr, expdesc& e1, expdesc& e2, int flip, int line);
+  void codecommutative(BinOpr op, expdesc& e1, expdesc& e2, int line);
+  void codebitwise(BinOpr opr, expdesc& e1, expdesc& e2, int line);
+  void codeorder(BinOpr opr, expdesc& e1, expdesc& e2);
+  void codeeq(BinOpr opr, expdesc& e1, expdesc& e2);
+  void codeconcat(expdesc& e1, expdesc& e2, int line);
   // Phase 82: Limit checking
   l_noret errorlimit(int limit, const char *what);
   void checklimit(int v, int l, const char *what);
@@ -660,19 +660,19 @@ public:
   lu_byte reglevel(int nvar);
   lu_byte nvarstack();
   LocVar *localdebuginfo(int vidx);
-  void init_var(expdesc *e, int vidx);
+  void init_var(expdesc& e, int vidx);
   short registerlocalvar(TString *varname);
   // Phase 84: Variable scope
   void removevars(int tolevel);
   // Phase 85: Upvalue and variable search
   int searchupvalue(TString *name);
   Upvaldesc *allocupvalue();
-  int newupvalue(TString *name, expdesc *v);
-  int searchvar(TString *n, expdesc *var);
+  int newupvalue(TString *name, expdesc& v);
+  int searchvar(TString *n, expdesc& var);
   void markupval(int level);
   void marktobeclosed();
   // Phase 86: Variable lookup auxiliary
-  void singlevaraux(TString *n, expdesc *var, int base);
+  void singlevaraux(TString *n, expdesc& var, int base);
   // Phase 87: Goto resolution
   void solvegotos(BlockCnt *blockCnt);
   // Phase 88: Block management (used by parser infrastructure)
@@ -684,7 +684,7 @@ public:
   int maxtostore();
   // Phase 88: Variable handling (used by parser infrastructure)
   void setvararg(int nparams);
-  void storevartop(expdesc *var);
+  void storevartop(expdesc& var);
   void checktoclose(int level);
   void fixforjump(int pcpos, int dest, int back);
 
@@ -692,7 +692,7 @@ private:
   // Internal helper methods (only used within lcode.cpp)
   int codesJ(int o, int sj, int k);
   int finaltarget(int i);
-  void goiffalse(expdesc *e);
+  void goiffalse(expdesc& e);
 };
 
 
@@ -727,7 +727,7 @@ public:
   TString *str_checkname();
 
   // Variable utilities
-  void codename(expdesc *e);
+  void codename(expdesc& e);
   int new_varkind(TString *name, lu_byte kind);
   int new_localvar(TString *name);
 
@@ -737,14 +737,14 @@ public:
     return new_localvar(ls->newString(v, N - 1));
   }
 
-  void check_readonly(expdesc *e);
+  void check_readonly(expdesc& e);
   void adjustlocalvars(int nvars);
 
   // Variable building and assignment
-  void buildglobal(TString *varname, expdesc *var);
-  void buildvar(TString *varname, expdesc *var);
-  void singlevar(expdesc *var);
-  void adjust_assign(int nvars, int nexps, expdesc *e);
+  void buildglobal(TString *varname, expdesc& var);
+  void buildvar(TString *varname, expdesc& var);
+  void singlevar(expdesc& var);
+  void adjust_assign(int nvars, int nexps, expdesc& e);
 
   // Label and goto management
   int newgotoentry(TString *name, int line);
@@ -756,23 +756,23 @@ public:
 private:
   // Parser implementation methods (extracted from LexState private methods)
   void statement();
-  void expr(expdesc *v);
+  void expr(expdesc& v);
   int block_follow(int withuntil);
   void statlist();
-  void fieldsel(expdesc *v);
-  void yindex(expdesc *v);
+  void fieldsel(expdesc& v);
+  void yindex(expdesc& v);
   void recfield(ConsControl *cc);
   void listfield(ConsControl *cc);
   void field(ConsControl *cc);
-  void constructor(expdesc *t);
+  void constructor(expdesc& t);
   void parlist();
-  void body(expdesc *e, int ismethod, int line);
-  int explist(expdesc *v);
-  void funcargs(expdesc *f);
-  void primaryexp(expdesc *v);
-  void suffixedexp(expdesc *v);
-  void simpleexp(expdesc *v);
-  BinOpr subexpr(expdesc *v, int limit);
+  void body(expdesc& e, int ismethod, int line);
+  int explist(expdesc& v);
+  void funcargs(expdesc& f);
+  void primaryexp(expdesc& v);
+  void suffixedexp(expdesc& v);
+  void simpleexp(expdesc& v);
+  BinOpr subexpr(expdesc& v, int limit);
   void block();
   void restassign(struct LHS_assign *lh, int nvars);
   int cond();
@@ -797,14 +797,14 @@ private:
   void globalstat();
   void globalfunc(int line);
   void globalstatfunc(int line);
-  int funcname(expdesc *v);
+  int funcname(expdesc& v);
   void funcstat(int line);
   void exprstat();
   void retstat();
-  void codeclosure(expdesc *v);
+  void codeclosure(expdesc& v);
   void open_func(FuncState *funcState, BlockCnt *bl);
   void close_func();
-  void check_conflict(struct LHS_assign *lh, expdesc *v);
+  void check_conflict(struct LHS_assign *lh, expdesc& v);
 };
 
 
@@ -829,8 +829,8 @@ inline constexpr bool foldbinop(BinOpr op) noexcept {
 
 
 /* get (pointer to) instruction of given 'expdesc' */
-inline Instruction& getinstruction(FuncState* fs, expdesc* e) noexcept {
-	return fs->getProto()->getCode()[e->getInfo()];
+inline Instruction& getinstruction(FuncState* fs, expdesc& e) noexcept {
+	return fs->getProto()->getCode()[e.getInfo()];
 }
 
 

@@ -229,8 +229,8 @@ TString *Parser::str_checkname() {
 }
 
 
-void Parser::codename(expdesc *e) {
-  e->initString(str_checkname());
+void Parser::codename(expdesc& e) {
+  e.initString(str_checkname());
 }
 
 
@@ -261,33 +261,33 @@ int Parser::new_localvar(TString *name) {
 ** (Unless noted otherwise, all variables are referred to by their
 ** compiler indices.)
 */
-void Parser::check_readonly(expdesc *e) {
+void Parser::check_readonly(expdesc& e) {
   // FuncState passed as parameter
   TString *varname = nullptr;  /* to be set if variable is const */
-  switch (e->getKind()) {
+  switch (e.getKind()) {
     case VCONST: {
-      varname = ls->getDyndata()->actvar()[e->getInfo()].vd.name;
+      varname = ls->getDyndata()->actvar()[e.getInfo()].vd.name;
       break;
     }
     case VLOCAL: {
-      Vardesc *vardesc = fs->getlocalvardesc(e->getLocalVarIndex());
+      Vardesc *vardesc = fs->getlocalvardesc(e.getLocalVarIndex());
       if (vardesc->vd.kind != VDKREG)  /* not a regular variable? */
         varname = vardesc->vd.name;
       break;
     }
     case VUPVAL: {
-      Upvaldesc *up = &fs->getProto()->getUpvalues()[e->getInfo()];
+      Upvaldesc *up = &fs->getProto()->getUpvalues()[e.getInfo()];
       if (up->getKind() != VDKREG)
         varname = up->getName();
       break;
     }
     case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
-      if (e->isIndexedReadOnly())  /* read-only? */
-        varname = tsvalue(&fs->getProto()->getConstants()[e->getIndexedStringKeyIndex()]);
+      if (e.isIndexedReadOnly())  /* read-only? */
+        varname = tsvalue(&fs->getProto()->getConstants()[e.getIndexedStringKeyIndex()]);
       break;
     }
     default:
-      lua_assert(e->getKind() == VINDEXI);  /* this one doesn't need any check */
+      lua_assert(e.getKind() == VINDEXI);  /* this one doesn't need any check */
       return;  /* integer index cannot be read-only */
   }
   if (varname)
@@ -315,41 +315,41 @@ void Parser::adjustlocalvars(int nvars) {
 ** Close the scope for all variables up to level 'tolevel'.
 ** (debug info.)
 */
-void Parser::buildglobal(TString *varname, expdesc *var) {
+void Parser::buildglobal(TString *varname, expdesc& var) {
   // FuncState passed as parameter
-  var->init(VGLOBAL, -1);  /* global by default */
+  var.init(VGLOBAL, -1);  /* global by default */
   fs->singlevaraux(ls->getEnvName(), var, 1);  /* get environment variable */
-  if (var->getKind() == VGLOBAL)
+  if (var.getKind() == VGLOBAL)
     ls->semerror("_ENV is global when accessing variable '%s'", getstr(varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
   expdesc key;
   key.initString(varname);  /* key is variable name */
-  fs->indexed(var, &key);  /* 'var' represents _ENV[varname] */
+  fs->indexed(var, key);  /* 'var' represents _ENV[varname] */
 }
 
 
 /*
 ** Find a variable with the given name, handling global variables too.
 */
-void Parser::buildvar(TString *varname, expdesc *var) {
+void Parser::buildvar(TString *varname, expdesc& var) {
   // FuncState passed as parameter
-  var->init(VGLOBAL, -1);  /* global by default */
+  var.init(VGLOBAL, -1);  /* global by default */
   fs->singlevaraux(varname, var, 1);
-  if (var->getKind() == VGLOBAL) {  /* global name? */
-    auto info = var->getInfo();
+  if (var.getKind() == VGLOBAL) {  /* global name? */
+    auto info = var.getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
       ls->semerror("variable '%s' not declared", getstr(varname));
     buildglobal(varname, var);
     if (info != -1 && ls->getDyndata()->actvar()[info].vd.kind == GDKCONST)
-      var->setIndexedReadOnly(1);  /* mark variable as read-only */
+      var.setIndexedReadOnly(1);  /* mark variable as read-only */
     else  /* anyway must be a global */
       lua_assert(info == -1 || ls->getDyndata()->actvar()[info].vd.kind == GDKREG);
   }
 }
 
 
-void Parser::singlevar(expdesc *var) {
+void Parser::singlevar(expdesc& var) {
   buildvar(str_checkname(), var);
 }
 
@@ -358,17 +358,17 @@ void Parser::singlevar(expdesc *var) {
 ** Adjust the number of results from an expression list 'e' with 'nexps'
 ** expressions to 'nvars' values.
 */
-void Parser::adjust_assign(int nvars, int nexps, expdesc *e) {
+void Parser::adjust_assign(int nvars, int nexps, expdesc& e) {
   // FuncState passed as parameter
   auto needed = nvars - nexps;  /* extra values needed */
-  if (hasmultret(e->getKind())) {  /* last expression has multiple returns? */
+  if (hasmultret(e.getKind())) {  /* last expression has multiple returns? */
     auto extra = needed + 1;  /* discount last expression itself */
     if (extra < 0)
       extra = 0;
     fs->setreturns(e, extra);  /* last exp. provides the difference */
   }
   else {
-    if (e->getKind() != VVOID)  /* at least one expression? */
+    if (e.getKind() != VVOID)  /* at least one expression? */
       fs->exp2nextreg(e);  /* close last expression */
     if (needed > 0)  /* missing values? */
       fs->nil(fs->getFirstFreeRegister(), needed);  /* complete with nils */
@@ -420,9 +420,9 @@ Proto *Parser::addprototype() {
 ** are in use at that time.
 
 */
-void Parser::codeclosure( expdesc *v) {
+void Parser::codeclosure( expdesc& v) {
   FuncState *funcstate = fs->getPrev();
-  v->init(VRELOC, funcstate->codeABx(OP_CLOSURE, 0, funcstate->getNumberOfNestedPrototypes() - 1));
+  v.init(VRELOC, funcstate->codeABx(OP_CLOSURE, 0, funcstate->getNumberOfNestedPrototypes() - 1));
   funcstate->exp2nextreg(v);  /* fix it at the last register */
 }
 
@@ -515,18 +515,18 @@ void Parser::statlist() {
 }
 
 
-void Parser::fieldsel( expdesc *v) {
+void Parser::fieldsel( expdesc& v) {
   /* fieldsel -> ['.' | ':'] NAME */
   FuncState *funcstate = fs;
   funcstate->exp2anyregup(v);
   ls->nextToken();  /* skip the dot or colon */
   expdesc key;
-  codename( &key);
-  funcstate->indexed(v, &key);
+  codename(key);
+  funcstate->indexed(v, key);
 }
 
 
-void Parser::yindex( expdesc *v) {
+void Parser::yindex( expdesc& v) {
   /* index -> '[' expr ']' */
   ls->nextToken();  /* skip the '[' */
   expr(v);
@@ -547,22 +547,22 @@ void Parser::recfield( ConsControl *cc) {
   lu_byte reg = fs->getFirstFreeRegister();
   expdesc tab, key, val;
   if (ls->getToken() == static_cast<int>(RESERVED::TK_NAME))
-    codename( &key);
+    codename(key);
   else  /* ls->getToken() == '[' */
-    yindex(&key);
+    yindex(key);
   cc->nh++;
   checknext( '=');
   tab = *cc->t;
-  funcstate->indexed(&tab, &key);
-  expr(&val);
-  funcstate->storevar(&tab, &val);
+  funcstate->indexed(tab, key);
+  expr(val);
+  funcstate->storevar(tab, val);
   funcstate->setFirstFreeRegister(reg);  /* free registers */
 }
 
 
 void Parser::listfield( ConsControl *cc) {
   /* listfield -> exp */
-  expr(&cc->v);
+  expr(cc->v);
   cc->tostore++;
 }
 
@@ -594,7 +594,7 @@ void Parser::field( ConsControl *cc) {
 ** emitting a 'SETLIST' instruction, based on how many registers are
 ** available.
 */
-void Parser::constructor( expdesc *table_exp) {
+void Parser::constructor( expdesc& table_exp) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
   FuncState *funcstate = fs;
@@ -603,8 +603,8 @@ void Parser::constructor( expdesc *table_exp) {
   ConsControl cc;
   funcstate->code(0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
-  cc.t = table_exp;
-  table_exp->init(VNONRELOC, funcstate->getFirstFreeRegister());  /* table will be at stack top */
+  cc.t = &table_exp;
+  table_exp.init(VNONRELOC, funcstate->getFirstFreeRegister());  /* table will be at stack top */
   funcstate->reserveregs(1);
   cc.v.init(VVOID, 0);  /* no value (yet) */
   checknext( '{' /*}*/);
@@ -619,7 +619,7 @@ void Parser::constructor( expdesc *table_exp) {
   } while (testnext( ',') || testnext( ';'));
   check_match( /*{*/ '}', '{' /*}*/, line);
   funcstate->lastlistfield(&cc);
-  funcstate->settablesize(pc, static_cast<unsigned>(table_exp->getInfo()), static_cast<unsigned>(cc.na), static_cast<unsigned>(cc.nh));
+  funcstate->settablesize(pc, static_cast<unsigned>(table_exp.getInfo()), static_cast<unsigned>(cc.na), static_cast<unsigned>(cc.nh));
 }
 
 /* }====================================================================== */
@@ -656,7 +656,7 @@ void Parser::parlist() {
 }
 
 
-void Parser::body( expdesc *e, int ismethod, int line) {
+void Parser::body( expdesc& e, int ismethod, int line) {
   /* body ->  '(' parlist ')' block END */
   FuncState new_fs;
   BlockCnt bl;
@@ -678,7 +678,7 @@ void Parser::body( expdesc *e, int ismethod, int line) {
 }
 
 
-int Parser::explist( expdesc *v) {
+int Parser::explist( expdesc& v) {
   /* explist -> expr { ',' expr } */
   int n = 1;  /* at least one expression */
   expr(v);
@@ -691,7 +691,7 @@ int Parser::explist( expdesc *v) {
 }
 
 
-void Parser::funcargs( expdesc *f) {
+void Parser::funcargs( expdesc& f) {
   FuncState *funcstate = fs;
   expdesc args;
   int base, nparams;
@@ -702,15 +702,15 @@ void Parser::funcargs( expdesc *f) {
       if (ls->getToken() == ')')  /* arg list is empty? */
         args.setKind(VVOID);
       else {
-        explist(&args);
+        explist(args);
         if (hasmultret(args.getKind()))
-          funcstate->setreturns(&args, LUA_MULTRET);
+          funcstate->setreturns(args, LUA_MULTRET);
       }
       check_match( ')', '(', line);
       break;
     }
     case '{' /*}*/: {  /* funcargs -> constructor */
-      constructor(&args);
+      constructor(args);
       break;
     }
     case static_cast<int>(RESERVED::TK_STRING): {  /* funcargs -> STRING */
@@ -722,16 +722,16 @@ void Parser::funcargs( expdesc *f) {
       ls->syntaxError( "function arguments expected");
     }
   }
-  lua_assert(f->getKind() == VNONRELOC);
-  base = f->getInfo();  /* base register for call */
+  lua_assert(f.getKind() == VNONRELOC);
+  base = f.getInfo();  /* base register for call */
   if (hasmultret(args.getKind()))
     nparams = LUA_MULTRET;  /* open call */
   else {
     if (args.getKind() != VVOID)
-      funcstate->exp2nextreg(&args);  /* close last argument */
+      funcstate->exp2nextreg(args);  /* close last argument */
     nparams = funcstate->getFirstFreeRegister() - (base+1);
   }
-  f->init(VCALL, funcstate->codeABC(OP_CALL, base, nparams+1, 2));
+  f.init(VCALL, funcstate->codeABC(OP_CALL, base, nparams+1, 2));
   funcstate->fixline(line);
   /* call removes function and arguments and leaves one result (unless
      changed later) */
@@ -748,7 +748,7 @@ void Parser::funcargs( expdesc *f) {
 */
 
 
-void Parser::primaryexp( expdesc *v) {
+void Parser::primaryexp( expdesc& v) {
   /* primaryexp -> NAME | '(' expr ')' */
   switch (ls->getToken()) {
     case '(': {
@@ -770,7 +770,7 @@ void Parser::primaryexp( expdesc *v) {
 }
 
 
-void Parser::suffixedexp( expdesc *v) {
+void Parser::suffixedexp( expdesc& v) {
   /* suffixedexp ->
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
   FuncState *funcstate = fs;
@@ -784,15 +784,15 @@ void Parser::suffixedexp( expdesc *v) {
       case '[': {  /* '[' exp ']' */
         expdesc key;
         funcstate->exp2anyregup(v);
-        yindex(&key);
-        funcstate->indexed(v, &key);
+        yindex(key);
+        funcstate->indexed(v, key);
         break;
       }
       case ':': {  /* ':' NAME funcargs */
         expdesc key;
         ls->nextToken();
-        codename( &key);
-        funcstate->self(v, &key);
+        codename(key);
+        funcstate->self(v, key);
         funcargs(v);
         break;
       }
@@ -807,41 +807,41 @@ void Parser::suffixedexp( expdesc *v) {
 }
 
 
-void Parser::simpleexp( expdesc *v) {
+void Parser::simpleexp( expdesc& v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
   switch (ls->getToken()) {
     case static_cast<int>(RESERVED::TK_FLT): {
-      v->init(VKFLT, 0);
-      v->setFloatValue(ls->getSemInfo().r);
+      v.init(VKFLT, 0);
+      v.setFloatValue(ls->getSemInfo().r);
       break;
     }
     case static_cast<int>(RESERVED::TK_INT): {
-      v->init(VKINT, 0);
-      v->setIntValue(ls->getSemInfo().i);
+      v.init(VKINT, 0);
+      v.setIntValue(ls->getSemInfo().i);
       break;
     }
     case static_cast<int>(RESERVED::TK_STRING): {
-      v->initString(ls->getSemInfo().ts);
+      v.initString(ls->getSemInfo().ts);
       break;
     }
     case static_cast<int>(RESERVED::TK_NIL): {
-      v->init(VNIL, 0);
+      v.init(VNIL, 0);
       break;
     }
     case static_cast<int>(RESERVED::TK_TRUE): {
-      v->init(VTRUE, 0);
+      v.init(VTRUE, 0);
       break;
     }
     case static_cast<int>(RESERVED::TK_FALSE): {
-      v->init(VFALSE, 0);
+      v.init(VFALSE, 0);
       break;
     }
     case static_cast<int>(RESERVED::TK_DOTS): {  /* vararg */
       FuncState *funcstate = fs;
       check_condition(this, funcstate->getProto()->getFlag() & PF_ISVARARG,
                       "cannot use '...' outside a vararg function");
-      v->init(VVARARG, funcstate->codeABC(OP_VARARG, 0, 0, 1));
+      v.init(VVARARG, funcstate->codeABC(OP_VARARG, 0, 0, 1));
       break;
     }
     case '{' /*}*/: {  /* constructor */
@@ -862,7 +862,7 @@ void Parser::simpleexp( expdesc *v) {
 }
 
 
-BinOpr Parser::subexpr( expdesc *v, int limit) {
+BinOpr Parser::subexpr( expdesc& v, int limit) {
   BinOpr op;
   UnOpr uop;
   enterlevel(ls);
@@ -883,8 +883,8 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
     ls->nextToken();  /* skip operator */
     fs->infix(op, v);
     /* read sub-expression with higher priority */
-    nextop = subexpr(&v2, priority[static_cast<int>(op)].right);
-    fs->posfix(op, v, &v2, line);
+    nextop = subexpr(v2, priority[static_cast<int>(op)].right);
+    fs->posfix(op, v, v2, line);
     op = nextop;
   }
   leavelevel(ls);
@@ -892,7 +892,7 @@ BinOpr Parser::subexpr( expdesc *v, int limit) {
 }
 
 
-void Parser::expr( expdesc *v) {
+void Parser::expr( expdesc& v) {
   subexpr(v, 0);
 }
 
@@ -923,27 +923,27 @@ void Parser::block() {
 ** table. If so, save original upvalue/local value in a safe place and
 ** use this safe copy in the previous assignment.
 */
-void Parser::check_conflict( struct LHS_assign *lh, expdesc *v) {
+void Parser::check_conflict( struct LHS_assign *lh, expdesc& v) {
   FuncState *funcstate = fs;
   lu_byte extra = funcstate->getFirstFreeRegister();  /* eventual position to save local variable */
   int conflict = 0;
   for (; lh; lh = lh->prev) {  /* check all previous assignments */
     if (expdesc::isIndexed(lh->v.getKind())) {  /* assignment to table field? */
       if (lh->v.getKind() == VINDEXUP) {  /* is table an upvalue? */
-        if (v->getKind() == VUPVAL && lh->v.getIndexedTableReg() == v->getInfo()) {
+        if (v.getKind() == VUPVAL && lh->v.getIndexedTableReg() == v.getInfo()) {
           conflict = 1;  /* table is the upvalue being assigned now */
           lh->v.setKind(VINDEXSTR);
           lh->v.setIndexedTableReg(extra);  /* assignment will use safe copy */
         }
       }
       else {  /* table is a register */
-        if (v->getKind() == VLOCAL && lh->v.getIndexedTableReg() == v->getLocalRegister()) {
+        if (v.getKind() == VLOCAL && lh->v.getIndexedTableReg() == v.getLocalRegister()) {
           conflict = 1;  /* table is the local being assigned now */
           lh->v.setIndexedTableReg(extra);  /* assignment will use safe copy */
         }
         /* is index the local being assigned? */
-        if (lh->v.getKind() == VINDEXED && v->getKind() == VLOCAL &&
-            lh->v.getIndexedKeyIndex() == v->getLocalRegister()) {
+        if (lh->v.getKind() == VINDEXED && v.getKind() == VLOCAL &&
+            lh->v.getIndexedKeyIndex() == v.getLocalRegister()) {
           conflict = 1;
           lh->v.setIndexedKeyIndex(extra);  /* previous assignment will use safe copy */
         }
@@ -952,10 +952,10 @@ void Parser::check_conflict( struct LHS_assign *lh, expdesc *v) {
   }
   if (conflict) {
     /* copy upvalue/local value to a temporary (in position 'extra') */
-    if (v->getKind() == VLOCAL)
-      funcstate->codeABC(OP_MOVE, extra, v->getLocalRegister(), 0);
+    if (v.getKind() == VLOCAL)
+      funcstate->codeABC(OP_MOVE, extra, v.getLocalRegister(), 0);
     else
-      funcstate->codeABC(OP_GETUPVAL, extra, v->getInfo(), 0);
+      funcstate->codeABC(OP_GETUPVAL, extra, v.getInfo(), 0);
     funcstate->reserveregs(1);
   }
 }
@@ -965,13 +965,13 @@ void Parser::check_conflict( struct LHS_assign *lh, expdesc *v) {
 void Parser::restassign( struct LHS_assign *lh, int nvars) {
   expdesc e;
   check_condition(this, expdesc::isVar(lh->v.getKind()), "syntax error");
-  check_readonly(&lh->v);
+  check_readonly(lh->v);
   if (testnext( ',')) {  /* restassign -> ',' suffixedexp restassign */
     struct LHS_assign nv;
     nv.prev = lh;
-    suffixedexp(&nv.v);
+    suffixedexp(nv.v);
     if (!expdesc::isIndexed(nv.v.getKind()))
-      check_conflict(lh, &nv.v);
+      check_conflict(lh, nv.v);
     enterlevel(ls);  /* control recursion depth */
     restassign(&nv, nvars+1);
     leavelevel(ls);
@@ -979,25 +979,25 @@ void Parser::restassign( struct LHS_assign *lh, int nvars) {
   else {  /* restassign -> '=' explist */
     int nexps;
     checknext( '=');
-    nexps = explist(&e);
+    nexps = explist(e);
     if (nexps != nvars)
-      adjust_assign(nvars, nexps, &e);
+      adjust_assign(nvars, nexps, e);
     else {
-      fs->setoneret(&e);  /* close last expression */
-      fs->storevar(&lh->v, &e);
+      fs->setoneret(e);  /* close last expression */
+      fs->storevar(lh->v, e);
       return;  /* avoid default */
     }
   }
-  fs->storevartop(&lh->v);  /* default assignment */
+  fs->storevartop(lh->v);  /* default assignment */
 }
 
 
 int Parser::cond() {
   /* cond -> exp */
   expdesc v;
-  expr(&v);  /* read condition */
+  expr(v);  /* read condition */
   if (v.getKind() == VNIL) v.setKind(VFALSE);  /* 'falses' are all equal here */
-  fs->goiftrue(&v);
+  fs->goiftrue(v);
   return v.getFalseList();
 }
 
@@ -1095,8 +1095,8 @@ void Parser::repeatstat( int line) {
 */
 void Parser::exp1() {
   expdesc e;
-  expr(&e);
-  fs->exp2nextreg(&e);
+  expr(e);
+  fs->exp2nextreg(e);
   lua_assert(e.getKind() == VNONRELOC);
 }
 
@@ -1172,7 +1172,7 @@ void Parser::forlist( TString *indexname) {
   }
   checknext(static_cast<int>(RESERVED::TK_IN));
   int line = ls->getLineNumber();
-  adjust_assign(4, explist(&e), &e);
+  adjust_assign(4, explist(e), e);
   adjustlocalvars(3);  /* start scope for internal variables */
   funcstate->marktobeclosed();  /* last internal var. must be closed */
   funcstate->checkstack(2);  /* extra space to call iterator */
@@ -1232,7 +1232,7 @@ void Parser::localfunc() {
   int fvar = funcstate->getNumActiveVars();  /* function's variable index */
   new_localvar( str_checkname());  /* new local variable */
   adjustlocalvars(1);  /* enter its scope */
-  body(&b, 0, ls->getLineNumber());  /* function created in next register */
+  body(b, 0, ls->getLineNumber());  /* function created in next register */
   /* debug information will only see the variable after this point! */
   funcstate->localdebuginfo( fvar)->setStartPC(funcstate->getPC());
 }
@@ -1277,7 +1277,7 @@ void Parser::localstat() {
   expdesc e;
   int nexps;
   if (testnext( '='))  /* initialization? */
-    nexps = explist(&e);
+    nexps = explist(e);
   else {
     e.setKind(VVOID);
     nexps = 0;
@@ -1285,13 +1285,13 @@ void Parser::localstat() {
   Vardesc *var = funcstate->getlocalvardesc( vidx);  /* retrieve last variable */
   if (nvars == nexps &&  /* no adjustments? */
       var->vd.kind == RDKCONST &&  /* last variable is const? */
-      funcstate->exp2const(&e, &var->k)) {  /* compile-time constant? */
+      funcstate->exp2const(e, &var->k)) {  /* compile-time constant? */
     var->vd.kind = RDKCTC;  /* variable is a compile-time constant */
     adjustlocalvars(nvars - 1);  /* exclude last variable */
     funcstate->getNumActiveVarsRef()++;  /* but count it */
   }
   else {
-    adjust_assign(nvars, nexps, &e);
+    adjust_assign(nvars, nexps, e);
     adjustlocalvars(nvars);
   }
   funcstate->checktoclose(toclose);
@@ -1325,13 +1325,13 @@ void Parser::globalnames( lu_byte defkind) {
   if (testnext( '=')) {  /* initialization? */
     expdesc e;
     int i;
-    int nexps = explist(&e);  /* read list of expressions */
-    adjust_assign(nvars, nexps, &e);
+    int nexps = explist(e);  /* read list of expressions */
+    adjust_assign(nvars, nexps, e);
     for (i = 0; i < nvars; i++) {  /* for each variable */
       expdesc var;
       TString *varname = funcstate->getlocalvardesc(lastidx - i)->vd.name;
-      buildglobal(varname, &var);  /* create global variable in 'var' */
-      funcstate->storevartop(&var);
+      buildglobal(varname, var);  /* create global variable in 'var' */
+      funcstate->storevartop(var);
     }
   }
   funcstate->setNumActiveVars(cast_short(funcstate->getNumActiveVars() + nvars));  /* activate declaration */
@@ -1361,9 +1361,9 @@ void Parser::globalfunc( int line) {
   TString *fname = str_checkname();
   new_varkind( fname, GDKREG);  /* declare global variable */
   funcstate->getNumActiveVarsRef()++;  /* enter its scope */
-  buildglobal(fname, &var);
-  body(&b, 0, ls->getLineNumber());  /* compile and return closure in 'b' */
-  funcstate->storevar(&var, &b);
+  buildglobal(fname, var);
+  body(b, 0, ls->getLineNumber());  /* compile and return closure in 'b' */
+  funcstate->storevar(var, b);
   funcstate->fixline(line);  /* definition "happens" in the first line */
 }
 
@@ -1378,7 +1378,7 @@ void Parser::globalstatfunc( int line) {
 }
 
 
-int Parser::funcname( expdesc *v) {
+int Parser::funcname( expdesc& v) {
   /* funcname -> NAME {fieldsel} [':' NAME] */
   int ismethod = 0;
   singlevar(v);
@@ -1396,10 +1396,10 @@ void Parser::funcstat( int line) {
   /* funcstat -> FUNCTION funcname body */
   expdesc v, b;
   ls->nextToken();  /* skip FUNCTION */
-  int ismethod = funcname(&v);
-  check_readonly(&v);
-  body(&b, ismethod, line);
-  fs->storevar(&v, &b);
+  int ismethod = funcname(v);
+  check_readonly(v);
+  body(b, ismethod, line);
+  fs->storevar(v, b);
   fs->fixline(line);  /* definition "happens" in the first line */
 }
 
@@ -1408,7 +1408,7 @@ void Parser::exprstat() {
   /* stat -> func | assignment */
   FuncState *funcstate = fs;
   struct LHS_assign v;
-  suffixedexp(&v.v);
+  suffixedexp(v.v);
   if (ls->getToken() == '=' || ls->getToken() == ',') { /* stat -> assignment ? */
     v.prev = nullptr;
     restassign(&v, 1);
@@ -1416,7 +1416,7 @@ void Parser::exprstat() {
   else {  /* stat -> func */
     Instruction *inst;
     check_condition(this, v.v.getKind() == VCALL, "syntax error");
-    inst = &getinstruction(funcstate, &v.v);
+    inst = &getinstruction(funcstate, v.v);
     SETARG_C(*inst, 1);  /* call statement uses no results */
   }
 }
@@ -1431,20 +1431,20 @@ void Parser::retstat() {
   if (block_follow(1) || ls->getToken() == ';')
     nret = 0;  /* return no values */
   else {
-    nret = explist(&e);  /* optional return values */
+    nret = explist(e);  /* optional return values */
     if (hasmultret(e.getKind())) {
-      funcstate->setreturns(&e, LUA_MULTRET);
+      funcstate->setreturns(e, LUA_MULTRET);
       if (e.getKind() == VCALL && nret == 1 && !funcstate->getBlock()->insidetbc) {  /* tail call? */
-        SET_OPCODE(getinstruction(funcstate,&e), OP_TAILCALL);
-        lua_assert(InstructionView(getinstruction(funcstate,&e)).a() == luaY_nvarstack(funcstate));
+        SET_OPCODE(getinstruction(funcstate,e), OP_TAILCALL);
+        lua_assert(InstructionView(getinstruction(funcstate,e)).a() == luaY_nvarstack(funcstate));
       }
       nret = LUA_MULTRET;  /* return all values */
     }
     else {
       if (nret == 1)  /* only one single value? */
-        first = funcstate->exp2anyreg(&e);  /* can use original slot */
+        first = funcstate->exp2anyreg(e);  /* can use original slot */
       else {  /* values must go to the top of the stack */
-        funcstate->exp2nextreg(&e);
+        funcstate->exp2nextreg(e);
         lua_assert(nret == funcstate->getFirstFreeRegister() - first);
       }
     }

@@ -153,12 +153,12 @@ LocVar *FuncState::localdebuginfo(int vidx) {
 /*
 ** Create an expression representing variable 'vidx'
 */
-void FuncState::init_var(expdesc *e, int vidx) {
-  e->setFalseList(NO_JUMP);
-  e->setTrueList(NO_JUMP);
-  e->setKind(VLOCAL);
-  e->setLocalVarIndex(cast_short(vidx));
-  e->setLocalRegister(getlocalvardesc(vidx)->vd.registerIndex);
+void FuncState::init_var(expdesc& e, int vidx) {
+  e.setFalseList(NO_JUMP);
+  e.setTrueList(NO_JUMP);
+  e.setKind(VLOCAL);
+  e.setLocalVarIndex(cast_short(vidx));
+  e.setLocalRegister(getlocalvardesc(vidx)->vd.registerIndex);
 }
 
 
@@ -203,20 +203,20 @@ Upvaldesc *FuncState::allocupvalue() {
 }
 
 
-int FuncState::newupvalue(TString *name, expdesc *v) {
+int FuncState::newupvalue(TString *name, expdesc& v) {
   Upvaldesc *up = allocupvalue();
   FuncState *prevFunc = getPrev();
-  if (v->getKind() == VLOCAL) {
+  if (v.getKind() == VLOCAL) {
     up->setInStack(1);
-    up->setIndex(v->getLocalRegister());
-    up->setKind(prevFunc->getlocalvardesc(v->getLocalVarIndex())->vd.kind);
-    lua_assert(eqstr(name, prevFunc->getlocalvardesc(v->getLocalVarIndex())->vd.name));
+    up->setIndex(v.getLocalRegister());
+    up->setKind(prevFunc->getlocalvardesc(v.getLocalVarIndex())->vd.kind);
+    lua_assert(eqstr(name, prevFunc->getlocalvardesc(v.getLocalVarIndex())->vd.name));
   }
   else {
     up->setInStack(0);
-    up->setIndex(cast_byte(v->getInfo()));
-    up->setKind(prevFunc->getProto()->getUpvalues()[v->getInfo()].getKind());
-    lua_assert(eqstr(name, prevFunc->getProto()->getUpvalues()[v->getInfo()].getName()));
+    up->setIndex(cast_byte(v.getInfo()));
+    up->setKind(prevFunc->getProto()->getUpvalues()[v.getInfo()].getKind());
+    lua_assert(eqstr(name, prevFunc->getProto()->getUpvalues()[v.getInfo()].getName()));
   }
   up->setName(name);
   luaC_objbarrier(getLexState()->getLuaState(), getProto(), name);
@@ -234,30 +234,30 @@ int FuncState::newupvalue(TString *name, expdesc *v) {
 ** but no collective declaration); and var->u.info>=0 points to the
 ** inner-most (the first one found) collective declaration, if there is one.
 */
-int FuncState::searchvar(TString *n, expdesc *var) {
+int FuncState::searchvar(TString *n, expdesc& var) {
   int nactive = static_cast<int>(getNumActiveVars());
   for (int i = nactive - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(i);
     if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == nullptr) {  /* collective declaration? */
-        if (var->getInfo() < 0)  /* no previous collective declaration? */
-          var->setInfo(getFirstLocal() + i);  /* this is the first one */
+        if (var.getInfo() < 0)  /* no previous collective declaration? */
+          var.setInfo(getFirstLocal() + i);  /* this is the first one */
       }
       else {  /* global name */
         if (eqstr(n, vd->vd.name)) {  /* found? */
-          var->init(VGLOBAL, getFirstLocal() + i);
+          var.init(VGLOBAL, getFirstLocal() + i);
           return VGLOBAL;
         }
-        else if (var->getInfo() == -1)  /* active preambular declaration? */
-          var->setInfo(-2);  /* invalidate preambular declaration */
+        else if (var.getInfo() == -1)  /* active preambular declaration? */
+          var.setInfo(-2);  /* invalidate preambular declaration */
       }
     }
     else if (eqstr(n, vd->vd.name)) {  /* found? */
       if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
-        var->init(VCONST, getFirstLocal() + i);
+        var.init(VCONST, getFirstLocal() + i);
       else  /* local variable */
         init_var(var, i);
-      return cast_int(var->getKind());
+      return cast_int(var.getKind());
     }
   }
   return -1;  /* not found */
@@ -293,23 +293,23 @@ void FuncState::marktobeclosed() {
 ** this upvalue into all intermediate functions. If it is a global, set
 ** 'var' as 'void' as a flag.
 */
-void FuncState::singlevaraux(TString *n, expdesc *var, int base) {
+void FuncState::singlevaraux(TString *n, expdesc& var, int base) {
   int v = searchvar(n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)
-      markupval(var->getLocalVarIndex());  /* local will be used as an upval */
+      markupval(var.getLocalVarIndex());  /* local will be used as an upval */
   }
   else {  /* not found at current level; try upvalues */
     int idx = searchupvalue(n);  /* try existing upvalues */
     if (idx < 0) {  /* not found? */
       if (getPrev() != nullptr)  /* more levels? */
         getPrev()->singlevaraux(n, var, 0);  /* try upper levels */
-      if (var->getKind() == VLOCAL || var->getKind() == VUPVAL)  /* local or upvalue? */
+      if (var.getKind() == VLOCAL || var.getKind() == VUPVAL)  /* local or upvalue? */
         idx = newupvalue(n, var);  /* will be a new upvalue */
       else  /* it is a global or a constant */
         return;  /* don't need to do anything at this level */
     }
-    var->init(VUPVAL, idx);  /* new or old upvalue */
+    var.init(VUPVAL, idx);  /* new or old upvalue */
   }
 }
 
@@ -381,7 +381,7 @@ void FuncState::leaveblock() {
 
 void FuncState::closelistfield(ConsControl *cc) {
   lua_assert(cc->tostore > 0);
-  exp2nextreg(&cc->v);
+  exp2nextreg(cc->v);
   cc->v.setKind(VVOID);
   if (cc->tostore >= cc->maxtostore) {
     setlist(cc->t->getInfo(), cc->na, cc->tostore);  /* flush */
@@ -394,13 +394,13 @@ void FuncState::closelistfield(ConsControl *cc) {
 void FuncState::lastlistfield(ConsControl *cc) {
   if (cc->tostore == 0) return;
   if (hasmultret(cc->v.getKind())) {
-    setreturns(&cc->v, LUA_MULTRET);
+    setreturns(cc->v, LUA_MULTRET);
     setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
     cc->na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
     if (cc->v.getKind() != VVOID)
-      exp2nextreg(&cc->v);
+      exp2nextreg(cc->v);
     setlist(cc->t->getInfo(), cc->na, cc->tostore);
   }
   cc->na += cc->tostore;
@@ -430,10 +430,10 @@ void FuncState::setvararg(int nparams) {
 
 
 /* Create code to store the "top" register in 'var' */
-void FuncState::storevartop(expdesc *var) {
+void FuncState::storevartop(expdesc& var) {
   expdesc e;
   e.init(VNONRELOC, getFirstFreeRegister() - 1);
-  storevar(var, &e);  /* will also free the top register */
+  storevar(var, e);  /* will also free the top register */
 }
 
 
