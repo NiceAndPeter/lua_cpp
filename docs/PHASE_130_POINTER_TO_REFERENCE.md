@@ -199,34 +199,34 @@ void FuncState::closelistfield(ConsControl& cc) {
 ---
 
 ### Part 6: Member Variable Conversions
-**Status**: Pending
-**Scope**: 4 member variables in 2 classes
-**Risk**: Medium (requires constructor changes)
+**Status**: ✅ Complete (2025-12-03)
+**Scope**: 3 member variables in 2 classes
+**Risk**: Medium (required constructor changes)
 
-**FuncState members** (`lparser.h:450-455`):
+**FuncState members** (converted):
 ```cpp
 // Before
 class FuncState {
 private:
   Proto *f;           // current function header
-  FuncState *prev;    // enclosing function (CAN BE NULL - keep pointer)
+  FuncState *prev;    // enclosing function
   LexState *ls;       // lexical state
   BlockCnt *bl;       // chain of current blocks
-  // ...
 };
 
 // After
 class FuncState {
 private:
-  Proto& f;           // Always valid ✅
-  FuncState* prev;    // Can be null - keep pointer ❌
-  LexState& ls;       // Always valid ✅
-  BlockCnt* bl;       // Reassigned - needs analysis ⚠️
-  // ...
+  Proto& f;           // ✅ Converted
+  FuncState* prev;    // ❌ Kept pointer (can be null)
+  LexState& ls;       // ✅ Converted
+  BlockCnt* bl;       // ❌ Kept pointer (can be null, reassigned)
+public:
+  explicit FuncState(Proto& proto, LexState& lexState) noexcept;
 };
 ```
 
-**Parser members** (`lparser.h:704-706`):
+**Parser members** (converted):
 ```cpp
 // Before
 class Parser {
@@ -238,16 +238,20 @@ private:
 // After
 class Parser {
 private:
-  LexState& ls;  // Always valid ✅
-  FuncState& fs; // Always valid ✅
+  LexState& ls;  // ✅ Converted
+  FuncState* fs; // ❌ Kept pointer (reassigned for nested functions)
+public:
+  explicit Parser(LexState& lexState, FuncState* funcState);
 };
 ```
 
-**Changes Required**:
-- Update constructor initialization lists
-- Update all member access (-> to .)
-- Update getter return types
-- Verify lifetimes are correct
+**Changes Made**:
+- Added FuncState constructor with Proto& and LexState& parameters
+- Updated Parser constructor to take LexState& by reference
+- Removed setProto() and setLexState() setters
+- Updated ~150 call sites (getProto()->  to getProto()., ls-> to ls.)
+- Fixed luaC_objbarrier calls with &proto
+- Updated FuncState initialization in 2 locations
 
 ---
 
@@ -326,7 +330,7 @@ git commit -m "Phase 130 Part N: <description>"
 | Part 3 | global_State* (~42 funcs) | ✅ Complete | 2025-12-03 | ~2.17s |
 | Part 4 | TString* (~25 funcs) | ✅ Complete | 2025-12-03 | ~2.17s |
 | Part 5 | ConsControl*/BlockCnt* (8 funcs) | ✅ Complete | 2025-12-03 | ~2.12s |
-| Part 6 | Member variables (4 vars) | Pending | - | - |
+| Part 6 | Member variables (3 vars) | ✅ Complete | 2025-12-03 | ~2.12s |
 
 ---
 
@@ -349,5 +353,5 @@ git commit -m "Phase 130 Part N: <description>"
 ---
 
 **Last Updated**: 2025-12-03
-**Current Part**: 5 complete, Part 6 pending
-**Overall Status**: ~97% complete (Parts 1-5 done: 204/210 functions)
+**Current Part**: All 6 parts complete! ✅
+**Overall Status**: 100% complete (All parts 1-6 done: 210+ functions + 3 member variables)
