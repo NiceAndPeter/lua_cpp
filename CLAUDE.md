@@ -9,8 +9,8 @@ Converting Lua 5.5 from C to modern C++23:
 - **Full encapsulation** with private fields
 
 **Performance**: ~2.12s avg ✅ (50% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 130 Part 5 complete - ConsControl* & BlockCnt* → References done!
-**Completed**: Phases 1-127, 129-1, 130-1/2/3/4/5 | **Quality**: 96.1% coverage, zero warnings
+**Status**: Phase 130 COMPLETE - All 6 parts done! Pointer-to-reference conversions finished!
+**Completed**: Phases 1-127, 129-1, 130-1/2/3/4/5/6 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -60,13 +60,15 @@ Converting Lua 5.5 from C to modern C++23:
 - Fixed scoping bug in upvalues string loading
 - **Result**: ~2.20s avg (maintained)
 
-**Phase 130**: Pointer-to-Reference Conversions ✅
+**Phase 130**: Pointer-to-Reference Conversions ✅ **ALL 6 PARTS COMPLETE!**
 - **Part 1**: expdesc* → expdesc& (~80 params, ~200+ call sites in parser/funcstate/lcode)
 - **Part 2**: Table*/Proto* → References (~45 helpers in ltable/lundump/ldump, ~100+ call sites)
 - **Part 3**: global_State* → global_State& (~42 GC functions in 4 modules: marking, sweeping, weak, finalizer)
 - **Part 4**: TString* → TString& (~15 compiler functions: registerlocalvar, searchupvalue, newupvalue, searchvar, singlevaraux, stringK, new_localvar, buildglobal, buildvar, fornum, forlist, labelstat, checkrepeated, newgotoentry; updated 4x eqstr helpers)
 - **Part 5**: ConsControl* & BlockCnt* → References (8 compiler infrastructure functions: solvegotos, enterblock, open_func, closelistfield, lastlistfield, recfield, listfield, field; 10 call sites)
-- **Benefits**: Type safety (no null), modern C++23 idiom, clearer semantics
+- **Part 6**: Member Variables → References (FuncState: Proto& f, LexState& ls; Parser: LexState& ls; added constructors, updated ~150 call sites)
+- **Benefits**: Type safety (no null), modern C++23 idiom, clearer semantics, explicit lifetimes
+- **Total**: 210+ functions + 3 member variables converted
 - **Result**: ~2.12s avg (50% faster than baseline!)
 - See `docs/PHASE_130_POINTER_TO_REFERENCE.md`
 
@@ -182,7 +184,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
 Zero warnings | 96.1% coverage | 30+ tests passing | **50% faster than baseline!**
-Phases 1-127, 129-1, 130-1/2/3/4/5 complete
+Phases 1-127, 129-1, 130-1/2/3/4/5/6 complete (Phase 130: 100% done!)
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -253,5 +255,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-03 | **Phases**: 1-127, 129-1, 130-1/2/3/4/5 | **Performance**: ~2.12s ✅ (50% faster!)
-**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, Phase 130 Part 5 complete (ConsControl* & BlockCnt* → References)!
+**Updated**: 2025-12-03 | **Phases**: 1-127, 129-1, 130-ALL (1/2/3/4/5/6) ✅ | **Performance**: ~2.12s ✅ (50% faster!)
+**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, **Phase 130 COMPLETE!** (All pointer-to-reference conversions done!)
