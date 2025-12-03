@@ -427,7 +427,7 @@ void Parser::codeclosure( expdesc& v) {
 }
 
 
-void Parser::open_func(FuncState *funcstate, BlockCnt *bl) {
+void Parser::open_func(FuncState *funcstate, BlockCnt& bl) {
   lua_State *state = ls->getLuaState();
   Proto *f = funcstate->getProto();
   funcstate->setPrev(fs);  /* linked list of funcstates */
@@ -541,7 +541,7 @@ void Parser::yindex( expdesc& v) {
 ** =======================================================================
 */
 
-void Parser::recfield( ConsControl *cc) {
+void Parser::recfield( ConsControl& cc) {
   /* recfield -> (NAME | '['exp']') = exp */
   FuncState *funcstate = fs;
   lu_byte reg = fs->getFirstFreeRegister();
@@ -550,9 +550,9 @@ void Parser::recfield( ConsControl *cc) {
     codename(key);
   else  /* ls->getToken() == '[' */
     yindex(key);
-  cc->nh++;
+  cc.nh++;
   checknext( '=');
-  tab = *cc->t;
+  tab = *cc.t;
   funcstate->indexed(tab, key);
   expr(val);
   funcstate->storevar(tab, val);
@@ -560,14 +560,14 @@ void Parser::recfield( ConsControl *cc) {
 }
 
 
-void Parser::listfield( ConsControl *cc) {
+void Parser::listfield( ConsControl& cc) {
   /* listfield -> exp */
-  expr(cc->v);
-  cc->tostore++;
+  expr(cc.v);
+  cc.tostore++;
 }
 
 
-void Parser::field( ConsControl *cc) {
+void Parser::field( ConsControl& cc) {
   /* field -> listfield | recfield */
   switch(ls->getToken()) {
     case static_cast<int>(RESERVED::TK_NAME): {  /* may be 'listfield' or 'recfield' */
@@ -612,13 +612,13 @@ void Parser::constructor( expdesc& table_exp) {
   do {
     if (ls->getToken() == /*{*/ '}') break;
     if (cc.v.getKind() != VVOID)  /* is there a previous list item? */
-      funcstate->closelistfield(&cc);  /* close it */
-    field(&cc);
+      funcstate->closelistfield(cc);  /* close it */
+    field(cc);
     luaY_checklimit(funcstate, cc.tostore + cc.na + cc.nh, MAX_CNST,
                     "items in a constructor");
   } while (testnext( ',') || testnext( ';'));
   check_match( /*{*/ '}', '{' /*}*/, line);
-  funcstate->lastlistfield(&cc);
+  funcstate->lastlistfield(cc);
   funcstate->settablesize(pc, static_cast<unsigned>(table_exp.getInfo()), static_cast<unsigned>(cc.na), static_cast<unsigned>(cc.nh));
 }
 
@@ -662,7 +662,7 @@ void Parser::body( expdesc& e, int ismethod, int line) {
   BlockCnt bl;
   new_fs.setProto(addprototype());
   new_fs.getProto()->setLineDefined(line);
-  open_func(&new_fs, &bl);
+  open_func(&new_fs, bl);
   checknext( '(');
   if (ismethod) {
     new_localvarliteral("self");  /* create 'self' parameter */
@@ -911,7 +911,7 @@ void Parser::block() {
   /* block -> statlist */
   FuncState *funcstate = fs;
   BlockCnt bl;
-  funcstate->enterblock(&bl, 0);
+  funcstate->enterblock(bl, 0);
   statlist();
   funcstate->leaveblock();
 }
@@ -1054,7 +1054,7 @@ void Parser::whilestat( int line) {
   ls->nextToken();  /* skip WHILE */
   auto whileinit = funcstate->getlabel();
   auto condexit = cond();
-  funcstate->enterblock(&bl, 1);
+  funcstate->enterblock(bl, 1);
   checknext(static_cast<int>(RESERVED::TK_DO));
   block();
   funcstate->patchlist(funcstate->jump(), whileinit);
@@ -1069,8 +1069,8 @@ void Parser::repeatstat( int line) {
   FuncState *funcstate = fs;
   auto repeat_init = funcstate->getlabel();
   BlockCnt bl1, bl2;
-  funcstate->enterblock(&bl1, 1);  /* loop block */
-  funcstate->enterblock(&bl2, 0);  /* scope block */
+  funcstate->enterblock(bl1, 1);  /* loop block */
+  funcstate->enterblock(bl2, 0);  /* scope block */
   ls->nextToken();  /* skip REPEAT */
   statlist();
   check_match(static_cast<int>(RESERVED::TK_UNTIL), static_cast<int>(RESERVED::TK_REPEAT), line);
@@ -1116,7 +1116,7 @@ void Parser::forbody( int base, int line, int nvars, int isgen) {
   checknext(static_cast<int>(RESERVED::TK_DO));
   prep = funcstate->codeABx(forprep[isgen], base, 0);
   funcstate->getFirstFreeRegisterRef()--;  /* both 'forprep' remove one register from the stack */
-  funcstate->enterblock(&bl, 0);  /* scope for declared variables */
+  funcstate->enterblock(bl, 0);  /* scope for declared variables */
   adjustlocalvars(nvars);
   funcstate->reserveregs(nvars);
   block();
@@ -1185,7 +1185,7 @@ void Parser::forstat( int line) {
   FuncState *funcstate = fs;
   TString *varname;
   BlockCnt bl;
-  funcstate->enterblock(&bl, 1);  /* scope for loop and control variables */
+  funcstate->enterblock(bl, 1);  /* scope for loop and control variables */
   ls->nextToken();  /* skip 'for' */
   varname = str_checkname();  /* first variable name */
   switch (ls->getToken()) {
@@ -1558,7 +1558,7 @@ void Parser::statement() {
 void Parser::mainfunc(FuncState *funcstate) {
   BlockCnt bl;
   Upvaldesc *env;
-  open_func(funcstate, &bl);
+  open_func(funcstate, bl);
   funcstate->setvararg(0);  /* main function is always declared vararg */
   env = funcstate->allocupvalue();  /* ...set environment upvalue */
   env->setInStack(1);

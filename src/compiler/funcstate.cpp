@@ -321,40 +321,40 @@ void FuncState::singlevaraux(TString& n, expdesc& var, int base) {
 ** its 'numberOfActiveVariables' is updated with the level of the inner block,
 ** as the variables of the inner block are now out of scope.
 */
-void FuncState::solvegotos(BlockCnt *blockCnt) {
+void FuncState::solvegotos(BlockCnt& blockCnt) {
   LexState *lexState = getLexState();
   Labellist *gl = &lexState->getDyndata()->gt;
-  int outlevel = reglevel(blockCnt->numberOfActiveVariables);  /* level outside the block */
-  int igt = blockCnt->firstgoto;  /* first goto in the finishing block */
+  int outlevel = reglevel(blockCnt.numberOfActiveVariables);  /* level outside the block */
+  int igt = blockCnt.firstgoto;  /* first goto in the finishing block */
   while (igt < gl->getN()) {   /* for each pending goto */
     Labeldesc *gt = &(*gl)[igt];
     /* search for a matching label in the current block */
-    Labeldesc *lb = lexState->findlabel(gt->name, blockCnt->firstlabel);
+    Labeldesc *lb = lexState->findlabel(gt->name, blockCnt.firstlabel);
     if (lb != nullptr)  /* found a match? */
-      lexState->closegoto(this, igt, lb, blockCnt->upval);  /* close and remove goto */
+      lexState->closegoto(this, igt, lb, blockCnt.upval);  /* close and remove goto */
     else {  /* adjust 'goto' for outer block */
       /* block has variables to be closed and goto escapes the scope of
          some variable? */
-      if (blockCnt->upval && reglevel(gt->numberOfActiveVariables) > outlevel)
+      if (blockCnt.upval && reglevel(gt->numberOfActiveVariables) > outlevel)
         gt->close = 1;  /* jump may need a close */
-      gt->numberOfActiveVariables = blockCnt->numberOfActiveVariables;  /* correct level for outer block */
+      gt->numberOfActiveVariables = blockCnt.numberOfActiveVariables;  /* correct level for outer block */
       igt++;  /* go to next goto */
     }
   }
-  lexState->getDyndata()->label.setN(blockCnt->firstlabel);  /* remove local labels */
+  lexState->getDyndata()->label.setN(blockCnt.firstlabel);  /* remove local labels */
 }
 
 
-void FuncState::enterblock(BlockCnt *blk, lu_byte isloop) {
-  blk->isloop = isloop;
-  blk->numberOfActiveVariables = getNumActiveVars();
-  blk->firstlabel = getLexState()->getDyndata()->label.getN();
-  blk->firstgoto = getLexState()->getDyndata()->gt.getN();
-  blk->upval = 0;
+void FuncState::enterblock(BlockCnt& blk, lu_byte isloop) {
+  blk.isloop = isloop;
+  blk.numberOfActiveVariables = getNumActiveVars();
+  blk.firstlabel = getLexState()->getDyndata()->label.getN();
+  blk.firstgoto = getLexState()->getDyndata()->gt.getN();
+  blk.upval = 0;
   /* inherit 'insidetbc' from enclosing block */
-  blk->insidetbc = (getBlock() != nullptr && getBlock()->insidetbc);
-  blk->previous = getBlock();  /* link block in function's block list */
-  setBlock(blk);
+  blk.insidetbc = (getBlock() != nullptr && getBlock()->insidetbc);
+  blk.previous = getBlock();  /* link block in function's block list */
+  setBlock(&blk);
   lua_assert(getFirstFreeRegister() == luaY_nvarstack(this));
 }
 
@@ -370,7 +370,7 @@ void FuncState::leaveblock() {
   lua_assert(blk->numberOfActiveVariables == getNumActiveVars());  /* back to level on entry */
   if (blk->isloop == 2)  /* has to fix pending breaks? */
     lexstate->createlabel(this, lexstate->getBreakName(), 0, 0);
-  solvegotos(blk);
+  solvegotos(*blk);
   if (blk->previous == nullptr) {  /* was it the last block? */
     if (blk->firstgoto < lexstate->getDyndata()->gt.getN())  /* still pending gotos? */
       lexstate->undefgoto(this, &lexstate->getDyndata()->gt[blk->firstgoto]);  /* error */
@@ -379,31 +379,31 @@ void FuncState::leaveblock() {
 }
 
 
-void FuncState::closelistfield(ConsControl *cc) {
-  lua_assert(cc->tostore > 0);
-  exp2nextreg(cc->v);
-  cc->v.setKind(VVOID);
-  if (cc->tostore >= cc->maxtostore) {
-    setlist(cc->t->getInfo(), cc->na, cc->tostore);  /* flush */
-    cc->na += cc->tostore;
-    cc->tostore = 0;  /* no more items pending */
+void FuncState::closelistfield(ConsControl& cc) {
+  lua_assert(cc.tostore > 0);
+  exp2nextreg(cc.v);
+  cc.v.setKind(VVOID);
+  if (cc.tostore >= cc.maxtostore) {
+    setlist(cc.t->getInfo(), cc.na, cc.tostore);  /* flush */
+    cc.na += cc.tostore;
+    cc.tostore = 0;  /* no more items pending */
   }
 }
 
 
-void FuncState::lastlistfield(ConsControl *cc) {
-  if (cc->tostore == 0) return;
-  if (hasmultret(cc->v.getKind())) {
-    setreturns(cc->v, LUA_MULTRET);
-    setlist(cc->t->getInfo(), cc->na, LUA_MULTRET);
-    cc->na--;  /* do not count last expression (unknown number of elements) */
+void FuncState::lastlistfield(ConsControl& cc) {
+  if (cc.tostore == 0) return;
+  if (hasmultret(cc.v.getKind())) {
+    setreturns(cc.v, LUA_MULTRET);
+    setlist(cc.t->getInfo(), cc.na, LUA_MULTRET);
+    cc.na--;  /* do not count last expression (unknown number of elements) */
   }
   else {
-    if (cc->v.getKind() != VVOID)
-      exp2nextreg(cc->v);
-    setlist(cc->t->getInfo(), cc->na, cc->tostore);
+    if (cc.v.getKind() != VVOID)
+      exp2nextreg(cc.v);
+    setlist(cc.t->getInfo(), cc.na, cc.tostore);
   }
-  cc->na += cc->tostore;
+  cc.na += cc.tostore;
 }
 
 

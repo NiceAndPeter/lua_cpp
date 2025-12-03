@@ -674,13 +674,13 @@ public:
   // Phase 86: Variable lookup auxiliary
   void singlevaraux(TString& n, expdesc& var, int base);
   // Phase 87: Goto resolution
-  void solvegotos(BlockCnt *blockCnt);
+  void solvegotos(BlockCnt& blockCnt);
   // Phase 88: Block management (used by parser infrastructure)
-  void enterblock(BlockCnt *blk, lu_byte isloop);
+  void enterblock(BlockCnt& blk, lu_byte isloop);
   void leaveblock();
   // Phase 88: Constructor helpers (used by parser infrastructure)
-  void closelistfield(ConsControl *cc);
-  void lastlistfield(ConsControl *cc);
+  void closelistfield(ConsControl& cc);
+  void lastlistfield(ConsControl& cc);
   int maxtostore();
   // Phase 88: Variable handling (used by parser infrastructure)
   void setvararg(int nparams);
@@ -761,9 +761,9 @@ private:
   void statlist();
   void fieldsel(expdesc& v);
   void yindex(expdesc& v);
-  void recfield(ConsControl *cc);
-  void listfield(ConsControl *cc);
-  void field(ConsControl *cc);
+  void recfield(ConsControl& cc);
+  void listfield(ConsControl& cc);
+  void field(ConsControl& cc);
   void constructor(expdesc& t);
   void parlist();
   void body(expdesc& e, int ismethod, int line);
@@ -802,7 +802,7 @@ private:
   void exprstat();
   void retstat();
   void codeclosure(expdesc& v);
-  void open_func(FuncState *funcState, BlockCnt *bl);
+  void open_func(FuncState *funcState, BlockCnt& bl);
   void close_func();
   void check_conflict(struct LHS_assign *lh, expdesc& v);
 };
