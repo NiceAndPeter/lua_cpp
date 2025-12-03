@@ -66,14 +66,14 @@ typedef struct ConsControl {
 
 
 l_noret FuncState::errorlimit(int limit, const char *what) {
-  lua_State *L = getLexState()->getLuaState();
-  int line = getProto()->getLineDefined();
+  lua_State *L = getLexState().getLuaState();
+  int line = getProto().getLineDefined();
   const char *where = (line == 0)
                       ? "main function"
                       : luaO_pushfstring(L, "function at line %d", line);
   const char *msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
                              what, limit, where);
-  getLexState()->syntaxError(msg);
+  getLexState().syntaxError(msg);
 }
 
 
@@ -87,16 +87,16 @@ void FuncState::checklimit(int v, int l, const char *what) {
 ** information).
 */
 short FuncState::registerlocalvar(TString& varname) {
-  Proto *proto = getProto();
-  int oldsize = proto->getLocVarsSize();
-  luaM_growvector<LocVar>(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
+  Proto &proto = getProto();
+  int oldsize = proto.getLocVarsSize();
+  luaM_growvector<LocVar>(getLexState().getLuaState(), proto.getLocVarsRef(), getNumDebugVars(), proto.getLocVarsSizeRef(),
                   SHRT_MAX, "local variables");
-  auto locVarsSpan = proto->getDebugInfo().getLocVarsSpan();
+  auto locVarsSpan = proto.getDebugInfo().getLocVarsSpan();
   while (oldsize < static_cast<int>(locVarsSpan.size()))
     locVarsSpan[oldsize++].setVarName(nullptr);
   locVarsSpan[getNumDebugVars()].setVarName(&varname);
   locVarsSpan[getNumDebugVars()].setStartPC(getPC());
-  luaC_objbarrier(getLexState()->getLuaState(), proto, &varname);
+  luaC_objbarrier(getLexState().getLuaState(), &proto, &varname);
   return postIncrementNumDebugVars();
 }
 
@@ -107,7 +107,7 @@ short FuncState::registerlocalvar(TString& varname) {
 ** compiler indices.)
 */
 Vardesc *FuncState::getlocalvardesc(int vidx) {
-  return &getLexState()->getDyndata()->actvar()[getFirstLocal() + vidx];
+  return &getLexState().getDyndata()->actvar()[getFirstLocal() + vidx];
 }
 
 
@@ -145,7 +145,7 @@ LocVar *FuncState::localdebuginfo(int vidx) {
   else {
     int idx = vd->vd.protoLocalVarIndex;
     lua_assert(idx < getNumDebugVars());
-    return &getProto()->getLocVars()[idx];
+    return &getProto().getLocVars()[idx];
   }
 }
 
@@ -167,8 +167,8 @@ void FuncState::init_var(expdesc& e, int vidx) {
 ** (debug info.)
 */
 void FuncState::removevars(int tolevel) {
-  int current_n = getLexState()->getDyndata()->actvar().getN();
-  getLexState()->getDyndata()->actvar().setN(current_n - (getNumActiveVars() - tolevel));
+  int current_n = getLexState().getDyndata()->actvar().getN();
+  getLexState().getDyndata()->actvar().setN(current_n - (getNumActiveVars() - tolevel));
   while (getNumActiveVars() > tolevel) {
     LocVar *var = localdebuginfo(--getNumActiveVarsRef());
     if (var)  /* does it have debug information? */
@@ -182,7 +182,7 @@ void FuncState::removevars(int tolevel) {
 ** with the given 'name'.
 */
 int FuncState::searchupvalue(TString& name) {
-  auto upvaluesSpan = getProto()->getUpvaluesSpan();
+  auto upvaluesSpan = getProto().getUpvaluesSpan();
   for (size_t i = 0; i < static_cast<size_t>(getNumUpvalues()); i++) {
     if (eqstr(*upvaluesSpan[i].getName(), name)) return static_cast<int>(i);
   }
@@ -191,12 +191,12 @@ int FuncState::searchupvalue(TString& name) {
 
 
 Upvaldesc *FuncState::allocupvalue() {
-  Proto *proto = getProto();
-  int oldsize = proto->getUpvaluesSize();
+  Proto &proto = getProto();
+  int oldsize = proto.getUpvaluesSize();
   checklimit(getNumUpvalues() + 1, MAXUPVAL, "upvalues");
-  luaM_growvector<Upvaldesc>(getLexState()->getLuaState(), proto->getUpvaluesRef(), getNumUpvalues(), proto->getUpvaluesSizeRef(),
+  luaM_growvector<Upvaldesc>(getLexState().getLuaState(), proto.getUpvaluesRef(), getNumUpvalues(), proto.getUpvaluesSizeRef(),
                   MAXUPVAL, "upvalues");
-  auto upvaluesSpan = proto->getUpvaluesSpan();
+  auto upvaluesSpan = proto.getUpvaluesSpan();
   while (oldsize < static_cast<int>(upvaluesSpan.size()))
     upvaluesSpan[oldsize++].setName(nullptr);
   return &upvaluesSpan[getNumUpvaluesRef()++];
@@ -215,11 +215,11 @@ int FuncState::newupvalue(TString& name, expdesc& v) {
   else {
     up->setInStack(0);
     up->setIndex(cast_byte(v.getInfo()));
-    up->setKind(prevFunc->getProto()->getUpvalues()[v.getInfo()].getKind());
-    lua_assert(eqstr(name, *prevFunc->getProto()->getUpvalues()[v.getInfo()].getName()));
+    up->setKind(prevFunc->getProto().getUpvalues()[v.getInfo()].getKind());
+    lua_assert(eqstr(name, *prevFunc->getProto().getUpvalues()[v.getInfo()].getName()));
   }
   up->setName(&name);
-  luaC_objbarrier(getLexState()->getLuaState(), getProto(), &name);
+  luaC_objbarrier(getLexState().getLuaState(), &getProto(), &name);
   return getNumUpvalues() - 1;
 }
 
@@ -322,16 +322,16 @@ void FuncState::singlevaraux(TString& n, expdesc& var, int base) {
 ** as the variables of the inner block are now out of scope.
 */
 void FuncState::solvegotos(BlockCnt& blockCnt) {
-  LexState *lexState = getLexState();
-  Labellist *gl = &lexState->getDyndata()->gt;
+  LexState& lexState = getLexState();
+  Labellist *gl = &lexState.getDyndata()->gt;
   int outlevel = reglevel(blockCnt.numberOfActiveVariables);  /* level outside the block */
   int igt = blockCnt.firstgoto;  /* first goto in the finishing block */
   while (igt < gl->getN()) {   /* for each pending goto */
     Labeldesc *gt = &(*gl)[igt];
     /* search for a matching label in the current block */
-    Labeldesc *lb = lexState->findlabel(gt->name, blockCnt.firstlabel);
+    Labeldesc *lb = lexState.findlabel(gt->name, blockCnt.firstlabel);
     if (lb != nullptr)  /* found a match? */
-      lexState->closegoto(this, igt, lb, blockCnt.upval);  /* close and remove goto */
+      lexState.closegoto(this, igt, lb, blockCnt.upval);  /* close and remove goto */
     else {  /* adjust 'goto' for outer block */
       /* block has variables to be closed and goto escapes the scope of
          some variable? */
@@ -341,15 +341,15 @@ void FuncState::solvegotos(BlockCnt& blockCnt) {
       igt++;  /* go to next goto */
     }
   }
-  lexState->getDyndata()->label.setN(blockCnt.firstlabel);  /* remove local labels */
+  lexState.getDyndata()->label.setN(blockCnt.firstlabel);  /* remove local labels */
 }
 
 
 void FuncState::enterblock(BlockCnt& blk, lu_byte isloop) {
   blk.isloop = isloop;
   blk.numberOfActiveVariables = getNumActiveVars();
-  blk.firstlabel = getLexState()->getDyndata()->label.getN();
-  blk.firstgoto = getLexState()->getDyndata()->gt.getN();
+  blk.firstlabel = getLexState().getDyndata()->label.getN();
+  blk.firstgoto = getLexState().getDyndata()->gt.getN();
   blk.upval = 0;
   /* inherit 'insidetbc' from enclosing block */
   blk.insidetbc = (getBlock() != nullptr && getBlock()->insidetbc);
@@ -361,7 +361,7 @@ void FuncState::enterblock(BlockCnt& blk, lu_byte isloop) {
 
 void FuncState::leaveblock() {
   BlockCnt *blk = getBlock();
-  LexState *lexstate = getLexState();
+  LexState& lexstate = getLexState();
   lu_byte stklevel = reglevel(blk->numberOfActiveVariables);  /* level outside block */
   if (blk->previous && blk->upval)  /* need a 'close'? */
     codeABC(OP_CLOSE, stklevel, 0, 0);
@@ -369,11 +369,11 @@ void FuncState::leaveblock() {
   removevars(blk->numberOfActiveVariables);  /* remove block locals */
   lua_assert(blk->numberOfActiveVariables == getNumActiveVars());  /* back to level on entry */
   if (blk->isloop == 2)  /* has to fix pending breaks? */
-    lexstate->createlabel(this, lexstate->getBreakName(), 0, 0);
+    lexstate.createlabel(this, lexstate.getBreakName(), 0, 0);
   solvegotos(*blk);
   if (blk->previous == nullptr) {  /* was it the last block? */
-    if (blk->firstgoto < lexstate->getDyndata()->gt.getN())  /* still pending gotos? */
-      lexstate->undefgoto(this, &lexstate->getDyndata()->gt[blk->firstgoto]);  /* error */
+    if (blk->firstgoto < lexstate.getDyndata()->gt.getN())  /* still pending gotos? */
+      lexstate.undefgoto(this, &lexstate.getDyndata()->gt[blk->firstgoto]);  /* error */
   }
   setBlock(blk->previous);  /* current block now is previous one */
 }
@@ -424,7 +424,7 @@ int FuncState::maxtostore() {
 
 
 void FuncState::setvararg(int nparams) {
-  getProto()->setFlag(getProto()->getFlag() | PF_ISVARARG);
+  getProto().setFlag(getProto().getFlag() | PF_ISVARARG);
   codeABC(OP_VARARGPREP, nparams, 0, 0);
 }
 
@@ -443,12 +443,12 @@ void FuncState::storevartop(expdesc& var) {
 ** a back jump.
 */
 void FuncState::fixforjump(int pcpos, int dest, int back) {
-  Instruction *jmp = &getProto()->getCode()[pcpos];
+  Instruction *jmp = &getProto().getCode()[pcpos];
   int offset = dest - (pcpos + 1);
   if (back)
     offset = -offset;
   if (l_unlikely(offset > MAXARG_Bx))
-    getLexState()->syntaxError("control structure too long");
+    getLexState().syntaxError("control structure too long");
   SETARG_Bx(*jmp, static_cast<unsigned int>(offset));
 }
 

@@ -79,9 +79,9 @@ void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup)
       (label->numberOfActiveVariables < gt->numberOfActiveVariables && bup)) {  /* needs close? */
     lu_byte stklevel = funcState->reglevel(label->numberOfActiveVariables);
     /* move jump to CLOSE position */
-    funcState->getProto()->getCode()[gt->pc + 1] = funcState->getProto()->getCode()[gt->pc];
+    funcState->getProto().getCode()[gt->pc + 1] = funcState->getProto().getCode()[gt->pc];
     /* put CLOSE instruction at original position */
-    funcState->getProto()->getCode()[gt->pc] = CREATE_ABCk(OP_CLOSE, stklevel, 0, 0, 0);
+    funcState->getProto().getCode()[gt->pc] = CREATE_ABCk(OP_CLOSE, stklevel, 0, 0, 0);
     gt->pc++;  /* must point to jump instruction */
   }
   funcState->patchlist(gt->pc, label->pc);  /* goto jumps to label */

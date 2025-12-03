@@ -68,7 +68,7 @@ static int tonumeral (const expdesc& e, TValue *v) {
 */
 TValue *FuncState::const2val(const expdesc& e) {
   lua_assert(e.getKind() == VCONST);
-  return &getLexState()->getDyndata()->actvar()[e.getInfo()].k;
+  return &getLexState().getDyndata()->actvar()[e.getInfo()].k;
 }
 
 /*
@@ -80,7 +80,7 @@ TValue *FuncState::const2val(const expdesc& e) {
 Instruction *FuncState::previousinstruction() {
   static const Instruction invalidinstruction = ~(Instruction)0;
   if (getPC() > getLastTarget())
-    return &getProto()->getCode()[getPC() - 1];  /* previous instruction */
+    return &getProto().getCode()[getPC() - 1];  /* previous instruction */
   else
     return const_cast<Instruction*>(&invalidinstruction);
 }
@@ -90,7 +90,7 @@ Instruction *FuncState::previousinstruction() {
 ** a list of jumps.
 */
 int FuncState::getjump(int position) {
-  auto offset = InstructionView(getProto()->getCode()[position]).sj();
+  auto offset = InstructionView(getProto().getCode()[position]).sj();
   if (offset == NO_JUMP)  /* point to itself represents end of list */
     return NO_JUMP;  /* end of list */
   else
@@ -102,11 +102,11 @@ int FuncState::getjump(int position) {
 ** (Jump addresses are relative in Lua)
 */
 void FuncState::fixjump(int position, int dest) {
-  auto *jmp = &getProto()->getCode()[position];
+  auto *jmp = &getProto().getCode()[position];
   auto offset = dest - (position + 1);
   lua_assert(dest != NO_JUMP);
   if (!(-OFFSET_sJ <= offset && offset <= MAXARG_sJ - OFFSET_sJ))
-    getLexState()->syntaxError("control structure too long");
+    getLexState().syntaxError("control structure too long");
   lua_assert(InstructionView(*jmp).opcode() == OP_JMP);
   SETARG_sJ(*jmp, offset);
 }
@@ -126,7 +126,7 @@ int FuncState::condjump(OpCode o, int A, int B, int C, int k) {
 ** unconditional.
 */
 Instruction *FuncState::getjumpcontrol(int position) {
-  auto *pi = &getProto()->getCode()[position];
+  auto *pi = &getProto().getCode()[position];
   if (position >= 1 && InstructionView(*(pi-1)).testTMode())
     return pi-1;
   else
@@ -189,20 +189,20 @@ void FuncState::patchlistaux(int list, int vtarget, int reg, int dtarget) {
 ** in 'lineinfo' signals the existence of this absolute information.)
 ** Otherwise, store the difference from last line in 'lineinfo'.
 */
-void FuncState::savelineinfo(Proto *proto, int line) {
+void FuncState::savelineinfo(Proto& proto, int line) {
   auto linedif = line - getPreviousLine();
   auto pcval = getPC() - 1;  /* last instruction coded */
   if (abs(linedif) >= LIMLINEDIFF || postIncrementInstructionsSinceAbsoluteLineInfo() >= MAXIWTHABS) {
-    luaM_growvector<AbsLineInfo>(getLexState()->getLuaState(), proto->getAbsLineInfoRef(), getNumberOfAbsoluteLineInfo(),
-                    proto->getAbsLineInfoSizeRef(), std::numeric_limits<int>::max(), "lines");
-    proto->getAbsLineInfo()[getNumberOfAbsoluteLineInfo()].setPC(pcval);
-    proto->getAbsLineInfo()[postIncrementNumberOfAbsoluteLineInfo()].setLine(line);
+    luaM_growvector<AbsLineInfo>(getLexState().getLuaState(), proto.getAbsLineInfoRef(), getNumberOfAbsoluteLineInfo(),
+                    proto.getAbsLineInfoSizeRef(), std::numeric_limits<int>::max(), "lines");
+    proto.getAbsLineInfo()[getNumberOfAbsoluteLineInfo()].setPC(pcval);
+    proto.getAbsLineInfo()[postIncrementNumberOfAbsoluteLineInfo()].setLine(line);
     linedif = ABSLINEINFO;  /* signal that there is absolute information */
     setInstructionsSinceAbsoluteLineInfo(1);  /* restart counter */
   }
-  luaM_growvector<ls_byte>(getLexState()->getLuaState(), proto->getLineInfoRef(), pcval, proto->getLineInfoSizeRef(),
+  luaM_growvector<ls_byte>(getLexState().getLuaState(), proto.getLineInfoRef(), pcval, proto.getLineInfoSizeRef(),
                   std::numeric_limits<int>::max(), "opcodes");
-  proto->getLineInfo()[pcval] = static_cast<ls_byte>(linedif);
+  proto.getLineInfo()[pcval] = static_cast<ls_byte>(linedif);
   setPreviousLine(line);  /* last line saved */
 }
 
@@ -213,14 +213,14 @@ void FuncState::savelineinfo(Proto *proto, int line) {
 ** absolute line info, too.
 */
 void FuncState::removelastlineinfo() {
-  auto *proto = getProto();
+  auto& proto = getProto();
   auto pcval = getPC() - 1;  /* last instruction coded */
-  if (proto->getLineInfo()[pcval] != ABSLINEINFO) {  /* relative line info? */
-    setPreviousLine(getPreviousLine() - proto->getLineInfo()[pcval]);  /* correct last line saved */
+  if (proto.getLineInfo()[pcval] != ABSLINEINFO) {  /* relative line info? */
+    setPreviousLine(getPreviousLine() - proto.getLineInfo()[pcval]);  /* correct last line saved */
     decrementInstructionsSinceAbsoluteLineInfo();  /* undo previous increment */
   }
   else {  /* absolute line information */
-    lua_assert(proto->getAbsLineInfo()[getNumberOfAbsoluteLineInfo() - 1].getPC() == pcval);
+    lua_assert(proto.getAbsLineInfo()[getNumberOfAbsoluteLineInfo() - 1].getPC() == pcval);
     decrementNumberOfAbsoluteLineInfo();  /* remove it */
     setInstructionsSinceAbsoluteLineInfo(MAXIWTHABS + 1);  /* force next line info to be absolute */
   }
@@ -315,17 +315,17 @@ void FuncState::freeExpressions(expdesc& e1, expdesc& e2) {
 /*
 ** Add constant 'v' to prototype's list of constants (field 'k').
 */
-int FuncState::addk(Proto *proto, TValue *v) {
-  lua_State *L = getLexState()->getLuaState();
-  auto oldsize = proto->getConstantsSize();
+int FuncState::addk(Proto& proto, TValue *v) {
+  lua_State *L = getLexState().getLuaState();
+  auto oldsize = proto.getConstantsSize();
   auto k = getNumberOfConstants();
-  luaM_growvector<TValue>(L, proto->getConstantsRef(), k, proto->getConstantsSizeRef(), MAXARG_Ax, "constants");
-  auto constantsSpan = proto->getConstantsSpan();
+  luaM_growvector<TValue>(L, proto.getConstantsRef(), k, proto.getConstantsSizeRef(), MAXARG_Ax, "constants");
+  auto constantsSpan = proto.getConstantsSpan();
   while (oldsize < static_cast<int>(constantsSpan.size()))
     setnilvalue(&constantsSpan[oldsize++]);
   constantsSpan[k] = *v;
   incrementNumberOfConstants();
-  luaC_barrier(L, proto, v);
+  luaC_barrier(L, &proto, v);
   return k;
 }
 
@@ -337,12 +337,12 @@ int FuncState::addk(Proto *proto, TValue *v) {
 */
 int FuncState::k2proto(TValue *key, TValue *v) {
   TValue val;
-  Proto *proto = getProto();
+  Proto& proto = getProto();
   LuaT tag = getKCache()->get(key, &val);  /* query scanner table */
   if (!tagisempty(tag)) {  /* is there an index there? */
     auto k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
-    lua_assert(ttisfloat(key) || VirtualMachine::rawequalObj(&proto->getConstants()[k], v));
+    lua_assert(ttisfloat(key) || VirtualMachine::rawequalObj(&proto.getConstants()[k], v));
     return k;  /* reuse index */
   }
   else {  /* constant not found; create a new entry */
@@ -350,7 +350,7 @@ int FuncState::k2proto(TValue *key, TValue *v) {
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
     val.setInt(k);
-    getKCache()->set(getLexState()->getLuaState(), key, &val);
+    getKCache()->set(getLexState().getLuaState(), key, &val);
     return k;
   }
 }
@@ -360,7 +360,7 @@ int FuncState::k2proto(TValue *key, TValue *v) {
 */
 int FuncState::stringK(TString& s) {
   TValue o;
-  setsvalue(getLexState()->getLuaState(), &o, &s);
+  setsvalue(getLexState().getLuaState(), &o, &s);
   return k2proto(&o, &o);  /* use string itself as key */
 }
 
@@ -400,7 +400,7 @@ int FuncState::numberK(lua_Number r) {
     kv.setFloat(k);  /* key as a TValue */
     if (!VirtualMachine::flttointeger(k, &ik, F2Imod::F2Ieq)) {  /* not an integer value? */
       auto n = k2proto(&kv, &o);  /* use key */
-      if (VirtualMachine::rawequalObj(&getProto()->getConstants()[n], &o))  /* correct value? */
+      if (VirtualMachine::rawequalObj(&getProto().getConstants()[n], &o))  /* correct value? */
         return n;
     }
     /* else, either key is still an integer or there was a collision;
@@ -434,7 +434,7 @@ int FuncState::nilK() {
   TValue k, v;
   setnilvalue(&v);
   /* cannot use nil as key; instead use table itself */
-  sethvalue(getLexState()->getLuaState(), &k, getKCache());
+  sethvalue(getLexState().getLuaState(), &k, getKCache());
   return k2proto(&k, &v);
 }
 
@@ -728,7 +728,7 @@ void FuncState::codenot(expdesc& e) {
 */
 int FuncState::isKstr(expdesc& e) {
   return (e.getKind() == VK && !hasjumps(e) && e.getInfo() <= MAXARG_B &&
-          ttisshrstring(&getProto()->getConstants()[e.getInfo()]));
+          ttisshrstring(&getProto().getConstants()[e.getInfo()]));
 }
 
 /*
@@ -801,7 +801,7 @@ int FuncState::constfolding(int op, expdesc& e1, const expdesc& e2) {
   TValue v1, v2, res;
   if (!tonumeral(e1, &v1) || !tonumeral(e2, &v2) || !validop(op, &v1, &v2))
     return 0;  /* non-numeric operands or not safe to fold */
-  if (!luaO_rawarith(getLexState()->getLuaState(), op, &v1, &v2, &res))
+  if (!luaO_rawarith(getLexState().getLuaState(), op, &v1, &v2, &res))
     return 0;  /* operation failed */
   if (ttisinteger(&res)) {
     e1.setKind(VKINT);
@@ -922,7 +922,7 @@ int FuncState::finishbinexpneg(expdesc& e1, expdesc& e2, OpCode op, int line, TM
       int v2 = cast_int(i2);
       finishbinexpval(e1, e2, op, int2sC(-v2), 0, line, OP_MMBINI, event);
       /* correct metamethod argument */
-      SETARG_B(getProto()->getCode()[getPC() - 1], static_cast<unsigned int>(int2sC(v2)));
+      SETARG_B(getProto().getCode()[getPC() - 1], static_cast<unsigned int>(int2sC(v2)));
       return 1;  /* successfully coded */
     }
   }
@@ -1072,7 +1072,7 @@ void FuncState::codeconcat(expdesc& e1, expdesc& e2, int line) {
 ** return the final target of a jump (skipping jumps to jumps)
 */
 int FuncState::finaltarget(int i) {
-  auto codeSpan = getProto()->getCodeSpan();
+  auto codeSpan = getProto().getCodeSpan();
   for (int count = 0; count < 100; count++) {  /* avoid infinite loops */
     Instruction instr = codeSpan[i];
     if (InstructionView(instr).opcode() != OP_JMP)
@@ -1091,12 +1091,12 @@ int FuncState::finaltarget(int i) {
 */
 
 int FuncState::code(Instruction i) {
-  Proto *proto = getProto();
+  Proto& proto = getProto();
   /* put new instruction in code array */
-  luaM_growvector<Instruction>(getLexState()->getLuaState(), proto->getCodeRef(), getPC(), proto->getCodeSizeRef(),
+  luaM_growvector<Instruction>(getLexState().getLuaState(), proto.getCodeRef(), getPC(), proto.getCodeSizeRef(),
                   std::numeric_limits<int>::max(), "opcodes");
-  proto->getCode()[postIncrementPC()] = i;
-  savelineinfo(proto, getLexState()->getLastLine());
+  proto.getCode()[postIncrementPC()] = i;
+  savelineinfo(proto, getLexState().getLastLine());
   return getPC() - 1;  /* index of new instruction */
 }
 
@@ -1144,7 +1144,7 @@ int FuncState::exp2const(const expdesc& e, TValue *v) {
       setnilvalue(v);
       return 1;
     case VKSTR: {
-      setsvalue(getLexState()->getLuaState(), v, e.getStringValue());
+      setsvalue(getLexState().getLuaState(), v, e.getStringValue());
       return 1;
     }
     case VCONST: {
@@ -1185,9 +1185,9 @@ void FuncState::reserveregs(int n) {
 
 void FuncState::checkstack(int n) {
   int newstack = getFirstFreeRegister() + n;
-  if (newstack > getProto()->getMaxStackSize()) {
+  if (newstack > getProto().getMaxStackSize()) {
     luaY_checklimit(this, newstack, MAX_FSTACK, "registers");
-    getProto()->setMaxStackSize(cast_byte(newstack));
+    getProto().setMaxStackSize(cast_byte(newstack));
   }
 }
 
@@ -1624,7 +1624,7 @@ void FuncState::posfix(BinOpr op, expdesc& e1, expdesc& e2, int line) {
 }
 
 void FuncState::settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize) {
-  Instruction *inst = &getProto()->getCode()[pcpos];
+  Instruction *inst = &getProto().getCode()[pcpos];
   int extra = asize / (MAXARG_vC + 1);  /* higher bits of array size */
   int rc = asize % (MAXARG_vC + 1);  /* lower bits of array size */
   int k = (extra > 0);  /* true iff needs extra argument */
@@ -1649,8 +1649,8 @@ void FuncState::setlist(int base, int nelems, int tostore) {
 }
 
 void FuncState::finish() {
-  Proto *p = getProto();
-  auto codeSpan = p->getCodeSpan();
+  Proto& p = getProto();
+  auto codeSpan = p.getCodeSpan();
   for (int i = 0; i < getPC(); i++) {
     Instruction *instr = &codeSpan[i];
     /* avoid "not used" warnings when assert is off (for 'onelua.c') */
@@ -1658,7 +1658,7 @@ void FuncState::finish() {
     lua_assert(i == 0 || luaP_isOT(*(instr - 1)) == luaP_isIT(*instr));
     switch (InstructionView(*instr).opcode()) {
       case OP_RETURN0: case OP_RETURN1: {
-        if (!(getNeedClose() || (p->getFlag() & PF_ISVARARG)))
+        if (!(getNeedClose() || (p.getFlag() & PF_ISVARARG)))
           break;  /* no extra work */
         /* else use OP_RETURN to do the extra work */
         SET_OPCODE(*instr, OP_RETURN);
@@ -1666,8 +1666,8 @@ void FuncState::finish() {
       case OP_RETURN: case OP_TAILCALL: {
         if (getNeedClose())
           SETARG_k(*instr, 1);  /* signal that it needs to close */
-        if (p->getFlag() & PF_ISVARARG)
-          SETARG_C(*instr, static_cast<unsigned int>(p->getNumParams()) + 1);  /* signal that it is vararg */
+        if (p.getFlag() & PF_ISVARARG)
+          SETARG_C(*instr, static_cast<unsigned int>(p.getNumParams()) + 1);  /* signal that it is vararg */
         break;
       }
       case OP_JMP: {

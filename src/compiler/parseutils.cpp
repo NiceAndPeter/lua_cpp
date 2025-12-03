@@ -181,25 +181,25 @@ struct LHS_assign {
 LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
                        Dyndata *dyd, const char *name, int firstchar) {
   LexState lexstate;
-  FuncState funcstate;
   LClosure *cl = LClosure::create(L, 1);  /* create main closure */
   setclLvalue2s(L, L->getTop().p, cl);  /* anchor it (to avoid being collected) */
   L->inctop();  /* Phase 25e */
   lexstate.setTable(Table::create(L));  /* create table for scanner */
   sethvalue2s(L, L->getTop().p, lexstate.getTable());  /* anchor it */
   L->inctop();  /* Phase 25e */
-  funcstate.setProto(luaF_newproto(L));
-  cl->setProto(funcstate.getProto());
+  Proto* proto = luaF_newproto(L);
+  cl->setProto(proto);
   luaC_objbarrier(L, cl, cl->getProto());
-  funcstate.getProto()->setSource(TString::create(L, name));  /* create and anchor TString */
-  luaC_objbarrier(L, funcstate.getProto(), funcstate.getProto()->getSource());
+  proto->setSource(TString::create(L, name));  /* create and anchor TString */
+  luaC_objbarrier(L, proto, proto->getSource());
+  FuncState funcstate(*proto, lexstate);
   lexstate.setBuffer(buff);
   lexstate.setDyndata(dyd);
   dyd->actvar().setN(0);
   dyd->gt.setN(0);
   dyd->label.setN(0);
-  lexstate.setInput(L, z, funcstate.getProto()->getSource(), firstchar);
-  Parser parser(&lexstate, nullptr);
+  lexstate.setInput(L, z, funcstate.getProto().getSource(), firstchar);
+  Parser parser(lexstate, nullptr);
   parser.mainfunc(&funcstate);
   lua_assert(!funcstate.getPrev() && funcstate.getNumUpvalues() == 1);
   /* all scopes should be correctly finished */

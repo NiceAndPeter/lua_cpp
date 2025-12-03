@@ -448,11 +448,11 @@ public:
 /* state needed to generate code for a given function */
 class FuncState {
 private:
-  /* Core context (unchanged) */
-  Proto *f;  /* current function header */
-  class FuncState *prev;  /* enclosing function */
-  class LexState *ls;  /* lexical state */
-  struct BlockCnt *bl;  /* chain of current blocks */
+  /* Core context (Phase 130 Part 6: references for non-null, non-reassigned members) */
+  Proto& f;  /* current function header */
+  class FuncState *prev;  /* enclosing function (can be null) */
+  class LexState& ls;  /* lexical state */
+  struct BlockCnt *bl;  /* chain of current blocks (can be null, reassigned) */
   int numberOfNestedPrototypes;  /* number of elements in 'p' (nested functions) */
 
   /* Subsystems (SRP refactoring) */
@@ -463,16 +463,20 @@ private:
   UpvalueTracker upvalueTrack;     /* Upvalue tracking */
 
 public:
-  /* Core context accessors (unchanged) */
-  inline Proto* getProto() const noexcept { return f; }
+  /* Constructor (Phase 130 Part 6: required for reference members) */
+  explicit FuncState(Proto& proto, class LexState& lexState) noexcept
+    : f(proto), prev(nullptr), ls(lexState), bl(nullptr), numberOfNestedPrototypes(0),
+      codeBuffer(), constantPool(), variableScope(), registerAlloc(), upvalueTrack() {}
+
+  /* Core context accessors (Phase 130 Part 6: return references where appropriate) */
+  inline Proto& getProto() const noexcept { return f; }
   inline FuncState* getPrev() const noexcept { return prev; }
-  inline class LexState* getLexState() const noexcept { return ls; }
+  inline class LexState& getLexState() const noexcept { return ls; }
   inline struct BlockCnt* getBlock() const noexcept { return bl; }
   inline int getNumberOfNestedPrototypes() const noexcept { return numberOfNestedPrototypes; }
 
-  inline void setProto(Proto* proto) noexcept { f = proto; }
+  /* Setters (Proto& and LexState& are set via constructor, not settable) */
   inline void setPrev(FuncState* prev_) noexcept { prev = prev_; }
-  inline void setLexState(class LexState* ls_) noexcept { ls = ls_; }
   inline void setBlock(struct BlockCnt* bl_) noexcept { bl = bl_; }
   inline void setNumberOfNestedPrototypes(int numberOfNestedPrototypes_) noexcept { numberOfNestedPrototypes = numberOfNestedPrototypes_; }
   inline void incrementNumberOfNestedPrototypes() noexcept { numberOfNestedPrototypes++; }
@@ -604,7 +608,7 @@ public:
   // More Phase 77 methods (public for now as used by unconverted functions)
   int condjump(OpCode o, int A, int B, int C, int k);
   int removevalues(int list);
-  void savelineinfo(Proto *proto, int line);
+  void savelineinfo(Proto& proto, int line);
   void removelastlineinfo();
   void removelastinstruction();
   Instruction *previousinstruction();
@@ -615,7 +619,7 @@ public:
   TValue *const2val(const expdesc& e);
   int codeextraarg(int A);
   // Phase 78: Constant management (public for now as used by unconverted functions)
-  int addk(Proto *proto, TValue *v);
+  int addk(Proto& proto, TValue *v);
   int k2proto(TValue *key, TValue *v);
   int stringK(TString& s);
   int intK(lua_Integer n);
@@ -702,20 +706,20 @@ private:
 */
 class Parser {
 private:
-  class LexState *ls;  /* lexical state (for tokens and shared data) */
-  class FuncState *fs;  /* current function state */
+  class LexState& ls;  /* lexical state (for tokens and shared data) */
+  class FuncState *fs;  /* current function state (reassigned for nested functions) */
 
 public:
-  // Constructor
-  explicit Parser(class LexState* lexState, class FuncState* funcState)
+  // Constructor (Phase 130 Part 6: LexState& required)
+  explicit Parser(class LexState& lexState, class FuncState* funcState)
     : ls(lexState), fs(funcState) {}
 
   // Accessors
-  inline class LexState* getLexState() const noexcept { return ls; }
+  inline class LexState& getLexState() const noexcept { return ls; }
   inline class FuncState* getFuncState() const noexcept { return fs; }
-  inline class Dyndata* getDyndata() const noexcept { return ls->getDyndata(); }
+  inline class Dyndata* getDyndata() const noexcept { return ls.getDyndata(); }
 
-  inline void setLexState(class LexState* lexState) noexcept { ls = lexState; }
+  /* Setters (LexState& is set via constructor, FuncState* can be reassigned) */
   inline void setFuncState(class FuncState* funcState) noexcept { fs = funcState; }
 
   // Parser utility methods (extracted from LexState public API)
@@ -734,7 +738,7 @@ public:
   /* Phase 123: Convert new_localvarliteral macro to template function */
   template<size_t N>
   inline int new_localvarliteral(const char (&v)[N]) {
-    return new_localvar(*ls->newString(v, N - 1));
+    return new_localvar(*ls.newString(v, N - 1));
   }
 
   void check_readonly(expdesc& e);
@@ -830,7 +834,7 @@ inline constexpr bool foldbinop(BinOpr op) noexcept {
 
 /* get (pointer to) instruction of given 'expdesc' */
 inline Instruction& getinstruction(FuncState* fs, expdesc& e) noexcept {
-	return fs->getProto()->getCode()[e.getInfo()];
+	return fs->getProto().getCode()[e.getInfo()];
 }
 
 
