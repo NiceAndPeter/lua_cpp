@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.28s avg ✅ (46% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 130 Part 3 complete - GC module modernization done!
-**Completed**: Phases 1-127, 129-1, 130-1/2/3 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.17s avg ✅ (48% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 130 Part 4 complete - Compiler TString* → TString& conversions done!
+**Completed**: Phases 1-127, 129-1, 130-1/2/3/4 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -64,8 +64,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **Part 1**: expdesc* → expdesc& (~80 params, ~200+ call sites in parser/funcstate/lcode)
 - **Part 2**: Table*/Proto* → References (~45 helpers in ltable/lundump/ldump, ~100+ call sites)
 - **Part 3**: global_State* → global_State& (~42 GC functions in 4 modules: marking, sweeping, weak, finalizer)
+- **Part 4**: TString* → TString& (~15 compiler functions: registerlocalvar, searchupvalue, newupvalue, searchvar, singlevaraux, stringK, new_localvar, buildglobal, buildvar, fornum, forlist, labelstat, checkrepeated, newgotoentry; updated 4x eqstr helpers)
 - **Benefits**: Type safety (no null), modern C++23 idiom, clearer semantics
-- **Result**: ~2.28s avg (46% faster than baseline!)
+- **Result**: ~2.17s avg (48% faster than baseline!)
 - See `docs/PHASE_130_POINTER_TO_REFERENCE.md`
 
 ---
@@ -73,7 +74,7 @@ Converting Lua 5.5 from C to modern C++23:
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.28s avg ✅ **46% faster than baseline!**
+**Current**: ~2.17s avg ✅ **48% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -251,5 +252,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-02 | **Phases**: 1-127, 129-1, 130-1/2/3 | **Performance**: ~2.28s ✅ (46% faster!)
-**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, GC pointer-to-reference complete!
+**Updated**: 2025-12-03 | **Phases**: 1-127, 129-1, 130-1/2/3/4 | **Performance**: ~2.17s ✅ (48% faster!)
+**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, compiler TString* → TString& complete!

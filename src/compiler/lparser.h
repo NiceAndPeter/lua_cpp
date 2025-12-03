@@ -617,7 +617,7 @@ public:
   // Phase 78: Constant management (public for now as used by unconverted functions)
   int addk(Proto *proto, TValue *v);
   int k2proto(TValue *key, TValue *v);
-  int stringK(TString *s);
+  int stringK(TString& s);
   int intK(lua_Integer n);
   int numberK(lua_Number r);
   int boolF();
@@ -661,18 +661,18 @@ public:
   lu_byte nvarstack();
   LocVar *localdebuginfo(int vidx);
   void init_var(expdesc& e, int vidx);
-  short registerlocalvar(TString *varname);
+  short registerlocalvar(TString& varname);
   // Phase 84: Variable scope
   void removevars(int tolevel);
   // Phase 85: Upvalue and variable search
-  int searchupvalue(TString *name);
+  int searchupvalue(TString& name);
   Upvaldesc *allocupvalue();
-  int newupvalue(TString *name, expdesc& v);
-  int searchvar(TString *n, expdesc& var);
+  int newupvalue(TString& name, expdesc& v);
+  int searchvar(TString& n, expdesc& var);
   void markupval(int level);
   void marktobeclosed();
   // Phase 86: Variable lookup auxiliary
-  void singlevaraux(TString *n, expdesc& var, int base);
+  void singlevaraux(TString& n, expdesc& var, int base);
   // Phase 87: Goto resolution
   void solvegotos(BlockCnt *blockCnt);
   // Phase 88: Block management (used by parser infrastructure)
@@ -728,26 +728,26 @@ public:
 
   // Variable utilities
   void codename(expdesc& e);
-  int new_varkind(TString *name, lu_byte kind);
-  int new_localvar(TString *name);
+  int new_varkind(TString* name, lu_byte kind);
+  int new_localvar(TString& name);
 
   /* Phase 123: Convert new_localvarliteral macro to template function */
   template<size_t N>
   inline int new_localvarliteral(const char (&v)[N]) {
-    return new_localvar(ls->newString(v, N - 1));
+    return new_localvar(*ls->newString(v, N - 1));
   }
 
   void check_readonly(expdesc& e);
   void adjustlocalvars(int nvars);
 
   // Variable building and assignment
-  void buildglobal(TString *varname, expdesc& var);
-  void buildvar(TString *varname, expdesc& var);
+  void buildglobal(TString& varname, expdesc& var);
+  void buildvar(TString& varname, expdesc& var);
   void singlevar(expdesc& var);
   void adjust_assign(int nvars, int nexps, expdesc& e);
 
   // Label and goto management
-  int newgotoentry(TString *name, int line);
+  int newgotoentry(TString& name, int line);
 
   // Parser infrastructure
   Proto *addprototype();
@@ -778,14 +778,14 @@ private:
   int cond();
   void gotostat(int line);
   void breakstat(int line);
-  void checkrepeated(TString *name);
-  void labelstat(TString *name, int line);
+  void checkrepeated(TString& name);
+  void labelstat(TString& name, int line);
   void whilestat(int line);
   void repeatstat(int line);
   void exp1();
   void forbody(int base, int line, int nvars, int isgen);
-  void fornum(TString *varname, int line);
-  void forlist(TString *indexname);
+  void fornum(TString& varname, int line);
+  void forlist(TString& indexname);
   void forstat(int line);
   void test_then_block(int *escapelist);
   void ifstat(int line);

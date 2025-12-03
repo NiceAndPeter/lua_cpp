@@ -29,8 +29,8 @@
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
-inline bool eqstr(const TString* a, const TString* b) noexcept {
-	return (a) == (b);
+inline bool eqstr(const TString& a, const TString& b) noexcept {
+	return (&a) == (&b);
 }
 
 
@@ -72,7 +72,7 @@ void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup)
   int i;
   Labellist *gl = &getDyndata()->gt;  /* list of gotos */
   Labeldesc *gt = &(*gl)[g];  /* goto to be resolved */
-  lua_assert(eqstr(gt->name, label->name));
+  lua_assert(eqstr(*gt->name, *label->name));
   if (l_unlikely(gt->numberOfActiveVariables < label->numberOfActiveVariables))  /* enter some scope? */
     jumpscopeerror(funcState, gt);
   if (gt->close ||
@@ -96,11 +96,11 @@ void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup)
 ** index 'ilb' (so that it can search for all labels in current block
 ** or all labels in current function).
 */
-Labeldesc *LexState::findlabel(TString *name, int ilb) {
+Labeldesc *LexState::findlabel(TString* name, int ilb) {
   Dyndata *dynData = getDyndata();
   for (; ilb < dynData->label.getN(); ilb++) {
     Labeldesc *lb = &dynData->label[ilb];
-    if (eqstr(lb->name, name))  /* correct label? */
+    if (eqstr(*lb->name, *name))  /* correct label? */
       return lb;
   }
   return nullptr;  /* label not found */
@@ -110,7 +110,7 @@ Labeldesc *LexState::findlabel(TString *name, int ilb) {
 /*
 ** Adds a new label/goto in the corresponding list.
 */
-int LexState::newlabelentry(FuncState *funcState, Labellist *l, TString *name, int line, int pc) {
+int LexState::newlabelentry(FuncState *funcState, Labellist *l, TString* name, int line, int pc) {
   int n = l->getN();
   Labeldesc* desc = l->allocateNew();  /* LuaVector automatically grows */
   desc->name = name;
@@ -145,7 +145,7 @@ void LexState::createlabel(FuncState *funcState, TString *name, int line, int la
 */
 l_noret LexState::undefgoto([[maybe_unused]] FuncState *funcState, Labeldesc *gt) {
   /* breaks are checked when created, cannot be undefined */
-  lua_assert(!eqstr(gt->name, getBreakName()));
+  lua_assert(!eqstr(*gt->name, *getBreakName()));
   semerror("no visible label '%s' for <goto> at line %d",
            getstr(gt->name), gt->line);
 }

@@ -358,9 +358,9 @@ int FuncState::k2proto(TValue *key, TValue *v) {
 /*
 ** Add a string to list of constants and return its index.
 */
-int FuncState::stringK(TString *s) {
+int FuncState::stringK(TString& s) {
   TValue o;
-  setsvalue(getLexState()->getLuaState(), &o, s);
+  setsvalue(getLexState()->getLuaState(), &o, &s);
   return k2proto(&o, &o);  /* use string itself as key */
 }
 
@@ -494,7 +494,7 @@ static void const2exp (TValue *v, expdesc& e) {
 */
 int FuncState::str2K(expdesc& e) {
   lua_assert(e.getKind() == VKSTR);
-  e.setInfo(stringK(e.getStringValue()));
+  e.setInfo(stringK(*e.getStringValue()));
   e.setKind(VK);
   return e.getInfo();
 }
@@ -625,7 +625,7 @@ int FuncState::exp2K(expdesc& e) {
       case VNIL: info = nilK(); break;
       case VKINT: info = intK(e.getIntValue()); break;
       case VKFLT: info = numberK(e.getFloatValue()); break;
-      case VKSTR: info = stringK(e.getStringValue()); break;
+      case VKSTR: info = stringK(*e.getStringValue()); break;
       case VK: info = e.getInfo(); break;
       default: return 0;  /* not a constant */
     }

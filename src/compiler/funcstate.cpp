@@ -31,8 +31,8 @@
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
-inline bool eqstr(const TString* a, const TString* b) noexcept {
-	return (a) == (b);
+inline bool eqstr(const TString& a, const TString& b) noexcept {
+	return (&a) == (&b);
 }
 
 
@@ -86,7 +86,7 @@ void FuncState::checklimit(int v, int l, const char *what) {
 ** Register a new local variable in the active 'Proto' (for debug
 ** information).
 */
-short FuncState::registerlocalvar(TString *varname) {
+short FuncState::registerlocalvar(TString& varname) {
   Proto *proto = getProto();
   int oldsize = proto->getLocVarsSize();
   luaM_growvector<LocVar>(getLexState()->getLuaState(), proto->getLocVarsRef(), getNumDebugVars(), proto->getLocVarsSizeRef(),
@@ -94,9 +94,9 @@ short FuncState::registerlocalvar(TString *varname) {
   auto locVarsSpan = proto->getDebugInfo().getLocVarsSpan();
   while (oldsize < static_cast<int>(locVarsSpan.size()))
     locVarsSpan[oldsize++].setVarName(nullptr);
-  locVarsSpan[getNumDebugVars()].setVarName(varname);
+  locVarsSpan[getNumDebugVars()].setVarName(&varname);
   locVarsSpan[getNumDebugVars()].setStartPC(getPC());
-  luaC_objbarrier(getLexState()->getLuaState(), proto, varname);
+  luaC_objbarrier(getLexState()->getLuaState(), proto, &varname);
   return postIncrementNumDebugVars();
 }
 
@@ -181,10 +181,10 @@ void FuncState::removevars(int tolevel) {
 ** Search the upvalues of the function for one
 ** with the given 'name'.
 */
-int FuncState::searchupvalue(TString *name) {
+int FuncState::searchupvalue(TString& name) {
   auto upvaluesSpan = getProto()->getUpvaluesSpan();
   for (size_t i = 0; i < static_cast<size_t>(getNumUpvalues()); i++) {
-    if (eqstr(upvaluesSpan[i].getName(), name)) return static_cast<int>(i);
+    if (eqstr(*upvaluesSpan[i].getName(), name)) return static_cast<int>(i);
   }
   return -1;  /* not found */
 }
@@ -203,23 +203,23 @@ Upvaldesc *FuncState::allocupvalue() {
 }
 
 
-int FuncState::newupvalue(TString *name, expdesc& v) {
+int FuncState::newupvalue(TString& name, expdesc& v) {
   Upvaldesc *up = allocupvalue();
   FuncState *prevFunc = getPrev();
   if (v.getKind() == VLOCAL) {
     up->setInStack(1);
     up->setIndex(v.getLocalRegister());
     up->setKind(prevFunc->getlocalvardesc(v.getLocalVarIndex())->vd.kind);
-    lua_assert(eqstr(name, prevFunc->getlocalvardesc(v.getLocalVarIndex())->vd.name));
+    lua_assert(eqstr(name, *prevFunc->getlocalvardesc(v.getLocalVarIndex())->vd.name));
   }
   else {
     up->setInStack(0);
     up->setIndex(cast_byte(v.getInfo()));
     up->setKind(prevFunc->getProto()->getUpvalues()[v.getInfo()].getKind());
-    lua_assert(eqstr(name, prevFunc->getProto()->getUpvalues()[v.getInfo()].getName()));
+    lua_assert(eqstr(name, *prevFunc->getProto()->getUpvalues()[v.getInfo()].getName()));
   }
-  up->setName(name);
-  luaC_objbarrier(getLexState()->getLuaState(), getProto(), name);
+  up->setName(&name);
+  luaC_objbarrier(getLexState()->getLuaState(), getProto(), &name);
   return getNumUpvalues() - 1;
 }
 
@@ -234,7 +234,7 @@ int FuncState::newupvalue(TString *name, expdesc& v) {
 ** but no collective declaration); and var->u.info>=0 points to the
 ** inner-most (the first one found) collective declaration, if there is one.
 */
-int FuncState::searchvar(TString *n, expdesc& var) {
+int FuncState::searchvar(TString& n, expdesc& var) {
   int nactive = static_cast<int>(getNumActiveVars());
   for (int i = nactive - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(i);
@@ -244,7 +244,7 @@ int FuncState::searchvar(TString *n, expdesc& var) {
           var.setInfo(getFirstLocal() + i);  /* this is the first one */
       }
       else {  /* global name */
-        if (eqstr(n, vd->vd.name)) {  /* found? */
+        if (eqstr(n, *vd->vd.name)) {  /* found? */
           var.init(VGLOBAL, getFirstLocal() + i);
           return VGLOBAL;
         }
@@ -252,7 +252,7 @@ int FuncState::searchvar(TString *n, expdesc& var) {
           var.setInfo(-2);  /* invalidate preambular declaration */
       }
     }
-    else if (eqstr(n, vd->vd.name)) {  /* found? */
+    else if (eqstr(n, *vd->vd.name)) {  /* found? */
       if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
         var.init(VCONST, getFirstLocal() + i);
       else  /* local variable */
@@ -293,7 +293,7 @@ void FuncState::marktobeclosed() {
 ** this upvalue into all intermediate functions. If it is a global, set
 ** 'var' as 'void' as a flag.
 */
-void FuncState::singlevaraux(TString *n, expdesc& var, int base) {
+void FuncState::singlevaraux(TString& n, expdesc& var, int base) {
   int v = searchvar(n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)

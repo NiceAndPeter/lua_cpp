@@ -41,8 +41,8 @@ inline bool hasmultret(expkind k) noexcept {
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
-inline bool eqstr(const TString* a, const TString* b) noexcept {
-	return (a) == (b);
+inline bool eqstr(const TString& a, const TString& b) noexcept {
+	return (&a) == (&b);
 }
 
 
@@ -238,7 +238,7 @@ void Parser::codename(expdesc& e) {
 ** Register a new local variable in the active 'Proto' (for debug
 ** information).
 */
-int Parser::new_varkind(TString *name, lu_byte kind) {
+int Parser::new_varkind(TString* name, lu_byte kind) {
   Dyndata *dynData = ls->getDyndata();
   Vardesc *var;
   var = dynData->actvar().allocateNew();  /* LuaVector automatically grows */
@@ -251,8 +251,8 @@ int Parser::new_varkind(TString *name, lu_byte kind) {
 /*
 ** Create a new local variable with the given 'name' and regular kind.
 */
-int Parser::new_localvar(TString *name) {
-  return new_varkind(name, VDKREG);
+int Parser::new_localvar(TString& name) {
+  return new_varkind(&name, VDKREG);
 }
 
 
@@ -305,7 +305,7 @@ void Parser::adjustlocalvars(int nvars) {
     auto vidx = fs->getNumActiveVarsRef()++;
     Vardesc *var = fs->getlocalvardesc(vidx);
     var->vd.registerIndex = cast_byte(regLevel++);
-    var->vd.protoLocalVarIndex = fs->registerlocalvar(var->vd.name);
+    var->vd.protoLocalVarIndex = fs->registerlocalvar(*var->vd.name);
     fs->checklimit(regLevel, MAXVARS, "local variables");
   }
 }
@@ -315,15 +315,15 @@ void Parser::adjustlocalvars(int nvars) {
 ** Close the scope for all variables up to level 'tolevel'.
 ** (debug info.)
 */
-void Parser::buildglobal(TString *varname, expdesc& var) {
+void Parser::buildglobal(TString& varname, expdesc& var) {
   // FuncState passed as parameter
   var.init(VGLOBAL, -1);  /* global by default */
-  fs->singlevaraux(ls->getEnvName(), var, 1);  /* get environment variable */
+  fs->singlevaraux(*ls->getEnvName(), var, 1);  /* get environment variable */
   if (var.getKind() == VGLOBAL)
-    ls->semerror("_ENV is global when accessing variable '%s'", getstr(varname));
+    ls->semerror("_ENV is global when accessing variable '%s'", getstr(&varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
   expdesc key;
-  key.initString(varname);  /* key is variable name */
+  key.initString(&varname);  /* key is variable name */
   fs->indexed(var, key);  /* 'var' represents _ENV[varname] */
 }
 
@@ -331,7 +331,7 @@ void Parser::buildglobal(TString *varname, expdesc& var) {
 /*
 ** Find a variable with the given name, handling global variables too.
 */
-void Parser::buildvar(TString *varname, expdesc& var) {
+void Parser::buildvar(TString& varname, expdesc& var) {
   // FuncState passed as parameter
   var.init(VGLOBAL, -1);  /* global by default */
   fs->singlevaraux(varname, var, 1);
@@ -339,7 +339,7 @@ void Parser::buildvar(TString *varname, expdesc& var) {
     auto info = var.getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
-      ls->semerror("variable '%s' not declared", getstr(varname));
+      ls->semerror("variable '%s' not declared", getstr(&varname));
     buildglobal(varname, var);
     if (info != -1 && ls->getDyndata()->actvar()[info].vd.kind == GDKCONST)
       var.setIndexedReadOnly(1);  /* mark variable as read-only */
@@ -350,7 +350,7 @@ void Parser::buildvar(TString *varname, expdesc& var) {
 
 
 void Parser::singlevar(expdesc& var) {
-  buildvar(str_checkname(), var);
+  buildvar(*str_checkname(), var);
 }
 
 
@@ -380,11 +380,11 @@ void Parser::adjust_assign(int nvars, int nexps, expdesc& e) {
 }
 
 
-int Parser::newgotoentry(TString *name, int line) {
+int Parser::newgotoentry(TString& name, int line) {
   // FuncState passed as parameter
   auto pc = fs->jump();  /* create jump */
   fs->codeABC(OP_CLOSE, 0, 1, 0);  /* spaceholder, marked as dead */
-  return ls->newlabelentry(fs, &ls->getDyndata()->gt, name, line, pc);
+  return ls->newlabelentry(fs, &ls->getDyndata()->gt, &name, line, pc);
 }
 
 
@@ -635,7 +635,7 @@ void Parser::parlist() {
     do {
       switch (ls->getToken()) {
         case static_cast<int>(RESERVED::TK_NAME): {
-          new_localvar( str_checkname());
+          new_localvar(*str_checkname());
           nparams++;
           break;
         }
@@ -1004,7 +1004,7 @@ int Parser::cond() {
 
 void Parser::gotostat( int line) {
   TString *name = str_checkname();  /* label's name */
-  newgotoentry(name, line);
+  newgotoentry(*name, line);
 }
 
 
@@ -1021,7 +1021,7 @@ void Parser::breakstat( int line) {
  ok:
   bl->isloop = 2;  /* signal that block has pending breaks */
   ls->nextToken();  /* skip break */
-  newgotoentry(ls->getBreakName(), line);
+  newgotoentry(*ls->getBreakName(), line);
 }
 
 
@@ -1029,21 +1029,21 @@ void Parser::breakstat( int line) {
 ** Check whether there is already a label with the given 'name' at
 ** current function.
 */
-void Parser::checkrepeated( TString *name) {
-  Labeldesc *lb = ls->findlabel(name, fs->getFirstLabel());
+void Parser::checkrepeated(TString& name) {
+  Labeldesc *lb = ls->findlabel(&name, fs->getFirstLabel());
   if (l_unlikely(lb != nullptr))  /* already defined? */
     ls->semerror( "label '%s' already defined on line %d",
-                      getstr(name), lb->line);  /* error */
+                      getstr(&name), lb->line);  /* error */
 }
 
 
-void Parser::labelstat( TString *name, int line) {
+void Parser::labelstat(TString& name, int line) {
   /* label -> '::' NAME '::' */
   checknext(static_cast<int>(RESERVED::TK_DBCOLON));  /* skip double colon */
   while (ls->getToken() == ';' || ls->getToken() == static_cast<int>(RESERVED::TK_DBCOLON))
     statement();  /* skip other no-op statements */
   checkrepeated(name);  /* check for repeated labels */
-  ls->createlabel(fs, name, line, block_follow(0));
+  ls->createlabel(fs, &name, line, block_follow(0));
 }
 
 
@@ -1132,13 +1132,13 @@ void Parser::forbody( int base, int line, int nvars, int isgen) {
 }
 
 
-void Parser::fornum( TString *varname, int line) {
+void Parser::fornum(TString& varname, int line) {
   /* fornum -> NAME = exp,exp[,exp] forbody */
   FuncState *funcstate = fs;
   int base = funcstate->getFirstFreeRegister();
   new_localvarliteral("(for state)");
   new_localvarliteral("(for state)");
-  new_varkind( varname, RDKCONST);  /* control variable */
+  new_varkind(&varname, RDKCONST);  /* control variable */
   checknext( '=');
   exp1();  /* initial value */
   checknext( ',');
@@ -1154,7 +1154,7 @@ void Parser::fornum( TString *varname, int line) {
 }
 
 
-void Parser::forlist( TString *indexname) {
+void Parser::forlist(TString& indexname) {
   /* forlist -> NAME {,NAME} IN explist forbody */
   FuncState *funcstate = fs;
   expdesc e;
@@ -1164,10 +1164,10 @@ void Parser::forlist( TString *indexname) {
   new_localvarliteral("(for state)");  /* iterator function */
   new_localvarliteral("(for state)");  /* state */
   new_localvarliteral("(for state)");  /* closing var. (after swap) */
-  new_varkind( indexname, RDKCONST);  /* control variable */
+  new_varkind(&indexname, RDKCONST);  /* control variable */
   /* other declared variables */
   while (testnext( ',')) {
-    new_localvar( str_checkname());
+    new_localvar(*str_checkname());
     nvars++;
   }
   checknext(static_cast<int>(RESERVED::TK_IN));
@@ -1189,8 +1189,8 @@ void Parser::forstat( int line) {
   ls->nextToken();  /* skip 'for' */
   varname = str_checkname();  /* first variable name */
   switch (ls->getToken()) {
-    case '=': fornum(varname, line); break;
-    case ',': case static_cast<int>(RESERVED::TK_IN): forlist(varname); break;
+    case '=': fornum(*varname, line); break;
+    case ',': case static_cast<int>(RESERVED::TK_IN): forlist(*varname); break;
     default: ls->syntaxError( "'=' or 'in' expected");
   }
   check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_FOR), line);
@@ -1230,7 +1230,7 @@ void Parser::localfunc() {
   expdesc b;
   FuncState *funcstate = fs;
   int fvar = funcstate->getNumActiveVars();  /* function's variable index */
-  new_localvar( str_checkname());  /* new local variable */
+  new_localvar(*str_checkname());  /* new local variable */
   adjustlocalvars(1);  /* enter its scope */
   body(b, 0, ls->getLineNumber());  /* function created in next register */
   /* debug information will only see the variable after this point! */
@@ -1266,7 +1266,7 @@ void Parser::localstat() {
   do {  /* for each variable */
     TString *vname = str_checkname();  /* get its name */
     lu_byte kind = getvarattribute(defkind);  /* postfixed attribute */
-    vidx = new_varkind( vname, kind);  /* predeclare it */
+    vidx = new_varkind(vname, kind);  /* predeclare it */
     if (kind == RDKTOCLOSE) {  /* to-be-closed? */
       if (toclose != -1)  /* one already present? */
         ls->semerror( "multiple to-be-closed variables in local list");
@@ -1330,7 +1330,7 @@ void Parser::globalnames( lu_byte defkind) {
     for (i = 0; i < nvars; i++) {  /* for each variable */
       expdesc var;
       TString *varname = funcstate->getlocalvardesc(lastidx - i)->vd.name;
-      buildglobal(varname, var);  /* create global variable in 'var' */
+      buildglobal(*varname, var);  /* create global variable in 'var' */
       funcstate->storevartop(var);
     }
   }
@@ -1361,7 +1361,7 @@ void Parser::globalfunc( int line) {
   TString *fname = str_checkname();
   new_varkind( fname, GDKREG);  /* declare global variable */
   funcstate->getNumActiveVarsRef()++;  /* enter its scope */
-  buildglobal(fname, var);
+  buildglobal(*fname, var);
   body(b, 0, ls->getLineNumber());  /* compile and return closure in 'b' */
   funcstate->storevar(var, b);
   funcstate->fixline(line);  /* definition "happens" in the first line */
@@ -1502,7 +1502,7 @@ void Parser::statement() {
     }
     case static_cast<int>(RESERVED::TK_DBCOLON): {  /* stat -> label */
       ls->nextToken();  /* skip double colon */
-      labelstat(str_checkname(), line);
+      labelstat(*str_checkname(), line);
       break;
     }
     case static_cast<int>(RESERVED::TK_RETURN): {  /* stat -> retstat */

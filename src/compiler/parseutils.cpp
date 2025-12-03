@@ -41,8 +41,8 @@ inline bool hasmultret(expkind k) noexcept {
 
 /* because all strings are unified by the scanner, the parser
    can use pointer equality for string equality */
-inline bool eqstr(const TString* a, const TString* b) noexcept {
-	return (a) == (b);
+inline bool eqstr(const TString& a, const TString& b) noexcept {
+	return (&a) == (&b);
 }
 
 
