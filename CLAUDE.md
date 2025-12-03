@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.17s avg ✅ (48% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 130 Part 4 complete - Compiler TString* → TString& conversions done!
-**Completed**: Phases 1-127, 129-1, 130-1/2/3/4 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.12s avg ✅ (50% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 130 Part 5 complete - ConsControl* & BlockCnt* → References done!
+**Completed**: Phases 1-127, 129-1, 130-1/2/3/4/5 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -65,8 +65,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **Part 2**: Table*/Proto* → References (~45 helpers in ltable/lundump/ldump, ~100+ call sites)
 - **Part 3**: global_State* → global_State& (~42 GC functions in 4 modules: marking, sweeping, weak, finalizer)
 - **Part 4**: TString* → TString& (~15 compiler functions: registerlocalvar, searchupvalue, newupvalue, searchvar, singlevaraux, stringK, new_localvar, buildglobal, buildvar, fornum, forlist, labelstat, checkrepeated, newgotoentry; updated 4x eqstr helpers)
+- **Part 5**: ConsControl* & BlockCnt* → References (8 compiler infrastructure functions: solvegotos, enterblock, open_func, closelistfield, lastlistfield, recfield, listfield, field; 10 call sites)
 - **Benefits**: Type safety (no null), modern C++23 idiom, clearer semantics
-- **Result**: ~2.17s avg (48% faster than baseline!)
+- **Result**: ~2.12s avg (50% faster than baseline!)
 - See `docs/PHASE_130_POINTER_TO_REFERENCE.md`
 
 ---
@@ -74,7 +75,7 @@ Converting Lua 5.5 from C to modern C++23:
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.17s avg ✅ **48% faster than baseline!**
+**Current**: ~2.12s avg ✅ **50% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -180,8 +181,8 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **49% faster than baseline!**
-Phases 1-127, 129-1, 130-1/2 complete
+Zero warnings | 96.1% coverage | 30+ tests passing | **50% faster than baseline!**
+Phases 1-127, 129-1, 130-1/2/3/4/5 complete
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -252,5 +253,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-03 | **Phases**: 1-127, 129-1, 130-1/2/3/4 | **Performance**: ~2.17s ✅ (48% faster!)
-**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, compiler TString* → TString& complete!
+**Updated**: 2025-12-03 | **Phases**: 1-127, 129-1, 130-1/2/3/4/5 | **Performance**: ~2.12s ✅ (50% faster!)
+**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, Phase 130 Part 5 complete (ConsControl* & BlockCnt* → References)!

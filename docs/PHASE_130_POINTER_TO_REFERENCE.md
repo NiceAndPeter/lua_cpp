@@ -1,9 +1,9 @@
 # Phase 130: Comprehensive Pointer-to-Reference Conversions
 
-**Status**: In Progress (Part 1)
+**Status**: In Progress (Part 5 Complete)
 **Date Started**: 2025-12-02
 **Estimated Effort**: 2.5-3 weeks
-**Performance Target**: Maintain ≤4.33s (currently ~2.20s)
+**Performance Target**: Maintain ≤4.33s (currently ~2.12s)
 
 ---
 
@@ -170,17 +170,18 @@ short FuncState::registerlocalvar(TString& varname) {
 ---
 
 ### Part 5: ConsControl* & BlockCnt* → References
-**Status**: Pending
-**Scope**: ~10 functions
+**Status**: ✅ Complete (2025-12-03)
+**Scope**: 8 functions, 10 call sites
 **Risk**: Low (stack-allocated structures)
 
 **Files**:
 - `src/compiler/funcstate.cpp`
 - `src/compiler/parser.cpp`
+- `src/compiler/lparser.h`
 
-**Functions to Convert**:
-- FuncState: closelistfield, lastlistfield, solvegotos, enterblock
-- Parser: recfield, listfield
+**Functions Converted**:
+- FuncState: closelistfield, lastlistfield, solvegotos, enterblock (4)
+- Parser: recfield, listfield, field, open_func (4)
 
 **Pattern**:
 ```cpp
@@ -320,11 +321,11 @@ git commit -m "Phase 130 Part N: <description>"
 
 | Part | Scope | Status | Completion Date | Performance |
 |------|-------|--------|-----------------|-------------|
-| Part 1 | expdesc* (~80 funcs) | In Progress | - | - |
-| Part 2 | Table*/Proto* (~49 funcs) | Pending | - | - |
-| Part 3 | global_State* (~42 funcs) | Pending | - | - |
-| Part 4 | TString* (~25 funcs) | Pending | - | - |
-| Part 5 | ConsControl*/BlockCnt* (~10 funcs) | Pending | - | - |
+| Part 1 | expdesc* (~80 funcs) | ✅ Complete | 2025-12-02 | ~2.20s |
+| Part 2 | Table*/Proto* (~49 funcs) | ✅ Complete | 2025-12-02 | ~2.17s |
+| Part 3 | global_State* (~42 funcs) | ✅ Complete | 2025-12-03 | ~2.17s |
+| Part 4 | TString* (~25 funcs) | ✅ Complete | 2025-12-03 | ~2.17s |
+| Part 5 | ConsControl*/BlockCnt* (8 funcs) | ✅ Complete | 2025-12-03 | ~2.12s |
 | Part 6 | Member variables (4 vars) | Pending | - | - |
 
 ---
@@ -347,6 +348,6 @@ git commit -m "Phase 130 Part N: <description>"
 
 ---
 
-**Last Updated**: 2025-12-02
-**Current Part**: 1 (expdesc* conversion)
-**Overall Status**: 0% complete (0/210 functions)
+**Last Updated**: 2025-12-03
+**Current Part**: 5 complete, Part 6 pending
+**Overall Status**: ~97% complete (Parts 1-5 done: 204/210 functions)
