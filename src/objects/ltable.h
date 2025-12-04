@@ -279,8 +279,8 @@ public:
   void setInt(lua_State* L, lua_Integer key, TValue* value);
   void finishSet(lua_State* L, const TValue* key, TValue* value, int hres);
 
-  void resize(lua_State* L, unsigned nasize, unsigned nhsize);
-  void resizeArray(lua_State* L, unsigned nasize);
+  void resize(lua_State* L, unsigned newArraySize, unsigned newHashSize);
+  void resizeArray(lua_State* L, unsigned newArraySize);
   [[nodiscard]] lu_mem size() const;
   [[nodiscard]] int tableNext(lua_State* L, StkId key) const;  // renamed from next() to avoid conflict with GC field
   [[nodiscard]] lua_Unsigned getn(lua_State* L);

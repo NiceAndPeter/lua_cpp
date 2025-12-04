@@ -418,10 +418,10 @@ static TValue *getgeneric (const Table& t, const TValue *key, int deadok) {
     if (equalkey(key, n, deadok))
       return gval(n);  /* that's it */
     else {
-      int nx = gnext(n);
-      if (nx == 0)
+      int nextIndex = gnext(n);
+      if (nextIndex == 0)
         return &absentkey;  /* not found */
-      n += nx;
+      n += nextIndex;
       lua_assert(n >= base && n < limit);  /* ensure we stay in bounds */
     }
   }
@@ -524,28 +524,28 @@ static void newcheckedkey (Table& t, const TValue *key, TValue *value);
 /*
 ** Structure to count the keys in a table.
 ** 'total' is the total number of keys in the table.
-** 'na' is the number of *array indices* in the table (see 'arrayindex').
+** 'arrayCount' is the number of *array indices* in the table (see 'arrayindex').
 ** 'deleted' is true if there are deleted nodes in the hash part.
 ** 'nums' is a "count array" where 'nums[i]' is the number of integer
-** keys between 2^(i - 1) + 1 and 2^i. Note that 'na' is the summation
+** keys between 2^(i - 1) + 1 and 2^i. Note that 'arrayCount' is the summation
 ** of 'nums'.
 */
 typedef struct {
   unsigned total;
-  unsigned na;
+  unsigned arrayCount;
   int deleted;
   unsigned nums[MAXABITS + 1];
 } Counters;
 
 
 /*
-** Check whether it is worth to use 'na' array entries instead of 'nh'
+** Check whether it is worth to use 'arrayCount' array entries instead of 'hashCount'
 ** hash nodes. (A hash node uses ~3 times more memory than an array
 ** entry: Two values plus 'next' versus one value.) Evaluate with size_t
 ** to avoid overflows.
 */
-inline bool arrayXhash(unsigned na, unsigned nh) noexcept {
-	return cast_sizet(na) <= cast_sizet(nh) * 3;
+inline bool arrayXhash(unsigned arrayCount, unsigned hashCount) noexcept {
+	return cast_sizet(arrayCount) <= cast_sizet(hashCount) * 3;
 }
 
 /*
@@ -553,7 +553,7 @@ inline bool arrayXhash(unsigned na, unsigned nh) noexcept {
 ** This size maximizes the number of elements going to the array part
 ** while satisfying the condition 'arrayXhash' with the use of memory if
 ** all those elements went to the hash part.
-** 'ct->na' enters with the total number of array indices in the table
+** 'ct->arrayCount' enters with the total number of array indices in the table
 ** and leaves with the number of keys that will go to the array part;
 ** return the optimal size for the array part.
 */
@@ -564,7 +564,7 @@ static unsigned computesizes (Counters *ct) {
   /* traverse slices while 'powerOfTwo' does not overflow and total of array
      indices still can satisfy 'arrayXhash' against the array size */
   for (unsigned int i = 0, powerOfTwo = 1;  /* 2^i (candidate for optimal size) */
-       powerOfTwo > 0 && arrayXhash(powerOfTwo, ct->na);
+       powerOfTwo > 0 && arrayXhash(powerOfTwo, ct->arrayCount);
        i++, powerOfTwo *= 2) {
     unsigned elementCount = ct->nums[i];
     accumulatedCount += elementCount;
@@ -574,7 +574,7 @@ static unsigned computesizes (Counters *ct) {
       arrayCount = accumulatedCount;  /* all elements up to 'optimalSize' will go to array part */
     }
   }
-  ct->na = arrayCount;
+  ct->arrayCount = arrayCount;
   return optimalSize;
 }
 
@@ -583,7 +583,7 @@ static void countint (lua_Integer key, Counters *ct) {
   unsigned int k = arrayindex(key);
   if (k != 0) {  /* is 'key' an array index? */
     ct->nums[luaO_ceillog2(k)]++;  /* count as such */
-    ct->na++;
+    ct->arrayCount++;
   }
 }
 
@@ -619,7 +619,7 @@ static void numusearray (const Table& t, Counters *ct) {
     arrayUseCount += sliceCount;
   }
   ct->total += arrayUseCount;
-  ct->na += arrayUseCount;
+  ct->arrayCount += arrayUseCount;
 }
 
 
@@ -677,13 +677,13 @@ static size_t concretesize (unsigned int size) {
 ** new size is double the old one (the most common case).
 */
 static Value *resizearray (lua_State *L , Table& t,
-                               unsigned oldasize,
+                               unsigned oldArraySize,
                                unsigned newasize) {
-  if (oldasize == newasize)
+  if (oldArraySize == newasize)
     return t.getArray();  /* nothing to be done */
   else if (newasize == 0) {  /* erasing array? */
-    Value *op = t.getArray() - oldasize;  /* original array's real address */
-    luaM_freemem(L, op, concretesize(oldasize));  /* free it */
+    Value *op = t.getArray() - oldArraySize;  /* original array's real address */
+    luaM_freemem(L, op, concretesize(oldArraySize));  /* free it */
     return nullptr;
   }
   else {
@@ -693,18 +693,18 @@ static Value *resizearray (lua_State *L , Table& t,
     if (np == nullptr)  /* allocation error? */
       return nullptr;
     np += newasize;  /* shift pointer to the end of value segment */
-    if (oldasize > 0) {
+    if (oldArraySize > 0) {
       /* move common elements to new position */
-      size_t oldasizeb = concretesize(oldasize);
+      size_t oldasizeb = concretesize(oldArraySize);
       Value *op = t.getArray();  /* original array */
-      unsigned tomove = (oldasize < newasize) ? oldasize : newasize;
-      size_t tomoveb = (oldasize < newasize) ? oldasizeb : newasizeb;
+      unsigned tomove = (oldArraySize < newasize) ? oldArraySize : newasize;
+      size_t tomoveb = (oldArraySize < newasize) ? oldasizeb : newasizeb;
       lua_assert(tomoveb > 0);
       lua_assert(tomove <= newasize);  /* ensure destination bounds */
-      lua_assert(tomove <= oldasize);  /* ensure source bounds */
+      lua_assert(tomove <= oldArraySize);  /* ensure source bounds */
       lua_assert(tomoveb <= newasizeb);  /* verify size calculation */
       memcpy(np - tomove, op - tomove, tomoveb);
-      luaM_freemem(L, op - oldasize, oldasizeb);  /* free old block */
+      luaM_freemem(L, op - oldArraySize, oldasizeb);  /* free old block */
     }
     return np;
   }
@@ -787,9 +787,9 @@ static void exchangehashpart (Table& t1, Table& t2) {
 ** Re-insert into the new hash part of a table the elements from the
 ** vanishing slice of the array part.
 */
-static void reinsertOldSlice (Table& t, unsigned oldasize,
+static void reinsertOldSlice (Table& t, unsigned oldArraySize,
                                         unsigned newasize) {
-  for (unsigned i = newasize; i < oldasize; i++) {  /* traverse vanishing slice */
+  for (unsigned i = newasize; i < oldArraySize; i++) {  /* traverse vanishing slice */
     LuaT tag = *t.getArrayTag(i);
     if (!tagisempty(tag)) {  /* a non-empty entry? */
       TValue key, aux;
@@ -804,9 +804,9 @@ static void reinsertOldSlice (Table& t, unsigned oldasize,
 /*
 ** Clear new slice of the array.
 */
-static void clearNewSlice (Table& t, unsigned oldasize, unsigned newasize) {
-  for (; oldasize < newasize; oldasize++)
-    *t.getArrayTag(oldasize) = LuaT::EMPTY;
+static void clearNewSlice (Table& t, unsigned oldArraySize, unsigned newasize) {
+  for (; oldArraySize < newasize; oldArraySize++)
+    *t.getArrayTag(oldArraySize) = LuaT::EMPTY;
 }
 
 
@@ -822,16 +822,16 @@ static void clearNewSlice (Table& t, unsigned oldasize, unsigned newasize) {
 ** into the table, initializes the new part of the array (if any) with
 ** nils and reinserts the elements of the old hash back into the new
 ** parts of the table.
-** Note that if the new size for the array part ('newasize') is equal to
-** the old one ('oldasize'), this function will do nothing with that
+** Note that if the new size for the array part ('newArraySize') is equal to
+** the old one ('oldArraySize'), this function will do nothing with that
 ** part.
 */
 /*
 ** Resize a table to the given array and hash sizes.
 **
 ** PARAMETERS:
-** - newasize: New size for the array part
-** - nhsize: New size for the hash part (number of hash nodes)
+** - newArraySize: New size for the array part
+** - newHashSize: New size for the hash part (number of hash nodes)
 **
 ** ALGORITHM:
 ** 1. Allocate new hash part (into temporary 'newt')
@@ -889,14 +889,14 @@ static void rehash (lua_State *L, Table& t, const TValue *extraKey) {
   Counters counters;
   /* reset counts */
   std::fill_n(counters.nums, MAXABITS + 1, 0);
-  counters.na = 0;
+  counters.arrayCount = 0;
   counters.deleted = 0;
   counters.total = 1;  /* count extra key */
   if (ttisinteger(extraKey))
     countint(ivalue(extraKey), &counters);  /* extra key may go to array */
   numusehash(t, &counters);  /* count keys in hash part */
   unsigned arraySize;  /* optimal size for array part */
-  if (counters.na == 0) {
+  if (counters.arrayCount == 0) {
     /* no new keys to enter array part; keep it with the same size */
     arraySize = t.arraySize();
   }
@@ -905,7 +905,7 @@ static void rehash (lua_State *L, Table& t, const TValue *extraKey) {
     arraySize = computesizes(&counters);  /* compute new size for array part */
   }
   /* all keys not in the array part go to the hash part */
-  unsigned hashSize = counters.total - counters.na;  /* size for the hash part */
+  unsigned hashSize = counters.total - counters.arrayCount;  /* size for the hash part */
   if (counters.deleted) {  /* table has deleted entries? */
     /* insertion-deletion-insertion: give hash some extra size to
        avoid repeated resizings */
@@ -1027,9 +1027,9 @@ static TValue *getintfromhash (const Table& t, lua_Integer key) {
     if (n->isKeyInteger() && n->getKeyIntValue() == key)
       return gval(n);  /* that's it */
     else {
-      int nx = gnext(n);
-      if (nx == 0) break;
-      n += nx;
+      int nextIndex = gnext(n);
+      if (nextIndex == 0) break;
+      n += nextIndex;
     }
   }
   return &absentkey;
@@ -1249,10 +1249,10 @@ TValue* Table::HgetShortStr(TString* key) const {
     if (n->isKeyShrStr() && shortStringsEqual(n->getKeyStrValue(), key))
       return gval(n);  /* that's it */
     else {
-      int nx = gnext(n);
-      if (nx == 0)
+      int nextIndex = gnext(n);
+      if (nextIndex == 0)
         return &absentkey;  /* not found */
-      n += nx;
+      n += nextIndex;
     }
   }
 }
@@ -1373,41 +1373,41 @@ void Table::finishSet(lua_State* L, const TValue* key, TValue* value, int hres) 
   }
 }
 
-void Table::resize(lua_State* L, unsigned nasize, unsigned nhsize) {
-  if (nasize > MAXASIZE)
+void Table::resize(lua_State* L, unsigned newArraySize, unsigned newHashSize) {
+  if (newArraySize > MAXASIZE)
     luaG_runerror(L, "table overflow");
   /* create new hash part with appropriate size into 'newt' */
   Table newt;  /* to keep the new hash part */
   newt.setFlags(0);
-  setnodevector(*L, newt, nhsize);
-  unsigned oldasize = this->arraySize();
-  if (nasize < oldasize) {  /* will array shrink? */
+  setnodevector(*L, newt, newHashSize);
+  unsigned oldArraySize = this->arraySize();
+  if (newArraySize < oldArraySize) {  /* will array shrink? */
     /* re-insert into the new hash the elements from vanishing slice */
     exchangehashpart(*this, newt);  /* pretend table has new hash */
-    reinsertOldSlice(*this, oldasize, nasize);
+    reinsertOldSlice(*this, oldArraySize, newArraySize);
     exchangehashpart(*this, newt);  /* restore old hash (in case of errors) */
   }
   /* allocate new array */
-  Value *newarray = resizearray(L, *this, oldasize, nasize);
-  if (l_unlikely(newarray == nullptr && nasize > 0)) {  /* allocation failed? */
+  Value *newarray = resizearray(L, *this, oldArraySize, newArraySize);
+  if (l_unlikely(newarray == nullptr && newArraySize > 0)) {  /* allocation failed? */
     freehash(*L, newt);  /* release new hash part */
     luaM_error(L);  /* raise error (with array unchanged) */
   }
   /* allocation ok; initialize new part of the array */
   exchangehashpart(*this, newt);  /* 't' has the new hash ('newt' has the old) */
   this->setArray(newarray);  /* set new array part */
-  this->setArraySize(nasize);
+  this->setArraySize(newArraySize);
   if (newarray != nullptr)
-    *this->getLenHint() = nasize / 2u;  /* set an initial hint */
-  clearNewSlice(*this, oldasize, nasize);
+    *this->getLenHint() = newArraySize / 2u;  /* set an initial hint */
+  clearNewSlice(*this, oldArraySize, newArraySize);
   /* re-insert elements from old hash part into new parts */
   reinserthash(*L, newt, *this);  /* 'newt' now has the old hash */
   freehash(*L, newt);  /* free old hash part */
 }
 
-void Table::resizeArray(lua_State* L, unsigned nasize) {
+void Table::resizeArray(lua_State* L, unsigned newArraySize) {
   unsigned nsize = (this->isDummy()) ? 0 : this->nodeSize();
-  this->resize(L, nasize, nsize);
+  this->resize(L, newArraySize, nsize);
 }
 
 lu_mem Table::size() const {
