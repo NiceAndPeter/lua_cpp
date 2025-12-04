@@ -9,6 +9,7 @@
 
 #include "lua.h"
 
+#include <utility>
 
 /* Some header files included here need this definition */
 typedef struct CallInfo CallInfo;
@@ -164,7 +165,10 @@ enum class GCState : lu_byte {
 	CallFin      = 7,
 	Pause        = 8
 };
-
+/*
+inline bool operator<(GCState lhs, GCState rhs) 
+{ return std::to_underlying(lhs) < std::to_underlying(rhs); } 
+*/
 /*
 ** Kinds of Garbage Collection
 */

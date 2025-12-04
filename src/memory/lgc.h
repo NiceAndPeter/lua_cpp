@@ -64,7 +64,7 @@
 */
 
 inline bool global_State::keepInvariant() const noexcept {
-	return static_cast<lu_byte>(getGCState()) <= static_cast<lu_byte>(GCState::Atomic);
+	return getGCState() <= GCState::Atomic;
 }
 
 // Phase 47: Check if GC is in sweep phase

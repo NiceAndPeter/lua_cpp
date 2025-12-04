@@ -4,10 +4,8 @@
 ** See Copyright Notice in lua.h
 */
 
-
 #ifndef lobject_core_h
 #define lobject_core_h
-
 
 #include <cstdarg>
 
@@ -26,11 +24,10 @@ class lua_State;
 */
 inline constexpr int LUA_TDEADKEY = (LUA_NUMTYPES+2);  /* removed keys in tables */
 
-
 /*
 ** number of all possible types (including LUA_TNONE but excluding DEADKEY)
 */
-inline constexpr int LUA_TOTALTYPES = (LUA_TPROTO + 2);
+inline constexpr int LUA_TOTALTYPES = (LUA_NUMTYPES + 3);
 
 
 /*

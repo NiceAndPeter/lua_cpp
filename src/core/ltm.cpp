@@ -104,14 +104,15 @@ const char *luaT_objtypename (lua_State *L, const TValue *o) {
 void luaT_callTM (lua_State *L, const TValue *f, const TValue *p1,
                   const TValue *p2, const TValue *p3) {
   StkId func = L->getTop().p;
-  L->getStackSubsystem().setSlot(func, f);  /* push function (assume EXTRA_STACK) */
-  L->getStackSubsystem().setSlot(func + 1, p1);  /* 1st argument */
-  L->getStackSubsystem().setSlot(func + 2, p2);  /* 2nd argument */
-  L->getStackSubsystem().setSlot(func + 3, p3);  /* 3rd argument */
-  L->getStackSubsystem().setTopPtr(func + 4);
+  auto& stack = L->getStackSubsystem();
+  stack.setSlot(func, f);  /* push function (assume EXTRA_STACK) */
+  stack.setSlot(func + 1, p1);  /* 1st argument */
+  stack.setSlot(func + 2, p2);  /* 2nd argument */
+  stack.setSlot(func + 3, p3);  /* 3rd argument */
+  stack.adjust(4);
   /* metamethod may yield only when called from Lua code */
   if (L->getCI()->isLuaCode())
-    L->call( func, 0);
+    L->call(func, 0);
   else
     L->callNoYield( func, 0);
 }
@@ -121,13 +122,14 @@ LuaT luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
                         const TValue *p2, StkId res) {
   ptrdiff_t result = L->saveStack(res);
   StkId func = L->getTop().p;
-  L->getStackSubsystem().setSlot(func, f);  /* push function (assume EXTRA_STACK) */
-  L->getStackSubsystem().setSlot(func + 1, p1);  /* 1st argument */
-  L->getStackSubsystem().setSlot(func + 2, p2);  /* 2nd argument */
-  L->getStackSubsystem().adjust(3);
+  auto& stack = L->getStackSubsystem();
+  stack.setSlot(func, f);  /* push function (assume EXTRA_STACK) */
+  stack.setSlot(func + 1, p1);  /* 1st argument */
+  stack.setSlot(func + 2, p2);  /* 2nd argument */
+  stack.adjust(3);
   /* metamethod may yield only when called from Lua code */
   if (L->getCI()->isLuaCode())
-    L->call( func, 1);
+    L->call(func, 1);
   else
     L->callNoYield( func, 1);
   res = L->restoreStack(result);

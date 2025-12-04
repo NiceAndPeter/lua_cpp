@@ -22,3 +22,4 @@ cmake-build-*/
 coverage_html/
 coverage_*.info
 build_coverage/
+tags

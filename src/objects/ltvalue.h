@@ -10,6 +10,7 @@
 #include "llimits.h"
 #include "lua.h"
 
+#include <utility>
 
 /*
 ** tags for Tagged Values have the following use of bits:
@@ -20,13 +21,7 @@
 
 /* add variant bits to a type */
 constexpr int makevariant(int t, int v) noexcept { return (t | (v << 4)); }
-
-
-/*
-** Extra types for collectable non-values
-*/
-inline constexpr int LUA_TUPVAL = LUA_NUMTYPES;      /* upvalues */
-inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
+constexpr int makevariant(LuaType t, int v) noexcept { return (std::to_underlying(t) | (v << 4)); }
 
 
 /*
@@ -37,43 +32,43 @@ inline constexpr int LUA_TPROTO = (LUA_NUMTYPES+1);  /* function prototypes */
 
 enum class LuaT : lu_byte {
   /* Nil variants */
-  NIL = makevariant(LUA_TNIL, 0),
-  EMPTY = makevariant(LUA_TNIL, 1),
-  ABSTKEY = makevariant(LUA_TNIL, 2),
-  NOTABLE = makevariant(LUA_TNIL, 3),
+  NIL     = makevariant(LuaType::Nil, 0),
+  EMPTY   = makevariant(LuaType::Nil, 1),
+  ABSTKEY = makevariant(LuaType::Nil, 2),
+  NOTABLE = makevariant(LuaType::Nil, 3),
 
   /* Boolean variants */
-  VFALSE = makevariant(LUA_TBOOLEAN, 0),
-  VTRUE = makevariant(LUA_TBOOLEAN, 1),
+  VFALSE = makevariant(LuaType::Boolean, 0),
+  VTRUE  = makevariant(LuaType::Boolean, 1),
 
   /* Number variants */
-  NUMINT = makevariant(LUA_TNUMBER, 0),  /* integer numbers */
-  NUMFLT = makevariant(LUA_TNUMBER, 1),  /* float numbers */
+  NUMINT = makevariant(LuaType::Number, 0),  /* integer numbers */
+  NUMFLT = makevariant(LuaType::Number, 1),  /* float numbers */
 
   /* String variants */
-  SHRSTR = makevariant(LUA_TSTRING, 0),  /* short strings */
-  LNGSTR = makevariant(LUA_TSTRING, 1),  /* long strings */
+  SHRSTR = makevariant(LuaType::String, 0),  /* short strings */
+  LNGSTR = makevariant(LuaType::String, 1),  /* long strings */
 
   /* Table variant */
-  TABLE = makevariant(LUA_TTABLE, 0),
+  TABLE = makevariant(LuaType::Table, 0),
 
   /* Function variants */
-  LCL = makevariant(LUA_TFUNCTION, 0),  /* Lua closure */
-  LCF = makevariant(LUA_TFUNCTION, 1),  /* light C function */
-  CCL = makevariant(LUA_TFUNCTION, 2),  /* C closure */
+  LCL = makevariant(LuaType::Function, 0),  /* Lua closure */
+  LCF = makevariant(LuaType::Function, 1),  /* light C function */
+  CCL = makevariant(LuaType::Function, 2),  /* C closure */
 
   /* Userdata variants */
-  LIGHTUSERDATA = makevariant(LUA_TLIGHTUSERDATA, 0),
-  USERDATA = makevariant(LUA_TUSERDATA, 0),
+  LIGHTUSERDATA = makevariant(LuaType::LightUserdata, 0),
+  USERDATA      = makevariant(LuaType::Userdata,      0),
 
   /* Thread variant */
-  THREAD = makevariant(LUA_TTHREAD, 0),
+  THREAD = makevariant(LuaType::Thread, 0),
 
   /* Upvalue variant (collectable non-value) */
-  UPVAL = makevariant(LUA_TUPVAL, 0),
+  UPVAL = makevariant(LUA_NUMTYPES, 0),
 
   /* Proto variant (collectable non-value) */
-  PROTO = makevariant(LUA_TPROTO, 0)
+  PROTO = makevariant(LUA_NUMTYPES + 1, 0)
 };
 
 /* }================================================================== */

@@ -45,6 +45,7 @@ enum class GCAge : lu_byte;
 ** their real delta is always the maximum value that fits in
 ** that field.
 */
+// old version of StackValue
 typedef union StackValue {
   TValue val;
   struct {
@@ -54,7 +55,13 @@ typedef union StackValue {
   } tbclist;
 } StackValue;
 
-
+/* new version
+clase StackValue: public TValue 
+{
+  TValue val;
+  unsigned short delta;
+} StackValue;
+*/
 /* index to stack elements */
 typedef StackValue *StkId;
 
