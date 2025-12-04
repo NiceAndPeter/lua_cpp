@@ -558,24 +558,24 @@ inline bool arrayXhash(unsigned na, unsigned nh) noexcept {
 ** return the optimal size for the array part.
 */
 static unsigned computesizes (Counters *ct) {
-  unsigned int a = 0;  /* number of elements smaller than 2^i */
-  unsigned int na = 0;  /* number of elements to go to array part */
-  unsigned int optimal = 0;  /* optimal size for array part */
-  /* traverse slices while 'twotoi' does not overflow and total of array
+  unsigned int accumulatedCount = 0;  /* number of elements smaller than 2^i */
+  unsigned int arrayCount = 0;  /* number of elements to go to array part */
+  unsigned int optimalSize = 0;  /* optimal size for array part */
+  /* traverse slices while 'powerOfTwo' does not overflow and total of array
      indices still can satisfy 'arrayXhash' against the array size */
-  for (unsigned int i = 0, twotoi = 1;  /* 2^i (candidate for optimal size) */
-       twotoi > 0 && arrayXhash(twotoi, ct->na);
-       i++, twotoi *= 2) {
-    unsigned nums = ct->nums[i];
-    a += nums;
-    if (nums > 0 &&  /* grows array only if it gets more elements... */
-        arrayXhash(twotoi, a)) {  /* ...while using "less memory" */
-      optimal = twotoi;  /* optimal size (till now) */
-      na = a;  /* all elements up to 'optimal' will go to array part */
+  for (unsigned int i = 0, powerOfTwo = 1;  /* 2^i (candidate for optimal size) */
+       powerOfTwo > 0 && arrayXhash(powerOfTwo, ct->na);
+       i++, powerOfTwo *= 2) {
+    unsigned elementCount = ct->nums[i];
+    accumulatedCount += elementCount;
+    if (elementCount > 0 &&  /* grows array only if it gets more elements... */
+        arrayXhash(powerOfTwo, accumulatedCount)) {  /* ...while using "less memory" */
+      optimalSize = powerOfTwo;  /* optimal size (till now) */
+      arrayCount = accumulatedCount;  /* all elements up to 'optimalSize' will go to array part */
     }
   }
-  ct->na = na;
-  return optimal;
+  ct->na = arrayCount;
+  return optimalSize;
 }
 
 
@@ -598,28 +598,28 @@ static inline int arraykeyisempty (const Table& t, unsigned key) {
 ** Count keys in array part of table 't'.
 */
 static void numusearray (const Table& t, Counters *ct) {
-  unsigned int ause = 0;  /* summation of 'nums' */
+  unsigned int arrayUseCount = 0;  /* summation of 'nums' */
   unsigned int i = 1;  /* index to traverse all array keys */
   /* traverse each slice */
-  unsigned int asize = t.arraySize();
-  for (unsigned int lg = 0, ttlg = 1; lg <= MAXABITS; lg++, ttlg *= 2) {  /* 2^lg */
-    unsigned int lc = 0;  /* counter */
-    unsigned int lim = ttlg;
-    if (lim > asize) {
-      lim = asize;  /* adjust upper limit */
-      if (i > lim)
+  unsigned int arraySize = t.arraySize();
+  for (unsigned int logIndex = 0, powerOfTwo = 1; logIndex <= MAXABITS; logIndex++, powerOfTwo *= 2) {  /* 2^logIndex */
+    unsigned int sliceCount = 0;  /* counter */
+    unsigned int limit = powerOfTwo;
+    if (limit > arraySize) {
+      limit = arraySize;  /* adjust upper limit */
+      if (i > limit)
         break;  /* no more elements to count */
     }
-    /* count elements in range (2^(lg - 1), 2^lg] */
-    for (; i <= lim; i++) {
+    /* count elements in range (2^(logIndex - 1), 2^logIndex] */
+    for (; i <= limit; i++) {
       if (!arraykeyisempty(t, i))
-        lc++;
+        sliceCount++;
     }
-    ct->nums[lg] += lc;
-    ause += lc;
+    ct->nums[logIndex] += sliceCount;
+    arrayUseCount += sliceCount;
   }
-  ct->total += ause;
-  ct->na += ause;
+  ct->total += arrayUseCount;
+  ct->na += arrayUseCount;
 }
 
 
@@ -630,20 +630,20 @@ static void numusearray (const Table& t, Counters *ct) {
 */
 static void numusehash (const Table& t, Counters *ct) {
   unsigned i = t.nodeSize();
-  unsigned total = 0;
+  unsigned totalNodes = 0;
   while (i--) {
-    const Node *n = &t.getNodeArray()[i];
-    if (isempty(gval(n))) {
-      lua_assert(!n->isKeyNil());  /* entry was deleted; key cannot be nil */
+    const Node *node = &t.getNodeArray()[i];
+    if (isempty(gval(node))) {
+      lua_assert(!node->isKeyNil());  /* entry was deleted; key cannot be nil */
       ct->deleted = 1;
     }
     else {
-      total++;
-      if (n->isKeyInteger())
-        countint(n->getKeyIntValue(), ct);
+      totalNodes++;
+      if (node->isKeyInteger())
+        countint(node->getKeyIntValue(), ct);
     }
   }
-  ct->total += total;
+  ct->total += totalNodes;
 }
 
 
@@ -885,34 +885,34 @@ static void clearNewSlice (Table& t, unsigned oldasize, unsigned newasize) {
 ** This prevents resize thrashing in insert-delete-insert patterns.
 ** Trade-off: Uses more memory to avoid repeated O(n) rehashing.
 */
-static void rehash (lua_State *L, Table& t, const TValue *ek) {
-  Counters ct;
+static void rehash (lua_State *L, Table& t, const TValue *extraKey) {
+  Counters counters;
   /* reset counts */
-  std::fill_n(ct.nums, MAXABITS + 1, 0);
-  ct.na = 0;
-  ct.deleted = 0;
-  ct.total = 1;  /* count extra key */
-  if (ttisinteger(ek))
-    countint(ivalue(ek), &ct);  /* extra key may go to array */
-  numusehash(t, &ct);  /* count keys in hash part */
-  unsigned asize;  /* optimal size for array part */
-  if (ct.na == 0) {
+  std::fill_n(counters.nums, MAXABITS + 1, 0);
+  counters.na = 0;
+  counters.deleted = 0;
+  counters.total = 1;  /* count extra key */
+  if (ttisinteger(extraKey))
+    countint(ivalue(extraKey), &counters);  /* extra key may go to array */
+  numusehash(t, &counters);  /* count keys in hash part */
+  unsigned arraySize;  /* optimal size for array part */
+  if (counters.na == 0) {
     /* no new keys to enter array part; keep it with the same size */
-    asize = t.arraySize();
+    arraySize = t.arraySize();
   }
   else {  /* compute best size for array part */
-    numusearray(t, &ct);  /* count keys in array part */
-    asize = computesizes(&ct);  /* compute new size for array part */
+    numusearray(t, &counters);  /* count keys in array part */
+    arraySize = computesizes(&counters);  /* compute new size for array part */
   }
   /* all keys not in the array part go to the hash part */
-  unsigned nsize = ct.total - ct.na;  /* size for the hash part */
-  if (ct.deleted) {  /* table has deleted entries? */
+  unsigned hashSize = counters.total - counters.na;  /* size for the hash part */
+  if (counters.deleted) {  /* table has deleted entries? */
     /* insertion-deletion-insertion: give hash some extra size to
        avoid repeated resizings */
-    nsize += nsize >> 2;
+    hashSize += hashSize >> 2;
   }
   /* resize the table to new computed sizes */
-  t.resize(L, asize, nsize);
+  t.resize(L, arraySize, hashSize);
 }
 
 /*
@@ -924,18 +924,18 @@ static Node *getfreepos (Table& t) {
   if (haslastfree(&t)) {  /* does it have 'lastfree' information? */
     /* look for a spot before 'lastfree', updating 'lastfree' */
     while (getlastfree(&t) > t.getNodeArray()) {
-      Node *free = --getlastfree(&t);
-      if (free->isKeyNil())
-        return free;
+      Node *freeNode = --getlastfree(&t);
+      if (freeNode->isKeyNil())
+        return freeNode;
     }
   }
   else {  /* no 'lastfree' information */
     unsigned i = t.nodeSize();
     while (i > 0) {  /* do a linear search */
       i--;
-      Node *free = gnode(&t, i);
-      if (free->isKeyNil())
-        return free;
+      Node *freeNode = gnode(&t, i);
+      if (freeNode->isKeyNil())
+        return freeNode;
     }
   }
   return nullptr;  /* could not find a free place */
@@ -952,39 +952,39 @@ static Node *getfreepos (Table& t) {
 ** could not insert key (could not find a free space).
 */
 static int insertkey (Table& t, const TValue *key, TValue *value) {
-  Node *mp = mainpositionTV(t, key);
+  Node *mainPositionNode = mainpositionTV(t, key);
   /* table cannot already contain the key */
   lua_assert(isabstkey(getgeneric(t, key, 0)));
-  if (!isempty(gval(mp)) || t.isDummy()) {  /* main position is taken? */
-    Node *f = getfreepos(t);  /* get a free place */
-    if (f == nullptr)  /* cannot find a free place? */
+  if (!isempty(gval(mainPositionNode)) || t.isDummy()) {  /* main position is taken? */
+    Node *freeNode = getfreepos(t);  /* get a free place */
+    if (freeNode == nullptr)  /* cannot find a free place? */
       return 0;
     lua_assert(!t.isDummy());
-    Node *othern = mainpositionfromnode(t, mp);
-    if (othern != mp) {  /* is colliding node out of its main position? */
+    Node *collidingNode = mainpositionfromnode(t, mainPositionNode);
+    if (collidingNode != mainPositionNode) {  /* is colliding node out of its main position? */
       /* yes; move colliding node into free position */
-      while (othern + gnext(othern) != mp)  /* find previous */
-        othern += gnext(othern);
-      gnext(othern) = cast_int(f - othern);  /* rechain to point to 'f' */
-      *f = *mp;  /* copy colliding node into free pos. (mp->next also goes) */
-      if (gnext(mp) != 0) {
-        gnext(f) += cast_int(mp - f);  /* correct 'next' */
-        gnext(mp) = 0;  /* now 'mp' is free */
+      while (collidingNode + gnext(collidingNode) != mainPositionNode)  /* find previous */
+        collidingNode += gnext(collidingNode);
+      gnext(collidingNode) = cast_int(freeNode - collidingNode);  /* rechain to point to 'freeNode' */
+      *freeNode = *mainPositionNode;  /* copy colliding node into free pos. (mainPositionNode->next also goes) */
+      if (gnext(mainPositionNode) != 0) {
+        gnext(freeNode) += cast_int(mainPositionNode - freeNode);  /* correct 'next' */
+        gnext(mainPositionNode) = 0;  /* now 'mainPositionNode' is free */
       }
-      setempty(gval(mp));
+      setempty(gval(mainPositionNode));
     }
     else {  /* colliding node is in its own main position */
       /* new node will go into free position */
-      if (gnext(mp) != 0)
-        gnext(f) = cast_int((mp + gnext(mp)) - f);  /* chain new position */
-      else lua_assert(gnext(f) == 0);
-      gnext(mp) = cast_int(f - mp);
-      mp = f;
+      if (gnext(mainPositionNode) != 0)
+        gnext(freeNode) = cast_int((mainPositionNode + gnext(mainPositionNode)) - freeNode);  /* chain new position */
+      else lua_assert(gnext(freeNode) == 0);
+      gnext(mainPositionNode) = cast_int(freeNode - mainPositionNode);
+      mainPositionNode = freeNode;
     }
   }
-  mp->setKey(key);
-  lua_assert(isempty(gval(mp)));
-  *gval(mp) = *value;
+  mainPositionNode->setKey(key);
+  lua_assert(isempty(gval(mainPositionNode)));
+  *gval(mainPositionNode) = *value;
   return 1;
 }
 
