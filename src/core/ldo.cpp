@@ -422,16 +422,16 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
 */
 // Convert to private lua_State method
 unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
-  const TValue *tm;
+  const TValue *metamethod;
   StkId p;
-  tm = luaT_gettmbyobj(this, s2v(func), TMS::TM_CALL);
-  if (l_unlikely(ttisnil(tm)))  /* no metamethod? */
+  metamethod = luaT_gettmbyobj(this, s2v(func), TMS::TM_CALL);
+  if (l_unlikely(ttisnil(metamethod)))  /* no metamethod? */
     luaG_callerror(this, s2v(func));
   lua_assert(func >= getStack().p && getTop().p > func);  /* ensure valid bounds */
   for (p = getTop().p; p > func; p--)  /* open space for metamethod */
     *s2v(p) = *s2v(p-1);  /* shift stack - use operator= */
   getStackSubsystem().push();  /* stack space pre-allocated by the caller */
-  getStackSubsystem().setSlot(func, tm);  /* metamethod is the new function to be called */
+  getStackSubsystem().setSlot(func, metamethod);  /* metamethod is the new function to be called */
   if ((status_val & MAX_CCMT) == MAX_CCMT)  /* is counter full? */
     luaG_runerror(this, "'__call' chain too long");
   return status_val + (1u << CIST_CCMT);  /* increment counter */

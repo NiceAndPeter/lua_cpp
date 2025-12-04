@@ -356,7 +356,7 @@ static inline Node *mainpositionfromnode (const Table& t, Node *nd) {
 ** Check whether key 'k1' is equal to the key in node 'n2'. This
 ** equality is raw, so there are no metamethods. Floats with integer
 ** values have been normalized, so integers cannot be equal to
-** floats. It is assumed that 'eqshrstr' is simply pointer equality,
+** floats. It is assumed that 'shortStringsEqual' is simply pointer equality,
 ** so that short strings are handled in the default case.  The flag
 ** 'deadok' means to accept dead keys as equal to their original values.
 ** (Only collectable objects can produce dead keys.) Note that dead

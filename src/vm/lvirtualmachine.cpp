@@ -363,7 +363,7 @@ void VirtualMachine::execute(CallInfo *ci) {
   };
 
   // Lambda: Order operations with immediate operand
-  auto op_orderI = [&](auto opi, auto opf, int inv, TMS tm, Instruction i) {
+  auto op_orderI = [&](auto opi, auto opf, int inv, TMS metamethodEvent, Instruction i) {
     TValue *ra = getValueA(i);
     int cond;
     int im = InstructionView(i).sb();
@@ -376,7 +376,7 @@ void VirtualMachine::execute(CallInfo *ci) {
     }
     else {
       int isf = InstructionView(i).c();
-      protectCall([&]() { cond = luaT_callorderiTM(L, ra, im, inv, isf, tm); });
+      protectCall([&]() { cond = luaT_callorderiTM(L, ra, im, inv, isf, metamethodEvent); });
     }
     performConditionalJump(cond, ci, i);
   };
@@ -746,30 +746,30 @@ void VirtualMachine::execute(CallInfo *ci) {
         auto ra = getRegisterA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto *rb = getValueB(i);
-        auto tm = static_cast<TMS>(InstructionView(i).c());
+        auto metamethodEvent = static_cast<TMS>(InstructionView(i).c());
         auto result = getRegisterA(pi);
         lua_assert(OP_ADD <= InstructionView(pi).opcode() && InstructionView(pi).opcode() <= OP_SHR);
-        protectCall([&]() { luaT_trybinTM(L, s2v(ra), rb, result, tm); });
+        protectCall([&]() { luaT_trybinTM(L, s2v(ra), rb, result, metamethodEvent); });
         break;
       }
       case OP_MMBINI: {
         auto ra = getRegisterA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto imm = InstructionView(i).sb();
-        auto tm = static_cast<TMS>(InstructionView(i).c());
+        auto metamethodEvent = static_cast<TMS>(InstructionView(i).c());
         auto flip = InstructionView(i).k();
         auto result = getRegisterA(pi);
-        protectCall([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm); });
+        protectCall([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, metamethodEvent); });
         break;
       }
       case OP_MMBINK: {
         auto ra = getRegisterA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto *imm = getConstantB(i);
-        auto tm = static_cast<TMS>(InstructionView(i).c());
+        auto metamethodEvent = static_cast<TMS>(InstructionView(i).c());
         auto flip = InstructionView(i).k();
         auto result = getRegisterA(pi);
-        protectCall([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm); });
+        protectCall([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, metamethodEvent); });
         break;
       }
       case OP_UNM: {
@@ -1338,7 +1338,7 @@ int VirtualMachine::lessEqual(const TValue *l, const TValue *r) const {
 }
 
 int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) const {
-  const TValue *tm;
+  const TValue *metamethod;
   if (ttype(t1) != ttype(t2))  /* not the same type? */
     return 0;
   else if (ttypetag(t1) != ttypetag(t2)) {
@@ -1376,17 +1376,17 @@ int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) const {
       case LuaT::USERDATA: {
         if (uvalue(t1) == uvalue(t2)) return 1;
         else if (L == nullptr) return 0;
-        tm = fasttm(L, uvalue(t1)->getMetatable(), TMS::TM_EQ);
-        if (tm == nullptr)
-          tm = fasttm(L, uvalue(t2)->getMetatable(), TMS::TM_EQ);
+        metamethod = fasttm(L, uvalue(t1)->getMetatable(), TMS::TM_EQ);
+        if (metamethod == nullptr)
+          metamethod = fasttm(L, uvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
       case LuaT::TABLE: {
         if (hvalue(t1) == hvalue(t2)) return 1;
         else if (L == nullptr) return 0;
-        tm = fasttm(L, hvalue(t1)->getMetatable(), TMS::TM_EQ);
-        if (tm == nullptr)
-          tm = fasttm(L, hvalue(t2)->getMetatable(), TMS::TM_EQ);
+        metamethod = fasttm(L, hvalue(t1)->getMetatable(), TMS::TM_EQ);
+        if (metamethod == nullptr)
+          metamethod = fasttm(L, hvalue(t2)->getMetatable(), TMS::TM_EQ);
         break;  /* will try TM */
       }
       case LuaT::LCF:
@@ -1394,10 +1394,10 @@ int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) const {
       default:  /* functions and threads */
         return (gcvalue(t1) == gcvalue(t2));
     }
-    if (tm == nullptr)  /* no TM? */
+    if (metamethod == nullptr)  /* no TM? */
       return 0;  /* objects are different */
     else {
-      auto tag = luaT_callTMres(L, tm, t1, t2, L->getTop().p);  /* call TM */
+      auto tag = luaT_callTMres(L, metamethod, t1, t2, L->getTop().p);  /* call TM */
       return !tagisfalse(tag);
     }
   }
@@ -1406,28 +1406,28 @@ int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) const {
 // === TABLE OPERATIONS ===
 
 LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag) const {
-  const TValue *tm;  /* metamethod */
+  const TValue *metamethod;  /* metamethod */
   for (int loop = 0; loop < MAXTAGLOOP; loop++) {
     if (tag == LuaT::NOTABLE) {  /* 't' is not a table? */
       lua_assert(!ttistable(t));
-      tm = luaT_gettmbyobj(L, t, TMS::TM_INDEX);
-      if (l_unlikely(notm(tm)))
+      metamethod = luaT_gettmbyobj(L, t, TMS::TM_INDEX);
+      if (l_unlikely(notm(metamethod)))
         luaG_typeerror(L, t, "index");  /* no metamethod */
       /* else will try the metamethod */
     }
     else {  /* 't' is a table */
-      tm = fasttm(L, hvalue(t)->getMetatable(), TMS::TM_INDEX);  /* table's metamethod */
-      if (tm == nullptr) {  /* no metamethod? */
+      metamethod = fasttm(L, hvalue(t)->getMetatable(), TMS::TM_INDEX);  /* table's metamethod */
+      if (metamethod == nullptr) {  /* no metamethod? */
         setnilvalue(s2v(val));  /* result is nil */
         return LuaT::NIL;
       }
       /* else will try the metamethod */
     }
-    if (ttisfunction(tm)) {  /* is metamethod a function? */
-      tag = luaT_callTMres(L, tm, t, key, val);  /* call it */
+    if (ttisfunction(metamethod)) {  /* is metamethod a function? */
+      tag = luaT_callTMres(L, metamethod, t, key, val);  /* call it */
       return tag;  /* return tag of the result */
     }
-    t = tm;  /* else try to access 'tm[key]' */
+    t = metamethod;  /* else try to access 'tm[key]' */
     tag = fastget(t, key, s2v(val), [](Table* tbl, const TValue* k, TValue* res) { return tbl->get(k, res); });
     if (!tagisempty(tag))
       return tag;  /* done */
@@ -1439,11 +1439,11 @@ LuaT VirtualMachine::finishGet(const TValue *t, TValue *key, StkId val, LuaT tag
 
 void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int hres) const {
   for (int loop = 0; loop < MAXTAGLOOP; loop++) {
-    const TValue *tm;  /* '__newindex' metamethod */
+    const TValue *metamethod;  /* '__newindex' metamethod */
     if (hres != HNOTATABLE) {  /* is 't' a table? */
       auto *h = hvalue(t);  /* save 't' table */
-      tm = fasttm(L, h->getMetatable(), TMS::TM_NEWINDEX);  /* get metamethod */
-      if (tm == nullptr) {  /* no metamethod? */
+      metamethod = fasttm(L, h->getMetatable(), TMS::TM_NEWINDEX);  /* get metamethod */
+      if (metamethod == nullptr) {  /* no metamethod? */
         sethvalue2s(L, L->getTop().p, h);  /* anchor 't' */
         L->getStackSubsystem().push();  /* assume EXTRA_STACK */
         h->finishSet(L, key, val, hres);  /* set new value */
@@ -1455,16 +1455,16 @@ void VirtualMachine::finishSet(const TValue *t, TValue *key, TValue *val, int hr
       /* else will try the metamethod */
     }
     else {  /* not a table; check metamethod */
-      tm = luaT_gettmbyobj(L, t, TMS::TM_NEWINDEX);
-      if (l_unlikely(notm(tm)))
+      metamethod = luaT_gettmbyobj(L, t, TMS::TM_NEWINDEX);
+      if (l_unlikely(notm(metamethod)))
         luaG_typeerror(L, t, "index");
     }
     /* try the metamethod */
-    if (ttisfunction(tm)) {
-      luaT_callTM(L, tm, t, key, val);
+    if (ttisfunction(metamethod)) {
+      luaT_callTM(L, metamethod, t, key, val);
       return;
     }
-    t = tm;  /* else repeat assignment over 'tm' */
+    t = metamethod;  /* else repeat assignment over 'tm' */
     hres = fastset(t, key, val, [](Table* tbl, const TValue* k, TValue* v) { return tbl->pset(k, v); });
     if (hres == HOK) {
       finishfastset(t, val);
@@ -1554,12 +1554,12 @@ void VirtualMachine::concat(int total) {
 }
 
 void VirtualMachine::objlen(StkId ra, const TValue *rb) {
-  const TValue *tm;
+  const TValue *metamethod;
   switch (ttypetag(rb)) {
     case LuaT::TABLE: {
       Table *h = hvalue(rb);
-      tm = fasttm(L, h->getMetatable(), TMS::TM_LEN);
-      if (tm) break;  /* metamethod? break switch to call it */
+      metamethod = fasttm(L, h->getMetatable(), TMS::TM_LEN);
+      if (metamethod) break;  /* metamethod? break switch to call it */
       s2v(ra)->setInt(l_castU2S(h->getn(L)));  /* else primitive len */
       return;
     }
@@ -1572,11 +1572,11 @@ void VirtualMachine::objlen(StkId ra, const TValue *rb) {
       return;
     }
     default: {  /* try metamethod */
-      tm = luaT_gettmbyobj(L, rb, TMS::TM_LEN);
-      if (l_unlikely(notm(tm)))  /* no metamethod? */
+      metamethod = luaT_gettmbyobj(L, rb, TMS::TM_LEN);
+      if (l_unlikely(notm(metamethod)))  /* no metamethod? */
         luaG_typeerror(L, rb, "get length of");
       break;
     }
   }
-  luaT_callTMres(L, tm, rb, rb, ra);
+  luaT_callTMres(L, metamethod, rb, rb, ra);
 }

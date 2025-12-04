@@ -148,19 +148,19 @@ void GCFinalizer::dothecall(lua_State* L, void* ud) {
 */
 void GCFinalizer::GCTM(lua_State* L) {
     global_State* g = G(L);
-    const TValue* tm;
+    const TValue* metamethod;
     TValue v;
     lua_assert(!g->getGCEmergency());
     setgcovalue(L, &v, udata2finalize(*g));
-    tm = luaT_gettmbyobj(L, &v, TMS::TM_GC);
+    metamethod = luaT_gettmbyobj(L, &v, TMS::TM_GC);
 
-    if (!notm(tm)) {  /* is there a finalizer? */
+    if (!notm(metamethod)) {  /* is there a finalizer? */
         TStatus status;
         lu_byte oldah = L->getAllowHook();
         lu_byte oldgcstp = g->getGCStp();
         g->setGCStp(oldgcstp | GCSTPGC);  /* avoid GC steps */
         L->setAllowHook(0);  /* stop debug hooks during GC metamethod */
-        L->getStackSubsystem().setSlot(L->getTop().p, tm);  /* push finalizer... */
+        L->getStackSubsystem().setSlot(L->getTop().p, metamethod);  /* push finalizer... */
         L->getStackSubsystem().push();
         L->getStackSubsystem().setSlot(L->getTop().p, &v);  /* ... and its argument */
         L->getStackSubsystem().push();

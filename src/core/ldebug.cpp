@@ -633,7 +633,7 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
 */
 static const char *funcnamefromcode (lua_State *L, const Proto *p,
                                      int pc, const char **name) {
-  TMS tm = (TMS)0;  /* (initial value avoids warnings) */
+  TMS metamethodEvent = (TMS)0;  /* (initial value avoids warnings) */
   Instruction i = p->getCode()[pc];  /* calling instruction */
   switch (InstructionView(i).opcode()) {
     case OP_CALL:
@@ -646,28 +646,28 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
     /* other instructions can do calls through metamethods */
     case OP_SELF: case OP_GETTABUP: case OP_GETTABLE:
     case OP_GETI: case OP_GETFIELD:
-      tm = TMS::TM_INDEX;
+      metamethodEvent = TMS::TM_INDEX;
       break;
     case OP_SETTABUP: case OP_SETTABLE: case OP_SETI: case OP_SETFIELD:
-      tm = TMS::TM_NEWINDEX;
+      metamethodEvent = TMS::TM_NEWINDEX;
       break;
     case OP_MMBIN: case OP_MMBINI: case OP_MMBINK: {
-      tm = static_cast<TMS>(InstructionView(i).c());
+      metamethodEvent = static_cast<TMS>(InstructionView(i).c());
       break;
     }
-    case OP_UNM: tm = TMS::TM_UNM; break;
-    case OP_BNOT: tm = TMS::TM_BNOT; break;
-    case OP_LEN: tm = TMS::TM_LEN; break;
-    case OP_CONCAT: tm = TMS::TM_CONCAT; break;
-    case OP_EQ: tm = TMS::TM_EQ; break;
+    case OP_UNM: metamethodEvent = TMS::TM_UNM; break;
+    case OP_BNOT: metamethodEvent = TMS::TM_BNOT; break;
+    case OP_LEN: metamethodEvent = TMS::TM_LEN; break;
+    case OP_CONCAT: metamethodEvent = TMS::TM_CONCAT; break;
+    case OP_EQ: metamethodEvent = TMS::TM_EQ; break;
     /* no cases for OP_EQI and OP_EQK, as they don't call metamethods */
-    case OP_LT: case OP_LTI: case OP_GTI: tm = TMS::TM_LT; break;
-    case OP_LE: case OP_LEI: case OP_GEI: tm = TMS::TM_LE; break;
-    case OP_CLOSE: case OP_RETURN: tm = TMS::TM_CLOSE; break;
+    case OP_LT: case OP_LTI: case OP_GTI: metamethodEvent = TMS::TM_LT; break;
+    case OP_LE: case OP_LEI: case OP_GEI: metamethodEvent = TMS::TM_LE; break;
+    case OP_CLOSE: case OP_RETURN: metamethodEvent = TMS::TM_CLOSE; break;
     default:
       return nullptr;  /* cannot find a reasonable name */
   }
-  *name = getShortStringContents(G(L)->getTMName(static_cast<int>(tm))) + 2;
+  *name = getShortStringContents(G(L)->getTMName(static_cast<int>(metamethodEvent))) + 2;
   return "metamethod";
 }
 

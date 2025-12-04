@@ -127,8 +127,8 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
 static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
   StkId top = L->getTop().p;
   StkId func = top;
-  const TValue *tm = luaT_gettmbyobj(L, obj, TMS::TM_CLOSE);
-  L->getStackSubsystem().setSlot(top++, tm);  /* will call metamethod... */
+  const TValue *metamethod = luaT_gettmbyobj(L, obj, TMS::TM_CLOSE);
+  L->getStackSubsystem().setSlot(top++, metamethod);  /* will call metamethod... */
   L->getStackSubsystem().setSlot(top++, obj);  /* with 'self' as the 1st argument */
   if (err != nullptr)  /* if there was an error... */
     L->getStackSubsystem().setSlot(top++, err);  /* then error object will be 2nd argument */
@@ -145,8 +145,8 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
 ** an error if not.
 */
 static void checkclosemth (lua_State *L, StkId level) {
-  const TValue *tm = luaT_gettmbyobj(L, s2v(level), TMS::TM_CLOSE);
-  if (ttisnil(tm)) {  /* no metamethod? */
+  const TValue *metamethod = luaT_gettmbyobj(L, s2v(level), TMS::TM_CLOSE);
+  if (ttisnil(metamethod)) {  /* no metamethod? */
     int idx = cast_int(level - L->getCI()->funcRef().p);  /* variable index */
     const char *vname = luaG_findlocal(L, L->getCI(), idx, nullptr);
     if (vname == nullptr) vname = "?";

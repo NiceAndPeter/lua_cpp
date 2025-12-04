@@ -63,8 +63,8 @@ inline void invalidateTMcache(Table* t) noexcept {
 ** Test whether there is no tagmethod.
 ** (Because tagmethods use raw accesses, the result may be an "empty" nil.)
 */
-inline bool notm(const TValue* tm) noexcept {
-	return ttisnil(tm);
+inline bool notm(const TValue* metamethod) noexcept {
+	return ttisnil(metamethod);
 }
 
 inline bool checknoTM(const Table* mt, TMS e) noexcept {

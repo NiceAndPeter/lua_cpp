@@ -59,13 +59,13 @@ void luaT_init (lua_State *L) {
 ** tag methods
 */
 const TValue *luaT_gettm (const Table *events, TMS event, TString *ename) {
-  const TValue *tm = events->HgetShortStr(ename);
+  const TValue *metamethod = events->HgetShortStr(ename);
   lua_assert(event <= TMS::TM_EQ);
-  if (notm(tm)) {  /* no tag method? */
+  if (notm(metamethod)) {  /* no tag method? */
     events->setFlagBits(1 << static_cast<int>(event));  /* cache this fact (flags is mutable) */
     return nullptr;
   }
-  else return tm;
+  else return metamethod;
 }
 
 
@@ -138,13 +138,13 @@ LuaT luaT_callTMres (lua_State *L, const TValue *f, const TValue *p1,
 
 static int callbinTM (lua_State *L, const TValue *p1, const TValue *p2,
                       StkId res, TMS event) {
-  const TValue *tm = luaT_gettmbyobj(L, p1, event);  /* try first operand */
-  if (notm(tm))
-    tm = luaT_gettmbyobj(L, p2, event);  /* try second operand */
-  if (notm(tm))
+  const TValue *metamethod = luaT_gettmbyobj(L, p1, event);  /* try first operand */
+  if (notm(metamethod))
+    metamethod = luaT_gettmbyobj(L, p2, event);  /* try second operand */
+  if (notm(metamethod))
     return -1;  /* tag method not found */
   else  /* call tag method and return the tag of the result */
-    return static_cast<int>(luaT_callTMres(L, tm, p1, p2, res));
+    return static_cast<int>(luaT_callTMres(L, metamethod, p1, p2, res));
 }
 
 
