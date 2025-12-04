@@ -241,7 +241,7 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   lua_assert(str != nullptr);  /* otherwise 'memcmp'/'memcpy' are undefined */
   for (ts = *list; ts != nullptr; ts = ts->getNext()) {
     if (l == cast_uint(ts->getShrlen()) &&
-        (memcmp(str, getshrstr(ts), l * sizeof(char)) == 0)) {
+        (memcmp(str, getShortStringContents(ts), l * sizeof(char)) == 0)) {
       /* found! */
       if (isdead(g, ts))  /* dead (but not collected yet)? */
         changewhite(ts);  /* resurrect it */
@@ -256,8 +256,8 @@ static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   size_t allocsize = sizestrshr(l);
   ts = createstrobj(L, allocsize, ctb(LuaT::SHRSTR), h);
   ts->setShrlen(static_cast<ls_byte>(l));
-  getshrstr(ts)[l] = '\0';  /* ending 0 */
-  std::copy_n(str, l, getshrstr(ts));
+  getShortStringContents(ts)[l] = '\0';  /* ending 0 */
+  std::copy_n(str, l, getShortStringContents(ts));
   ts->setNext(*list);
   *list = ts;
   tb->incrementNumElements();
@@ -273,7 +273,7 @@ TString* TString::create(lua_State* L, const char* str, size_t l) {
     if (l_unlikely(l * sizeof(char) >= (MAX_SIZE - sizeof(TString))))
       luaM_toobig(L);
     ts = createLongString(L, l);
-    std::copy_n(str, l, getlngstr(ts));
+    std::copy_n(str, l, getLongStringContents(ts));
     return ts;
   }
 }
@@ -288,7 +288,7 @@ TString* TString::create(lua_State* L, const char* str) {
   unsigned int j;
   global_State *g = G(L);
   for (j = 0; j < STRCACHE_M; j++) {
-    if (strcmp(str, getstr(g->getStrCache(i, j))) == 0)  /* hit? */
+    if (strcmp(str, getStringContents(g->getStrCache(i, j))) == 0)  /* hit? */
       return g->getStrCache(i, j);  /* that is it */
   }
   /* normal route */
@@ -378,7 +378,7 @@ unsigned TString::hashLongStr() {
   lua_assert(getType() == ctb(LuaT::LNGSTR));
   if (getExtra() == 0) {  /* no hash? */
     size_t len = getLnglen();
-    setHash(computeHash(getlngstr(this), len, getHash()));
+    setHash(computeHash(getLongStringContents(this), len, getHash()));
     setExtra(1);  /* now it has its hash */
   }
   return getHash();
@@ -386,8 +386,8 @@ unsigned TString::hashLongStr() {
 
 bool TString::equals(const TString* other) const {
   size_t len1, len2;
-  const char *s1 = getlstr(this, len1);
-  const char *s2 = getlstr(other, len2);
+  const char *s1 = getStringWithLength(this, len1);
+  const char *s2 = getStringWithLength(other, len2);
   return ((len1 == len2) &&  /* equal length and ... */
           (memcmp(s1, s2, len1) == 0));  /* equal contents */
 }
@@ -408,7 +408,7 @@ TString* TString::normalize(lua_State* L) {
   if (len > LUAI_MAXSHORTLEN)
     return this;  /* long string; keep the original */
   else {
-    const char *str = getlngstr(this);
+    const char *str = getLongStringContents(this);
     return internshrstr(L, str, len);
   }
 }

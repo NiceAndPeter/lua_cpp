@@ -305,7 +305,7 @@ extern int VirtualMachine_flttointeger(lua_Number n, lua_Integer *p, F2Imod mode
 [[nodiscard]] LUAI_FUNC int LTfloatint (lua_Number f, lua_Integer i);
 [[nodiscard]] LUAI_FUNC int LEfloatint (lua_Number f, lua_Integer i);
 [[nodiscard]] LUAI_FUNC int l_strcmp (const TString* ts1, const TString* ts2);
-/* luaS_eqstr and eqshrstr declared in lstring.h */
+/* luaS_eqstr and shortStringsEqual declared in lstring.h */
 
 /*
 ** Operator< for TValue (numeric and string comparison only, no metamethods)
@@ -407,7 +407,7 @@ inline bool operator==(const TValue& l, const TValue& r) noexcept {
 			case LuaT::LIGHTUSERDATA:
 				return pvalue(&l) == pvalue(&r);
 			case LuaT::SHRSTR:
-				return eqshrstr(tsvalue(&l), tsvalue(&r));
+				return shortStringsEqual(tsvalue(&l), tsvalue(&r));
 			case LuaT::LNGSTR:
 				return tsvalue(&l)->equals(tsvalue(&r));
 			case LuaT::USERDATA:

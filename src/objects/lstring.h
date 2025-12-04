@@ -214,10 +214,10 @@ inline bool TValue::isExtString() const noexcept {
 ** Get the actual string (array of bytes) from a 'TString'. (Generic
 ** version and specialized versions for long and short strings.)
 */
-inline char* rawgetshrstr(TString* ts) noexcept {
+inline char* rawGetShortStringContents(TString* ts) noexcept {
 	return ts->getContentsAddr();
 }
-inline const char* rawgetshrstr(const TString* ts) noexcept {
+inline const char* rawGetShortStringContents(const TString* ts) noexcept {
 	return ts->getContentsAddr();
 }
 
@@ -227,42 +227,42 @@ inline const char* rawgetshrstr(const TString* ts) noexcept {
 */
 
 /* Get short string contents (asserts string is short) */
-inline char* getshrstr(TString* ts) noexcept {
+inline char* getShortStringContents(TString* ts) noexcept {
 	lua_assert(ts->isShort());
 	return ts->getContentsAddr();
 }
-inline const char* getshrstr(const TString* ts) noexcept {
+inline const char* getShortStringContents(const TString* ts) noexcept {
 	lua_assert(ts->isShort());
 	return ts->getContentsAddr();
 }
 
 /* Get long string contents (asserts string is long) */
-inline char* getlngstr(TString* ts) noexcept {
+inline char* getLongStringContents(TString* ts) noexcept {
 	lua_assert(ts->isLong());
 	return ts->getContentsField();
 }
-inline const char* getlngstr(const TString* ts) noexcept {
+inline const char* getLongStringContents(const TString* ts) noexcept {
 	lua_assert(ts->isLong());
 	return ts->getContentsField();
 }
 
 /* Get string contents (works for both short and long strings) */
-inline char* getstr(TString* ts) noexcept {
+inline char* getStringContents(TString* ts) noexcept {
 	return ts->getContentsPtr();
 }
-inline const char* getstr(const TString* ts) noexcept {
+inline const char* getStringContents(const TString* ts) noexcept {
 	return ts->c_str();
 }
 
 
 /* get string length from 'TString *ts' */
-inline size_t tsslen(const TString* ts) noexcept {
+inline size_t getStringLength(const TString* ts) noexcept {
 	return ts->length();
 }
 
 /*
 ** Get string and length */
-inline const char* getlstr(const TString* ts, size_t& len) noexcept {
+inline const char* getStringWithLength(const TString* ts, size_t& len) noexcept {
 	len = ts->length();
 	return ts->c_str();
 }
@@ -298,7 +298,7 @@ inline bool isreserved(const TString* s) noexcept {
 /*
 ** equality for short strings, which are always internalized
 */
-inline bool eqshrstr(const TString* a, const TString* b) noexcept {
+inline bool shortStringsEqual(const TString* a, const TString* b) noexcept {
 	return check_exp((a)->getType() == ctb(LuaT::SHRSTR), (a) == (b));
 }
 

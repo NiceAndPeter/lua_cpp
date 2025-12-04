@@ -362,9 +362,9 @@ LUA_API const char *lua_tolstring (lua_State *L, int idx, size_t *len) {
   }
   lua_unlock(L);
   if (len != nullptr)
-    return getlstr(tsvalue(o), *len);
+    return getStringWithLength(tsvalue(o), *len);
   else
-    return getstr(tsvalue(o));
+    return getStringContents(tsvalue(o));
 }
 
 
@@ -482,7 +482,7 @@ LUA_API const char *lua_pushlstring (lua_State *L, const char *s, size_t len) {
   api_incr_top(L);
   luaC_checkGC(L);
   lua_unlock(L);
-  return getstr(ts);
+  return getStringContents(ts);
 }
 
 
@@ -497,7 +497,7 @@ LUA_API const char *lua_pushexternalstring (lua_State *L,
   api_incr_top(L);
   luaC_checkGC(L);
   lua_unlock(L);
-  return getstr(ts);
+  return getStringContents(ts);
 }
 
 
@@ -509,7 +509,7 @@ LUA_API const char *lua_pushstring (lua_State *L, const char *s) {
     TString *ts;
     ts = TString::create(L, s);
     setsvalue2s(L, L->getTop().p, ts);
-    s = getstr(ts);  /* internal copy's address */
+    s = getStringContents(ts);  /* internal copy's address */
   }
   api_incr_top(L);
   luaC_checkGC(L);
@@ -1174,7 +1174,7 @@ LUA_API int lua_error (lua_State *L) {
   errobj = s2v(L->getTop().p - 1);
   api_checkpop(L, 1);
   /* error object is the memory error message? */
-  if (ttisshrstring(errobj) && eqshrstr(tsvalue(errobj), G(L)->getMemErrMsg()))
+  if (ttisshrstring(errobj) && shortStringsEqual(tsvalue(errobj), G(L)->getMemErrMsg()))
     luaM_error(L);  /* raise a memory error */
   else
     luaG_errormsg(L);  /* raise a regular error */
@@ -1297,7 +1297,7 @@ static const char *aux_upvalue (TValue *fi, int n, TValue **val,
       *val = f->getUpval(n-1)->getVP();
       if (owner) *owner = obj2gco(f->getUpval(n - 1));
       name = p->getUpvalues()[n-1].getName();
-      return (name == nullptr) ? "(no name)" : getstr(name);
+      return (name == nullptr) ? "(no name)" : getStringContents(name);
     }
     default: return nullptr;  /* not a closure */
   }

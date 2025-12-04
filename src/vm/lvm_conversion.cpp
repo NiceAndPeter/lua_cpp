@@ -34,7 +34,7 @@ static int l_strton (const TValue *obj, TValue *result) {
   else {
     TString *st = tsvalue(obj);
     size_t stlen;
-    const char *s = getlstr(st, stlen);
+    const char *s = getStringWithLength(st, stlen);
     return (luaO_str2num(s, result) == stlen + 1);
   }
 }

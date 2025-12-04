@@ -534,7 +534,7 @@ static const char *clearbuff (BuffFS *buff) {
   if (L->rawRunProtected( pushbuff, buff) != LUA_OK)  /* errors? */
     res = nullptr;  /* error message is on the top of the stack */
   else
-    res = getstr(tsvalue(s2v(L->getTop().p - 1)));
+    res = getStringContents(tsvalue(s2v(L->getTop().p - 1)));
   if (buff->b != buff->space)  /* using dynamic buffer? */
     luaM_freearray(L, buff->b, buff->buffsize);  /* free it */
   return res;

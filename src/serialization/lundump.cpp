@@ -190,7 +190,7 @@ static void loadString (LoadState *S, Proto& p, TString **sl) {
   else {  /* create internal copy */
     *sl = ts = TString::createLongString(L, size);  /* create string */
     luaC_objbarrier(L, &p, ts);
-    loadVector(S, getlngstr(ts), size + 1);  /* load directly in final place */
+    loadVector(S, getLongStringContents(ts), size + 1);  /* load directly in final place */
   }
   /* add string to list of saved strings */
   S->nstr++;

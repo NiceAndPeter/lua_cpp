@@ -54,9 +54,9 @@ typedef struct BlockCnt {
 */
 l_noret LexState::jumpscopeerror(FuncState *funcState, Labeldesc *gt) {
   TString *tsname = funcState->getlocalvardesc(gt->numberOfActiveVariables)->vd.name;
-  const char *varname = (tsname != nullptr) ? getstr(tsname) : "*";
+  const char *varname = (tsname != nullptr) ? getStringContents(tsname) : "*";
   semerror("<goto %s> at line %d jumps into the scope of '%s'",
-           getstr(gt->name), gt->line, varname);  /* raise the error */
+           getStringContents(gt->name), gt->line, varname);  /* raise the error */
 }
 
 
@@ -147,5 +147,5 @@ l_noret LexState::undefgoto([[maybe_unused]] FuncState *funcState, Labeldesc *gt
   /* breaks are checked when created, cannot be undefined */
   lua_assert(!eqstr(*gt->name, *getBreakName()));
   semerror("no visible label '%s' for <goto> at line %d",
-           getstr(gt->name), gt->line);
+           getStringContents(gt->name), gt->line);
 }

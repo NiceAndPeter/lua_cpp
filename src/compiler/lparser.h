@@ -87,7 +87,7 @@ private:
     struct {  /* for indexed variables */
       short keyIndex;  /* index (R or "long" K) */
       lu_byte tableRegister;  /* table (register or upvalue) */
-      lu_byte ro;  /* true if variable is read-only */
+      lu_byte isReadOnly;  /* true if variable is read-only */
       int stringKeyIndex;  /* index in 'k' of string key, or -1 if not a string */
     } ind;
     struct {  /* for local variables */
@@ -95,8 +95,8 @@ private:
       short variableIndex;  /* index in 'actvar.arr' */
     } var;
   } u;
-  int t;  /* patch list of 'exit when true' */
-  int f;  /* patch list of 'exit when false' */
+  int trueJumpList;  /* patch list of 'exit when true' */
+  int falseJumpList;  /* patch list of 'exit when false' */
 
 public:
   // Inline accessors
@@ -119,8 +119,8 @@ public:
   void setIndexedKeyIndex(short idx) noexcept { u.ind.keyIndex = idx; }
   lu_byte getIndexedTableReg() const noexcept { return u.ind.tableRegister; }
   void setIndexedTableReg(lu_byte treg) noexcept { u.ind.tableRegister = treg; }
-  lu_byte isIndexedReadOnly() const noexcept { return u.ind.ro; }
-  void setIndexedReadOnly(lu_byte ro) noexcept { u.ind.ro = ro; }
+  lu_byte isIndexedReadOnly() const noexcept { return u.ind.isReadOnly; }
+  void setIndexedReadOnly(lu_byte ro) noexcept { u.ind.isReadOnly = ro; }
   int getIndexedStringKeyIndex() const noexcept { return u.ind.stringKeyIndex; }
   void setIndexedStringKeyIndex(int keystr) noexcept { u.ind.stringKeyIndex = keystr; }
 
@@ -131,12 +131,12 @@ public:
   void setLocalVarIndex(short vidx) noexcept { u.var.variableIndex = vidx; }
 
   // Patch lists
-  int getTrueList() const noexcept { return t; }
-  void setTrueList(int list) noexcept { t = list; }
-  int* getTrueListRef() noexcept { return &t; }
-  int getFalseList() const noexcept { return f; }
-  void setFalseList(int list) noexcept { f = list; }
-  int* getFalseListRef() noexcept { return &f; }
+  int getTrueList() const noexcept { return trueJumpList; }
+  void setTrueList(int list) noexcept { trueJumpList = list; }
+  int* getTrueListRef() noexcept { return &trueJumpList; }
+  int getFalseList() const noexcept { return falseJumpList; }
+  void setFalseList(int list) noexcept { falseJumpList = list; }
+  int* getFalseListRef() noexcept { return &falseJumpList; }
 
   // Phase 44.6: Expression kind helper methods
 

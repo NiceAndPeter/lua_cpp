@@ -34,9 +34,9 @@
 */
 [[nodiscard]] int l_strcmp (const TString *ts1, const TString *ts2) {
   size_t rl1;  /* real length */
-  auto *s1 = getlstr(ts1, rl1);
+  auto *s1 = getStringWithLength(ts1, rl1);
   size_t rl2;
-  auto *s2 = getlstr(ts2, rl2);
+  auto *s2 = getStringWithLength(ts2, rl2);
   for (;;) {  /* for each segment */
     auto temp = strcoll(s1, s2);
     if (temp != 0)  /* not equal? */

@@ -136,7 +136,7 @@ int GCWeak::getmode(global_State& g, Table* h) {
     if (mode == nullptr || !ttisshrstring(mode))
         return 0;  /* ignore non-(short)string modes */
     else {
-        const char* smode = getshrstr(tsvalue(mode));
+        const char* smode = getShortStringContents(tsvalue(mode));
         const char* weakkey = strchr(smode, 'k');
         const char* weakvalue = strchr(smode, 'v');
         return ((weakkey != nullptr) << 1) | (weakvalue != nullptr);

@@ -137,23 +137,23 @@ class StringInterner {
 private:
   Mbuffer *buff;  /* buffer for tokens */
   Table *h;       /* to avoid collection/reuse strings */
-  TString *envn;  /* environment variable name */
-  TString *brkn;  /* "break" name (used as a label) */
-  TString *glbn;  /* "global" name (when not a reserved word) */
+  TString *environmentName;  /* environment variable name */
+  TString *breakLabelName;  /* "break" name (used as a label) */
+  TString *globalKeywordName;  /* "global" name (when not a reserved word) */
 
 public:
   // Accessors
   Mbuffer* getBuffer() const noexcept { return buff; }
   Table* getTable() const noexcept { return h; }
-  TString* getEnvName() const noexcept { return envn; }
-  TString* getBreakName() const noexcept { return brkn; }
-  TString* getGlobalName() const noexcept { return glbn; }
+  TString* getEnvName() const noexcept { return environmentName; }
+  TString* getBreakName() const noexcept { return breakLabelName; }
+  TString* getGlobalName() const noexcept { return globalKeywordName; }
 
   void setBuffer(Mbuffer* b) noexcept { buff = b; }
   void setTable(Table* table) noexcept { h = table; }
-  void setEnvName(TString* env) noexcept { envn = env; }
-  void setBreakName(TString* brk) noexcept { brkn = brk; }
-  void setGlobalName(TString* gbl) noexcept { glbn = gbl; }
+  void setEnvName(TString* env) noexcept { environmentName = env; }
+  void setBreakName(TString* brk) noexcept { breakLabelName = brk; }
+  void setGlobalName(TString* gbl) noexcept { globalKeywordName = gbl; }
 };
 
 /* Phase 95: Lexical state - focused on tokenization only

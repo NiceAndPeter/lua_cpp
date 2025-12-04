@@ -1221,7 +1221,7 @@ static int l_strton (const TValue *obj, TValue *result) {
   else {
     TString *st = tsvalue(obj);
     size_t stlen;
-    const char *s = getlstr(st, stlen);
+    const char *s = getStringWithLength(st, stlen);
     return (luaO_str2num(s, result) == stlen + 1);
   }
 }
@@ -1370,7 +1370,7 @@ int VirtualMachine::equalObj(const TValue *t1, const TValue *t2) const {
         return (fltvalue(t1) == fltvalue(t2));
       case LuaT::LIGHTUSERDATA: return pvalue(t1) == pvalue(t2);
       case LuaT::SHRSTR:
-        return eqshrstr(tsvalue(t1), tsvalue(t2));
+        return shortStringsEqual(tsvalue(t1), tsvalue(t2));
       case LuaT::LNGSTR:
         return tsvalue(t1)->equals(tsvalue(t2));
       case LuaT::USERDATA: {
@@ -1497,7 +1497,7 @@ static void copy2buff (StkId top, int n, char *buff) {
   do {
     auto *st = tsvalue(s2v(top - n));
     size_t l;  /* length of string being copied */
-    auto *s = getlstr(st, l);
+    auto *s = getStringWithLength(st, l);
     std::copy_n(s, l, buff + tl);
     tl += l;
   } while (--n > 0);
@@ -1523,12 +1523,12 @@ void VirtualMachine::concat(int total) {
     }
     else {
       /* at least two non-empty string values; get as many as possible */
-      auto tl = tsslen(tsvalue(s2v(top - 1)));
+      auto tl = getStringLength(tsvalue(s2v(top - 1)));
       TString *ts;
       /* collect total length and number of strings */
       for (n = 1; n < total && tostring(L, s2v(top - n - 1)); n++) {
         top = L->getTop().p;  /* recapture after tostring() which can trigger GC */
-        auto l = tsslen(tsvalue(s2v(top - n - 1)));
+        auto l = getStringLength(tsvalue(s2v(top - n - 1)));
         if (l_unlikely(l >= MAX_SIZE - sizeof(TString) - tl)) {
           L->getStackSubsystem().setTopPtr(top - total);  /* pop strings to avoid wasting stack */
           luaG_runerror(L, "string length overflow");
@@ -1544,7 +1544,7 @@ void VirtualMachine::concat(int total) {
       else {  /* long string; copy strings directly to final result */
         ts = TString::createLongString(L, tl);
         top = L->getTop().p;  /* recapture after potential GC */
-        copy2buff(top, n, getlngstr(ts));
+        copy2buff(top, n, getLongStringContents(ts));
       }
       setsvalue2s(L, top - n, ts);  /* create result */
     }

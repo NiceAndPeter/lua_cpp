@@ -1246,7 +1246,7 @@ TValue* Table::HgetShortStr(TString* key) const {
   Node *n = hashstr(this, key);
   lua_assert(strisshr(key));
   for (;;) {  /* check whether 'key' is somewhere in the chain */
-    if (n->isKeyShrStr() && eqshrstr(n->getKeyStrValue(), key))
+    if (n->isKeyShrStr() && shortStringsEqual(n->getKeyStrValue(), key))
       return gval(n);  /* that's it */
     else {
       int nx = gnext(n);

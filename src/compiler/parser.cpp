@@ -291,7 +291,7 @@ void Parser::check_readonly(expdesc& e) {
       return;  /* integer index cannot be read-only */
   }
   if (varname)
-    ls.semerror("attempt to assign to const variable '%s'", getstr(varname));
+    ls.semerror("attempt to assign to const variable '%s'", getStringContents(varname));
 }
 
 
@@ -320,7 +320,7 @@ void Parser::buildglobal(TString& varname, expdesc& var) {
   var.init(VGLOBAL, -1);  /* global by default */
   fs->singlevaraux(*ls.getEnvName(), var, 1);  /* get environment variable */
   if (var.getKind() == VGLOBAL)
-    ls.semerror("_ENV is global when accessing variable '%s'", getstr(&varname));
+    ls.semerror("_ENV is global when accessing variable '%s'", getStringContents(&varname));
   fs->exp2anyregup(var);  /* _ENV could be a constant */
   expdesc key;
   key.initString(&varname);  /* key is variable name */
@@ -339,7 +339,7 @@ void Parser::buildvar(TString& varname, expdesc& var) {
     auto info = var.getInfo();
     /* global by default in the scope of a global declaration? */
     if (info == -2)
-      ls.semerror("variable '%s' not declared", getstr(&varname));
+      ls.semerror("variable '%s' not declared", getStringContents(&varname));
     buildglobal(varname, var);
     if (info != -1 && ls.getDyndata()->actvar()[info].vd.kind == GDKCONST)
       var.setIndexedReadOnly(1);  /* mark variable as read-only */
@@ -1032,7 +1032,7 @@ void Parser::checkrepeated(TString& name) {
   Labeldesc *lb = ls.findlabel(&name, fs->getFirstLabel());
   if (l_unlikely(lb != nullptr))  /* already defined? */
     ls.semerror( "label '%s' already defined on line %d",
-                      getstr(&name), lb->line);  /* error */
+                      getStringContents(&name), lb->line);  /* error */
 }
 
 
@@ -1241,7 +1241,7 @@ lu_byte Parser::getvarattribute( lu_byte df) {
   /* attrib -> ['<' NAME '>'] */
   if (testnext( '<')) {
     TString *ts = str_checkname();
-    const char *attr = getstr(ts);
+    const char *attr = getStringContents(ts);
     checknext( '>');
     if (strcmp(attr, "const") == 0)
       return RDKCONST;  /* read-only variable */

@@ -431,7 +431,7 @@ void luaE_warning (lua_State *L, const char *msg, int tocont) {
 void luaE_warnerror (lua_State *L, const char *where) {
   TValue *errobj = s2v(L->getTop().p - 1);  /* error object */
   const char *msg = (ttisstring(errobj))
-                  ? getstr(tsvalue(errobj))
+                  ? getStringContents(tsvalue(errobj))
                   : "error object is not a string";
   /* produce warning "error in %s (%s)" (where, msg) */
   luaE_warning(L, "error in ", 1);

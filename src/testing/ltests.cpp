@@ -327,7 +327,7 @@ static void printobj (global_State *g, GCObject *o) {
            isdead(g,o) ? 'd' : isblack(o) ? 'b' : iswhite(o) ? 'w' : 'g',
            "ns01oTt"[static_cast<size_t>(getage(o))], o->getMarked());
   if (o->getType() == ctb(LuaT::SHRSTR) || o->getType() == ctb(LuaT::LNGSTR))
-    printf(" '%s'", getstr(gco2ts(o)));
+    printf(" '%s'", getStringContents(gco2ts(o)));
 }
 
 
@@ -346,9 +346,9 @@ void lua_printvalue (TValue *v) {
       break;
     }
     case LuaT::SHRSTR:
-      printf("'%s'", getstr(tsvalue(v))); break;
+      printf("'%s'", getStringContents(tsvalue(v))); break;
     case LuaT::LNGSTR:
-      printf("'%.30s...'", getstr(tsvalue(v))); break;
+      printf("'%.30s...'", getStringContents(tsvalue(v))); break;
     case LuaT::VFALSE:
       printf("%s", "false"); break;
     case LuaT::VTRUE:

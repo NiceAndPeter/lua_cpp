@@ -322,7 +322,7 @@ const char* Proto::getLocalName(int local_number, int pc) const {
     if (pc < locvar.getEndPC()) {  /* is variable active? */
       local_number--;
       if (local_number == 0)
-        return getstr(locvar.getVarName());
+        return getStringContents(locvar.getVarName());
     }
   }
   return nullptr;  /* not found */

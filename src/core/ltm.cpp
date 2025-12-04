@@ -95,7 +95,7 @@ const char *luaT_objtypename (lua_State *L, const TValue *o) {
       (ttisfulluserdata(o) && (mt = uvalue(o)->getMetatable()) != nullptr)) {
     const TValue *name = mt->HgetShortStr(TString::create(L, "__name"));
     if (ttisstring(name))  /* is '__name' a string? */
-      return getstr(tsvalue(name));  /* use it as type name */
+      return getStringContents(tsvalue(name));  /* use it as type name */
   }
   return ttypename(ttype(o));  /* else use standard type name */
 }

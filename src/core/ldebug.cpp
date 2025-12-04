@@ -190,7 +190,7 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
 static const char *upvalname (const Proto *p, int uv) {
   TString *s = check_exp(uv < p->getUpvaluesSize(), p->getUpvalues()[uv].getName());
   if (s == nullptr) return "?";
-  else return getstr(s);
+  else return getStringContents(s);
 }
 
 
@@ -282,7 +282,7 @@ static void funcinfo (lua_Debug *ar, Closure *cl) {
   else {
     const Proto *p = reinterpret_cast<LClosure*>(cl)->getProto();
     if (p->getSource()) {
-      ar->source = getlstr(p->getSource(), ar->srclen);
+      ar->source = getStringWithLength(p->getSource(), ar->srclen);
     }
     else {
       ar->source = "=?";
@@ -510,7 +510,7 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
 static const char *kname (const Proto *p, int index, const char **name) {
   TValue *kvalue = &p->getConstants()[index];
   if (ttisstring(kvalue)) {
-    *name = getstr(tsvalue(kvalue));
+    *name = getStringContents(tsvalue(kvalue));
     return "constant";
   }
   else {
@@ -667,7 +667,7 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
     default:
       return nullptr;  /* cannot find a reasonable name */
   }
-  *name = getshrstr(G(L)->getTMName(static_cast<int>(tm))) + 2;
+  *name = getShortStringContents(G(L)->getTMName(static_cast<int>(tm))) + 2;
   return "metamethod";
 }
 
@@ -873,7 +873,7 @@ const char *lua_State::addInfo(const char *msg, TString *src, int line) {
   else {
     char buff[LUA_IDSIZE];
     size_t idlen;
-    const char *id = getlstr(src, idlen);
+    const char *id = getStringWithLength(src, idlen);
     luaO_chunkid(buff, id, idlen);
     return luaO_pushfstring(this, "%s:%d: %s", buff, line, msg);
   }

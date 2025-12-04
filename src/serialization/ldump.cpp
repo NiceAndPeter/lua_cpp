@@ -158,7 +158,7 @@ static void dumpString (DumpState *D, TString *ts) {
     else {  /* must write and save the string */
       TValue key, value;  /* to save the string in the hash */
       size_t size;
-      const char *s = getlstr(ts, size);
+      const char *s = getStringWithLength(ts, size);
       dumpSize(D, size + 2);
       dumpVector(D, s, size + 1);  /* include ending '\0' */
       D->nstr++;  /* one more saved string */
