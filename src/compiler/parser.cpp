@@ -229,8 +229,8 @@ TString *Parser::str_checkname() {
 }
 
 
-void Parser::codename(expdesc& e) {
-  e.initString(str_checkname());
+void Parser::codename(expdesc& expr) {
+  expr.initString(str_checkname());
 }
 
 
@@ -261,37 +261,37 @@ int Parser::new_localvar(TString& name) {
 ** (Unless noted otherwise, all variables are referred to by their
 ** compiler indices.)
 */
-void Parser::check_readonly(expdesc& e) {
+void Parser::check_readonly(expdesc& expr) {
   // FuncState passed as parameter
-  TString *varname = nullptr;  /* to be set if variable is const */
-  switch (e.getKind()) {
+  TString *variableName = nullptr;  /* to be set if variable is const */
+  switch (expr.getKind()) {
     case VCONST: {
-      varname = ls.getDyndata()->actvar()[e.getInfo()].vd.name;
+      variableName = ls.getDyndata()->actvar()[expr.getInfo()].vd.name;
       break;
     }
     case VLOCAL: {
-      Vardesc *vardesc = fs->getlocalvardesc(e.getLocalVarIndex());
+      Vardesc *vardesc = fs->getlocalvardesc(expr.getLocalVarIndex());
       if (vardesc->vd.kind != VDKREG)  /* not a regular variable? */
-        varname = vardesc->vd.name;
+        variableName = vardesc->vd.name;
       break;
     }
     case VUPVAL: {
-      Upvaldesc *up = &fs->getProto().getUpvalues()[e.getInfo()];
+      Upvaldesc *up = &fs->getProto().getUpvalues()[expr.getInfo()];
       if (up->getKind() != VDKREG)
-        varname = up->getName();
+        variableName = up->getName();
       break;
     }
     case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
-      if (e.isIndexedReadOnly())  /* read-only? */
-        varname = tsvalue(&fs->getProto().getConstants()[e.getIndexedStringKeyIndex()]);
+      if (expr.isIndexedReadOnly())  /* read-only? */
+        variableName = tsvalue(&fs->getProto().getConstants()[expr.getIndexedStringKeyIndex()]);
       break;
     }
     default:
-      lua_assert(e.getKind() == VINDEXI);  /* this one doesn't need any check */
+      lua_assert(expr.getKind() == VINDEXI);  /* this one doesn't need any check */
       return;  /* integer index cannot be read-only */
   }
-  if (varname)
-    ls.semerror("attempt to assign to const variable '%s'", getStringContents(varname));
+  if (variableName)
+    ls.semerror("attempt to assign to const variable '%s'", getStringContents(variableName));
 }
 
 
@@ -358,18 +358,18 @@ void Parser::singlevar(expdesc& var) {
 ** Adjust the number of results from an expression list 'e' with 'nexps'
 ** expressions to 'nvars' values.
 */
-void Parser::adjust_assign(int nvars, int nexps, expdesc& e) {
+void Parser::adjust_assign(int variableCount, int expressionCount, expdesc& lastExpr) {
   // FuncState passed as parameter
-  auto needed = nvars - nexps;  /* extra values needed */
-  if (hasmultret(e.getKind())) {  /* last expression has multiple returns? */
+  auto needed = variableCount - expressionCount;  /* extra values needed */
+  if (hasmultret(lastExpr.getKind())) {  /* last expression has multiple returns? */
     auto extra = needed + 1;  /* discount last expression itself */
     if (extra < 0)
       extra = 0;
-    fs->setreturns(e, extra);  /* last exp. provides the difference */
+    fs->setreturns(lastExpr, extra);  /* last exp. provides the difference */
   }
   else {
-    if (e.getKind() != VVOID)  /* at least one expression? */
-      fs->exp2nextreg(e);  /* close last expression */
+    if (lastExpr.getKind() != VVOID)  /* at least one expression? */
+      fs->exp2nextreg(lastExpr);  /* close last expression */
     if (needed > 0)  /* missing values? */
       fs->nil(fs->getFirstFreeRegister(), needed);  /* complete with nils */
   }
@@ -655,7 +655,7 @@ void Parser::parlist() {
 }
 
 
-void Parser::body( expdesc& e, int ismethod, int line) {
+void Parser::body( expdesc& funcExpr, int isMethod, int line) {
   /* body ->  '(' parlist ')' block END */
   Proto* proto = addprototype();
   proto->setLineDefined(line);
@@ -663,7 +663,7 @@ void Parser::body( expdesc& e, int ismethod, int line) {
   BlockCnt bl;
   open_func(&new_fs, bl);
   checknext( '(');
-  if (ismethod) {
+  if (isMethod) {
     new_localvarliteral("self");  /* create 'self' parameter */
     adjustlocalvars(1);
   }
@@ -672,7 +672,7 @@ void Parser::body( expdesc& e, int ismethod, int line) {
   statlist();
   new_fs.getProto().setLastLineDefined(ls.getLineNumber());
   check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_FUNCTION), line);
-  codeclosure(e);
+  codeclosure(funcExpr);
   close_func();
 }
 
