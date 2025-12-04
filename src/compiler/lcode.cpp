@@ -32,8 +32,8 @@
 
 
 /* (note that expressions VJMP also have jumps.) */
-inline bool hasjumps(const expdesc& e) noexcept {
-	return e.getTrueList() != e.getFalseList();
+inline bool hasjumps(const expdesc& expr) noexcept {
+	return expr.getTrueList() != expr.getFalseList();
 }
 
 /* semantic error */
@@ -49,15 +49,15 @@ l_noret LexState::semerror(const char *fmt, ...) {
 ** If expression is a numeric constant, fills 'v' with its value
 ** and returns 1. Otherwise, returns 0.
 */
-static int tonumeral (const expdesc& e, TValue *v) {
-  if (hasjumps(e))
+static int tonumeral (const expdesc& expr, TValue *value) {
+  if (hasjumps(expr))
     return 0;  /* not a numeral */
-  switch (e.getKind()) {
+  switch (expr.getKind()) {
     case VKINT:
-      if (v) v->setInt(e.getIntValue());
+      if (value) value->setInt(expr.getIntValue());
       return 1;
     case VKFLT:
-      if (v) v->setFloat(e.getFloatValue());
+      if (value) value->setFloat(expr.getFloatValue());
       return 1;
     default: return 0;
   }
@@ -66,9 +66,9 @@ static int tonumeral (const expdesc& e, TValue *v) {
 /*
 ** Get the constant value from a constant expression
 */
-TValue *FuncState::const2val(const expdesc& e) {
-  lua_assert(e.getKind() == VCONST);
-  return &getLexState().getDyndata()->actvar()[e.getInfo()].k;
+TValue *FuncState::const2val(const expdesc& expr) {
+  lua_assert(expr.getKind() == VCONST);
+  return &getLexState().getDyndata()->actvar()[expr.getInfo()].k;
 }
 
 /*
@@ -465,25 +465,25 @@ void FuncState::floatCode(int reg, lua_Number flt) {
 /*
 ** Convert a constant in 'v' into an expression description 'e'
 */
-static void const2exp (TValue *v, expdesc& e) {
-  switch (ttypetag(v)) {
+static void const2exp (TValue *value, expdesc& expr) {
+  switch (ttypetag(value)) {
     case LuaT::NUMINT:
-      e.setKind(VKINT); e.setIntValue(ivalue(v));
+      expr.setKind(VKINT); expr.setIntValue(ivalue(value));
       break;
     case LuaT::NUMFLT:
-      e.setKind(VKFLT); e.setFloatValue(fltvalue(v));
+      expr.setKind(VKFLT); expr.setFloatValue(fltvalue(value));
       break;
     case LuaT::VFALSE:
-      e.setKind(VFALSE);
+      expr.setKind(VFALSE);
       break;
     case LuaT::VTRUE:
-      e.setKind(VTRUE);
+      expr.setKind(VTRUE);
       break;
     case LuaT::NIL:
-      e.setKind(VNIL);
+      expr.setKind(VNIL);
       break;
     case LuaT::SHRSTR:  case LuaT::LNGSTR:
-      e.setKind(VKSTR); e.setStringValue(tsvalue(v));
+      expr.setKind(VKSTR); expr.setStringValue(tsvalue(value));
       break;
     default: lua_assert(0);
   }
@@ -726,48 +726,48 @@ void FuncState::codenot(expdesc& expr) {
 /*
 ** Check whether expression 'e' is a short literal string
 */
-int FuncState::isKstr(expdesc& e) {
-  return (e.getKind() == VK && !hasjumps(e) && e.getInfo() <= MAXARG_B &&
-          ttisshrstring(&getProto().getConstants()[e.getInfo()]));
+int FuncState::isKstr(expdesc& expr) {
+  return (expr.getKind() == VK && !hasjumps(expr) && expr.getInfo() <= MAXARG_B &&
+          ttisshrstring(&getProto().getConstants()[expr.getInfo()]));
 }
 
 /*
-** Check whether expression 'e' is a literal integer.
+** Check whether expression 'expr' is a literal integer.
 */
-static bool isKint (expdesc& e) {
-  return (e.getKind() == VKINT && !hasjumps(e));
+static bool isKint (expdesc& expr) {
+  return (expr.getKind() == VKINT && !hasjumps(expr));
 }
 
 /*
-** Check whether expression 'e' is a literal integer in
+** Check whether expression 'expr' is a literal integer in
 ** proper range to fit in register C
 */
-static bool isCint (expdesc& e) {
-  return isKint(e) && (l_castS2U(e.getIntValue()) <= l_castS2U(MAXARG_C));
+static bool isCint (expdesc& expr) {
+  return isKint(expr) && (l_castS2U(expr.getIntValue()) <= l_castS2U(MAXARG_C));
 }
 
 /*
-** Check whether expression 'e' is a literal integer in
+** Check whether expression 'expr' is a literal integer in
 ** proper range to fit in register sC
 */
-static bool isSCint (expdesc& e) {
-  return isKint(e) && fitsC(e.getIntValue());
+static bool isSCint (expdesc& expr) {
+  return isKint(expr) && fitsC(expr.getIntValue());
 }
 
 /*
 ** Check whether expression 'e' is a literal integer or float in
 ** proper range to fit in a register (sB or sC).
 */
-static bool isSCnumber (expdesc& e, int *pi, int *isfloat) {
-  lua_Integer i;
-  if (e.getKind() == VKINT)
-    i = e.getIntValue();
-  else if (e.getKind() == VKFLT && VirtualMachine::flttointeger(e.getFloatValue(), &i, F2Imod::F2Ieq))
-    *isfloat = 1;
+static bool isSCnumber (expdesc& expr, int *intResult, int *isFloat) {
+  lua_Integer intValue;
+  if (expr.getKind() == VKINT)
+    intValue = expr.getIntValue();
+  else if (expr.getKind() == VKFLT && VirtualMachine::flttointeger(expr.getFloatValue(), &intValue, F2Imod::F2Ieq))
+    *isFloat = 1;
   else
     return false;  /* not a number */
-  if (!hasjumps(e) && fitsC(i)) {
-    *pi = int2sC(cast_int(i));
+  if (!hasjumps(expr) && fitsC(intValue)) {
+    *intResult = int2sC(cast_int(intValue));
     return true;
   }
   else
@@ -1130,28 +1130,28 @@ int FuncState::codesJ(int o, int sj, int k) {
   return code(CREATE_sJ(static_cast<OpCode>(o), j, k));
 }
 
-int FuncState::exp2const(const expdesc& e, TValue *v) {
-  if (hasjumps(e))
+int FuncState::exp2const(const expdesc& expr, TValue *value) {
+  if (hasjumps(expr))
     return 0;  /* not a constant */
-  switch (e.getKind()) {
+  switch (expr.getKind()) {
     case VFALSE:
-      setbfvalue(v);
+      setbfvalue(value);
       return 1;
     case VTRUE:
-      setbtvalue(v);
+      setbtvalue(value);
       return 1;
     case VNIL:
-      setnilvalue(v);
+      setnilvalue(value);
       return 1;
     case VKSTR: {
-      setsvalue(getLexState().getLuaState(), v, e.getStringValue());
+      setsvalue(getLexState().getLuaState(), value, expr.getStringValue());
       return 1;
     }
     case VCONST: {
-      *v = *const2val(e);
+      *value = *const2val(expr);
       return 1;
     }
-    default: return tonumeral(e, v);
+    default: return tonumeral(expr, value);
   }
 }
 
