@@ -157,84 +157,84 @@ void VirtualMachine::execute(CallInfo *ci) {
   #undef vmfetch
 
   // Register access lambdas (defined before operation lambdas that use them)
-  auto RA = [&](Instruction i) -> StkId {
+  auto getRegisterA = [&](Instruction i) -> StkId {
     return base + InstructionView(i).a();
   };
-  auto vRA = [&](Instruction i) -> TValue* {
+  auto getValueA = [&](Instruction i) -> TValue* {
     return s2v(base + InstructionView(i).a());
   };
-  [[maybe_unused]] auto RB = [&](Instruction i) -> StkId {
+  [[maybe_unused]] auto getRegisterB = [&](Instruction i) -> StkId {
     return base + InstructionView(i).b();
   };
-  auto vRB = [&](Instruction i) -> TValue* {
+  auto getValueB = [&](Instruction i) -> TValue* {
     return s2v(base + InstructionView(i).b());
   };
-  auto KB = [&](Instruction i) -> TValue* {
+  auto getConstantB = [&](Instruction i) -> TValue* {
     return k + InstructionView(i).b();
   };
-  [[maybe_unused]] auto RC = [&](Instruction i) -> StkId {
+  [[maybe_unused]] auto getRegisterC = [&](Instruction i) -> StkId {
     return base + InstructionView(i).c();
   };
-  auto vRC = [&](Instruction i) -> TValue* {
+  auto getValueC = [&](Instruction i) -> TValue* {
     return s2v(base + InstructionView(i).c());
   };
-  auto KC = [&](Instruction i) -> TValue* {
+  auto getConstantC = [&](Instruction i) -> TValue* {
     return k + InstructionView(i).c();
   };
-  auto RKC = [&](Instruction i) -> TValue* {
+  auto getRegisterOrConstantC = [&](Instruction i) -> TValue* {
     return InstructionView(i).testk() ? (k + InstructionView(i).c()) : s2v(base + InstructionView(i).c());
   };
 
   // State management lambdas
-  auto updatetrap = [&](CallInfo* ci_arg) {
+  auto updateTrap = [&](CallInfo* ci_arg) {
     trap = ci_arg->getTrap();
   };
-  auto updatebase = [&](CallInfo* ci_arg) {
+  auto updateStackBase = [&](CallInfo* ci_arg) {
     base = ci_arg->funcRef().p + 1;
   };
-  auto updatestack = [&](StkId& ra_arg, CallInfo* ci_arg, Instruction inst) {
+  auto updateStackAfterRealloc = [&](StkId& ra_arg, CallInfo* ci_arg, Instruction inst) {
     if (l_unlikely(trap)) {
-      updatebase(ci_arg);
-      ra_arg = RA(inst);
+      updateStackBase(ci_arg);
+      ra_arg = getRegisterA(inst);
     }
   };
-  auto savepc = [&](CallInfo* ci_arg) {
+  auto saveProgramCounter = [&](CallInfo* ci_arg) {
     ci_arg->setSavedPC(pc);
   };
-  auto savestate = [&](lua_State* L_arg, CallInfo* ci_arg) {
-    savepc(ci_arg);
+  auto saveInterpreterState = [&](lua_State* L_arg, CallInfo* ci_arg) {
+    saveProgramCounter(ci_arg);
     L_arg->getStackSubsystem().setTopPtr(ci_arg->topRef().p);
   };
 
   // Control flow lambdas
-  auto dojump = [&](CallInfo* ci_arg, Instruction inst, int e) {
+  auto performJump = [&](CallInfo* ci_arg, Instruction inst, int e) {
     pc += InstructionView(inst).sj() + e;
-    updatetrap(ci_arg);
+    updateTrap(ci_arg);
   };
-  auto donextjump = [&](CallInfo* ci_arg) {
+  auto performNextJump = [&](CallInfo* ci_arg) {
     Instruction ni = *pc;
-    dojump(ci_arg, ni, 1);
+    performJump(ci_arg, ni, 1);
   };
-  auto docondjump = [&](int cond, CallInfo* ci_arg, Instruction inst) {
+  auto performConditionalJump = [&](int cond, CallInfo* ci_arg, Instruction inst) {
     if (cond != InstructionView(inst).k())
       pc++;
     else
-      donextjump(ci_arg);
+      performNextJump(ci_arg);
   };
 
   // Exception handling lambdas
-  auto Protect = [&](auto&& expr) {
-    savestate(L, ci);
+  auto protectCall = [&](auto&& expr) {
+    saveInterpreterState(L, ci);
     expr();
-    updatetrap(ci);
+    updateTrap(ci);
   };
-  auto ProtectNT = [&](auto&& expr) {
-    savepc(ci);
+  auto protectCallNoTop = [&](auto&& expr) {
+    saveProgramCounter(ci);
     expr();
-    updatetrap(ci);
+    updateTrap(ci);
   };
-  auto halfProtect = [&](auto&& expr) {
-    savestate(L, ci);
+  auto halfProtectedCall = [&](auto&& expr) {
+    saveInterpreterState(L, ci);
     expr();
   };
 
@@ -253,15 +253,15 @@ void VirtualMachine::execute(CallInfo *ci) {
   */
   auto checkGC = [&](lua_State* L_arg, StkId c_val) {
     luaC_condGC(L_arg,
-                [&](){ savepc(ci); L_arg->getStackSubsystem().setTopPtr(c_val); },
-                [&](){ updatetrap(ci); });
+                [&](){ saveProgramCounter(ci); L_arg->getStackSubsystem().setTopPtr(c_val); },
+                [&](){ updateTrap(ci); });
     luai_threadyield(L_arg);
   };
 
   // Lambda: Arithmetic with immediate operand
   auto op_arithI = [&](auto iop, auto fop, Instruction i) {
-    TValue *ra = vRA(i);
-    TValue *v1 = vRB(i);
+    TValue *ra = getValueA(i);
+    TValue *v1 = getValueB(i);
     int imm = InstructionView(i).sc();
     if (ttisinteger(v1)) {
       lua_Integer iv1 = ivalue(v1);
@@ -278,22 +278,22 @@ void VirtualMachine::execute(CallInfo *ci) {
   auto op_arithf_aux = [&](const TValue *v1, const TValue *v2, auto fop, Instruction i) {
     lua_Number n1, n2;
     if (tonumberns(v1, n1) && tonumberns(v2, n2)) {
-      auto ra = RA(i);
+      auto ra = getRegisterA(i);
       pc++; s2v(ra)->setFloat(fop(L, n1, n2));
     }
   };
 
   // Lambda: Arithmetic operations over floats with register operands
   auto op_arithf = [&](auto fop, Instruction i) {
-    TValue *v1 = vRB(i);
-    TValue *v2 = vRC(i);
+    TValue *v1 = getValueB(i);
+    TValue *v2 = getValueC(i);
     op_arithf_aux(v1, v2, fop, i);
   };
 
   // Lambda: Arithmetic operations with K operands for floats
   auto op_arithfK = [&](auto fop, Instruction i) {
-    TValue *v1 = vRB(i);
-    TValue *v2 = KC(i);
+    TValue *v1 = getValueB(i);
+    TValue *v2 = getConstantC(i);
     lua_assert(ttisnumber(v2));
     op_arithf_aux(v1, v2, fop, i);
   };
@@ -301,7 +301,7 @@ void VirtualMachine::execute(CallInfo *ci) {
   // Lambda: Auxiliary for arithmetic operations over integers and floats
   auto op_arith_aux = [&](const TValue *v1, const TValue *v2, auto iop, auto fop, Instruction i) {
     if (ttisinteger(v1) && ttisinteger(v2)) {
-      auto ra = RA(i);
+      auto ra = getRegisterA(i);
       auto i1 = ivalue(v1);
       auto i2 = ivalue(v2);
       pc++; s2v(ra)->setInt(iop(L, i1, i2));
@@ -313,38 +313,38 @@ void VirtualMachine::execute(CallInfo *ci) {
 
   // Lambda: Arithmetic operations with register operands
   auto op_arith = [&](auto iop, auto fop, Instruction i) {
-    TValue *v1 = vRB(i);
-    TValue *v2 = vRC(i);
+    TValue *v1 = getValueB(i);
+    TValue *v2 = getValueC(i);
     op_arith_aux(v1, v2, iop, fop, i);
   };
 
   // Lambda: Arithmetic operations with K operands
   auto op_arithK = [&](auto iop, auto fop, Instruction i) {
-    TValue *v1 = vRB(i);
-    TValue *v2 = KC(i);
+    TValue *v1 = getValueB(i);
+    TValue *v2 = getConstantC(i);
     lua_assert(ttisnumber(v2));
     op_arith_aux(v1, v2, iop, fop, i);
   };
 
   // Lambda: Bitwise operations with constant operand
   auto op_bitwiseK = [&](auto op, Instruction i) {
-    auto *v1 = vRB(i);
-    auto *v2 = KC(i);
+    auto *v1 = getValueB(i);
+    auto *v2 = getConstantC(i);
     lua_Integer i1;
     auto i2 = ivalue(v2);
     if (tointegerns(v1, &i1)) {
-      auto ra = RA(i);
+      auto ra = getRegisterA(i);
       pc++; s2v(ra)->setInt(op(i1, i2));
     }
   };
 
   // Lambda: Bitwise operations with register operands
   auto op_bitwise = [&](auto op, Instruction i) {
-    auto *v1 = vRB(i);
-    auto *v2 = vRC(i);
+    auto *v1 = getValueB(i);
+    auto *v2 = getValueC(i);
     lua_Integer i1, i2;
     if (tointegerns(v1, &i1) && tointegerns(v2, &i2)) {
-      auto ra = RA(i);
+      auto ra = getRegisterA(i);
       pc++; s2v(ra)->setInt(op(i1, i2));
     }
   };
@@ -352,19 +352,19 @@ void VirtualMachine::execute(CallInfo *ci) {
   // Lambda: Order operations with register operands
   // Note: Cannot use operators as template parameters, so we pass comparator function objects
   auto op_order = [&](auto cmp, auto other, Instruction i) {
-    TValue *ra = vRA(i);
+    TValue *ra = getValueA(i);
     int cond;
-    TValue *rb = vRB(i);
+    TValue *rb = getValueB(i);
     if (ttisnumber(ra) && ttisnumber(rb))
       cond = cmp(ra, rb);  // Use comparator function object
     else
-      Protect([&]() { cond = other(L, ra, rb); });
-    docondjump(cond, ci, i);
+      protectCall([&]() { cond = other(L, ra, rb); });
+    performConditionalJump(cond, ci, i);
   };
 
   // Lambda: Order operations with immediate operand
   auto op_orderI = [&](auto opi, auto opf, int inv, TMS tm, Instruction i) {
-    TValue *ra = vRA(i);
+    TValue *ra = getValueA(i);
     int cond;
     int im = InstructionView(i).sb();
     if (ttisinteger(ra))
@@ -376,9 +376,9 @@ void VirtualMachine::execute(CallInfo *ci) {
     }
     else {
       int isf = InstructionView(i).c();
-      Protect([&]() { cond = luaT_callorderiTM(L, ra, im, inv, isf, tm); });
+      protectCall([&]() { cond = luaT_callorderiTM(L, ra, im, inv, isf, tm); });
     }
-    docondjump(cond, ci, i);
+    performConditionalJump(cond, ci, i);
   };
 
   // Comparator function objects for op_order (operators cannot be passed as template params)
@@ -409,7 +409,7 @@ void VirtualMachine::execute(CallInfo *ci) {
   auto vmfetch = [&]() {
     if (l_unlikely(trap)) {  /* stack reallocation or hooks? */
       trap = luaG_traceexec(L, pc);  /* handle hooks */
-      updatebase(ci);  /* correct stack */
+      updateStackBase(ci);  /* correct stack */
     }
     i = *(pc++);
   };
@@ -423,52 +423,52 @@ void VirtualMachine::execute(CallInfo *ci) {
     lua_assert(luaP_isIT(i) || (cast_void(L->getStackSubsystem().setTopPtr(base)), 1));
     switch (InstructionView(i).opcode()) {
       case OP_MOVE: {
-        auto ra = RA(i);
-        *s2v(ra) = *s2v(RB(i));  /* Use operator= for move */
+        auto ra = getRegisterA(i);
+        *s2v(ra) = *s2v(getRegisterB(i));  /* Use operator= for move */
         break;
       }
       case OP_LOADI: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).sbx();
         s2v(ra)->setInt(b);
         break;
       }
       case OP_LOADF: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).sbx();
         s2v(ra)->setFloat(cast_num(b));
         break;
       }
       case OP_LOADK: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto *rb = k + InstructionView(i).bx();
         L->getStackSubsystem().setSlot(ra, rb);
         break;
       }
       case OP_LOADKX: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto *rb = k + InstructionView(*pc).ax(); pc++;
         L->getStackSubsystem().setSlot(ra, rb);
         break;
       }
       case OP_LOADFALSE: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         setbfvalue(s2v(ra));
         break;
       }
       case OP_LFALSESKIP: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         setbfvalue(s2v(ra));
         pc++;  /* skip next instruction */
         break;
       }
       case OP_LOADTRUE: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         setbtvalue(s2v(ra));
         break;
       }
       case OP_LOADNIL: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).b();
         do {
           setnilvalue(s2v(ra++));
@@ -476,33 +476,33 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_GETUPVAL: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).b();
         L->getStackSubsystem().setSlot(ra, cl->getUpval(b)->getVP());
         break;
       }
       case OP_SETUPVAL: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto *uv = cl->getUpval(InstructionView(i).b());
         *uv->getVP() = *s2v(ra);
         luaC_barrier(L, uv, s2v(ra));
         break;
       }
       case OP_GETTABUP: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto *upval = cl->getUpval(InstructionView(i).b())->getVP();
-        auto *rc = KC(i);
+        auto *rc = getConstantC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
         tag = fastget(upval, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { tag = finishGet(upval, rc, ra, tag); });
+          protectCall([&]() { tag = finishGet(upval, rc, ra, tag); });
         break;
       }
       case OP_GETTABLE: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
-        auto *rc = vRC(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
+        auto *rc = getValueC(i);
         LuaT tag;
         if (ttisinteger(rc)) {  /* fast track for integers? */
           fastgeti(rb, ivalue(rc), s2v(ra), tag);
@@ -510,49 +510,49 @@ void VirtualMachine::execute(CallInfo *ci) {
         else
           tag = fastget(rb, rc, s2v(ra), [](Table* tbl, const TValue* key, TValue* res) { return tbl->get(key, res); });
         if (tagisempty(tag))
-          Protect([&]() { tag = finishGet(rb, rc, ra, tag); });
+          protectCall([&]() { tag = finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_GETI: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         auto c = InstructionView(i).c();
         LuaT tag;
         fastgeti(rb, c, s2v(ra), tag);
         if (tagisempty(tag)) {
           TValue key;
           key.setInt(c);
-          Protect([&]() { tag = finishGet(rb, &key, ra, tag); });
+          protectCall([&]() { tag = finishGet(rb, &key, ra, tag); });
         }
         break;
       }
       case OP_GETFIELD: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
-        auto *rc = KC(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
+        auto *rc = getConstantC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         LuaT tag;
         tag = fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { tag = finishGet(rb, rc, ra, tag); });
+          protectCall([&]() { tag = finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_SETTABUP: {
         auto *upval = cl->getUpval(InstructionView(i).a())->getVP();
-        auto *rb = KB(i);
-        auto *rc = RKC(i);
+        auto *rb = getConstantB(i);
+        auto *rc = getRegisterOrConstantC(i);
         auto *key = tsvalue(rb);  /* key must be a short string */
         auto hres = fastset(upval, key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
         if (hres == HOK)
           finishfastset(upval, rc);
         else
-          Protect([&]() { finishSet(upval, rb, rc, hres); });
+          protectCall([&]() { finishSet(upval, rb, rc, hres); });
         break;
       }
       case OP_SETTABLE: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);  /* key (table is in 'ra') */
-        auto *rc = RKC(i);  /* value */
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);  /* key (table is in 'ra') */
+        auto *rc = getRegisterOrConstantC(i);  /* value */
         int hres;
         if (ttisinteger(rb)) {  /* fast track for integers? */
           fastseti(s2v(ra), ivalue(rb), rc, hres);
@@ -563,13 +563,13 @@ void VirtualMachine::execute(CallInfo *ci) {
         if (hres == HOK)
           finishfastset(s2v(ra), rc);
         else
-          Protect([&]() { finishSet(s2v(ra), rb, rc, hres); });
+          protectCall([&]() { finishSet(s2v(ra), rb, rc, hres); });
         break;
       }
       case OP_SETI: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).b();
-        auto *rc = RKC(i);
+        auto *rc = getRegisterOrConstantC(i);
         int hres;
         fastseti(s2v(ra), b, rc, hres);
         if (hres == HOK)
@@ -577,24 +577,24 @@ void VirtualMachine::execute(CallInfo *ci) {
         else {
           TValue key;
           key.setInt(b);
-          Protect([&]() { finishSet(s2v(ra), &key, rc, hres); });
+          protectCall([&]() { finishSet(s2v(ra), &key, rc, hres); });
         }
         break;
       }
       case OP_SETFIELD: {
-        auto ra = RA(i);
-        auto *rb = KB(i);
-        auto *rc = RKC(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getConstantB(i);
+        auto *rc = getRegisterOrConstantC(i);
         auto *key = tsvalue(rb);  /* key must be a short string */
         auto hres = fastset(s2v(ra), key, rc, [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetShortStr(strkey, val); });
         if (hres == HOK)
           finishfastset(s2v(ra), rc);
         else
-          Protect([&]() { finishSet(s2v(ra), rb, rc, hres); });
+          protectCall([&]() { finishSet(s2v(ra), rb, rc, hres); });
         break;
       }
       case OP_NEWTABLE: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = cast_uint(InstructionView(i).vb());  /* log2(hash size) + 1 */
         auto c = cast_uint(InstructionView(i).vc());  /* array size */
         if (b > 0)
@@ -614,14 +614,14 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_SELF: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
-        auto *rc = KC(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
+        auto *rc = getConstantC(i);
         auto *key = tsvalue(rc);  /* key must be a short string */
         L->getStackSubsystem().setSlot(ra + 1, rb);
         LuaT tag = fastget(rb, key, s2v(ra), [](Table* tbl, TString* strkey, TValue* res) { return tbl->getShortStr(strkey, res); });
         if (tagisempty(tag))
-          Protect([&]() { tag = finishGet(rb, rc, ra, tag); });
+          protectCall([&]() { tag = finishGet(rb, rc, ra, tag); });
         break;
       }
       case OP_ADDI: {
@@ -641,7 +641,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_MODK: {
-        savestate(L, ci);  /* in case of division by 0 */
+        saveInterpreterState(L, ci);  /* in case of division by 0 */
         op_arithK([this](lua_State*, lua_Integer a, lua_Integer b) { return mod(a, b); },
                   [this](lua_State*, lua_Number a, lua_Number b) { return modf(a, b); }, i);
         break;
@@ -655,7 +655,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_IDIVK: {
-        savestate(L, ci);  /* in case of division by 0 */
+        saveInterpreterState(L, ci);  /* in case of division by 0 */
         op_arithK([this](lua_State*, lua_Integer a, lua_Integer b) { return idiv(a, b); }, luai_numidiv, i);
         break;
       }
@@ -672,8 +672,8 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_SHLI: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         auto ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
@@ -682,8 +682,8 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_SHRI: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         auto ic = InstructionView(i).sc();
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
@@ -704,7 +704,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_MOD: {
-        savestate(L, ci);  /* in case of division by 0 */
+        saveInterpreterState(L, ci);  /* in case of division by 0 */
         op_arith([this](lua_State*, lua_Integer a, lua_Integer b) { return mod(a, b); },
                  [this](lua_State*, lua_Number a, lua_Number b) { return modf(a, b); }, i);
         break;
@@ -718,7 +718,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_IDIV: {  /* floor division */
-        savestate(L, ci);  /* in case of division by 0 */
+        saveInterpreterState(L, ci);  /* in case of division by 0 */
         op_arith([this](lua_State*, lua_Integer a, lua_Integer b) { return idiv(a, b); }, luai_numidiv, i);
         break;
       }
@@ -743,38 +743,38 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_MMBIN: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
-        auto *rb = vRB(i);
+        auto *rb = getValueB(i);
         auto tm = static_cast<TMS>(InstructionView(i).c());
-        auto result = RA(pi);
+        auto result = getRegisterA(pi);
         lua_assert(OP_ADD <= InstructionView(pi).opcode() && InstructionView(pi).opcode() <= OP_SHR);
-        Protect([&]() { luaT_trybinTM(L, s2v(ra), rb, result, tm); });
+        protectCall([&]() { luaT_trybinTM(L, s2v(ra), rb, result, tm); });
         break;
       }
       case OP_MMBINI: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
         auto imm = InstructionView(i).sb();
         auto tm = static_cast<TMS>(InstructionView(i).c());
         auto flip = InstructionView(i).k();
-        auto result = RA(pi);
-        Protect([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm); });
+        auto result = getRegisterA(pi);
+        protectCall([&]() { luaT_trybiniTM(L, s2v(ra), imm, flip, result, tm); });
         break;
       }
       case OP_MMBINK: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto pi = *(pc - 2);  /* original arith. expression */
-        auto *imm = KB(i);
+        auto *imm = getConstantB(i);
         auto tm = static_cast<TMS>(InstructionView(i).c());
         auto flip = InstructionView(i).k();
-        auto result = RA(pi);
-        Protect([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm); });
+        auto result = getRegisterA(pi);
+        protectCall([&]() { luaT_trybinassocTM(L, s2v(ra), imm, flip, result, tm); });
         break;
       }
       case OP_UNM: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         lua_Number nb;
         if (ttisinteger(rb)) {
           auto ib = ivalue(rb);
@@ -784,23 +784,23 @@ void VirtualMachine::execute(CallInfo *ci) {
           s2v(ra)->setFloat(luai_numunm(L, nb));
         }
         else
-          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_UNM); });
+          protectCall([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_UNM); });
         break;
       }
       case OP_BNOT: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         lua_Integer ib;
         if (tointegerns(rb, &ib)) {
           s2v(ra)->setInt(intop(^, ~l_castS2U(0), ib));
         }
         else
-          Protect([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_BNOT); });
+          protectCall([&]() { luaT_trybinTM(L, rb, rb, ra, TMS::TM_BNOT); });
         break;
       }
       case OP_NOT: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         if (l_isfalse(rb))
           setbtvalue(s2v(ra));
         else
@@ -808,40 +808,40 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_LEN: {
-        auto ra = RA(i);
-        Protect([&]() { objlen(ra, vRB(i)); });
+        auto ra = getRegisterA(i);
+        protectCall([&]() { objlen(ra, getValueB(i)); });
         break;
       }
       case OP_CONCAT: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto n = InstructionView(i).b();  /* number of elements to concatenate */
         L->getStackSubsystem().setTopPtr(ra + n);  /* mark the end of concat operands */
-        ProtectNT([&]() { concat(n); });
+        protectCallNoTop([&]() { concat(n); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
         break;
       }
       case OP_CLOSE: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         lua_assert(!InstructionView(i).b());  /* 'close must be alive */
-        Protect([&]() { ra = luaF_close(L, ra, LUA_OK, 1); });
+        protectCall([&]() { ra = luaF_close(L, ra, LUA_OK, 1); });
         break;
       }
       case OP_TBC: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         /* create new to-be-closed upvalue */
-        halfProtect([&]() { luaF_newtbcupval(L, ra); });
+        halfProtectedCall([&]() { luaF_newtbcupval(L, ra); });
         break;
       }
       case OP_JMP: {
-        dojump(ci, i, 0);
+        performJump(ci, i, 0);
         break;
       }
       case OP_EQ: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         int cond;
-        Protect([&]() { cond = equalObj(s2v(ra), rb); });
-        docondjump(cond, ci, i);
+        protectCall([&]() { cond = equalObj(s2v(ra), rb); });
+        performConditionalJump(cond, ci, i);
         break;
       }
       case OP_LT: {
@@ -853,15 +853,15 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_EQK: {
-        auto ra = RA(i);
-        auto *rb = KB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getConstantB(i);
         /* basic types do not use '__eq'; we can use raw equality */
         auto cond = (*s2v(ra) == *rb);  /* Use operator== for cleaner syntax */
-        docondjump(cond, ci, i);
+        performConditionalJump(cond, ci, i);
         break;
       }
       case OP_EQI: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto im = InstructionView(i).sb();
         int cond;
         if (ttisinteger(s2v(ra)))
@@ -870,7 +870,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           cond = luai_numeq(fltvalue(s2v(ra)), cast_num(im));
         else
           cond = 0;  /* other types cannot be equal to a number */
-        docondjump(cond, ci, i);
+        performConditionalJump(cond, ci, i);
         break;
       }
       case OP_LTI: {
@@ -890,33 +890,33 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_TEST: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto cond = !l_isfalse(s2v(ra));
-        docondjump(cond, ci, i);
+        performConditionalJump(cond, ci, i);
         break;
       }
       case OP_TESTSET: {
-        auto ra = RA(i);
-        auto *rb = vRB(i);
+        auto ra = getRegisterA(i);
+        auto *rb = getValueB(i);
         if (l_isfalse(rb) == InstructionView(i).k())
           pc++;
         else {
           L->getStackSubsystem().setSlot(ra, rb);
-          donextjump(ci);
+          performNextJump(ci);
         }
         break;
       }
       case OP_CALL: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).b();
         auto nresults = InstructionView(i).c() - 1;
         if (b != 0)  /* fixed number of arguments? */
           L->getStackSubsystem().setTopPtr(ra + b);  /* top signals number of arguments */
         /* else previous instruction set top */
-        savepc(ci);  /* in case of errors */
+        saveProgramCounter(ci);  /* in case of errors */
         CallInfo *newci;
         if ((newci = L->preCall( ra, nresults)) == nullptr)
-          updatetrap(ci);  /* C call; nothing else to be done */
+          updateTrap(ci);  /* C call; nothing else to be done */
         else {  /* Lua call: run function in this same C frame */
           ci = newci;
           goto startfunc;
@@ -924,7 +924,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_TAILCALL: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto b = InstructionView(i).b();  /* number of arguments + 1 (function) */
         auto nparams1 = InstructionView(i).c();
         /* delta is virtual 'func' - real 'func' (vararg functions) */
@@ -933,7 +933,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           L->getStackSubsystem().setTopPtr(ra + b);
         else  /* previous instruction set top */
           b = cast_int(L->getTop().p - ra);
-        savepc(ci);  /* several calls here can raise errors */
+        saveProgramCounter(ci);  /* several calls here can raise errors */
         if (InstructionView(i).testk()) {
           luaF_closeupval(L, base);  /* close upvalues from current call */
           lua_assert(L->getTbclist().p < base);  /* no pending tbc variables */
@@ -945,37 +945,37 @@ void VirtualMachine::execute(CallInfo *ci) {
         else {  /* C function? */
           ci->funcRef().p -= delta;  /* restore 'func' (if vararg) */
           L->postCall( ci, n);  /* finish caller */
-          updatetrap(ci);  /* 'luaD_poscall' can change hooks */
+          updateTrap(ci);  /* 'luaD_poscall' can change hooks */
           goto ret;  /* caller returns after the tail call */
         }
       }
       case OP_RETURN: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto n = InstructionView(i).b() - 1;  /* number of results */
         auto nparams1 = InstructionView(i).c();
         if (n < 0)  /* not fixed? */
           n = cast_int(L->getTop().p - ra);  /* get what is available */
-        savepc(ci);
+        saveProgramCounter(ci);
         if (InstructionView(i).testk()) {  /* may there be open upvalues? */
           ci->setNRes(n);  /* save number of returns */
           if (L->getTop().p < ci->topRef().p)
             L->getStackSubsystem().setTopPtr(ci->topRef().p);
           base = luaF_close(L, base, CLOSEKTOP, 1);
-          updatetrap(ci);
-          updatestack(ra, ci, i);
+          updateTrap(ci);
+          updateStackAfterRealloc(ra, ci, i);
         }
         if (nparams1)  /* vararg function? */
           ci->funcRef().p -= ci->getExtraArgs() + nparams1;
         L->getStackSubsystem().setTopPtr(ra + n);  /* set call for 'luaD_poscall' */
         L->postCall( ci, n);
-        updatetrap(ci);  /* 'luaD_poscall' can change hooks */
+        updateTrap(ci);  /* 'luaD_poscall' can change hooks */
         goto ret;
       }
       case OP_RETURN0: {
         if (l_unlikely(L->getHookMask())) {
-          auto ra = RA(i);
+          auto ra = getRegisterA(i);
           L->getStackSubsystem().setTopPtr(ra);
-          savepc(ci);
+          saveProgramCounter(ci);
           L->postCall( ci, 0);  /* no hurry... */
           trap = 1;
         }
@@ -992,9 +992,9 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_RETURN1: {
         if (l_unlikely(L->getHookMask())) {
-          auto ra = RA(i);
+          auto ra = getRegisterA(i);
           L->getStackSubsystem().setTopPtr(ra + 1);
-          savepc(ci);
+          saveProgramCounter(ci);
           L->postCall( ci, 1);  /* no hurry... */
           trap = 1;
         }
@@ -1004,7 +1004,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           if (nres == 0)
             L->getStackSubsystem().setTopPtr(base - 1);  /* asked for no results */
           else {
-            auto ra = RA(i);
+            auto ra = getRegisterA(i);
             *s2v(base - 1) = *s2v(ra);  /* at least this result (operator=) */
             L->getStackSubsystem().setTopPtr(base);
             for (; l_unlikely(nres > 1); nres--) {
@@ -1022,7 +1022,7 @@ void VirtualMachine::execute(CallInfo *ci) {
         }
       }
       case OP_FORLOOP: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         if (ttisinteger(s2v(ra + 1))) {  /* integer loop? */
           auto count = l_castS2U(ivalue(s2v(ra)));
           if (count > 0) {  /* still more iterations? */
@@ -1036,12 +1036,12 @@ void VirtualMachine::execute(CallInfo *ci) {
         }
         else if (L->floatForLoop(ra))  /* float loop */
           pc -= InstructionView(i).bx();  /* jump back */
-        updatetrap(ci);  /* allows a signal to break the loop */
+        updateTrap(ci);  /* allows a signal to break the loop */
         break;
       }
       case OP_FORPREP: {
-        auto ra = RA(i);
-        savestate(L, ci);  /* in case of errors */
+        auto ra = getRegisterA(i);
+        saveInterpreterState(L, ci);  /* in case of errors */
         if (L->forPrep(ra))
           pc += InstructionView(i).bx() + 1;  /* skip the loop */
         break;
@@ -1053,16 +1053,16 @@ void VirtualMachine::execute(CallInfo *ci) {
           control and the closing variables and marks the closing variable
           as to-be-closed.
        */
-       auto ra = RA(i);
+       auto ra = getRegisterA(i);
        TValue temp;  /* to swap control and closing variables */
        temp = *s2v(ra + 3);  /* Use operator= for temp assignment */
        *s2v(ra + 3) = *s2v(ra + 2);  /* Use operator= */
        *s2v(ra + 2) = temp;  /* Use operator= */
         /* create to-be-closed upvalue (if closing var. is not nil) */
-        halfProtect([&]() { luaF_newtbcupval(L, ra + 2); });
+        halfProtectedCall([&]() { luaF_newtbcupval(L, ra + 2); });
         pc += InstructionView(i).bx();  /* go to end of the loop */
         i = *(pc++);  /* fetch next instruction */
-        lua_assert(InstructionView(i).opcode() == OP_TFORCALL && ra == RA(i));
+        lua_assert(InstructionView(i).opcode() == OP_TFORCALL && ra == getRegisterA(i));
         goto l_tforcall;
       }
       case OP_TFORCALL: {
@@ -1073,26 +1073,26 @@ void VirtualMachine::execute(CallInfo *ci) {
            so that it preserves the first three values, and the first
            return will be the new value for the control variable.
         */
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         *s2v(ra + 5) = *s2v(ra + 3);  /* copy the control variable (operator=) */
         *s2v(ra + 4) = *s2v(ra + 1);  /* copy state (operator=) */
         *s2v(ra + 3) = *s2v(ra);  /* copy function (operator=) */
         L->getStackSubsystem().setTopPtr(ra + 3 + 3);
-        ProtectNT([&]() { L->call( ra + 3, InstructionView(i).c()); });  /* do the call */
-        updatestack(ra, ci, i);  /* stack may have changed */
+        protectCallNoTop([&]() { L->call( ra + 3, InstructionView(i).c()); });  /* do the call */
+        updateStackAfterRealloc(ra, ci, i);  /* stack may have changed */
         i = *(pc++);  /* go to next instruction */
-        lua_assert(InstructionView(i).opcode() == OP_TFORLOOP && ra == RA(i));
+        lua_assert(InstructionView(i).opcode() == OP_TFORLOOP && ra == getRegisterA(i));
         goto l_tforloop;
       }}
       case OP_TFORLOOP: {
        l_tforloop: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         if (!ttisnil(s2v(ra + 3)))  /* continue loop? */
           pc -= InstructionView(i).bx();  /* jump back */
         break;
       }}
       case OP_SETLIST: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto n = cast_uint(InstructionView(i).vb());
         auto last = cast_uint(InstructionView(i).vc());
         auto *h = hvalue(s2v(ra));
@@ -1120,25 +1120,25 @@ void VirtualMachine::execute(CallInfo *ci) {
         break;
       }
       case OP_CLOSURE: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto *p = cl->getProto()->getProtos()[InstructionView(i).bx()];
-        halfProtect([&]() { L->pushClosure(p, cl->getUpvalPtr(0), base, ra); });
+        halfProtectedCall([&]() { L->pushClosure(p, cl->getUpvalPtr(0), base, ra); });
         checkGC(L, ra + 1);
         break;
       }
       case OP_VARARG: {
-        auto ra = RA(i);
+        auto ra = getRegisterA(i);
         auto n = InstructionView(i).c() - 1;  /* required results */
-        Protect([&]() { luaT_getvarargs(L, ci, ra, n); });
+        protectCall([&]() { luaT_getvarargs(L, ci, ra, n); });
         break;
       }
       case OP_VARARGPREP: {
-        ProtectNT([&]() { luaT_adjustvarargs(L, InstructionView(i).a(), ci, cl->getProto()); });
+        protectCallNoTop([&]() { luaT_adjustvarargs(L, InstructionView(i).a(), ci, cl->getProto()); });
         if (l_unlikely(trap)) {  /* previous "Protect" updated trap */
           L->hookCall( ci);
           L->setOldPC(1);  /* next opcode will be seen as a "new" line */
         }
-        updatebase(ci);  /* function has new base after adjustment */
+        updateStackBase(ci);  /* function has new base after adjustment */
         break;
       }
       case OP_EXTRAARG: {
