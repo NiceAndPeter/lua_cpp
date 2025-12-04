@@ -1198,48 +1198,48 @@ void FuncState::intCode(int reg, lua_Integer i) {
     codek(reg, intK(i));
 }
 
-void FuncState::dischargevars(expdesc& e) {
-  switch (e.getKind()) {
+void FuncState::dischargevars(expdesc& expr) {
+  switch (expr.getKind()) {
     case VCONST: {
-      const2exp(const2val(e), e);
+      const2exp(const2val(expr), expr);
       break;
     }
     case VLOCAL: {  /* already in a register */
-      int temp = e.getLocalRegister();
-      e.setInfo(temp);  /* (can't do a direct assignment; values overlap) */
-      e.setKind(VNONRELOC);  /* becomes a non-relocatable value */
+      int temp = expr.getLocalRegister();
+      expr.setInfo(temp);  /* (can't do a direct assignment; values overlap) */
+      expr.setKind(VNONRELOC);  /* becomes a non-relocatable value */
       break;
     }
     case VUPVAL: {  /* move value to some (pending) register */
-      e.setInfo(codeABC(OP_GETUPVAL, 0, e.getInfo(), 0));
-      e.setKind(VRELOC);
+      expr.setInfo(codeABC(OP_GETUPVAL, 0, expr.getInfo(), 0));
+      expr.setKind(VRELOC);
       break;
     }
     case VINDEXUP: {
-      e.setInfo(codeABC(OP_GETTABUP, 0, e.getIndexedTableReg(), e.getIndexedKeyIndex()));
-      e.setKind(VRELOC);
+      expr.setInfo(codeABC(OP_GETTABUP, 0, expr.getIndexedTableReg(), expr.getIndexedKeyIndex()));
+      expr.setKind(VRELOC);
       break;
     }
     case VINDEXI: {
-      freeRegister(e.getIndexedTableReg());
-      e.setInfo(codeABC(OP_GETI, 0, e.getIndexedTableReg(), e.getIndexedKeyIndex()));
-      e.setKind(VRELOC);
+      freeRegister(expr.getIndexedTableReg());
+      expr.setInfo(codeABC(OP_GETI, 0, expr.getIndexedTableReg(), expr.getIndexedKeyIndex()));
+      expr.setKind(VRELOC);
       break;
     }
     case VINDEXSTR: {
-      freeRegister(e.getIndexedTableReg());
-      e.setInfo(codeABC(OP_GETFIELD, 0, e.getIndexedTableReg(), e.getIndexedKeyIndex()));
-      e.setKind(VRELOC);
+      freeRegister(expr.getIndexedTableReg());
+      expr.setInfo(codeABC(OP_GETFIELD, 0, expr.getIndexedTableReg(), expr.getIndexedKeyIndex()));
+      expr.setKind(VRELOC);
       break;
     }
     case VINDEXED: {
-      freeRegisters(e.getIndexedTableReg(), e.getIndexedKeyIndex());
-      e.setInfo(codeABC(OP_GETTABLE, 0, e.getIndexedTableReg(), e.getIndexedKeyIndex()));
-      e.setKind(VRELOC);
+      freeRegisters(expr.getIndexedTableReg(), expr.getIndexedKeyIndex());
+      expr.setInfo(codeABC(OP_GETTABLE, 0, expr.getIndexedTableReg(), expr.getIndexedKeyIndex()));
+      expr.setKind(VRELOC);
       break;
     }
     case VVARARG: case VCALL: {
-      setoneret(e);
+      setoneret(expr);
       break;
     }
     default: break;  /* there is one value available (somewhere) */
@@ -1282,26 +1282,26 @@ void FuncState::exp2val(expdesc& expr) {
     dischargevars(expr);
 }
 
-void FuncState::self(expdesc& e, expdesc& key) {
-  exp2anyreg(e);  /* result available via e.getInfo() */
-  int ereg = e.getInfo();  /* register where 'e' (the receiver) was placed */
-  freeExpression(e);
-  int base = getFirstFreeRegister();
-  e.setInfo(base);  /* base register for op_self */
-  e.setKind(VNONRELOC);  /* self expression has a fixed register */
+void FuncState::self(expdesc& receiver, expdesc& methodKey) {
+  exp2anyreg(receiver);  /* result available via receiver.getInfo() */
+  int receiverReg = receiver.getInfo();  /* register where 'receiver' was placed */
+  freeExpression(receiver);
+  int baseRegister = getFirstFreeRegister();
+  receiver.setInfo(baseRegister);  /* base register for op_self */
+  receiver.setKind(VNONRELOC);  /* self expression has a fixed register */
   reserveregs(2);  /* method and 'self' produced by op_self */
-  lua_assert(key.getKind() == VKSTR);
+  lua_assert(methodKey.getKind() == VKSTR);
   /* is method name a short string in a valid K index? */
-  if (strisshr(key.getStringValue()) && exp2K(key)) {
+  if (strisshr(methodKey.getStringValue()) && exp2K(methodKey)) {
     /* can use 'self' opcode */
-    codeABCk(OP_SELF, base, ereg, key.getInfo(), 0);
+    codeABCk(OP_SELF, baseRegister, receiverReg, methodKey.getInfo(), 0);
   }
   else {  /* cannot use 'self' opcode; use move+gettable */
-    exp2anyreg(key);  /* put method name in a register - result via key.getInfo() */
-    codeABC(OP_MOVE, base + 1, ereg, 0);  /* copy self to base+1 */
-    codeABC(OP_GETTABLE, base, ereg, key.getInfo());  /* get method */
+    exp2anyreg(methodKey);  /* put method name in a register - result via methodKey.getInfo() */
+    codeABC(OP_MOVE, baseRegister + 1, receiverReg, 0);  /* copy self to base+1 */
+    codeABC(OP_GETTABLE, baseRegister, receiverReg, methodKey.getInfo());  /* get method */
   }
-  freeExpression(key);
+  freeExpression(methodKey);
 }
 
 void FuncState::indexed(expdesc& t, expdesc& k) {
@@ -1337,49 +1337,49 @@ void FuncState::indexed(expdesc& t, expdesc& k) {
   t.setIndexedReadOnly(0);  /* by default, not read-only */
 }
 
-void FuncState::goiftrue(expdesc& e) {
-  dischargevars(e);
-  int pcpos;  /* pc of new jump */
-  switch (e.getKind()) {
+void FuncState::goiftrue(expdesc& expr) {
+  dischargevars(expr);
+  int jumpPosition;  /* pc of new jump */
+  switch (expr.getKind()) {
     case VJMP: {  /* condition? */
-      negatecondition(e);  /* jump when it is false */
-      pcpos = e.getInfo();  /* save jump position */
+      negatecondition(expr);  /* jump when it is false */
+      jumpPosition = expr.getInfo();  /* save jump position */
       break;
     }
     case VK: case VKFLT: case VKINT: case VKSTR: case VTRUE: {
-      pcpos = NO_JUMP;  /* always true; do nothing */
+      jumpPosition = NO_JUMP;  /* always true; do nothing */
       break;
     }
     default: {
-      pcpos = jumponcond(e, 0);  /* jump when false */
+      jumpPosition = jumponcond(expr, 0);  /* jump when false */
       break;
     }
   }
-  concat(e.getFalseListRef(), pcpos);  /* insert new jump in false list */
-  patchtohere(e.getTrueList());  /* true list jumps to here (to go through) */
-  e.setTrueList(NO_JUMP);
+  concat(expr.getFalseListRef(), jumpPosition);  /* insert new jump in false list */
+  patchtohere(expr.getTrueList());  /* true list jumps to here (to go through) */
+  expr.setTrueList(NO_JUMP);
 }
 
-void FuncState::goiffalse(expdesc& e) {
-  dischargevars(e);
-  int pcpos;  /* pc of new jump */
-  switch (e.getKind()) {
+void FuncState::goiffalse(expdesc& expr) {
+  dischargevars(expr);
+  int jumpPosition;  /* pc of new jump */
+  switch (expr.getKind()) {
     case VJMP: {
-      pcpos = e.getInfo();  /* already jump if true */
+      jumpPosition = expr.getInfo();  /* already jump if true */
       break;
     }
     case VNIL: case VFALSE: {
-      pcpos = NO_JUMP;  /* always false; do nothing */
+      jumpPosition = NO_JUMP;  /* always false; do nothing */
       break;
     }
     default: {
-      pcpos = jumponcond(e, 1);  /* jump if true */
+      jumpPosition = jumponcond(expr, 1);  /* jump if true */
       break;
     }
   }
-  concat(e.getTrueListRef(), pcpos);  /* insert new jump in 't' list */
-  patchtohere(e.getFalseList());  /* false list jumps to here (to go through) */
-  e.setFalseList(NO_JUMP);
+  concat(expr.getTrueListRef(), jumpPosition);  /* insert new jump in 't' list */
+  patchtohere(expr.getFalseList());  /* false list jumps to here (to go through) */
+  expr.setFalseList(NO_JUMP);
 }
 
 void FuncState::storevar(expdesc& var, expdesc& ex) {
@@ -1415,29 +1415,29 @@ void FuncState::storevar(expdesc& var, expdesc& ex) {
   freeExpression(ex);
 }
 
-void FuncState::setreturns(expdesc& e, int nresults) {
-  Instruction *instr = &getinstruction(this, e);
-  luaY_checklimit(this, nresults + 1, MAXARG_C, "multiple results");
-  if (e.getKind() == VCALL)  /* expression is an open function call? */
-    SETARG_C(*instr, static_cast<unsigned int>(nresults + 1));
+void FuncState::setreturns(expdesc& expr, int resultCount) {
+  Instruction *instr = &getinstruction(this, expr);
+  luaY_checklimit(this, resultCount + 1, MAXARG_C, "multiple results");
+  if (expr.getKind() == VCALL)  /* expression is an open function call? */
+    SETARG_C(*instr, static_cast<unsigned int>(resultCount + 1));
   else {
-    lua_assert(e.getKind() == VVARARG);
-    SETARG_C(*instr, static_cast<unsigned int>(nresults + 1));
+    lua_assert(expr.getKind() == VVARARG);
+    SETARG_C(*instr, static_cast<unsigned int>(resultCount + 1));
     SETARG_A(*instr, static_cast<unsigned int>(getFirstFreeRegister()));
     reserveregs(1);
   }
 }
 
-void FuncState::setoneret(expdesc& e) {
-  if (e.getKind() == VCALL) {  /* expression is an open function call? */
+void FuncState::setoneret(expdesc& expr) {
+  if (expr.getKind() == VCALL) {  /* expression is an open function call? */
     /* already returns 1 value */
-    lua_assert(InstructionView(getinstruction(this, e)).c() == 2);
-    e.setKind(VNONRELOC);  /* result has fixed position */
-    e.setInfo(InstructionView(getinstruction(this, e)).a());
+    lua_assert(InstructionView(getinstruction(this, expr)).c() == 2);
+    expr.setKind(VNONRELOC);  /* result has fixed position */
+    expr.setInfo(InstructionView(getinstruction(this, expr)).a());
   }
-  else if (e.getKind() == VVARARG) {
-    SETARG_C(getinstruction(this, e), 2);
-    e.setKind(VRELOC);  /* can relocate its simple result */
+  else if (expr.getKind() == VVARARG) {
+    SETARG_C(getinstruction(this, expr), 2);
+    expr.setKind(VRELOC);  /* can relocate its simple result */
   }
 }
 
@@ -1484,22 +1484,22 @@ int FuncState::getlabel() {
   return getPC();
 }
 
-void FuncState::prefix(UnOpr op, expdesc& e, int line) {
-  expdesc ef;
-  ef.setKind(VKINT);
-  ef.setIntValue(0);
-  ef.setFalseList(NO_JUMP);
-  ef.setTrueList(NO_JUMP);
-  dischargevars(e);
-  switch (op) {
-    case UnOpr::OPR_MINUS: case UnOpr::OPR_BNOT:  /* use 'ef' as fake 2nd operand */
-      if (constfolding(cast_int(op) + LUA_OPUNM, e, ef))
+void FuncState::prefix(UnOpr operation, expdesc& expr, int line) {
+  expdesc fakeOperand;
+  fakeOperand.setKind(VKINT);
+  fakeOperand.setIntValue(0);
+  fakeOperand.setFalseList(NO_JUMP);
+  fakeOperand.setTrueList(NO_JUMP);
+  dischargevars(expr);
+  switch (operation) {
+    case UnOpr::OPR_MINUS: case UnOpr::OPR_BNOT:  /* use 'fakeOperand' as fake 2nd operand */
+      if (constfolding(cast_int(operation) + LUA_OPUNM, expr, fakeOperand))
         break;
       /* else */ /* FALLTHROUGH */
     case UnOpr::OPR_LEN:
-      codeunexpval(unopr2op(op), e, line);
+      codeunexpval(unopr2op(operation), expr, line);
       break;
-    case UnOpr::OPR_NOT: codenot(e); break;
+    case UnOpr::OPR_NOT: codenot(expr); break;
     default: lua_assert(0);
   }
 }
