@@ -96,6 +96,14 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: src/vm/lvirtualmachine.cpp (1 file, 20 lambdas + ~105 uses)
 - **Result**: ~2.11s avg ✅ (zero performance regression in VM hot path!)
 
+**Phase 135**: StackValue Simplification ❌ **REJECTED**
+- **Goal**: Convert `union StackValue` to `typedef TValue StackValue` via parallel delta array
+- **Attempted**: 2025-12-05, ~2 hours investigation + implementation
+- **Why failed**: Parallel array allocation complexity, exception-safety issues, memory tracking bugs
+- **Decision**: Union approach is superior (simple, zero overhead, exception-safe)
+- **See**: `docs/PHASE_135_FAILED_ATTEMPT.md` for detailed analysis
+- **Status**: Archived - Do Not Pursue
+
 ---
 
 ## Performance
@@ -208,7 +216,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
 Zero warnings | 96.1% coverage | 30+ tests passing | **50% faster than baseline!**
-Phases 1-127, 129-1, 130-1/2/3/4/5/6 complete (Phase 130: 100% done!)
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134 complete | Phase 135 rejected ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -227,6 +235,7 @@ Phases 1-127, 129-1, 130-1/2/3/4/5/6 complete (Phase 130: 100% done!)
 9. [[nodiscard]] finds real bugs (caught 5 bugs in Phases 118, 127!)
 10. Template functions + lambdas = zero overhead (Phase 123 GC macros)
 11. Eliminate wrappers aggressively (Phase 125: better perf + cleaner code)
+12. **Parallel arrays are complex** (Phase 135: allocation failure modes, exception-safety, invariant tracking make them error-prone; avoid unless essential)
 
 ---
 
@@ -255,7 +264,7 @@ See `docs/TYPE_MODERNIZATION_ANALYSIS.md` and `docs/PHASE_SUGGESTIONS.md`
 
 **Architecture**: [SRP_ANALYSIS.md](docs/SRP_ANALYSIS.md) | [CPP_MODERNIZATION_ANALYSIS.md](docs/CPP_MODERNIZATION_ANALYSIS.md) | [TYPE_MODERNIZATION_ANALYSIS.md](docs/TYPE_MODERNIZATION_ANALYSIS.md)
 
-**Specialized**: [NECESSARY_MACROS.md](docs/NECESSARY_MACROS.md) | [PHASE_125_LUAV_WRAPPER_ELIMINATION.md](docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md) | [PHASE_130_POINTER_TO_REFERENCE.md](docs/PHASE_130_POINTER_TO_REFERENCE.md) | [GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md) | [SPAN_MODERNIZATION_PLAN.md](docs/SPAN_MODERNIZATION_PLAN.md) | [COVERAGE_ANALYSIS.md](docs/COVERAGE_ANALYSIS.md) | [UNDEFINED_BEHAVIOR_ANALYSIS.md](docs/UNDEFINED_BEHAVIOR_ANALYSIS.md)
+**Specialized**: [NECESSARY_MACROS.md](docs/NECESSARY_MACROS.md) | [PHASE_125_LUAV_WRAPPER_ELIMINATION.md](docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md) | [PHASE_130_POINTER_TO_REFERENCE.md](docs/PHASE_130_POINTER_TO_REFERENCE.md) | [PHASE_135_FAILED_ATTEMPT.md](docs/PHASE_135_FAILED_ATTEMPT.md) | [GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md) | [SPAN_MODERNIZATION_PLAN.md](docs/SPAN_MODERNIZATION_PLAN.md) | [COVERAGE_ANALYSIS.md](docs/COVERAGE_ANALYSIS.md) | [UNDEFINED_BEHAVIOR_ANALYSIS.md](docs/UNDEFINED_BEHAVIOR_ANALYSIS.md)
 
 **CI/CD**: [.github/workflows/ci.yml](.github/workflows/ci.yml) | [coverage.yml](.github/workflows/coverage.yml) | [static-analysis.yml](.github/workflows/static-analysis.yml)
 
@@ -279,5 +288,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-04 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134 ✅ | **Performance**: ~2.11s ✅ (50% faster!)
-**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, **Phase 134 COMPLETE!** (Identifier modernization: 131-Quick Wins, 133-Compiler Vars, 134-VM Lambdas done!)
+**Updated**: 2025-12-05 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134 ✅ | Phase 135 ❌ (rejected) | **Performance**: ~2.19s ✅ (48% faster!)
+**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, clean working state (commit 15c34511)
