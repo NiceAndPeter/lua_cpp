@@ -67,6 +67,8 @@ private:
   StkIdRel stack_last;  /* end of stack (last element + 1) */
   StkIdRel stack;       /* stack base */
   StkIdRel tbclist;     /* list of to-be-closed variables */
+  unsigned short* tbc_deltas;  /* parallel array for TBC delta values (single-block allocation) */
+  int stack_size;       /* current stack size (for bounds checking) */
 
 public:
   /*
@@ -92,6 +94,19 @@ public:
   StkIdRel& getTbclist() noexcept { return tbclist; }
   const StkIdRel& getTbclist() const noexcept { return tbclist; }
   void setTbclist(StkIdRel tbc) noexcept { tbclist = tbc; }
+
+  /* TBC delta accessors (parallel array for single-block allocation) */
+  unsigned short getTbcDelta(StkId slot) const noexcept {
+    lua_assert(slot >= stack.p && slot < stack.p + stack_size);
+    lua_assert(tbc_deltas != nullptr);
+    return tbc_deltas[slot - stack.p];
+  }
+
+  void setTbcDelta(StkId slot, unsigned short delta) noexcept {
+    lua_assert(slot >= stack.p && slot < stack.p + stack_size);
+    lua_assert(tbc_deltas != nullptr);
+    tbc_deltas[slot - stack.p] = delta;
+  }
 
   /*
   ** Computed properties
