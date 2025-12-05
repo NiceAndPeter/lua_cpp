@@ -262,8 +262,12 @@ void lua_State::closeVM() {
 lu_mem luaE_threadsize (lua_State *L) {
   lu_mem sz = static_cast<lu_mem>(sizeof(LX))
             + cast_uint(L->getNumberOfCallInfos()) * sizeof(CallInfo);
-  if (L->getStack().p != nullptr)
-    sz += cast_uint(L->getStackSize() + EXTRA_STACK) * sizeof(StackValue);
+  if (L->getStack().p != nullptr) {
+    /* Account for BOTH the values array and deltas array (single-block allocation) */
+    int allocated_size = L->getStackSize() + EXTRA_STACK;
+    sz += cast_uint(allocated_size) * sizeof(StackValue);  /* values array */
+    sz += cast_uint(allocated_size) * sizeof(unsigned short);  /* deltas array */
+  }
   return sz;
 }
 

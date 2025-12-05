@@ -100,14 +100,34 @@ inline void condmovestack(lua_State* L, Pre&& pre, Pos&& pos) {
 /*
 ** Initialize a new stack (called from lstate.cpp)
 ** L is used for memory allocation (may be different from owning thread)
+**
+** SINGLE-BLOCK ALLOCATION:
+** Allocates values and deltas as ONE contiguous block to ensure
+** exception-safe, atomic allocation (no partial failure states).
 */
 void LuaStack::init(lua_State* L) {
-  /* allocate stack array */
-  stack.p = luaM_newvector<StackValue>(L, BASIC_STACK_SIZE + EXTRA_STACK);
+  constexpr int init_size = BASIC_STACK_SIZE + EXTRA_STACK;
+
+  /* Calculate sizes for single-block allocation */
+  size_t values_bytes = sizeof(StackValue) * init_size;
+  size_t deltas_bytes = sizeof(unsigned short) * init_size;
+  size_t total_bytes = values_bytes + deltas_bytes;
+
+  /* Allocate single block for both arrays (atomic operation!) */
+  char* block = luaM_newvector<char>(L, total_bytes);
+
+  /* Split block into two sections */
+  stack.p = reinterpret_cast<StackValue*>(block);
+  tbc_deltas = reinterpret_cast<unsigned short*>(block + values_bytes);
+  stack_size = init_size;
+
   tbclist.p = stack.p;
 
+  /* Initialize delta array to zero */
+  std::memset(tbc_deltas, 0, deltas_bytes);
+
   /* erase new stack */
-  std::for_each_n(stack.p, BASIC_STACK_SIZE + EXTRA_STACK, [](StackValue& sv) {
+  std::for_each_n(stack.p, init_size, [](StackValue& sv) {
     setnilvalue(s2v(&sv));
   });
 
@@ -118,12 +138,27 @@ void LuaStack::init(lua_State* L) {
 
 /*
 ** Free stack memory (called from lstate.cpp)
+**
+** SINGLE-BLOCK DEALLOCATION:
+** Frees the entire block (values + deltas) that was allocated in init().
 */
 void LuaStack::free(lua_State* L) {
   if (stack.p == nullptr)
     return;  /* stack not completely built yet */
-  /* free stack */
-  luaM_freearray(L, stack.p, cast_sizet(getSize() + EXTRA_STACK));
+
+  /* Calculate total size of single block */
+  size_t values_bytes = sizeof(StackValue) * stack_size;
+  size_t deltas_bytes = sizeof(unsigned short) * stack_size;
+  size_t total_bytes = values_bytes + deltas_bytes;
+
+  /* Free single block (cast stack.p back to char*) */
+  char* block = reinterpret_cast<char*>(stack.p);
+  luaM_freemem(L, block, total_bytes);
+
+  /* Reset pointers and size */
+  stack.p = nullptr;
+  tbc_deltas = nullptr;
+  stack_size = 0;
 }
 
 
@@ -255,25 +290,41 @@ void LuaStack::correctPointers(lua_State* L, StkId oldstack) {
 /*
 ** Reallocate stack to exact size 'newsize'.
 ** Returns 1 on success, 0 on failure.
+**
+** SINGLE-BLOCK REALLOCATION:
+** Reallocates the entire block (values + deltas) atomically.
+** This is the critical function that Phase 135 failed on - we solve it
+** by using a single allocation instead of dual parallel arrays.
 */
 int LuaStack::realloc(lua_State* L, int newsize, int raiseerror) {
-  int oldsize = getSize();
-  int i;
-  StkId newstack;
+  int oldsize_usable = getSize();  /* usable size (excludes EXTRA_STACK) */
+  int oldsize_allocated = stack_size;  /* allocated size (includes EXTRA_STACK) */
+  int newsize_allocated = newsize + EXTRA_STACK;
   StkId oldstack = stack.p;
   lu_byte oldgcstop = G(L)->getGCStopEm();
 
   lua_assert(newsize <= MAXSTACK || newsize == ERRORSTACKSIZE);
+  lua_assert(stack.p != nullptr);
+
+  /* Calculate old and new block sizes */
+  size_t old_values_bytes = sizeof(StackValue) * oldsize_allocated;
+  size_t old_deltas_bytes = sizeof(unsigned short) * oldsize_allocated;
+  size_t old_total_bytes = old_values_bytes + old_deltas_bytes;
+
+  size_t new_values_bytes = sizeof(StackValue) * newsize_allocated;
+  size_t new_deltas_bytes = sizeof(unsigned short) * newsize_allocated;
+  size_t new_total_bytes = new_values_bytes + new_deltas_bytes;
 
   relPointers(L);  /* change pointers to offsets */
   G(L)->setGCStopEm(1);  /* stop emergency collection */
 
-  newstack = luaM_reallocvector<StackValue>(L, oldstack, oldsize + EXTRA_STACK,
-                                   newsize + EXTRA_STACK);
+  /* Reallocate single block (atomic operation - both arrays or neither!) */
+  char* old_block = reinterpret_cast<char*>(oldstack);
+  char* new_block = luaM_reallocvector<char>(L, old_block, old_total_bytes, new_total_bytes);
 
   G(L)->setGCStopEm(oldgcstop);  /* restore emergency collection */
 
-  if (l_unlikely(newstack == nullptr)) {  /* reallocation failed? */
+  if (l_unlikely(new_block == nullptr)) {  /* reallocation failed? */
     correctPointers(L, oldstack);  /* change offsets back to pointers */
     if (raiseerror)
       luaM_error(L);
@@ -281,13 +332,27 @@ int LuaStack::realloc(lua_State* L, int newsize, int raiseerror) {
       return 0;  /* do not raise an error */
   }
 
+  /* Split new block into values and deltas sections */
+  StackValue* newstack = reinterpret_cast<StackValue*>(new_block);
+  unsigned short* new_deltas = reinterpret_cast<unsigned short*>(new_block + new_values_bytes);
+
+  /* Update pointers and size */
   stack.p = newstack;
+  tbc_deltas = new_deltas;
+  stack_size = newsize_allocated;
+
   correctPointers(L, oldstack);  /* change offsets back to pointers */
   stack_last.p = stack.p + newsize;
 
-  /* erase new segment */
-  for (i = oldsize + EXTRA_STACK; i < newsize + EXTRA_STACK; i++)
+  /* erase new TValue segment */
+  for (int i = oldsize_usable + EXTRA_STACK; i < newsize_allocated; i++)
     setnilvalue(s2v(newstack + i));
+
+  /* initialize new delta segment to zero */
+  if (newsize_allocated > oldsize_allocated) {
+    size_t new_delta_slots = newsize_allocated - oldsize_allocated;
+    std::memset(new_deltas + oldsize_allocated, 0, new_delta_slots * sizeof(unsigned short));
+  }
 
   return 1;
 }
