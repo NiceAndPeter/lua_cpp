@@ -212,10 +212,8 @@ l_noret lua_State::throwBaseLevel(TStatus errcode) {
 ** methods (getNumberOfCCalls, setErrorJmp, etc.) rather than direct field access.
 */
 TStatus lua_State::rawRunProtected(Pfunc f, void *ud) {
-  l_uint32 oldnCcalls = getNumberOfCCalls();
-  lua_longjmp lj;
-  lj.status = LUA_OK;
-  lj.previous = getErrorJmp();  /* chain new error handler */
+  const l_uint32 oldnCcalls = getNumberOfCCalls();
+  lua_longjmp lj{getErrorJmp(), LUA_OK};  /* chain error handler and initialize status */
   setErrorJmp(&lj);
 
   try {
@@ -336,12 +334,11 @@ l_noret lua_State::errorError() {
 // Convert to lua_State method
 void lua_State::callHook(int event, int line,
                               int ftransfer, int ntransfer) {
-  lua_Hook hook_func = getHook();
-  if (hook_func && getAllowHook()) {  /* make sure there is a hook */
-    CallInfo *ci_local = ci;
-    ptrdiff_t top_saved = this->saveStack(getTop().p);  /* preserve original 'top' */
-    ptrdiff_t ci_top = this->saveStack(ci_local->topRef().p);  /* idem for 'ci->getTop()' */
-    lua_Debug ar;
+  if (lua_Hook hook_func = getHook(); hook_func && getAllowHook()) {  /* make sure there is a hook */
+    CallInfo* const ci_local = ci;
+    const ptrdiff_t top_saved = this->saveStack(getTop().p);  /* preserve original 'top' */
+    const ptrdiff_t ci_top = this->saveStack(ci_local->topRef().p);  /* idem for 'ci->getTop()' */
+    lua_Debug ar;  /* uninitialized is correct - only specific fields are set */
     ar.event = event;
     ar.currentline = line;
     ar.i_ci = ci_local;
@@ -394,15 +391,15 @@ void lua_State::hookCall(CallInfo *ci_arg) {
 void lua_State::retHook(CallInfo *ci_arg, int nres) {
   if (getHookMask() & LUA_MASKRET) {  /* is return hook on? */
     lua_assert(getTop().p >= getStack().p + nres);  /* ensure nres is in bounds */
-    auto firstres = getTop().p - nres;  /* index of first result */
-    auto delta = 0;  /* correction for vararg functions */
+    auto const firstres = getTop().p - nres;  /* index of first result */
+    int delta = 0;  /* correction for vararg functions */
     if (ci_arg->isLua()) {
       Proto *p = ci_arg->getFunc()->getProto();
       if (p->getFlag() & PF_ISVARARG)
         delta = ci_arg->getExtraArgs() + p->getNumParams() + 1;
     }
     ci_arg->funcRef().p += delta;  /* if vararg, back to virtual 'func' */
-    auto ftransfer = cast_int(firstres - ci_arg->funcRef().p);
+    const auto ftransfer = cast_int(firstres - ci_arg->funcRef().p);
     callHook(LUA_HOOKRET, -1, ftransfer, nres);  /* call it */
     ci_arg->funcRef().p -= delta;
   }
@@ -422,13 +419,11 @@ void lua_State::retHook(CallInfo *ci_arg, int nres) {
 */
 // Convert to private lua_State method
 unsigned lua_State::tryFuncTM(StkId func, unsigned status_val) {
-  const TValue *metamethod;
-  StkId p;
-  metamethod = luaT_gettmbyobj(this, s2v(func), TMS::TM_CALL);
+  const TValue* const metamethod = luaT_gettmbyobj(this, s2v(func), TMS::TM_CALL);
   if (l_unlikely(ttisnil(metamethod)))  /* no metamethod? */
     luaG_callerror(this, s2v(func));
   lua_assert(func >= getStack().p && getTop().p > func);  /* ensure valid bounds */
-  for (p = getTop().p; p > func; p--)  /* open space for metamethod */
+  for (StkId p = getTop().p; p > func; p--)  /* open space for metamethod */
     *s2v(p) = *s2v(p-1);  /* shift stack - use operator= */
   getStackSubsystem().push();  /* stack space pre-allocated by the caller */
   getStackSubsystem().setSlot(func, metamethod);  /* metamethod is the new function to be called */

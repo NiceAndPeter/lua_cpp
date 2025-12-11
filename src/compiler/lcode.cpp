@@ -991,15 +991,16 @@ void FuncState::codebitwise(BinOpr opr, expdesc& e1, expdesc& e2, int line) {
 */
 void FuncState::codeorder(BinOpr opr, expdesc& e1, expdesc& e2) {
   int r1, r2;
-  int isfloat;
+  int isfloat = 0;  /* initialized - may be overwritten by isSCnumber */
+  int im;
   OpCode op;
-  if (int im; isSCnumber(e2, &im, &isfloat)) {
+  if (isSCnumber(e2, &im, &isfloat)) {
     /* use immediate operand */
     r1 = exp2anyreg(e1);
     r2 = im;
     op = binopr2op(opr, BinOpr::OPR_LT, OP_LTI);
   }
-  else if (int im; isSCnumber(e1, &im, &isfloat)) {
+  else if (isSCnumber(e1, &im, &isfloat)) {
     /* transform (A < B) to (B > A) and (A <= B) to (B >= A) */
     r1 = exp2anyreg(e2);
     r2 = im;
@@ -1009,7 +1010,7 @@ void FuncState::codeorder(BinOpr opr, expdesc& e1, expdesc& e2) {
     r1 = exp2anyreg(e1);
     r2 = exp2anyreg(e2);
     op = binopr2op(opr, BinOpr::OPR_LT, OP_LT);
-    isfloat = 0;
+    /* isfloat already 0 from initialization */
   }
   freeExpressions(e1, e2);
   e1.setInfo(condjump(op, r1, r2, isfloat, 1));
