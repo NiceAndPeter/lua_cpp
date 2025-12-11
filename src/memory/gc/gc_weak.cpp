@@ -157,9 +157,9 @@ int GCWeak::getmode(global_State& g, Table* h) {
 static int traversearray(global_State& g, Table* h) {
     unsigned asize = h->arraySize();
     int marked = 0;  /* true if some object is marked in this traversal */
-    unsigned i;
-    for (i = 0; i < asize; i++) {
-        GCObject* o = gcvalarr(h, i);
+    unsigned arrayIndex;
+    for (arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
+        GCObject* o = gcvalarr(h, arrayIndex);
         if (o != nullptr && iswhite(o)) {
             marked = 1;
             GCMarking::reallymarkobject(g, o);
@@ -217,14 +217,14 @@ void GCWeak::traverseweakvalue(global_State& g, Table* h) {
 int GCWeak::traverseephemeron(global_State& g, Table* h, int inv) {
     int hasclears = 0;  /* true if table has white keys */
     int hasww = 0;  /* true if table has entry "white-key -> white-value" */
-    unsigned int i;
+    unsigned int nodeIndex;
     unsigned int nsize = h->nodeSize();
     int marked = traversearray(g, h);  /* traverse array part */
 
     /* traverse hash part; if 'inv', traverse descending
        (see 'convergeephemerons') */
-    for (i = 0; i < nsize; i++) {
-        Node* n = inv ? gnode(h, nsize - 1 - i) : gnode(h, i);
+    for (nodeIndex = 0; nodeIndex < nsize; nodeIndex++) {
+        Node* n = inv ? gnode(h, nsize - 1 - nodeIndex) : gnode(h, nodeIndex);
         if (isempty(gval(n)))  /* entry is empty? */
             clearkey(n);  /* clear its key */
         else if (iscleared(g, n->getKeyGCOrNull())) {  /* key is not marked (yet)? */
@@ -321,13 +321,13 @@ void GCWeak::clearbyvalues(global_State& g, GCObject* l, GCObject* f) {
         Table* h = gco2t(l);
         Node* n;
         Node* limit = gnodelast(h);
-        unsigned int i;
+        unsigned int arrayIndex;
         unsigned int asize = h->arraySize();
 
-        for (i = 0; i < asize; i++) {
-            GCObject* o = gcvalarr(h, i);
+        for (arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
+            GCObject* o = gcvalarr(h, arrayIndex);
             if (iscleared(g, o))  /* value was collected? */
-                *h->getArrayTag(i) = LuaT::EMPTY;  /* remove entry */
+                *h->getArrayTag(arrayIndex) = LuaT::EMPTY;  /* remove entry */
         }
 
         for (n = gnode(h, 0); n < limit; n++) {

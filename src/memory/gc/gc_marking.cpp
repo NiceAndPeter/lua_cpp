@@ -129,10 +129,10 @@ l_mem GCMarking::traversetable(global_State& g, Table* h) {
 ** Traverse a userdata object
 */
 l_mem GCMarking::traverseudata(global_State& g, Udata* u) {
-    int i;
+    int userValueIndex;
     markobjectN(g, u->getMetatable());
-    for (i = 0; i < u->getNumUserValues(); i++)
-        markvalue(g, &u->getUserValue(i)->uv);
+    for (userValueIndex = 0; userValueIndex < u->getNumUserValues(); userValueIndex++)
+        markvalue(g, &u->getUserValue(userValueIndex)->uv);
     genlink(g, obj2gco(u));
     return 1 + u->getNumUserValues();
 }
@@ -159,9 +159,9 @@ l_mem GCMarking::traverseproto(global_State& g, Proto* f) {
 ** Traverse a C closure
 */
 l_mem GCMarking::traverseCclosure(global_State& g, CClosure* cl) {
-    int i;
-    for (i = 0; i < cl->getNumUpvalues(); i++)
-        markvalue(g, cl->getUpvalue(i));
+    int upvalueIndex;
+    for (upvalueIndex = 0; upvalueIndex < cl->getNumUpvalues(); upvalueIndex++)
+        markvalue(g, cl->getUpvalue(upvalueIndex));
     return 1 + cl->getNumUpvalues();
 }
 
@@ -169,10 +169,10 @@ l_mem GCMarking::traverseCclosure(global_State& g, CClosure* cl) {
 ** Traverse a Lua closure
 */
 l_mem GCMarking::traverseLclosure(global_State& g, LClosure* cl) {
-    int i;
+    int upvalueIndex;
     markobjectN(g, cl->getProto());
-    for (i = 0; i < cl->getNumUpvalues(); i++) {
-        UpVal* uv = cl->getUpval(i);
+    for (upvalueIndex = 0; upvalueIndex < cl->getNumUpvalues(); upvalueIndex++) {
+        UpVal* uv = cl->getUpval(upvalueIndex);
         markobjectN(g, uv);
     }
     return 1 + cl->getNumUpvalues();
@@ -304,9 +304,9 @@ void GCMarking::propagateall(global_State& g) {
 ** Mark metamethods for basic types
 */
 void GCMarking::markmt(global_State& g) {
-    int i;
-    for (i = 0; i < LUA_NUMTYPES; i++)
-        markobjectN(g, g.getMetatable(i));
+    int typeIndex;
+    for (typeIndex = 0; typeIndex < LUA_NUMTYPES; typeIndex++)
+        markobjectN(g, g.getMetatable(typeIndex));
 }
 
 /*
@@ -393,9 +393,9 @@ void GCMarking::genlink(global_State& g, GCObject* o) {
 int GCMarking::traversearray(global_State& g, Table* h) {
     unsigned asize = h->arraySize();
     int marked = 0;  /* true if some object is marked in this traversal */
-    unsigned i;
-    for (i = 0; i < asize; i++) {
-        GCObject* o = gcvalarr(h, i);
+    unsigned arrayIndex;
+    for (arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
+        GCObject* o = gcvalarr(h, arrayIndex);
         if (o != nullptr && iswhite(o)) {
             marked = 1;
             reallymarkobject(g, o);
