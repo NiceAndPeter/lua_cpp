@@ -68,11 +68,10 @@ typedef struct ConsControl {
 l_noret FuncState::errorlimit(int limit, const char *what) {
   lua_State *L = getLexState().getLuaState();
   int line = getProto().getLineDefined();
-  const char *where = (line == 0)
-                      ? "main function"
-                      : luaO_pushfstring(L, "function at line %d", line);
   const char *msg = luaO_pushfstring(L, "too many %s (limit is %d) in %s",
-                             what, limit, where);
+                             what, limit,
+                             (line == 0) ? "main function"
+                                         : luaO_pushfstring(L, "function at line %d", line));
   getLexState().syntaxError(msg);
 }
 
@@ -182,8 +181,9 @@ void FuncState::removevars(int tolevel) {
 ** with the given 'name'.
 */
 int FuncState::searchupvalue(TString& name) {
-  auto upvaluesSpan = getProto().getUpvaluesSpan();
-  for (size_t upvalueIndex = 0; upvalueIndex < static_cast<size_t>(getNumUpvalues()); upvalueIndex++) {
+  const auto upvaluesSpan = getProto().getUpvaluesSpan();
+  const size_t numUpvalues = static_cast<size_t>(getNumUpvalues());
+  for (size_t upvalueIndex = 0; upvalueIndex < numUpvalues; ++upvalueIndex) {
     if (eqstr(*upvaluesSpan[upvalueIndex].getName(), name)) return static_cast<int>(upvalueIndex);
   }
   return -1;  /* not found */
@@ -443,10 +443,8 @@ void FuncState::storevartop(expdesc& var) {
 ** a back jump.
 */
 void FuncState::fixforjump(int pcpos, int dest, int back) {
-  Instruction *jmp = &getProto().getCode()[pcpos];
-  int offset = dest - (pcpos + 1);
-  if (back)
-    offset = -offset;
+  Instruction *const jmp = &getProto().getCode()[pcpos];
+  const int offset = back ? -(dest - (pcpos + 1)) : (dest - (pcpos + 1));
   if (l_unlikely(offset > MAXARG_Bx))
     getLexState().syntaxError("control structure too long");
   SETARG_Bx(*jmp, static_cast<unsigned int>(offset));

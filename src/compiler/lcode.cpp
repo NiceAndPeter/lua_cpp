@@ -1624,11 +1624,11 @@ void FuncState::posfix(BinOpr op, expdesc& e1, expdesc& e2, int line) {
 }
 
 void FuncState::settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize) {
-  Instruction *inst = &getProto().getCode()[pcpos];
-  int extra = asize / (MAXARG_vC + 1);  /* higher bits of array size */
-  int rc = asize % (MAXARG_vC + 1);  /* lower bits of array size */
-  int k = (extra > 0);  /* true iff needs extra argument */
-  int hsize_coded = (hsize != 0) ? luaO_ceillog2(cast_uint(hsize)) + 1 : 0;
+  Instruction *const inst = &getProto().getCode()[pcpos];
+  const int extra = asize / (MAXARG_vC + 1);  /* higher bits of array size */
+  const int rc = asize % (MAXARG_vC + 1);  /* lower bits of array size */
+  const int k = (extra > 0);  /* true iff needs extra argument */
+  const int hsize_coded = (hsize != 0) ? luaO_ceillog2(cast_uint(hsize)) + 1 : 0;
   *inst = CREATE_vABCk(OP_NEWTABLE, static_cast<int>(ra), hsize_coded, rc, k);
   *(inst + 1) = CREATE_Ax(OP_EXTRAARG, extra);
 }
