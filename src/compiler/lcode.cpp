@@ -1162,10 +1162,10 @@ void FuncState::fixline(int line) {
 
 void FuncState::nil(int from, int n) {
   int l = from + n - 1;  /* last register to set nil */
-  Instruction *previous = previousinstruction();
+  Instruction *const previous = previousinstruction();
   if (InstructionView(*previous).opcode() == OP_LOADNIL) {  /* previous is LOADNIL? */
-    int pfrom = InstructionView(*previous).a();  /* get previous range */
-    int pl = pfrom + InstructionView(*previous).b();
+    const int pfrom = InstructionView(*previous).a();  /* get previous range */
+    const int pl = pfrom + InstructionView(*previous).b();
     if ((pfrom <= from && from <= pl + 1) ||
         (from <= pfrom && pfrom <= l + 1)) {  /* can connect both? */
       if (pfrom < from) from = pfrom;  /* from = min(from, pfrom) */

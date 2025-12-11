@@ -294,7 +294,7 @@ void FuncState::marktobeclosed() {
 ** 'var' as 'void' as a flag.
 */
 void FuncState::singlevaraux(TString& n, expdesc& var, int base) {
-  int v = searchvar(n, var);  /* look up variables at current level */
+  const int v = searchvar(n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)
       markupval(var.getLocalVarIndex());  /* local will be used as an upval */

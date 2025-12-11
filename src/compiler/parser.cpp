@@ -863,27 +863,24 @@ void Parser::simpleexp( expdesc& v) {
 
 
 BinOpr Parser::subexpr( expdesc& v, int limit) {
-  BinOpr op;
-  UnOpr uop;
   enterlevel(&ls);
-  uop = getunopr(ls.getToken());
+  UnOpr uop = getunopr(ls.getToken());
   if (uop != UnOpr::OPR_NOUNOPR) {  /* prefix (unary) operator? */
-    int line = ls.getLineNumber();
+    const int line = ls.getLineNumber();
     ls.nextToken();  /* skip operator */
     subexpr(v, UNARY_PRIORITY);
     fs->prefix(uop, v, line);
   }
   else simpleexp(v);
   /* expand while operators have priorities higher than 'limit' */
-  op = getbinopr(ls.getToken());
+  BinOpr op = getbinopr(ls.getToken());
   while (op != BinOpr::OPR_NOBINOPR && priority[static_cast<int>(op)].left > limit) {
     expdesc v2;
-    BinOpr nextop;
-    int line = ls.getLineNumber();
+    const int line = ls.getLineNumber();
     ls.nextToken();  /* skip operator */
     fs->infix(op, v);
     /* read sub-expression with higher priority */
-    nextop = subexpr(v2, priority[static_cast<int>(op)].right);
+    BinOpr nextop = subexpr(v2, priority[static_cast<int>(op)].right);
     fs->posfix(op, v, v2, line);
     op = nextop;
   }
