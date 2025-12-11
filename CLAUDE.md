@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.26s avg ✅ (46% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 148-C COMPLETE - Declare-on-first-use modernization (14 functions)!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-148-C | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.25s avg ✅ (46% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 149 COMPLETE - Compiler path declare-on-first-use (8 functions)!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-149 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -264,6 +264,21 @@ Converting Lua 5.5 from C to modern C++23:
 - **Result**: ~2.26s avg ✅ (46% faster than baseline!)
 - **See**: `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md` for full improvement plan
 
+**Phase 149**: Compiler Path Declare-on-First-Use ✅ **(2 parts, 8 functions)**
+- **Part 1** (5 functions - Code generation & function state):
+  - `codeeq()`: If-init-statement for `im` (C++17 pattern)
+  - `settablesize()`: Const correctness for all 5 computed values
+  - `errorlimit()`: Eliminated `where` intermediate variable (code reduction)
+  - `fixforjump()`: Ternary operator for `offset`, const for `jmp`
+  - `searchupvalue()`: Const for span, cached cast (eliminates repeated conversion)
+- **Part 2** (3 functions - Parser & variable lookup):
+  - `nil()`: Const correctness for `previous`, `pfrom`, `pl`
+  - `singlevaraux()`: Const correctness for `v` (variable lookup result)
+  - `subexpr()`: Declare-on-first-use for `uop`/`op`, const for `line` declarations
+- **Impact**: Compiler code generation and parsing now follow modern C++ idioms
+- **Files Changed**: 3 files (lcode.cpp, funcstate.cpp, parser.cpp), 8 functions
+- **Result**: ~2.25s avg ✅ (46% faster than baseline, maintained!)
+
 ---
 
 ## Performance
@@ -376,9 +391,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
 Zero warnings | 96.1% coverage | 30+ tests passing | **46% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-148-C complete | Phase 135, 139 skipped ✅
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-149 complete | Phase 135, 139 skipped ✅
 [[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 62 modernized (36 loop iterators + 26 instruction/API variables) ✅
-Declare-on-first-use: 14 functions modernized (Phase 148-A/B/C) | Code reduction: 15 lines removed from hot paths ✅
+Declare-on-first-use: 22 functions modernized (Phases 148-A/B/C: 14 functions, Phase 149: 8 functions) | Code reduction: 16 lines removed ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -457,5 +472,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-148-C ✅ | Phase 135, 139 skipped
-**Performance**: ~2.26s ✅ (46% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 14 functions with declare-on-first-use (Phases 148-A/B/C)
+**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-149 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.25s ✅ (46% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 22 functions with declare-on-first-use (Phases 148-A/B/C, 149)
