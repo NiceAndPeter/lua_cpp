@@ -70,8 +70,8 @@ LUA_API void lua_xmove (lua_State *from, lua_State *to, int n) {
   api_check(from, G(from) == G(to), "moving among independent states");
   api_check(from, to->getCI()->topRef().p - to->getTop().p >= n, "stack overflow");
   from->getStackSubsystem().popN(n);
-  for (int i = 0; i < n; i++) {
-    *s2v(to->getTop().p) = *s2v(from->getTop().p + i);  /* use operator= */
+  for (int valueIndex = 0; valueIndex < n; valueIndex++) {
+    *s2v(to->getTop().p) = *s2v(from->getTop().p + valueIndex);  /* use operator= */
     to->getStackSubsystem().push();  /* stack already checked by previous 'api_check' */
   }
   lua_unlock(to);
@@ -551,8 +551,8 @@ LUA_API void lua_pushcclosure (lua_State *L, lua_CFunction fn, int n) {
     api_check(L, n <= MAXUPVAL, "upvalue index too large");
     CClosure *cl = CClosure::create(L, n);
     cl->setFunction(fn);
-    for (int i = 0; i < n; i++) {
-      *cl->getUpvalue(i) = *s2v(L->getTop().p - n + i);
+    for (int upvalueIndex = 0; upvalueIndex < n; upvalueIndex++) {
+      *cl->getUpvalue(upvalueIndex) = *s2v(L->getTop().p - n + upvalueIndex);
       /* does not need barrier because closure is white */
       lua_assert(iswhite(cl));
     }

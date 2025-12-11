@@ -1449,7 +1449,7 @@ lua_Unsigned Table::getn(lua_State* L) {
     if (arraykeyisempty(*this, limit)) {  /* t[limit] empty? */
       /* there must be a border before 'limit' */
       /* look for a border in the vicinity of the hint */
-      for (unsigned i = 0; i < maxvicinity && limit > 1; i++) {
+      for (unsigned vicinityStep = 0; vicinityStep < maxvicinity && limit > 1; vicinityStep++) {
         limit--;
         if (!arraykeyisempty(*this, limit))
           return newhint(*this, limit);  /* 'limit' is a border */
@@ -1459,7 +1459,7 @@ lua_Unsigned Table::getn(lua_State* L) {
     }
     else {  /* 'limit' is present in table; look for a border after it */
       /* look for a border in the vicinity of the hint */
-      for (unsigned i = 0; i < maxvicinity && limit < arraysize; i++) {
+      for (unsigned vicinityStep = 0; vicinityStep < maxvicinity && limit < arraysize; vicinityStep++) {
         limit++;
         if (arraykeyisempty(*this, limit))
           return newhint(*this, limit - 1);  /* 'limit - 1' is a border */

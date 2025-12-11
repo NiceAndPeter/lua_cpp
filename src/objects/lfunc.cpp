@@ -64,14 +64,14 @@ LClosure* LClosure::create(lua_State* L, int nupvals) {
 ** Phase 50: Now uses placement new
 */
 void LClosure::initUpvals(lua_State* L) {
-  int i;
-  for (i = 0; i < numberOfUpvalues; i++) {
+  int upvalueIndex;
+  for (upvalueIndex = 0; upvalueIndex < numberOfUpvalues; upvalueIndex++) {
     // Use placement new - calls constructor (initializes to closed nil upvalue)
     UpVal *uv = new (L, ctb(LuaT::UPVAL)) UpVal();
     uv->setVP(uv->getValueSlot());  /* make it closed */
     // Constructor already sets value to nil, but keeping setnilvalue for clarity
     setnilvalue(uv->getVP());
-    upvals[i] = uv;
+    upvals[upvalueIndex] = uv;
     luaC_objbarrier(L, this, uv);
   }
 }
