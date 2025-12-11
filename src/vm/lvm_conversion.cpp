@@ -32,9 +32,9 @@ static int l_strton (const TValue *obj, TValue *result) {
   if (!cvt2num(obj))  /* is object not a string? */
     return 0;
   else {
-    TString *st = tsvalue(obj);
+    TString* const st = tsvalue(obj);
     size_t stlen;
-    const char *s = getStringWithLength(st, stlen);
+    const char* const s = getStringWithLength(st, stlen);
     return (luaO_str2num(s, result) == stlen + 1);
   }
 }
