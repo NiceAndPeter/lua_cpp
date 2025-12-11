@@ -175,14 +175,14 @@ static void reverse (lua_State *L, StkId from, StkId to) {
 */
 LUA_API void lua_rotate (lua_State *L, int idx, int n) {
   lua_lock(L);
-  auto t = L->getTop().p - 1;  /* end of stack segment being rotated */
-  auto p = L->getStackSubsystem().indexToStack(L, idx);  /* start of segment */
-  api_check(L, L->getTbclist().p < p, "moving a to-be-closed slot");
-  api_check(L, (n >= 0 ? n : -n) <= (t - p + 1), "invalid 'n'");
-  auto m = (n >= 0 ? t - n : p - n - 1);  /* end of prefix */
-  reverse(L, p, m);  /* reverse the prefix with length 'n' */
-  reverse(L, m + 1, t);  /* reverse the suffix */
-  reverse(L, p, t);  /* reverse the entire segment */
+  auto segmentEnd = L->getTop().p - 1;  /* end of stack segment being rotated */
+  auto segmentStart = L->getStackSubsystem().indexToStack(L, idx);  /* start of segment */
+  api_check(L, L->getTbclist().p < segmentStart, "moving a to-be-closed slot");
+  api_check(L, (n >= 0 ? n : -n) <= (segmentEnd - segmentStart + 1), "invalid 'n'");
+  auto prefixEnd = (n >= 0 ? segmentEnd - n : segmentStart - n - 1);  /* end of prefix */
+  reverse(L, segmentStart, prefixEnd);  /* reverse the prefix with length 'n' */
+  reverse(L, prefixEnd + 1, segmentEnd);  /* reverse the suffix */
+  reverse(L, segmentStart, segmentEnd);  /* reverse the entire segment */
   lua_unlock(L);
 }
 

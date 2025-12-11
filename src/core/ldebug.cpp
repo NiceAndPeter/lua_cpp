@@ -470,9 +470,9 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
     int a = view.a();
     int change;  /* true if current instruction changed 'reg' */
     switch (op) {
-      case OP_LOADNIL: {  /* set registers from 'a' to 'a+b' */
-        int b = view.b();
-        change = (a <= reg && reg <= a + b);
+      case OP_LOADNIL: {  /* set registers from 'a' to 'a+nilCount' */
+        int nilCount = view.b();
+        change = (a <= reg && reg <= a + nilCount);
         break;
       }
       case OP_TFORCALL: {  /* affect all regs above its base */
@@ -485,8 +485,8 @@ static int findsetreg (const Proto *p, int lastpc, int reg) {
         break;
       }
       case OP_JMP: {  /* doesn't change registers, but changes 'jmptarget' */
-        int b = view.sj();
-        int dest = pc + 1 + b;
+        int jumpOffset = view.sj();
+        int dest = pc + 1 + jumpOffset;
         /* jump does not skip 'lastpc' and is larger than current one? */
         if (dest <= lastpc && dest > jmptarget)
           jmptarget = dest;  /* update 'jmptarget' */
@@ -533,9 +533,9 @@ static const char *basicgetobjname (const Proto *p, int *ppc, int reg,
     OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
     switch (op) {
       case OP_MOVE: {
-        int b = InstructionView(i).b();  /* move from 'b' to 'a' */
-        if (b < InstructionView(i).a())
-          return basicgetobjname(p, ppc, b, name);  /* get name for 'b' */
+        int sourceRegister = InstructionView(i).b();  /* move from 'sourceRegister' to 'a' */
+        if (sourceRegister < InstructionView(i).a())
+          return basicgetobjname(p, ppc, sourceRegister, name);  /* get name for 'sourceRegister' */
         break;
       }
       case OP_GETUPVAL: {
@@ -566,13 +566,13 @@ static void rname (const Proto *p, int pc, int c, const char **name) {
 ** environment '_ENV'
 */
 static const char *isEnv (const Proto *p, int pc, Instruction i, int isup) {
-  int t = InstructionView(i).b();  /* table index */
+  int tableIndex = InstructionView(i).b();  /* table index */
   const char *name;  /* name of indexed variable */
-  if (isup) {  /* is 't' an upvalue? */
-    name = upvalname(p, t);
+  if (isup) {  /* is 'tableIndex' an upvalue? */
+    name = upvalname(p, tableIndex);
   }
-  else {  /* 't' is a register */
-    const char *what = basicgetobjname(p, &pc, t, &name);
+  else {  /* 'tableIndex' is a register */
+    const char *what = basicgetobjname(p, &pc, tableIndex, &name);
     /* 'name' must be the name of a local variable (at the current
        level or an upvalue) */
     if (what != strlocal && what != strupval)
@@ -595,13 +595,13 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
     OpCode op = static_cast<OpCode>(InstructionView(i).opcode());
     switch (op) {
       case OP_GETTABUP: {
-        int k = InstructionView(i).c();  /* key index */
-        kname(p, k, name);
+        int keyIndex = InstructionView(i).c();  /* key index */
+        kname(p, keyIndex, name);
         return isEnv(p, lastpc, i, 1);
       }
       case OP_GETTABLE: {
-        int k = InstructionView(i).c();  /* key index */
-        rname(p, lastpc, k, name);
+        int keyIndex = InstructionView(i).c();  /* key index */
+        rname(p, lastpc, keyIndex, name);
         return isEnv(p, lastpc, i, 0);
       }
       case OP_GETI: {
@@ -609,13 +609,13 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
         return "field";
       }
       case OP_GETFIELD: {
-        int k = InstructionView(i).c();  /* key index */
-        kname(p, k, name);
+        int keyIndex = InstructionView(i).c();  /* key index */
+        kname(p, keyIndex, name);
         return isEnv(p, lastpc, i, 0);
       }
       case OP_SELF: {
-        int k = InstructionView(i).c();  /* key index */
-        kname(p, k, name);
+        int keyIndex = InstructionView(i).c();  /* key index */
+        kname(p, keyIndex, name);
         return "method";
       }
       default: break;  /* go through to return nullptr */

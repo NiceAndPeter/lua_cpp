@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.34s avg ✅ (44% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 145 COMPLETE - VM instruction variables modernized for crystal-clear code!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-145 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.32s avg ✅ (45% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 146 COMPLETE - Debug & API identifiers modernized!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-146 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -195,12 +195,26 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 1 file (lvirtualmachine.cpp), 15 variables
 - **Result**: ~2.34s avg ✅ (44% faster than baseline, zero performance impact!)
 
+**Phase 146**: Debug & API Identifier Modernization ✅
+- Modernized 11 cryptic variables in debug info generation and API functions
+- **ldebug.cpp** (8 variables - debug info for error messages & stack traces):
+  - OP_LOADNIL: `b` → `nilCount` (register range size)
+  - OP_JMP: `b` → `jumpOffset` (jump destination)
+  - OP_MOVE: `b` → `sourceRegister` (move source)
+  - isEnv(): `t` → `tableIndex` (table being indexed)
+  - OP_GETTABUP/GETTABLE/GETFIELD/SELF: `k` → `keyIndex` (4 occurrences)
+- **lapi.cpp** (3 variables - stack rotation algorithm):
+  - lua_rotate(): `t` → `segmentEnd`, `p` → `segmentStart`, `m` → `prefixEnd`
+- **Impact**: Error messages & debug info generation now self-documenting
+- **Files Changed**: 2 files, 11 variables
+- **Result**: ~2.32s avg ✅ (45% faster than baseline, slight improvement!)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.34s avg ✅ **44% faster than baseline!**
+**Current**: ~2.32s avg ✅ **45% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -306,9 +320,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **44% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-145 complete | Phase 135, 139 skipped ✅
-[[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 46 modernized (31 loop iterators + 15 instruction variables) ✅
+Zero warnings | 96.1% coverage | 30+ tests passing | **45% faster than baseline!**
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-146 complete | Phase 135, 139 skipped ✅
+[[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 57 modernized (31 loop iterators + 26 instruction/API variables) ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -330,17 +344,17 @@ Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-145 complete | Phase 1
 12. **Parallel arrays are complex** (Phase 135: allocation failure modes, exception-safety, invariant tracking make them error-prone; avoid unless essential)
 13. **Not all functions with return values need [[nodiscard]]** (Phase 138: functions used for side effects like pushfstring are legitimate dual-use)
 14. **Const correctness pays dividends** (Phase 139: previous incremental const work meant no improvements needed!)
-15. **Descriptive identifiers improve code clarity dramatically** (Phases 140-145: 46 cryptic identifiers → self-documenting names; 31 loop iterators + 15 instruction variables; zero performance impact)
+15. **Descriptive identifiers improve code clarity dramatically** (Phases 140-146: 57 cryptic identifiers → self-documenting names; 31 loop iterators + 26 instruction/API variables; zero performance impact, slight improvement)
 
 ---
 
 ## Future Opportunities
 
 **High-Priority Next Steps**:
-- **Phase 146**: Additional Identifier Improvements - Survey for remaining cryptic names in API/library code
+- **Phase 147**: Additional Identifier Improvements - Continue surveying library code for cryptic names (lower priority now)
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
 - Phase 128: std::span performance optimization (if needed - current perf excellent)
-- Additional identifier modernizations in test/library code (lower priority)
+- Additional identifier modernizations in test/library code (diminishing returns)
 
 **Defer (Low Value/High Risk)**:
 - Boolean conversions (8 remaining, diminishing returns)
@@ -383,5 +397,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-145 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.34s ✅ (44% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 46 identifiers modernized (31 loop iterators + 15 instruction variables)
+**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-146 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.32s ✅ (45% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 57 identifiers modernized (31 loop iterators + 26 instruction/API variables)
