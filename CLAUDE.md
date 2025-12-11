@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.11s avg ✅ (50% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 134 COMPLETE - Identifier modernization (131-134) finished!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.25s avg ✅ (50% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 138 COMPLETE - [[nodiscard]] expansion finished! Phase 139 SKIPPED (already complete)
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -21,8 +21,8 @@ Converting Lua 5.5 from C to modern C++23:
 
 **Code Modernization** (99.9%):
 - ~520 macros → inline functions | Modern casts | enum class | nullptr
-- std::array | [[nodiscard]] (55+ functions, found 5 bugs!) | bool returns
-- Const correctness | Pointer-to-reference conversions
+- std::array | [[nodiscard]] (102+ functions, found 5 bugs!) | bool returns
+- Excellent const correctness | Pointer-to-reference conversions
 
 **Architecture**:
 - VirtualMachine class (all wrappers eliminated) | Header modularization (-79% lobject.h)
@@ -104,12 +104,45 @@ Converting Lua 5.5 from C to modern C++23:
 - **See**: `docs/PHASE_135_FAILED_ATTEMPT.md` for detailed analysis
 - **Status**: Archived - Do Not Pursue
 
+**Phase 135-Rev**: Single-Block Allocation for Stack + Deltas ✅
+- **Goal**: Improve exception-safety by allocating stack+deltas as single block
+- **Implementation**: Added `tbc_deltas` field to LuaStack, single allocation in `realloc()`
+- **Impact**: Eliminated split allocation failure modes, cleaner ownership
+- **Result**: ~2.11s avg (maintained performance)
+
+**Phase 136**: VM Core Variables - Identifier Modernization ✅
+- **Already complete**: VM core variables already modernized in earlier phases
+- **Verified**: execute() function locals use clear names (currentClosure, constants, stackFrameBase, etc.)
+- **No changes needed**: Variables properly named
+
+**Phase 137**: Metamethod Variable Modernization ✅
+- **Pattern**: `tm` → `metamethod` throughout codebase
+- **Files Changed**: Multiple files across VM, GC, and core
+- **Impact**: Metamethod code now self-documenting
+- **Result**: ~2.11s avg (maintained)
+
+**Phase 138**: Additional [[nodiscard]] Annotations ✅
+- Added [[nodiscard]] to 6 core functions where ignoring return value is likely a bug
+- **Debug functions** (ldebug.h): `luaG_findlocal()`, `luaG_addinfo()`
+- **Metamethod functions** (ltm.h): `luaT_objtypename()`, `luaT_gettm()`, `luaT_gettmbyobj()`
+- **State management** (lstate.h): `luaE_extendCI()`
+- **Decision**: Did NOT add to `luaO_pushfstring/pushvfstring` (legitimately used for side effects)
+- **Total**: 96 → 102 [[nodiscard]] annotations
+- **Result**: ~2.25s avg ✅ (zero performance regression)
+
+**Phase 139**: Const Correctness Expansion **SKIPPED** ✅
+- **Analysis**: Comprehensive survey revealed codebase already has excellent const-correctness
+- **Findings**: All getter/query methods already const, all non-const methods genuinely modify state
+- **Classes surveyed**: VirtualMachine, Table, Proto, UpVal, Closures, TString
+- **Conclusion**: No improvements needed - phase already complete from previous work!
+- **Status**: Skipped (work already done)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.11s avg ✅ **50% faster than baseline!**
+**Current**: ~2.25s avg ✅ **47% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -215,8 +248,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **50% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134 complete | Phase 135 rejected ✅
+Zero warnings | 96.1% coverage | 30+ tests passing | **47% faster than baseline!**
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 complete | Phase 135, 139 skipped ✅
+[[nodiscard]]: 102 annotations | Const correctness: Excellent ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -236,16 +270,19 @@ Phases 1-127, 129-1, 130-ALL, 131, 133, 134 complete | Phase 135 rejected ✅
 10. Template functions + lambdas = zero overhead (Phase 123 GC macros)
 11. Eliminate wrappers aggressively (Phase 125: better perf + cleaner code)
 12. **Parallel arrays are complex** (Phase 135: allocation failure modes, exception-safety, invariant tracking make them error-prone; avoid unless essential)
+13. **Not all functions with return values need [[nodiscard]]** (Phase 138: functions used for side effects like pushfstring are legitimate dual-use)
+14. **Const correctness pays dividends** (Phase 139: previous incremental const work meant no improvements needed!)
 
 ---
 
 ## Future Opportunities
 
-**Potential Next Steps** (see `docs/PHASE_SUGGESTIONS.md` for details):
+**High-Priority Next Steps**:
+- **Phase 140**: GC Loop Iterators - Modernize `i` → `upvalueIndex`, `arrayIndex` (⭐⭐⭐ low risk, clean)
+- **Phase 141**: Debug Module Variables - `pc` → `instructionPC`, `a` → `destinationRegister` (⭐⭐⭐⭐ high clarity)
+- **Phase 142**: Table Rehashing Variables - Complex algorithm clarity improvements (⭐⭐⭐⭐⭐ very high impact)
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
-- Phase 128: std::span performance optimization (if needed)
-- Additional pointer-to-reference conversions (Phase 130 continuation)
-- More const correctness improvements
+- Phase 128: std::span performance optimization (if needed - current perf excellent)
 
 **Defer (Low Value/High Risk)**:
 - Boolean conversions (8 remaining, diminishing returns)
@@ -288,5 +325,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-05 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134 ✅ | Phase 135 ❌ (rejected) | **Performance**: ~2.19s ✅ (48% faster!)
-**Status**: Modern C++23, VirtualMachine complete, const-correct, [[nodiscard]] safety, clean working state (commit 15c34511)
+**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.25s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness
