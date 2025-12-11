@@ -444,14 +444,14 @@ void lua_State::genMoveResults(StkId res, int nres,
                                              int wanted) {
   lua_assert(nres >= 0 && getTop().p >= getStack().p + nres);  /* ensure nres valid */
   StkId firstresult = getTop().p - nres;  /* index of first result */
-  int i;
   if (nres > wanted)  /* extra results? */
     nres = wanted;  /* don't need them */
   lua_assert(firstresult >= getStack().p && res >= getStack().p);  /* ensure valid pointers */
-  for (i = 0; i < nres; i++)  /* move all results to correct place */
-    *s2v(res + i) = *s2v(firstresult + i);  /* use operator= */
-  for (; i < wanted; i++)  /* complete wanted number of results */
-    setnilvalue(s2v(res + i));
+  int resultIndex;
+  for (resultIndex = 0; resultIndex < nres; resultIndex++)  /* move all results to correct place */
+    *s2v(res + resultIndex) = *s2v(firstresult + resultIndex);  /* use operator= */
+  for (; resultIndex < wanted; resultIndex++)  /* complete wanted number of results */
+    setnilvalue(s2v(res + resultIndex));
   getStackSubsystem().setTopPtr(res + wanted);  /* top points after the last result */
 }
 

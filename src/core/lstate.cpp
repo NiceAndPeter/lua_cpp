@@ -358,7 +358,6 @@ LUA_API int lua_closethread (lua_State *L, lua_State *from) {
 
 
 LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
-  int i;
   lua_State *L;
   global_State *g = static_cast<global_State*>(
                        (*f)(ud, nullptr, LUA_TTHREAD, sizeof(global_State)));
@@ -403,8 +402,8 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   setgcparam(g, MINORMUL, LUAI_GENMINORMUL);
   setgcparam(g, MINORMAJOR, LUAI_MINORMAJOR);
   setgcparam(g, MAJORMINOR, LUAI_MAJORMINOR);
-  for (i = 0; i < LUA_NUMTYPES; i++) {
-    g->setMetatable(i, nullptr);
+  for (int typeIndex = 0; typeIndex < LUA_NUMTYPES; typeIndex++) {
+    g->setMetatable(typeIndex, nullptr);
   }
   if (L->rawRunProtected( f_luaopen, nullptr) != LUA_OK) {
     /* memory allocation error: free partial state */

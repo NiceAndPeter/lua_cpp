@@ -46,10 +46,9 @@ void luaT_init (lua_State *L) {
     "__unm", "__bnot", "__lt", "__le",
     "__concat", "__call", "__close"
   };
-  int i;
-  for (i=0; i<static_cast<int>(TMS::TM_N); i++) {
-    G(L)->setTMName(i, TString::create(L, luaT_eventname[i]));
-    obj2gco(G(L)->getTMName(i))->fix(L);  /* never collect these names */
+  for (int metamethodIndex = 0; metamethodIndex < static_cast<int>(TMS::TM_N); metamethodIndex++) {
+    G(L)->setTMName(metamethodIndex, TString::create(L, luaT_eventname[metamethodIndex]));
+    obj2gco(G(L)->getTMName(metamethodIndex))->fix(L);  /* never collect these names */
   }
 }
 
@@ -229,7 +228,6 @@ int luaT_callorderiTM (lua_State *L, const TValue *p1, int v2,
 
 void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
                          const Proto *p) {
-  int i;
   int actual = cast_int(L->getTop().p - ci->funcRef().p) - 1;  /* number of arguments */
   int nextra = actual - nfixparams;  /* number of extra arguments */
   ci->setExtraArgs(nextra);
@@ -238,10 +236,10 @@ void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
   *s2v(L->getTop().p) = *s2v(ci->funcRef().p);  /* use operator= */
   L->getStackSubsystem().push();
   /* move fixed parameters to the top of the stack */
-  for (i = 1; i <= nfixparams; i++) {
-    *s2v(L->getTop().p) = *s2v(ci->funcRef().p + i);  /* use operator= */
+  for (int parameterIndex = 1; parameterIndex <= nfixparams; parameterIndex++) {
+    *s2v(L->getTop().p) = *s2v(ci->funcRef().p + parameterIndex);  /* use operator= */
     L->getStackSubsystem().push();
-    setnilvalue(s2v(ci->funcRef().p + i));  /* erase original parameter (for GC) */
+    setnilvalue(s2v(ci->funcRef().p + parameterIndex));  /* erase original parameter (for GC) */
   }
   ci->funcRef().p += actual + 1;
   ci->topRef().p += actual + 1;
@@ -250,16 +248,16 @@ void luaT_adjustvarargs (lua_State *L, int nfixparams, CallInfo *ci,
 
 
 void luaT_getvarargs (lua_State *L, CallInfo *ci, StkId where, int wanted) {
-  int i;
   int nextra = ci->getExtraArgs();
   if (wanted < 0) {
     wanted = nextra;  /* get all extra arguments available */
     checkstackp(L, nextra, where);  /* ensure stack space */
     L->getStackSubsystem().setTopPtr(where + nextra);  /* next instruction will need top */
   }
-  for (i = 0; i < wanted && i < nextra; i++)
-    *s2v(where + i) = *s2v(ci->funcRef().p - nextra + i);  /* use operator= */
-  for (; i < wanted; i++)   /* complete required results with nil */
-    setnilvalue(s2v(where + i));
+  int argumentIndex = 0;
+  for (; argumentIndex < wanted && argumentIndex < nextra; argumentIndex++)
+    *s2v(where + argumentIndex) = *s2v(ci->funcRef().p - nextra + argumentIndex);  /* use operator= */
+  for (; argumentIndex < wanted; argumentIndex++)   /* complete required results with nil */
+    setnilvalue(s2v(where + argumentIndex));
 }
 
