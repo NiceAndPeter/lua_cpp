@@ -547,18 +547,16 @@ CallInfo* lua_State::prepareCallInfo(StkId func, unsigned status_val,
 // Convert to private lua_State method
 int lua_State::preCallC(StkId func, unsigned status_val,
                                             lua_CFunction f) {
-  int n;  /* number of returns */
-  CallInfo *ci_new;
   checkstackp(this, LUA_MINSTACK, func);  /* ensure minimum stack size */
-  ci_new = setCI(prepareCallInfo(func, status_val | CIST_C,
+  CallInfo* const ci_new = setCI(prepareCallInfo(func, status_val | CIST_C,
                                getTop().p + LUA_MINSTACK));
   lua_assert(ci_new->topRef().p <= getStackLast().p);
   if (l_unlikely(hookmask & LUA_MASKCALL)) {
-    int narg = cast_int(getTop().p - func) - 1;
+    const int narg = cast_int(getTop().p - func) - 1;
     callHook(LUA_HOOKCALL, -1, 1, narg);
   }
   lua_unlock(this);
-  n = (*f)(this);  /* do the actual call */
+  const int n = (*f)(this);  /* do the actual call */
   lua_lock(this);
   api_checknelems(this, n);
   postCall(ci_new, n);
@@ -583,9 +581,9 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
     case LuaT::LCF:  /* light C function */
       return preCallC(func, status_val, fvalue(s2v(func)));
     case LuaT::LCL: {  /* Lua function */
-      Proto *p = clLvalue(s2v(func))->getProto();
-      auto fsize = p->getMaxStackSize();  /* frame size */
-      auto nfixparams = p->getNumParams();
+      Proto* const p = clLvalue(s2v(func))->getProto();
+      const auto fsize = p->getMaxStackSize();  /* frame size */
+      const auto nfixparams = p->getNumParams();
       checkstackp(this, fsize - delta, func);
       ci_arg->funcRef().p -= delta;  /* restore 'func' (if vararg) */
       for (int argumentIndex = 0; argumentIndex < narg1; argumentIndex++)  /* move down function and arguments */
@@ -631,13 +629,12 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
       preCallC(func, status_val, fvalue(s2v(func)));
       return nullptr;
     case LuaT::LCL: {  /* Lua function */
-      CallInfo *ci_new;
-      Proto *p = clLvalue(s2v(func))->getProto();
+      Proto* const p = clLvalue(s2v(func))->getProto();
       auto narg = cast_int(getTop().p - func) - 1;  /* number of real arguments */
-      auto nfixparams = p->getNumParams();
-      auto fsize = p->getMaxStackSize();  /* frame size */
+      const auto nfixparams = p->getNumParams();
+      const auto fsize = p->getMaxStackSize();  /* frame size */
       checkstackp(this, fsize, func);
-      ci_new = setCI(prepareCallInfo(func, status_val, func + 1 + fsize));
+      CallInfo* const ci_new = setCI(prepareCallInfo(func, status_val, func + 1 + fsize));
       ci_new->setSavedPC(p->getCode());  /* starting point */
       for (; narg < nfixparams; narg++) {
         setnilvalue(s2v(getTop().p));  /* complete missing arguments */
