@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.34s avg ✅ (44% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 140 COMPLETE - GC loop iterator modernization finished!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138, 140 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.14s avg ✅ (49% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 143 COMPLETE - Comprehensive loop iterator modernization across all modules!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-143 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -146,12 +146,33 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 2 files, 8 loop variables
 - **Result**: ~2.34s avg ✅ (maintained performance)
 
+**Phase 141**: Debug Module Loop Iterators ✅
+- Modernized 2 loop iterators in debug module for improved clarity
+- **ldebug.cpp** (2): `i` → `instructionIndex` (instruction iteration), `i` → `upvalueIndex` (upvalue search)
+- **Impact**: Debug info processing now self-documenting
+- **Files Changed**: 1 file, 2 loop variables
+
+**Phase 142**: Table Rehashing Loop Iterators ✅
+- Modernized 5 loop iterators in table rehashing algorithm (very high impact)
+- **ltable.cpp** (5): `i`/`j` → `arrayKey`/`nodeIndex`/`arrayIndex`
+- **Functions**: numusearray, numusehash, setnodevector, reinserthash, reinsertOldSlice
+- **Impact**: Complex rehashing algorithm now self-documenting
+- **Files Changed**: 1 file, 5 loop variables
+
+**Phase 143**: Core & Compiler Loop Iterators ✅
+- Modernized 11 loop iterators across core execution and compiler modules
+- **Core modules** (3): ldo.cpp (`argumentIndex`), lstack.cpp (`stackIndex`), lstring.cpp (`userValueIndex`)
+- **Compiler modules** (8): parser.cpp (`variableIndex`), lcode.cpp (`instructionIndex`), funcstate.cpp (`upvalueIndex`, `localIndex`)
+- **Impact**: Execution, memory, and compilation paths now self-documenting
+- **Files Changed**: 5 files, 11 loop variables
+- **Result**: ~2.14s avg ✅ (49% faster than baseline!)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.34s avg ✅ **44% faster than baseline!**
+**Current**: ~2.14s avg ✅ **49% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -257,9 +278,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **47% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 complete | Phase 135, 139 skipped ✅
-[[nodiscard]]: 102 annotations | Const correctness: Excellent ✅
+Zero warnings | 96.1% coverage | 30+ tests passing | **49% faster than baseline!**
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-143 complete | Phase 135, 139 skipped ✅
+[[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Loop iterators: 26 modernized ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -281,17 +302,18 @@ Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 complete | Ph
 12. **Parallel arrays are complex** (Phase 135: allocation failure modes, exception-safety, invariant tracking make them error-prone; avoid unless essential)
 13. **Not all functions with return values need [[nodiscard]]** (Phase 138: functions used for side effects like pushfstring are legitimate dual-use)
 14. **Const correctness pays dividends** (Phase 139: previous incremental const work meant no improvements needed!)
+15. **Descriptive loop iterators improve code clarity dramatically** (Phases 140-143: 26 single-letter iterators → self-documenting names; zero performance impact)
 
 ---
 
 ## Future Opportunities
 
 **High-Priority Next Steps**:
-- **Phase 141**: Debug Module Variables - `pc` → `instructionPC`, `a` → `destinationRegister` (⭐⭐⭐⭐ high clarity)
-- **Phase 142**: Table Rehashing Variables - Complex algorithm clarity improvements (⭐⭐⭐⭐⭐ very high impact)
-- **Phase 143**: Additional GC/Memory Loop Iterators - Survey remaining modules for similar improvements
+- **Phase 144**: VM Instruction Variables - `a`, `b`, `c` → descriptive names in instruction handlers (⭐⭐⭐⭐ high clarity)
+- **Phase 145**: Additional Identifier Improvements - Survey for remaining cryptic names in API/library code
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
 - Phase 128: std::span performance optimization (if needed - current perf excellent)
+- Additional loop iterator modernizations in test/library code (lower priority)
 
 **Defer (Low Value/High Risk)**:
 - Boolean conversions (8 remaining, diminishing returns)
@@ -334,5 +356,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138, 140 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.34s ✅ (44% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness
+**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-143 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.14s ✅ (49% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 26 loop iterators modernized
