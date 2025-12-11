@@ -447,8 +447,8 @@ void lua_State::genMoveResults(StkId res, int nres,
   if (nres > wanted)  /* extra results? */
     nres = wanted;  /* don't need them */
   lua_assert(firstresult >= getStack().p && res >= getStack().p);  /* ensure valid pointers */
-  int resultIndex;
-  for (resultIndex = 0; resultIndex < nres; resultIndex++)  /* move all results to correct place */
+  int resultIndex = 0;
+  for (; resultIndex < nres; resultIndex++)  /* move all results to correct place */
     *s2v(res + resultIndex) = *s2v(firstresult + resultIndex);  /* use operator= */
   for (; resultIndex < wanted; resultIndex++)  /* complete wanted number of results */
     setnilvalue(s2v(res + resultIndex));
@@ -1010,12 +1010,11 @@ TStatus lua_State::closeProtected(ptrdiff_t level, TStatus status_arg) {
 // Convert to lua_State method
 TStatus lua_State::pCall(Pfunc func, void *u, ptrdiff_t old_top,
                                   ptrdiff_t ef) {
-  TStatus status_result;
   CallInfo *old_ci = getCI();
   lu_byte old_allowhooks = getAllowHook();
   ptrdiff_t old_errfunc = getErrFunc();
   setErrFunc(ef);
-  status_result = rawRunProtected(func, u);
+  TStatus status_result = rawRunProtected(func, u);
   if (l_unlikely(status_result != LUA_OK)) {  /* an error occurred? */
     setCI(old_ci);
     setAllowHook(old_allowhooks);
