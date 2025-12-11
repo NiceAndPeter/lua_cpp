@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.25s avg ✅ (50% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 138 COMPLETE - [[nodiscard]] expansion finished! Phase 139 SKIPPED (already complete)
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.34s avg ✅ (44% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 140 COMPLETE - GC loop iterator modernization finished!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138, 140 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -137,12 +137,21 @@ Converting Lua 5.5 from C to modern C++23:
 - **Conclusion**: No improvements needed - phase already complete from previous work!
 - **Status**: Skipped (work already done)
 
+**Phase 140**: GC Loop Iterator Modernization ✅
+- Modernized 8 single-letter loop iterators in GC modules for clarity
+- **gc_marking.cpp** (5): `i` → `userValueIndex`/`upvalueIndex`/`typeIndex`/`arrayIndex`
+- **gc_weak.cpp** (3): `i` → `arrayIndex`/`nodeIndex`
+- **Patterns**: Iterator names now describe what they're indexing
+- **Impact**: Self-documenting GC traversal code, clearer iteration context
+- **Files Changed**: 2 files, 8 loop variables
+- **Result**: ~2.34s avg ✅ (maintained performance)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.25s avg ✅ **47% faster than baseline!**
+**Current**: ~2.34s avg ✅ **44% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -278,9 +287,9 @@ Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 complete | Ph
 ## Future Opportunities
 
 **High-Priority Next Steps**:
-- **Phase 140**: GC Loop Iterators - Modernize `i` → `upvalueIndex`, `arrayIndex` (⭐⭐⭐ low risk, clean)
 - **Phase 141**: Debug Module Variables - `pc` → `instructionPC`, `a` → `destinationRegister` (⭐⭐⭐⭐ high clarity)
 - **Phase 142**: Table Rehashing Variables - Complex algorithm clarity improvements (⭐⭐⭐⭐⭐ very high impact)
+- **Phase 143**: Additional GC/Memory Loop Iterators - Survey remaining modules for similar improvements
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
 - Phase 128: std::span performance optimization (if needed - current perf excellent)
 
@@ -325,5 +334,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.25s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness
+**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-137, 138, 140 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.34s ✅ (44% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness
