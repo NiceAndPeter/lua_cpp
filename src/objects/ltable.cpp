@@ -265,7 +265,7 @@ static TValue absentkey = {ABSTKEYCONSTANT};
 ** remainder, which uses all bits and ensures a non-negative result.
 */
 static Node *hashint (const Table& t, lua_Integer i) {
-  lua_Unsigned ui = l_castS2U(i);
+  const lua_Unsigned ui = l_castS2U(i);
   if (ui <= cast_uint(std::numeric_limits<int>::max()))
     return gnode(&t, cast_uint(ui) % ((t.nodeSize()-1) | 1));
   else
@@ -290,13 +290,12 @@ static Node *hashint (const Table& t, lua_Integer i) {
 static unsigned l_hashfloat (lua_Number n) {
   int i;
   n = l_mathop(frexp)(n, &i) * -cast_num(INT_MIN);
-  lua_Integer ni;
-  if (!lua_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
+  if (lua_Integer ni; !lua_numbertointeger(n, &ni)) {  /* is 'n' inf/-inf/NaN? */
     lua_assert(luai_numisnan(n) || l_mathop(fabs)(n) == cast_num(HUGE_VAL));
     return 0;
   }
   else {  /* normal case */
-    unsigned int u = cast_uint(i) + cast_uint(ni);
+    const unsigned int u = cast_uint(i) + cast_uint(ni);
     return (u <= cast_uint(std::numeric_limits<int>::max()) ? u : ~u);
   }
 }
@@ -309,38 +308,24 @@ static unsigned l_hashfloat (lua_Number n) {
 */
 static Node *mainpositionTV (const Table& t, const TValue *key) {
   switch (ttypetag(key)) {
-    case LuaT::NUMINT: {
-      lua_Integer i = ivalue(key);
-      return hashint(t, i);
-    }
-    case LuaT::NUMFLT: {
-      lua_Number n = fltvalue(key);
-      return hashmod(&t, l_hashfloat(n));
-    }
-    case LuaT::SHRSTR: {
-      TString *ts = tsvalue(key);
-      return hashstr(&t, ts);
-    }
-    case LuaT::LNGSTR: {
-      TString *ts = tsvalue(key);
-      return hashpow2(&t, ts->hashLongStr());
-    }
+    case LuaT::NUMINT:
+      return hashint(t, ivalue(key));
+    case LuaT::NUMFLT:
+      return hashmod(&t, l_hashfloat(fltvalue(key)));
+    case LuaT::SHRSTR:
+      return hashstr(&t, tsvalue(key));
+    case LuaT::LNGSTR:
+      return hashpow2(&t, tsvalue(key)->hashLongStr());
     case LuaT::VFALSE:
       return hashboolean(&t, 0);
     case LuaT::VTRUE:
       return hashboolean(&t, 1);
-    case LuaT::LIGHTUSERDATA: {
-      void *p = pvalue(key);
-      return hashpointer(&t, p);
-    }
-    case LuaT::LCF: {
-      lua_CFunction f = fvalue(key);
-      return hashpointer(&t, f);
-    }
-    default: {
-      GCObject *o = gcvalue(key);
-      return hashpointer(&t, o);
-    }
+    case LuaT::LIGHTUSERDATA:
+      return hashpointer(&t, pvalue(key));
+    case LuaT::LCF:
+      return hashpointer(&t, fvalue(key));
+    default:
+      return hashpointer(&t, gcvalue(key));
   }
 }
 
@@ -412,13 +397,13 @@ static bool equalkey (const TValue *k1, const Node *n2, int deadok) {
 */
 static TValue *getgeneric (const Table& t, const TValue *key, int deadok) {
   Node *n = mainpositionTV(t, key);
-  const Node *base = gnode(&t, 0);
-  const Node *limit = base + t.nodeSize();
+  const Node* const base = gnode(&t, 0);
+  const Node* const limit = base + t.nodeSize();
   for (;;) {  /* check whether 'key' is somewhere in the chain */
     if (equalkey(key, n, deadok))
       return gval(n);  /* that's it */
     else {
-      int nextIndex = gnext(n);
+      const int nextIndex = gnext(n);
       if (nextIndex == 0)
         return &absentkey;  /* not found */
       n += nextIndex;
