@@ -429,14 +429,14 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_LOADI: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).sbx();
-        s2v(ra)->setInt(b);
+        auto immediateValue = InstructionView(i).sbx();
+        s2v(ra)->setInt(immediateValue);
         break;
       }
       case OP_LOADF: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).sbx();
-        s2v(ra)->setFloat(cast_num(b));
+        auto immediateValue = InstructionView(i).sbx();
+        s2v(ra)->setFloat(cast_num(immediateValue));
         break;
       }
       case OP_LOADK: {
@@ -469,16 +469,16 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_LOADNIL: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).b();
+        auto nilCount = InstructionView(i).b();
         do {
           setnilvalue(s2v(ra++));
-        } while (b--);
+        } while (nilCount--);
         break;
       }
       case OP_GETUPVAL: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).b();
-        L->getStackSubsystem().setSlot(ra, currentClosure->getUpval(b)->getVP());
+        auto upvalueIndex = InstructionView(i).b();
+        L->getStackSubsystem().setSlot(ra, currentClosure->getUpval(upvalueIndex)->getVP());
         break;
       }
       case OP_SETUPVAL: {
@@ -516,12 +516,12 @@ void VirtualMachine::execute(CallInfo *ci) {
       case OP_GETI: {
         auto ra = getRegisterA(i);
         auto *rb = getValueB(i);
-        auto c = InstructionView(i).c();
+        auto integerKey = InstructionView(i).c();
         LuaT tag;
-        fastgeti(rb, c, s2v(ra), tag);
+        fastgeti(rb, integerKey, s2v(ra), tag);
         if (tagisempty(tag)) {
           TValue key;
-          key.setInt(c);
+          key.setInt(integerKey);
           protectCall([&]() { tag = finishGet(rb, &key, ra, tag); });
         }
         break;
@@ -568,15 +568,15 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_SETI: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).b();
+        auto integerKey = InstructionView(i).b();
         auto *rc = getRegisterOrConstantC(i);
         int hres;
-        fastseti(s2v(ra), b, rc, hres);
+        fastseti(s2v(ra), integerKey, rc, hres);
         if (hres == HOK)
           finishfastset(s2v(ra), rc);
         else {
           TValue key;
-          key.setInt(b);
+          key.setInt(integerKey);
           protectCall([&]() { finishSet(s2v(ra), &key, rc, hres); });
         }
         break;
@@ -595,21 +595,21 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_NEWTABLE: {
         auto ra = getRegisterA(i);
-        auto b = cast_uint(InstructionView(i).vb());  /* log2(hash size) + 1 */
-        auto c = cast_uint(InstructionView(i).vc());  /* array size */
-        if (b > 0)
-          b = 1u << (b - 1);  /* hash size is 2^(b - 1) */
+        auto hashSizeLog2 = cast_uint(InstructionView(i).vb());  /* log2(hash size) + 1 */
+        auto arraySize = cast_uint(InstructionView(i).vc());  /* array size */
+        if (hashSizeLog2 > 0)
+          hashSizeLog2 = 1u << (hashSizeLog2 - 1);  /* hash size is 2^(hashSizeLog2 - 1) */
         if (InstructionView(i).testk()) {  /* non-zero extra argument? */
           lua_assert(InstructionView(*programCounter).ax() != 0);
           /* add it to array size */
-          c += cast_uint(InstructionView(*programCounter).ax()) * (MAXARG_vC + 1);
+          arraySize += cast_uint(InstructionView(*programCounter).ax()) * (MAXARG_vC + 1);
         }
         programCounter++;  /* skip extra argument */
         L->getStackSubsystem().setTopPtr(ra + 1);  /* correct top in case of emergency GC */
         auto *t = Table::create(L);  /* memory allocation */
         sethvalue2s(L, ra, t);
-        if (b != 0 || c != 0)
-          t->resize(L, c, b);  /* idem */
+        if (hashSizeLog2 != 0 || arraySize != 0)
+          t->resize(L, arraySize, hashSizeLog2);  /* idem */
         checkGC(L, ra + 1);
         break;
       }
@@ -814,9 +814,9 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_CONCAT: {
         auto ra = getRegisterA(i);
-        auto n = InstructionView(i).b();  /* number of elements to concatenate */
-        L->getStackSubsystem().setTopPtr(ra + n);  /* mark the end of concat operands */
-        protectCallNoTop([&]() { concat(n); });
+        auto elementCount = InstructionView(i).b();  /* number of elements to concatenate */
+        L->getStackSubsystem().setTopPtr(ra + elementCount);  /* mark the end of concat operands */
+        protectCallNoTop([&]() { concat(elementCount); });
         checkGC(L, L->getTop().p); /* 'luaV_concat' ensures correct top */
         break;
       }
@@ -862,12 +862,12 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_EQI: {
         auto ra = getRegisterA(i);
-        auto im = InstructionView(i).sb();
+        auto immediateValue = InstructionView(i).sb();
         int cond;
         if (ttisinteger(s2v(ra)))
-          cond = (ivalue(s2v(ra)) == im);
+          cond = (ivalue(s2v(ra)) == immediateValue);
         else if (ttisfloat(s2v(ra)))
-          cond = luai_numeq(fltvalue(s2v(ra)), cast_num(im));
+          cond = luai_numeq(fltvalue(s2v(ra)), cast_num(immediateValue));
         else
           cond = 0;  /* other types cannot be equal to a number */
         performConditionalJump(cond, ci, i);
@@ -908,10 +908,10 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_CALL: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).b();
+        auto argumentCount = InstructionView(i).b();
         auto nresults = InstructionView(i).c() - 1;
-        if (b != 0)  /* fixed number of arguments? */
-          L->getStackSubsystem().setTopPtr(ra + b);  /* top signals number of arguments */
+        if (argumentCount != 0)  /* fixed number of arguments? */
+          L->getStackSubsystem().setTopPtr(ra + argumentCount);  /* top signals number of arguments */
         /* else previous instruction set top */
         saveProgramCounter(ci);  /* in case of errors */
         CallInfo *newci;
@@ -925,14 +925,14 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_TAILCALL: {
         auto ra = getRegisterA(i);
-        auto b = InstructionView(i).b();  /* number of arguments + 1 (function) */
+        auto argumentCount = InstructionView(i).b();  /* number of arguments + 1 (function) */
         auto nparams1 = InstructionView(i).c();
         /* delta is virtual 'func' - real 'func' (vararg functions) */
         auto delta = (nparams1) ? ci->getExtraArgs() + nparams1 : 0;
-        if (b != 0)
-          L->getStackSubsystem().setTopPtr(ra + b);
+        if (argumentCount != 0)
+          L->getStackSubsystem().setTopPtr(ra + argumentCount);
         else  /* previous instruction set top */
-          b = cast_int(L->getTop().p - ra);
+          argumentCount = cast_int(L->getTop().p - ra);
         saveProgramCounter(ci);  /* several calls here can raise errors */
         if (InstructionView(i).testk()) {
           luaF_closeupval(L, stackFrameBase);  /* close upvalues from current call */
@@ -940,7 +940,7 @@ void VirtualMachine::execute(CallInfo *ci) {
           lua_assert(stackFrameBase == ci->funcRef().p + 1);
         }
         int n;  /* number of results when calling a C function */
-        if ((n = L->preTailCall( ci, ra, b, delta)) < 0)  /* Lua function? */
+        if ((n = L->preTailCall( ci, ra, argumentCount, delta)) < 0)  /* Lua function? */
           goto startfunc;  /* execute the callee */
         else {  /* C function? */
           ci->funcRef().p -= delta;  /* restore 'func' (if vararg) */
@@ -951,13 +951,13 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_RETURN: {
         auto ra = getRegisterA(i);
-        auto n = InstructionView(i).b() - 1;  /* number of results */
+        auto resultCount = InstructionView(i).b() - 1;  /* number of results */
         auto nparams1 = InstructionView(i).c();
-        if (n < 0)  /* not fixed? */
-          n = cast_int(L->getTop().p - ra);  /* get what is available */
+        if (resultCount < 0)  /* not fixed? */
+          resultCount = cast_int(L->getTop().p - ra);  /* get what is available */
         saveProgramCounter(ci);
         if (InstructionView(i).testk()) {  /* may there be open upvalues? */
-          ci->setNRes(n);  /* save number of returns */
+          ci->setNRes(resultCount);  /* save number of returns */
           if (L->getTop().p < ci->topRef().p)
             L->getStackSubsystem().setTopPtr(ci->topRef().p);
           stackFrameBase = luaF_close(L, stackFrameBase, CLOSEKTOP, 1);
@@ -966,8 +966,8 @@ void VirtualMachine::execute(CallInfo *ci) {
         }
         if (nparams1)  /* vararg function? */
           ci->funcRef().p -= ci->getExtraArgs() + nparams1;
-        L->getStackSubsystem().setTopPtr(ra + n);  /* set call for 'luaD_poscall' */
-        L->postCall( ci, n);
+        L->getStackSubsystem().setTopPtr(ra + resultCount);  /* set call for 'luaD_poscall' */
+        L->postCall( ci, resultCount);
         updateTrap(ci);  /* 'luaD_poscall' can change hooks */
         goto ret;
       }
@@ -1093,26 +1093,26 @@ void VirtualMachine::execute(CallInfo *ci) {
       }}
       case OP_SETLIST: {
         auto ra = getRegisterA(i);
-        auto n = cast_uint(InstructionView(i).vb());
+        auto elementCount = cast_uint(InstructionView(i).vb());
         auto last = cast_uint(InstructionView(i).vc());
         auto *h = hvalue(s2v(ra));
-        if (n == 0)
-          n = cast_uint(L->getTop().p - ra) - 1;  /* get up to the top */
+        if (elementCount == 0)
+          elementCount = cast_uint(L->getTop().p - ra) - 1;  /* get up to the top */
         else
           L->getStackSubsystem().setTopPtr(ci->topRef().p);  /* correct top in case of emergency GC */
-        last += n;
+        last += elementCount;
         if (InstructionView(i).testk()) {
           last += cast_uint(InstructionView(*programCounter).ax()) * (MAXARG_vC + 1);
           programCounter++;
         }
-        /* when 'n' is known, table should have proper size */
+        /* when 'elementCount' is known, table should have proper size */
         if (last > h->arraySize()) {  /* needs more space? */
           /* fixed-size sets should have space preallocated */
           lua_assert(InstructionView(i).vb() == 0);
           h->resizeArray(L, last);  /* preallocate it at once */
         }
-        for (; n > 0; n--) {
-          auto *val = s2v(ra + n);
+        for (; elementCount > 0; elementCount--) {
+          auto *val = s2v(ra + elementCount);
           obj2arr(h, last - 1, val);
           last--;
           luaC_barrierback(L, obj2gco(h), val);
@@ -1128,8 +1128,8 @@ void VirtualMachine::execute(CallInfo *ci) {
       }
       case OP_VARARG: {
         auto ra = getRegisterA(i);
-        auto n = InstructionView(i).c() - 1;  /* required results */
-        protectCall([&]() { luaT_getvarargs(L, ci, ra, n); });
+        auto resultCount = InstructionView(i).c() - 1;  /* required results */
+        protectCall([&]() { luaT_getvarargs(L, ci, ra, resultCount); });
         break;
       }
       case OP_VARARGPREP: {
@@ -1179,10 +1179,10 @@ void VirtualMachine::finishOp() {
     }
     case OP_CONCAT: {
       StkId top = L->getTop().p - 1;  /* top when 'luaT_tryconcatTM' was called */
-      int a = InstructionView(inst).a();      /* first element to concatenate */
-      lua_assert(top >= base + a + 1);  /* ensure valid range for subtraction */
+      int firstElementRegister = InstructionView(inst).a();      /* first element to concatenate */
+      lua_assert(top >= base + firstElementRegister + 1);  /* ensure valid range for subtraction */
       lua_assert(top >= L->getStack().p + 2);  /* ensure top-2 is valid */
-      int total = cast_int(top - 1 - (base + a));  /* yet to concatenate */
+      int total = cast_int(top - 1 - (base + firstElementRegister));  /* yet to concatenate */
       *s2v(top - 2) = *s2v(top);  /* put TM result in proper position (operator=) */
       L->getStackSubsystem().setTopPtr(top - 1);  /* top is one after last element (at top-2) */
       concat(total);  /* concat them (may yield again) */
