@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.31s avg ✅ (45% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 147 COMPLETE - Core module loop iterators modernized!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-147 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.26s avg ✅ (46% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 148-C COMPLETE - Declare-on-first-use modernization (14 functions)!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-148-C | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -223,12 +223,53 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 3 files, 5 loop variables
 - **Result**: ~2.31s avg ✅ (45% faster than baseline, continued improvement!)
 
+**Phase 148-A**: VM Hot Path Declare-on-First-Use ✅
+- Applied modern C++ declare-on-first-use patterns to VM comparison/conversion functions
+- **lvm_comparison.cpp**: Added const correctness to comparison helpers
+- **lvm_conversion.cpp**: Improved variable scoping in conversion functions
+- **Impact**: VM hot path now follows modern C++ best practices
+- **Files Changed**: 2 files (VM modules)
+- **Result**: ~2.11s avg ✅ (maintained performance)
+
+**Phase 148-B**: Core Execution Declare-on-First-Use ✅ **(3 parts, 10 functions)**
+- **Part 1** (4 functions - Critical bug fix + improvements):
+  - **BUG FIX**: Fixed uninitialized `isfloat` in `lcode.cpp::codeorder()` (test failure)
+  - `rawRunProtected()`: Aggregate initialization + const correctness
+  - `callHook()`: If-init-statement (C++17) + const correctness
+  - `retHook()`: Const correctness for computed values
+  - `tryFuncTM()`: Combined declaration/initialization + scoping
+- **Part 2** (3 functions - Function call hot path):
+  - `preCallC()`: C function call preparation (const correctness)
+  - `preCall()`: General function call (const for p, nfixparams, fsize, ci_new)
+  - `preTailCall()`: Tail call optimization (const correctness)
+- **Part 3** (3 functions - Error handling & continuation):
+  - `closeProtected()`: Protected upvalue closing (const saved state)
+  - `pCall()`: Protected function call (const saved state)
+  - `finishCCall()`: C function continuation (ternary for status_val)
+- **Impact**: Core execution path now uses modern C++ idioms throughout
+- **Files Changed**: 2 files (lcode.cpp, ldo.cpp), 10 functions, ~40 variable improvements
+- **Result**: ~2.25s avg ✅ (46% faster than baseline!)
+
+**Phase 148-C**: Table Hash Hot Path Declare-on-First-Use ✅ **(4 functions)**
+- **MAJOR REFACTORING**: Eliminated 6 intermediate variables in `mainpositionTV()`
+- **hashint()**: Made `ui` const (computed value never modified)
+- **l_hashfloat()**: If-init-statement for `ni`, const for `u` (C++17)
+- **mainpositionTV()**: Eliminated ALL intermediate variables (i, n, ts×2, p, f, o)
+  - Direct returns in all switch cases - simpler, faster code
+  - Removed unnecessary braces from switch cases
+  - **Code reduction**: 15 lines removed!
+- **getgeneric()**: Const correctness for `base`, `limit`, `nextIndex`
+- **Impact**: Table hash path (called on EVERY table access) now highly optimized
+- **Files Changed**: 1 file (ltable.cpp), 4 functions, 10+ variable improvements
+- **Result**: ~2.26s avg ✅ (46% faster than baseline!)
+- **See**: `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md` for full improvement plan
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.31s avg ✅ **45% faster than baseline!**
+**Current**: ~2.26s avg ✅ **46% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -334,9 +375,10 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **45% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-147 complete | Phase 135, 139 skipped ✅
+Zero warnings | 96.1% coverage | 30+ tests passing | **46% faster than baseline!**
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-148-C complete | Phase 135, 139 skipped ✅
 [[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 62 modernized (36 loop iterators + 26 instruction/API variables) ✅
+Declare-on-first-use: 14 functions modernized (Phase 148-A/B/C) | Code reduction: 15 lines removed from hot paths ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -359,13 +401,17 @@ Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-147 complete | Phase 1
 13. **Not all functions with return values need [[nodiscard]]** (Phase 138: functions used for side effects like pushfstring are legitimate dual-use)
 14. **Const correctness pays dividends** (Phase 139: previous incremental const work meant no improvements needed!)
 15. **Descriptive identifiers improve code clarity dramatically** (Phases 140-147: 62 cryptic identifiers → self-documenting names; 36 loop iterators + 26 instruction/API variables; zero performance impact, continued improvement)
+16. **Declare-on-first-use eliminates waste** (Phase 148: eliminated 6 intermediate variables in mainpositionTV(); direct returns are faster and clearer; if-init-statements reduce scope; const prevents accidents)
 
 ---
 
 ## Future Opportunities
 
 **High-Priority Next Steps**:
-- **Phase 148**: Additional Identifier Improvements - Continue surveying library/test code for cryptic names (diminishing returns)
+- **Phase 148-D+**: Continue declare-on-first-use improvements (see `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md`)
+  - Phase 149: Compiler path (~40 functions in lcode.cpp, parser.cpp, funcstate.cpp)
+  - Phase 150: GC & Memory (~10 functions)
+  - Phase 151: Library functions (~50 functions - low priority)
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
 - Phase 128: std::span performance optimization (if needed - current perf excellent)
 - Code documentation / comment improvements (if needed)
@@ -387,7 +433,7 @@ See `docs/TYPE_MODERNIZATION_ANALYSIS.md` and `docs/PHASE_SUGGESTIONS.md`
 
 **Architecture**: [SRP_ANALYSIS.md](docs/SRP_ANALYSIS.md) | [CPP_MODERNIZATION_ANALYSIS.md](docs/CPP_MODERNIZATION_ANALYSIS.md) | [TYPE_MODERNIZATION_ANALYSIS.md](docs/TYPE_MODERNIZATION_ANALYSIS.md)
 
-**Specialized**: [NECESSARY_MACROS.md](docs/NECESSARY_MACROS.md) | [PHASE_125_LUAV_WRAPPER_ELIMINATION.md](docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md) | [PHASE_130_POINTER_TO_REFERENCE.md](docs/PHASE_130_POINTER_TO_REFERENCE.md) | [PHASE_135_FAILED_ATTEMPT.md](docs/PHASE_135_FAILED_ATTEMPT.md) | [GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md) | [SPAN_MODERNIZATION_PLAN.md](docs/SPAN_MODERNIZATION_PLAN.md) | [COVERAGE_ANALYSIS.md](docs/COVERAGE_ANALYSIS.md) | [UNDEFINED_BEHAVIOR_ANALYSIS.md](docs/UNDEFINED_BEHAVIOR_ANALYSIS.md)
+**Specialized**: [NECESSARY_MACROS.md](docs/NECESSARY_MACROS.md) | [PHASE_125_LUAV_WRAPPER_ELIMINATION.md](docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md) | [PHASE_130_POINTER_TO_REFERENCE.md](docs/PHASE_130_POINTER_TO_REFERENCE.md) | [PHASE_135_FAILED_ATTEMPT.md](docs/PHASE_135_FAILED_ATTEMPT.md) | [PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md](docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md) | [GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md) | [SPAN_MODERNIZATION_PLAN.md](docs/SPAN_MODERNIZATION_PLAN.md) | [COVERAGE_ANALYSIS.md](docs/COVERAGE_ANALYSIS.md) | [UNDEFINED_BEHAVIOR_ANALYSIS.md](docs/UNDEFINED_BEHAVIOR_ANALYSIS.md)
 
 **CI/CD**: [.github/workflows/ci.yml](.github/workflows/ci.yml) | [coverage.yml](.github/workflows/coverage.yml) | [static-analysis.yml](.github/workflows/static-analysis.yml)
 
@@ -411,5 +457,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-147 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.31s ✅ (45% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized (36 loop iterators + 26 instruction/API variables)
+**Updated**: 2025-12-11 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-148-C ✅ | Phase 135, 139 skipped
+**Performance**: ~2.26s ✅ (46% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 14 functions with declare-on-first-use (Phases 148-A/B/C)
