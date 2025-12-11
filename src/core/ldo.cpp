@@ -753,12 +753,12 @@ void lua_State::finishCCall(CallInfo *ci_arg) {
     /* don't need to reset CIST_CLSRET, as it will be set again anyway */
   }
   else {
-    TStatus status_val = LUA_YIELD;  /* default if there were no errors */
-    lua_KFunction kf = ci_arg->getK();  /* continuation function */
+    lua_KFunction const kf = ci_arg->getK();  /* continuation function */
     /* must have a continuation and must be able to call it */
     lua_assert(kf != nullptr && yieldable(this));
-    if (ci_arg->callStatusRef() & CIST_YPCALL)   /* was inside a 'lua_pcallk'? */
-      status_val = finishPCallK(ci_arg);  /* finish it */
+    TStatus status_val = (ci_arg->callStatusRef() & CIST_YPCALL)
+                         ? finishPCallK(ci_arg)  /* was inside 'lua_pcallk'? finish it */
+                         : LUA_YIELD;  /* default if there were no errors */
     adjustresults(this, LUA_MULTRET);  /* finish 'lua_callk' */
     lua_unlock(this);
     n = (*kf)(this, APIstatus(status_val), ci_arg->getCtx());  /* call continuation */
@@ -978,8 +978,8 @@ static void closepaux (lua_State *L, void *ud) {
 */
 // Convert to lua_State method
 TStatus lua_State::closeProtected(ptrdiff_t level, TStatus status_arg) {
-  CallInfo *old_ci = getCI();
-  lu_byte old_allowhooks = getAllowHook();
+  CallInfo* const old_ci = getCI();
+  const lu_byte old_allowhooks = getAllowHook();
   for (;;) {  /* keep closing upvalues until no more errors */
     struct CloseP pcl;
     pcl.level = this->restoreStack(level); pcl.status = status_arg;
@@ -1002,9 +1002,9 @@ TStatus lua_State::closeProtected(ptrdiff_t level, TStatus status_arg) {
 // Convert to lua_State method
 TStatus lua_State::pCall(Pfunc func, void *u, ptrdiff_t old_top,
                                   ptrdiff_t ef) {
-  CallInfo *old_ci = getCI();
-  lu_byte old_allowhooks = getAllowHook();
-  ptrdiff_t old_errfunc = getErrFunc();
+  CallInfo* const old_ci = getCI();
+  const lu_byte old_allowhooks = getAllowHook();
+  const ptrdiff_t old_errfunc = getErrFunc();
   setErrFunc(ef);
   TStatus status_result = rawRunProtected(func, u);
   if (l_unlikely(status_result != LUA_OK)) {  /* an error occurred? */
