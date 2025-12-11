@@ -345,8 +345,8 @@ int LuaStack::realloc(lua_State* L, int newsize, int raiseerror) {
   stack_last.p = stack.p + newsize;
 
   /* erase new TValue segment */
-  for (int i = oldsize_usable + EXTRA_STACK; i < newsize_allocated; i++)
-    setnilvalue(s2v(newstack + i));
+  for (int stackIndex = oldsize_usable + EXTRA_STACK; stackIndex < newsize_allocated; stackIndex++)
+    setnilvalue(s2v(newstack + stackIndex));
 
   /* initialize new delta segment to zero */
   if (newsize_allocated > oldsize_allocated) {

@@ -326,8 +326,8 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
     u->setGclist(nullptr);
 
   // Initialize user values to nil
-  for (int i = 0; i < nuvalue; i++)
-    setnilvalue(&u->getUserValue(i)->uv);
+  for (int userValueIndex = 0; userValueIndex < nuvalue; userValueIndex++)
+    setnilvalue(&u->getUserValue(userValueIndex)->uv);
   return u;
 }
 

@@ -1651,11 +1651,11 @@ void FuncState::setlist(int base, int nelems, int tostore) {
 void FuncState::finish() {
   Proto& p = getProto();
   auto codeSpan = p.getCodeSpan();
-  for (int i = 0; i < getPC(); i++) {
-    Instruction *instr = &codeSpan[i];
+  for (int instructionIndex = 0; instructionIndex < getPC(); instructionIndex++) {
+    Instruction *instr = &codeSpan[instructionIndex];
     /* avoid "not used" warnings when assert is off (for 'onelua.c') */
     (void)luaP_isOT; (void)luaP_isIT;
-    lua_assert(i == 0 || luaP_isOT(*(instr - 1)) == luaP_isIT(*instr));
+    lua_assert(instructionIndex == 0 || luaP_isOT(*(instr - 1)) == luaP_isIT(*instr));
     switch (InstructionView(*instr).opcode()) {
       case OP_RETURN0: case OP_RETURN1: {
         if (!(getNeedClose() || (p.getFlag() & PF_ISVARARG)))
@@ -1671,8 +1671,8 @@ void FuncState::finish() {
         break;
       }
       case OP_JMP: {
-        int target = finaltarget(i);
-        fixjump(i, target);
+        int target = finaltarget(instructionIndex);
+        fixjump(instructionIndex, target);
         break;
       }
       default: break;

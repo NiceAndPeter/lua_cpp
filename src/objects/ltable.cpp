@@ -599,7 +599,7 @@ static inline int arraykeyisempty (const Table& t, unsigned key) {
 */
 static void numusearray (const Table& t, Counters *ct) {
   unsigned int arrayUseCount = 0;  /* summation of 'nums' */
-  unsigned int i = 1;  /* index to traverse all array keys */
+  unsigned int arrayKey = 1;  /* index to traverse all array keys */
   /* traverse each slice */
   unsigned int arraySize = t.arraySize();
   for (unsigned int logIndex = 0, powerOfTwo = 1; logIndex <= MAXABITS; logIndex++, powerOfTwo *= 2) {  /* 2^logIndex */
@@ -607,12 +607,12 @@ static void numusearray (const Table& t, Counters *ct) {
     unsigned int limit = powerOfTwo;
     if (limit > arraySize) {
       limit = arraySize;  /* adjust upper limit */
-      if (i > limit)
+      if (arrayKey > limit)
         break;  /* no more elements to count */
     }
     /* count elements in range (2^(logIndex - 1), 2^logIndex] */
-    for (; i <= limit; i++) {
-      if (!arraykeyisempty(t, i))
+    for (; arrayKey <= limit; arrayKey++) {
+      if (!arraykeyisempty(t, arrayKey))
         sliceCount++;
     }
     ct->nums[logIndex] += sliceCount;
@@ -629,10 +629,10 @@ static void numusearray (const Table& t, Counters *ct) {
 ** if it was deleted after being created.
 */
 static void numusehash (const Table& t, Counters *ct) {
-  unsigned i = t.nodeSize();
+  unsigned nodeIndex = t.nodeSize();
   unsigned totalNodes = 0;
-  while (i--) {
-    const Node *node = &t.getNodeArray()[i];
+  while (nodeIndex--) {
+    const Node *node = &t.getNodeArray()[nodeIndex];
     if (isempty(gval(node))) {
       lua_assert(!node->isKeyNil());  /* entry was deleted; key cannot be nil */
       ct->deleted = 1;
@@ -736,8 +736,8 @@ static void setnodevector (lua_State& L, Table& t, unsigned size) {
     t.setNodeArray(nodes);
     t.setLogSizeOfNodeArray(cast_byte(lsize));
     t.setNoDummy();
-    for (unsigned int i = 0; i < size; i++) {
-      Node *n = gnode(&t, i);
+    for (unsigned int nodeIndex = 0; nodeIndex < size; nodeIndex++) {
+      Node *n = gnode(&t, nodeIndex);
       gnext(n) = 0;
       n->setKeyNil();
       setempty(gval(n));
@@ -751,8 +751,8 @@ static void setnodevector (lua_State& L, Table& t, unsigned size) {
 */
 static void reinserthash (lua_State& L, Table& ot, Table& t) {
   unsigned size = ot.nodeSize();
-  for (unsigned j = 0; j < size; j++) {
-    Node *old = gnode(&ot, j);
+  for (unsigned nodeIndex = 0; nodeIndex < size; nodeIndex++) {
+    Node *old = gnode(&ot, nodeIndex);
     if (!isempty(gval(old))) {
       /* doesn't need barrier/invalidate cache, as entry was
          already present in the table */
@@ -789,12 +789,12 @@ static void exchangehashpart (Table& t1, Table& t2) {
 */
 static void reinsertOldSlice (Table& t, unsigned oldArraySize,
                                         unsigned newasize) {
-  for (unsigned i = newasize; i < oldArraySize; i++) {  /* traverse vanishing slice */
-    LuaT tag = *t.getArrayTag(i);
+  for (unsigned arrayIndex = newasize; arrayIndex < oldArraySize; arrayIndex++) {  /* traverse vanishing slice */
+    LuaT tag = *t.getArrayTag(arrayIndex);
     if (!tagisempty(tag)) {  /* a non-empty entry? */
       TValue key, aux;
-      key.setInt(l_castU2S(i) + 1);  /* make the key */
-      farr2val(&t, i, tag, &aux);  /* copy value into 'aux' */
+      key.setInt(l_castU2S(arrayIndex) + 1);  /* make the key */
+      farr2val(&t, arrayIndex, tag, &aux);  /* copy value into 'aux' */
       insertkey(t, &key, &aux);  /* insert entry into the hash part */
     }
   }

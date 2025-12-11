@@ -301,7 +301,7 @@ void Parser::check_readonly(expdesc& expr) {
 void Parser::adjustlocalvars(int nvars) {
   // FuncState passed as parameter
   auto regLevel = fs->nvarstack();
-  for (int i = 0; i < nvars; i++) {
+  for (int variableIndex = 0; variableIndex < nvars; variableIndex++) {
     auto vidx = fs->getNumActiveVarsRef()++;
     Vardesc *var = fs->getlocalvardesc(vidx);
     var->vd.registerIndex = cast_byte(regLevel++);

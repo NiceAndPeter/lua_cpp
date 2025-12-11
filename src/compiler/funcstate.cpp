@@ -183,8 +183,8 @@ void FuncState::removevars(int tolevel) {
 */
 int FuncState::searchupvalue(TString& name) {
   auto upvaluesSpan = getProto().getUpvaluesSpan();
-  for (size_t i = 0; i < static_cast<size_t>(getNumUpvalues()); i++) {
-    if (eqstr(*upvaluesSpan[i].getName(), name)) return static_cast<int>(i);
+  for (size_t upvalueIndex = 0; upvalueIndex < static_cast<size_t>(getNumUpvalues()); upvalueIndex++) {
+    if (eqstr(*upvaluesSpan[upvalueIndex].getName(), name)) return static_cast<int>(upvalueIndex);
   }
   return -1;  /* not found */
 }
@@ -236,16 +236,16 @@ int FuncState::newupvalue(TString& name, expdesc& v) {
 */
 int FuncState::searchvar(TString& n, expdesc& var) {
   int nactive = static_cast<int>(getNumActiveVars());
-  for (int i = nactive - 1; i >= 0; i--) {
-    Vardesc *vd = getlocalvardesc(i);
+  for (int localIndex = nactive - 1; localIndex >= 0; localIndex--) {
+    Vardesc *vd = getlocalvardesc(localIndex);
     if (vd->isGlobal()) {  /* global declaration? */
       if (vd->vd.name == nullptr) {  /* collective declaration? */
         if (var.getInfo() < 0)  /* no previous collective declaration? */
-          var.setInfo(getFirstLocal() + i);  /* this is the first one */
+          var.setInfo(getFirstLocal() + localIndex);  /* this is the first one */
       }
       else {  /* global name */
         if (eqstr(n, *vd->vd.name)) {  /* found? */
-          var.init(VGLOBAL, getFirstLocal() + i);
+          var.init(VGLOBAL, getFirstLocal() + localIndex);
           return VGLOBAL;
         }
         else if (var.getInfo() == -1)  /* active preambular declaration? */
@@ -254,9 +254,9 @@ int FuncState::searchvar(TString& n, expdesc& var) {
     }
     else if (eqstr(n, *vd->vd.name)) {  /* found? */
       if (vd->vd.kind == RDKCTC)  /* compile-time constant? */
-        var.init(VCONST, getFirstLocal() + i);
+        var.init(VCONST, getFirstLocal() + localIndex);
       else  /* local variable */
-        init_var(var, i);
+        init_var(var, localIndex);
       return cast_int(var.getKind());
     }
   }

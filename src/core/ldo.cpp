@@ -593,8 +593,8 @@ int lua_State::preTailCall(CallInfo *ci_arg, StkId func,
       auto nfixparams = p->getNumParams();
       checkstackp(this, fsize - delta, func);
       ci_arg->funcRef().p -= delta;  /* restore 'func' (if vararg) */
-      for (int i = 0; i < narg1; i++)  /* move down function and arguments */
-        *s2v(ci_arg->funcRef().p + i) = *s2v(func + i);  /* use operator= */
+      for (int argumentIndex = 0; argumentIndex < narg1; argumentIndex++)  /* move down function and arguments */
+        *s2v(ci_arg->funcRef().p + argumentIndex) = *s2v(func + argumentIndex);  /* use operator= */
       func = ci_arg->funcRef().p;  /* moved-down function */
       for (; narg1 <= nfixparams; narg1++)
         setnilvalue(s2v(func + narg1));  /* complete missing arguments */

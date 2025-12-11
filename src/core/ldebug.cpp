@@ -99,9 +99,9 @@ int luaG_getfuncline (const Proto *f, int pc) {
     int basepc;
     int baseline = getbaseline(f, pc, &basepc);
     /* Walk from basepc+1 to pc (inclusive), accumulating line deltas */
-    for (size_t i = static_cast<size_t>(basepc + 1); i <= static_cast<size_t>(pc); i++) {
-      lua_assert(lineInfoSpan[i] != ABSLINEINFO);
-      baseline += lineInfoSpan[i];  /* correct line */
+    for (size_t instructionIndex = static_cast<size_t>(basepc + 1); instructionIndex <= static_cast<size_t>(pc); instructionIndex++) {
+      lua_assert(lineInfoSpan[instructionIndex] != ABSLINEINFO);
+      baseline += lineInfoSpan[instructionIndex];  /* correct line */
     }
     return baseline;
   }
@@ -719,9 +719,9 @@ static int instack (CallInfo *ci, const TValue *o) {
 static const char *getupvalname (CallInfo *ci, const TValue *o,
                                  const char **name) {
   LClosure *c = ci->getFunc();
-  for (int i = 0; i < c->getNumUpvalues(); i++) {
-    if (c->getUpval(i)->getVP() == o) {
-      *name = upvalname(c->getProto(), i);
+  for (int upvalueIndex = 0; upvalueIndex < c->getNumUpvalues(); upvalueIndex++) {
+    if (c->getUpval(upvalueIndex)->getVP() == o) {
+      *name = upvalname(c->getProto(), upvalueIndex);
       return strupval;
     }
   }
