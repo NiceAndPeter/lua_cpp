@@ -155,10 +155,9 @@ int GCWeak::getmode(global_State& g, Table* h) {
 ** Returns true if any object was marked during traversal.
 */
 static int traversearray(global_State& g, Table* h) {
-    unsigned asize = h->arraySize();
+    const unsigned asize = h->arraySize();
     int marked = 0;  /* true if some object is marked in this traversal */
-    unsigned arrayIndex;
-    for (arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
+    for (unsigned arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
         GCObject* o = gcvalarr(h, arrayIndex);
         if (o != nullptr && iswhite(o)) {
             marked = 1;
@@ -177,13 +176,12 @@ static int traversearray(global_State& g, Table* h) {
 ** check table age in generational mode.
 */
 void GCWeak::traverseweakvalue(global_State& g, Table* h) {
-    Node* n;
-    Node* limit = gnodelast(h);
+    Node* const limit = gnodelast(h);
     /* if there is array part, assume it may have white values
        (it is not worth traversing it now just to check) */
     int hasclears = (h->arraySize() > 0);
 
-    for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
+    for (Node* n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
         if (isempty(gval(n)))  /* entry is empty? */
             clearkey(n);  /* clear its key */
         else {
@@ -265,15 +263,14 @@ int GCWeak::traverseephemeron(global_State& g, Table* h, int inv) {
 ** convergence on chains in the same table.
 */
 void GCWeak::convergeephemerons(global_State& g) {
-    int changed;
     int dir = 0;
+    int changed;
     do {
-        GCObject* w;
         GCObject* next = g.getEphemeron();  /* get ephemeron list */
         g.setEphemeron(nullptr);  /* tables may return to this list when traversed */
         changed = 0;
-        while ((w = next) != nullptr) {  /* for each ephemeron table */
-            Table* h = gco2t(w);
+        while (GCObject* w = next) {  /* for each ephemeron table */
+            Table* const h = gco2t(w);
             next = h->getGclist();  /* list is rebuilt during loop */
             nw2black(h);  /* out of the list (for now) */
             if (traverseephemeron(g, h, dir)) {  /* marked some value? */
@@ -298,10 +295,9 @@ void GCWeak::convergeephemerons(global_State& g) {
 */
 void GCWeak::clearbykeys(global_State& g, GCObject* l) {
     for (; l; l = gco2t(l)->getGclist()) {
-        Table* h = gco2t(l);
-        Node* limit = gnodelast(h);
-        Node* n;
-        for (n = gnode(h, 0); n < limit; n++) {
+        Table* const h = gco2t(l);
+        Node* const limit = gnodelast(h);
+        for (Node* n = gnode(h, 0); n < limit; n++) {
             if (iscleared(g, n->getKeyGCOrNull()))  /* unmarked key? */
                 setempty(gval(n));  /* remove entry */
             if (isempty(gval(n)))  /* is entry empty? */
@@ -318,19 +314,17 @@ void GCWeak::clearbykeys(global_State& g, GCObject* l) {
 */
 void GCWeak::clearbyvalues(global_State& g, GCObject* l, GCObject* f) {
     for (; l != f; l = gco2t(l)->getGclist()) {
-        Table* h = gco2t(l);
-        Node* n;
-        Node* limit = gnodelast(h);
-        unsigned int arrayIndex;
-        unsigned int asize = h->arraySize();
+        Table* const h = gco2t(l);
+        Node* const limit = gnodelast(h);
+        const unsigned int asize = h->arraySize();
 
-        for (arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
+        for (unsigned int arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
             GCObject* o = gcvalarr(h, arrayIndex);
             if (iscleared(g, o))  /* value was collected? */
                 *h->getArrayTag(arrayIndex) = LuaT::EMPTY;  /* remove entry */
         }
 
-        for (n = gnode(h, 0); n < limit; n++) {
+        for (Node* n = gnode(h, 0); n < limit; n++) {
             if (iscleared(g, gcvalueN(gval(n))))  /* unmarked value? */
                 setempty(gval(n));  /* remove entry */
             if (isempty(gval(n)))  /* is entry empty? */

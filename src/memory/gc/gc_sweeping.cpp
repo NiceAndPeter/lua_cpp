@@ -76,9 +76,9 @@ static inline void linkgclistThread(lua_State* th, GCObject*& p) {
 ** Returns: pointer to where sweeping stopped (nullptr if list exhausted)
 */
 GCObject** GCSweeping::sweeplist(lua_State* L, GCObject** p, l_mem countin) {
-    global_State* g = G(L);
-    lu_byte ow = otherwhite(g);
-    lu_byte white = g->getWhite();  /* current white */
+    global_State* const g = G(L);
+    const lu_byte ow = otherwhite(g);
+    const lu_byte white = g->getWhite();  /* current white */
 
     while (*p != nullptr && countin-- > 0) {
         GCObject* curr = *p;
@@ -105,7 +105,7 @@ GCObject** GCSweeping::sweeplist(lua_State* L, GCObject** p, l_mem countin) {
 ** Used to find the starting point for continued sweeping.
 */
 GCObject** GCSweeping::sweeptolive(lua_State* L, GCObject** p) {
-    GCObject** old = p;
+    GCObject** const old = p;
     do {
         p = sweeplist(L, p, 1);
     } while (p == old);
@@ -125,10 +125,9 @@ GCObject** GCSweeping::sweeptolive(lua_State* L, GCObject** p) {
 ** This is called when transitioning from incremental to generational mode.
 */
 void GCSweeping::sweep2old(lua_State* L, GCObject** p) {
-    GCObject* curr;
-    global_State* g = G(L);
+    global_State* const g = G(L);
 
-    while ((curr = *p) != nullptr) {
+    while (GCObject* curr = *p) {
         if (iswhite(curr)) {  /* is 'curr' dead? */
             lua_assert(isdead(g, curr));
             *p = curr->getNext();  /* remove 'curr' from list */
@@ -178,7 +177,7 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State& g, GCObject** p,
     };
 
     l_mem addedold = 0;
-    int white = g.getWhite();
+    const int white = g.getWhite();
     GCObject* curr;
 
     while ((curr = *p) != limit) {
@@ -188,7 +187,7 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State& g, GCObject** p,
             freeobj(*L, curr);  /* erase 'curr' */
         }
         else {  /* correct mark and age */
-            GCAge age = getage(curr);
+            const GCAge age = getage(curr);
             if (age == GCAge::New) {  /* new objects go back to white */
                 int marked = curr->getMarked() & ~maskgcbits;  /* erase GC bits */
                 curr->setMarked(cast_byte(marked | static_cast<lu_byte>(GCAge::Survival) | white));
@@ -222,7 +221,7 @@ GCObject** GCSweeping::sweepgen(lua_State* L, global_State& g, GCObject** p,
 ** Sets up sweep state and finds first live object to start sweeping from.
 */
 void GCSweeping::entersweep(lua_State* L) {
-    global_State* g = G(L);
+    global_State* const g = G(L);
     g->setGCState(GCState::SweepAllGC);
     lua_assert(g->getSweepGC() == nullptr);
     g->setSweepGC(sweeptolive(L, g->getAllGCPtr()));

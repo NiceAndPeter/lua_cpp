@@ -129,9 +129,8 @@ l_mem GCMarking::traversetable(global_State& g, Table* h) {
 ** Traverse a userdata object
 */
 l_mem GCMarking::traverseudata(global_State& g, Udata* u) {
-    int userValueIndex;
     markobjectN(g, u->getMetatable());
-    for (userValueIndex = 0; userValueIndex < u->getNumUserValues(); userValueIndex++)
+    for (int userValueIndex = 0; userValueIndex < u->getNumUserValues(); userValueIndex++)
         markvalue(g, &u->getUserValue(userValueIndex)->uv);
     genlink(g, obj2gco(u));
     return 1 + u->getNumUserValues();
@@ -159,8 +158,7 @@ l_mem GCMarking::traverseproto(global_State& g, Proto* f) {
 ** Traverse a C closure
 */
 l_mem GCMarking::traverseCclosure(global_State& g, CClosure* cl) {
-    int upvalueIndex;
-    for (upvalueIndex = 0; upvalueIndex < cl->getNumUpvalues(); upvalueIndex++)
+    for (int upvalueIndex = 0; upvalueIndex < cl->getNumUpvalues(); upvalueIndex++)
         markvalue(g, cl->getUpvalue(upvalueIndex));
     return 1 + cl->getNumUpvalues();
 }
@@ -169,9 +167,8 @@ l_mem GCMarking::traverseCclosure(global_State& g, CClosure* cl) {
 ** Traverse a Lua closure
 */
 l_mem GCMarking::traverseLclosure(global_State& g, LClosure* cl) {
-    int upvalueIndex;
     markobjectN(g, cl->getProto());
-    for (upvalueIndex = 0; upvalueIndex < cl->getNumUpvalues(); upvalueIndex++) {
+    for (int upvalueIndex = 0; upvalueIndex < cl->getNumUpvalues(); upvalueIndex++) {
         UpVal* uv = cl->getUpval(upvalueIndex);
         markobjectN(g, uv);
     }
@@ -182,7 +179,6 @@ l_mem GCMarking::traverseLclosure(global_State& g, LClosure* cl) {
 ** Traverse a thread
 */
 l_mem GCMarking::traversethread(global_State& g, lua_State* th) {
-    UpVal* uv;
     StkId o = th->getStack().p;
     if (isold(th) || g.getGCState() == GCState::Propagate)
         linkgclistThread(th, *g.getGrayAgainPtr());
@@ -192,7 +188,7 @@ l_mem GCMarking::traversethread(global_State& g, lua_State* th) {
                th->getOpenUpval() == nullptr || th->isInTwups());
     for (; o < th->getTop().p; o++)
         markvalue(g, s2v(o));
-    for (uv = th->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
+    for (UpVal* uv = th->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
         markobject(g, uv);
     if (g.getGCState() == GCState::Atomic) {
         if (!g.getGCEmergency())
@@ -227,7 +223,7 @@ void GCMarking::reallymarkobject(global_State& g, GCObject* o) {
             break;
         }
         case static_cast<int>(ctb(LuaT::UPVAL)): {
-            UpVal* uv = gco2upv(o);
+            UpVal* const uv = gco2upv(o);
             if (uv->isOpen())
                 set2gray(uv);  /* open upvalues kept gray */
             else
@@ -236,7 +232,7 @@ void GCMarking::reallymarkobject(global_State& g, GCObject* o) {
             break;
         }
         case static_cast<int>(ctb(LuaT::USERDATA)): {
-            Udata* u = gco2u(o);
+            Udata* const u = gco2u(o);
             if (u->getNumUserValues() == 0) {
                 markobjectN(g, u->getMetatable());
                 set2black(u);
@@ -304,8 +300,7 @@ void GCMarking::propagateall(global_State& g) {
 ** Mark metamethods for basic types
 */
 void GCMarking::markmt(global_State& g) {
-    int typeIndex;
-    for (typeIndex = 0; typeIndex < LUA_NUMTYPES; typeIndex++)
+    for (int typeIndex = 0; typeIndex < LUA_NUMTYPES; typeIndex++)
         markobjectN(g, g.getMetatable(typeIndex));
 }
 
@@ -313,8 +308,7 @@ void GCMarking::markmt(global_State& g) {
 ** Mark all objects in tobefnz list (being finalized)
 */
 void GCMarking::markbeingfnz(global_State& g) {
-    GCObject* o;
-    for (o = g.getToBeFnz(); o != nullptr; o = o->getNext())
+    for (GCObject* o = g.getToBeFnz(); o != nullptr; o = o->getNext())
         markobject(g, o);
 }
 
@@ -323,17 +317,15 @@ void GCMarking::markbeingfnz(global_State& g) {
 ** Simulates a barrier between each open upvalue and its value
 */
 void GCMarking::remarkupvals(global_State& g) {
-    lua_State* thread;
     lua_State** p = g.getTwupsPtr();
-    while ((thread = *p) != nullptr) {
+    while (lua_State* thread = *p) {
         if (!iswhite(thread) && thread->getOpenUpval() != nullptr)
             p = thread->getTwupsPtr();
         else {
-            UpVal* uv;
             lua_assert(!isold(thread) || thread->getOpenUpval() == nullptr);
             *p = thread->getTwups();
             thread->setTwups(thread);  /* mark out of list */
-            for (uv = thread->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext()) {
+            for (UpVal* uv = thread->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext()) {
                 lua_assert(getage(uv) <= getage(thread));
                 if (!iswhite(uv)) {
                     lua_assert(uv->isOpen() && isgray(uv));
@@ -362,8 +354,7 @@ void GCMarking::restartcollection(global_State& g) {
 ** Gray objects are already in gray lists for atomic phase.
 */
 void GCMarking::markold(global_State& g, GCObject* from, GCObject* to) {
-    GCObject* p;
-    for (p = from; p != to; p = p->getNext()) {
+    for (GCObject* p = from; p != to; p = p->getNext()) {
         if (getage(p) == GCAge::Old1) {
             lua_assert(!iswhite(p));
             setage(p, GCAge::Old);  /* now they are old */
@@ -391,10 +382,9 @@ void GCMarking::genlink(global_State& g, GCObject* o) {
 ** Returns 1 if any white objects were marked, 0 otherwise.
 */
 int GCMarking::traversearray(global_State& g, Table* h) {
-    unsigned asize = h->arraySize();
+    const unsigned asize = h->arraySize();
     int marked = 0;  /* true if some object is marked in this traversal */
-    unsigned arrayIndex;
-    for (arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
+    for (unsigned arrayIndex = 0; arrayIndex < asize; arrayIndex++) {
         GCObject* o = gcvalarr(h, arrayIndex);
         if (o != nullptr && iswhite(o)) {
             marked = 1;
@@ -409,10 +399,9 @@ int GCMarking::traversearray(global_State& g, Table* h) {
 ** Marks all keys and values, then calls genlink for generational mode.
 */
 void GCMarking::traversestrongtable(global_State& g, Table* h) {
-    Node* n;
-    Node* limit = gnodelast(h);
+    Node* const limit = gnodelast(h);
     traversearray(g, h);
-    for (n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
+    for (Node* n = gnode(h, 0); n < limit; n++) {  /* traverse hash part */
         if (isempty(gval(n)))  /* entry is empty? */
             clearkey(n);  /* clear its key */
         else {
