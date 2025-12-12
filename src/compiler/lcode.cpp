@@ -1055,7 +1055,7 @@ void FuncState::codeeq(BinOpr opr, expdesc& e1, expdesc& e2) {
 void FuncState::codeconcat(expdesc& e1, expdesc& e2, int line) {
   Instruction *ie2 = previousinstruction();
   if (InstructionView(*ie2).opcode() == OP_CONCAT) {  /* is 'e2' a concatenation? */
-    int n = InstructionView(*ie2).b();  /* # of elements concatenated in 'e2' */
+    const int n = InstructionView(*ie2).b();  /* # of elements concatenated in 'e2' */
     lua_assert(e1.getInfo() + 1 == InstructionView(*ie2).a());
     freeExpression(e2);
     SETARG_A(*ie2, static_cast<unsigned int>(e1.getInfo()));  /* correct first element ('e1') */
@@ -1072,9 +1072,9 @@ void FuncState::codeconcat(expdesc& e1, expdesc& e2, int line) {
 ** return the final target of a jump (skipping jumps to jumps)
 */
 int FuncState::finaltarget(int i) {
-  auto codeSpan = getProto().getCodeSpan();
+  const auto codeSpan = getProto().getCodeSpan();
   for (int count = 0; count < 100; count++) {  /* avoid infinite loops */
-    Instruction instr = codeSpan[i];
+    const Instruction instr = codeSpan[i];
     if (InstructionView(instr).opcode() != OP_JMP)
       break;
     else
@@ -1101,14 +1101,14 @@ int FuncState::code(Instruction i) {
 }
 
 int FuncState::codeABx(int o, int A, int Bx) {
-  OpCode op = static_cast<OpCode>(o);
+  const OpCode op = static_cast<OpCode>(o);
   lua_assert(getOpMode(op) == OpMode::iABx);
   lua_assert(A <= MAXARG_A && Bx <= MAXARG_Bx);
   return code(CREATE_ABx(op, A, Bx));
 }
 
 int FuncState::codeABCk(int o, int A, int B, int C, int k) {
-  OpCode op = static_cast<OpCode>(o);
+  const OpCode op = static_cast<OpCode>(o);
   lua_assert(getOpMode(op) == OpMode::iABC);
   lua_assert(A <= MAXARG_A && B <= MAXARG_B &&
              C <= MAXARG_C && (k & ~1) == 0);
@@ -1116,7 +1116,7 @@ int FuncState::codeABCk(int o, int A, int B, int C, int k) {
 }
 
 int FuncState::codevABCk(int o, int A, int B, int C, int k) {
-  OpCode op = static_cast<OpCode>(o);
+  const OpCode op = static_cast<OpCode>(o);
   lua_assert(getOpMode(op) == OpMode::ivABC);
   lua_assert(A <= MAXARG_A && B <= MAXARG_vB &&
              C <= MAXARG_vC && (k & ~1) == 0);
@@ -1124,7 +1124,7 @@ int FuncState::codevABCk(int o, int A, int B, int C, int k) {
 }
 
 int FuncState::codesJ(int o, int sj, int k) {
-  int j = sj + OFFSET_sJ;
+  const int j = sj + OFFSET_sJ;
   lua_assert(getOpMode(static_cast<OpCode>(o)) == OpMode::isJ);
   lua_assert(j <= MAXARG_sJ && (k & ~1) == 0);
   return code(CREATE_sJ(static_cast<OpCode>(o), j, k));
