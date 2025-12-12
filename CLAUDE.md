@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.35s avg ✅ (44% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 154 COMPLETE - Comprehensive declare-on-first-use improvements (67 functions modernized)!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-154 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.32s avg ✅ (45% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 155 COMPLETE - GC & Memory modules declare-on-first-use improvements (107 total improvements)!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-155 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -338,12 +338,29 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 2 files, 3 functions, 3 variable improvements
 - **Result**: ~2.35s avg ✅ (44% faster than baseline!)
 
+**Phase 155**: GC & Memory Modules - Declare-on-First-Use ✅ **(40 improvements)**
+- **gc_marking.cpp** (15 improvements):
+  - Moved 8 loop variables to for-loop initializers: `userValueIndex`, `upvalueIndex` (2×), `typeIndex`, `arrayIndex`, `o`, `uv`, `p`, `n`
+  - Moved 1 while-loop variable to condition: `thread` in `remarkupvals()`
+  - Added const to 4 computed values: `uv`, `u` (`reallymarkobject`), `asize`, `limit`
+- **gc_weak.cpp** (15 improvements):
+  - Moved 5 loop variables to for-loop/while-loop: `arrayIndex` (2×), `n` (3×), `w`
+  - Added const to 9 computed values: `asize` (2×), `limit` (4×), `h` (3×)
+  - Reordered `changed`/`dir` declarations for better locality
+- **gc_sweeping.cpp** (10 improvements):
+  - Moved 2 loop variables to while-loop conditions: `curr` (2×)
+  - Added const to 8 computed values: `g` (3×), `ow`, `white` (2×), `old`, `age`
+- **Impact**: All GC modules now follow modern C++ declare-on-first-use best practices
+- **Code Quality**: Improved variable scoping, clearer lifetimes, const correctness throughout
+- **Files Changed**: 3 GC module files, 40 variable improvements
+- **Result**: ~2.32s avg ✅ (45% faster than baseline, maintained!)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.35s avg ✅ **44% faster than baseline!**
+**Current**: ~2.32s avg ✅ **45% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -449,10 +466,10 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **44% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-154 complete | Phase 135, 139 skipped ✅
+Zero warnings | 96.1% coverage | 30+ tests passing | **45% faster than baseline!**
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-155 complete | Phase 135, 139 skipped ✅
 [[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 62 modernized (36 loop iterators + 26 instruction/API variables) ✅
-Declare-on-first-use: 67 functions modernized (Phases 148-A/B/C: 14 functions, Phase 149-154: 53 functions, 42 improvements this session) | Code reduction: 16 lines removed ✅
+Declare-on-first-use: 107 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40 GC improvements) | Code reduction: 16 lines removed ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -482,8 +499,7 @@ Declare-on-first-use: 67 functions modernized (Phases 148-A/B/C: 14 functions, P
 ## Future Opportunities
 
 **High-Priority Next Steps**:
-- **Phase 155+**: Continue declare-on-first-use improvements (see `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md`)
-  - GC & Memory modules (~10 functions in gc_marking.cpp, gc_sweep.cpp, gc_weak.cpp)
+- **Phase 156+**: Continue declare-on-first-use improvements (see `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md`)
   - Library functions (~50 functions - low priority)
   - Core API functions (lapi.cpp, ldo.cpp remaining opportunities)
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
@@ -531,5 +547,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-12 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-154 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.35s ✅ (44% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 67 functions with declare-on-first-use (Phases 148-A/B/C: 14, Phases 149-154: 53)
+**Updated**: 2025-12-12 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-155 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.32s ✅ (45% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 107 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40)
