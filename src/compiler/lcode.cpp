@@ -849,7 +849,7 @@ static inline TMS binopr2TM (BinOpr opr) {
 ** Expression to produce final result will be encoded in 'e'.
 */
 void FuncState::codeunexpval(OpCode operation, expdesc& expr, int line) {
-  auto targetRegister = exp2anyreg(expr);  /* opcodes operate only on registers */
+  const auto targetRegister = exp2anyreg(expr);  /* opcodes operate only on registers */
   freeExpression(expr);
   expr.setInfo(codeABC(operation, 0, targetRegister, 0));  /* generate opcode */
   expr.setKind(VRELOC);  /* all those operations are relocatable */
@@ -864,8 +864,8 @@ void FuncState::codeunexpval(OpCode operation, expdesc& expr, int line) {
 */
 void FuncState::finishbinexpval(expdesc& leftExpr, expdesc& rightExpr, OpCode operation, int rightValue,
                                  int flip, int line, OpCode metaOpcode, TMS event) {
-  auto leftRegister = exp2anyreg(leftExpr);
-  auto instructionPosition = codeABCk(operation, 0, leftRegister, rightValue, 0);
+  const auto leftRegister = exp2anyreg(leftExpr);
+  const auto instructionPosition = codeABCk(operation, 0, leftRegister, rightValue, 0);
   freeExpressions(leftExpr, rightExpr);
   leftExpr.setInfo(instructionPosition);
   leftExpr.setKind(VRELOC);  /* all those operations are relocatable */
@@ -879,8 +879,8 @@ void FuncState::finishbinexpval(expdesc& leftExpr, expdesc& rightExpr, OpCode op
 ** two registers.
 */
 void FuncState::codebinexpval(BinOpr opr, expdesc& leftExpr, expdesc& rightExpr, int line) {
-  auto operation = binopr2op(opr, BinOpr::OPR_ADD, OP_ADD);
-  auto rightRegister = exp2anyreg(rightExpr);  /* make sure 'rightExpr' is in a register */
+  const auto operation = binopr2op(opr, BinOpr::OPR_ADD, OP_ADD);
+  const auto rightRegister = exp2anyreg(rightExpr);  /* make sure 'rightExpr' is in a register */
   /* 'leftExpr' must be already in a register or it is a constant */
   lua_assert((VNIL <= leftExpr.getKind() && leftExpr.getKind() <= VKSTR) ||
              leftExpr.getKind() == VNONRELOC || leftExpr.getKind() == VRELOC);
@@ -893,7 +893,7 @@ void FuncState::codebinexpval(BinOpr opr, expdesc& leftExpr, expdesc& rightExpr,
 */
 void FuncState::codebini(OpCode operation, expdesc& leftExpr, expdesc& rightExpr, int flip,
                           int line, TMS event) {
-  int rightValue = int2sC(cast_int(rightExpr.getIntValue()));  /* immediate operand */
+  const int rightValue = int2sC(cast_int(rightExpr.getIntValue()));  /* immediate operand */
   lua_assert(rightExpr.getKind() == VKINT);
   finishbinexpval(leftExpr, rightExpr, operation, rightValue, flip, line, OP_MMBINI, event);
 }
@@ -902,9 +902,9 @@ void FuncState::codebini(OpCode operation, expdesc& leftExpr, expdesc& rightExpr
 ** Code binary operators with K operand.
 */
 void FuncState::codebinK(BinOpr opr, expdesc& leftExpr, expdesc& rightExpr, int flip, int line) {
-  TMS event = binopr2TM(opr);
-  int constantIndex = rightExpr.getInfo();  /* K index */
-  OpCode operation = binopr2op(opr, BinOpr::OPR_ADD, OP_ADDK);
+  const TMS event = binopr2TM(opr);
+  const int constantIndex = rightExpr.getInfo();  /* K index */
+  const OpCode operation = binopr2op(opr, BinOpr::OPR_ADD, OP_ADDK);
   finishbinexpval(leftExpr, rightExpr, operation, constantIndex, flip, line, OP_MMBINK, event);
 }
 
@@ -915,11 +915,11 @@ int FuncState::finishbinexpneg(expdesc& e1, expdesc& e2, OpCode op, int line, TM
   if (!isKint(e2))
     return 0;  /* not an integer constant */
   else {
-    lua_Integer i2 = e2.getIntValue();
+    const lua_Integer i2 = e2.getIntValue();
     if (!(fitsC(i2) && fitsC(-i2)))
       return 0;  /* not in the proper range */
     else {  /* operating a small integer constant */
-      int v2 = cast_int(i2);
+      const int v2 = cast_int(i2);
       finishbinexpval(e1, e2, op, int2sC(-v2), 0, line, OP_MMBINI, event);
       /* correct metamethod argument */
       SETARG_B(getProto().getCode()[getPC() - 1], static_cast<unsigned int>(int2sC(v2)));
