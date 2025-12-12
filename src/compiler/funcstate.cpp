@@ -413,7 +413,7 @@ void FuncState::lastlistfield(ConsControl& cc) {
 ** available.
 */
 int FuncState::maxtostore() {
-  int numfreeregs = MAX_FSTACK - getFirstFreeRegister();
+  const int numfreeregs = MAX_FSTACK - getFirstFreeRegister();
   if (numfreeregs >= 160)  /* "lots" of registers? */
     return numfreeregs / 5;  /* use up to 1/5 of them */
   else if (numfreeregs >= 80)  /* still "enough" registers? */

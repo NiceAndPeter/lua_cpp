@@ -565,7 +565,7 @@ static unsigned computesizes (Counters *ct) {
 
 
 static void countint (lua_Integer key, Counters *ct) {
-  unsigned int k = arrayindex(key);
+  const unsigned int k = arrayindex(key);
   if (k != 0) {  /* is 'key' an array index? */
     ct->nums[luaO_ceillog2(k)]++;  /* count as such */
     ct->arrayCount++;
@@ -586,7 +586,7 @@ static void numusearray (const Table& t, Counters *ct) {
   unsigned int arrayUseCount = 0;  /* summation of 'nums' */
   unsigned int arrayKey = 1;  /* index to traverse all array keys */
   /* traverse each slice */
-  unsigned int arraySize = t.arraySize();
+  const unsigned int arraySize = t.arraySize();
   for (unsigned int logIndex = 0, powerOfTwo = 1; logIndex <= MAXABITS; logIndex++, powerOfTwo *= 2) {  /* 2^logIndex */
     unsigned int sliceCount = 0;  /* counter */
     unsigned int limit = powerOfTwo;
