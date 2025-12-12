@@ -239,7 +239,7 @@ void FuncState::removelastinstruction() {
 ** Format and emit an 'iAsBx' instruction.
 */
 int FuncState::codeAsBx(OpCode o, int A, int Bc) {
-  auto b = Bc + OFFSET_sBx;
+  const auto b = Bc + OFFSET_sBx;
   lua_assert(getOpMode(o) == OpMode::iAsBx);
   lua_assert(A <= MAXARG_A && b <= MAXARG_Bx);
   return code(CREATE_ABx(o, A, b));
@@ -262,7 +262,7 @@ int FuncState::codek(int reg, int k) {
   if (k <= MAXARG_Bx)
     return codeABx(OP_LOADK, reg, k);
   else {
-    auto p = codeABx(OP_LOADKX, reg, 0);
+    const auto p = codeABx(OP_LOADKX, reg, 0);
     codeextraarg(k);  /* emit extra arg - position not needed */
     return p;
   }
@@ -316,11 +316,11 @@ void FuncState::freeExpressions(expdesc& leftExpr, expdesc& rightExpr) {
 ** Add constant 'v' to prototype's list of constants (field 'k').
 */
 int FuncState::addk(Proto& proto, TValue *v) {
-  lua_State *L = getLexState().getLuaState();
+  lua_State* const L = getLexState().getLuaState();
   auto oldsize = proto.getConstantsSize();
-  auto k = getNumberOfConstants();
+  const auto k = getNumberOfConstants();
   luaM_growvector<TValue>(L, proto.getConstantsRef(), k, proto.getConstantsSizeRef(), MAXARG_Ax, "constants");
-  auto constantsSpan = proto.getConstantsSpan();
+  const auto constantsSpan = proto.getConstantsSpan();
   while (oldsize < static_cast<int>(constantsSpan.size()))
     setnilvalue(&constantsSpan[oldsize++]);
   constantsSpan[k] = *v;
@@ -338,15 +338,15 @@ int FuncState::addk(Proto& proto, TValue *v) {
 int FuncState::k2proto(TValue *key, TValue *v) {
   TValue val;
   Proto& proto = getProto();
-  LuaT tag = getKCache()->get(key, &val);  /* query scanner table */
+  const LuaT tag = getKCache()->get(key, &val);  /* query scanner table */
   if (!tagisempty(tag)) {  /* is there an index there? */
-    auto k = cast_int(ivalue(&val));
+    const auto k = cast_int(ivalue(&val));
     /* collisions can happen only for float keys */
     lua_assert(ttisfloat(key) || VirtualMachine::rawequalObj(&proto.getConstants()[k], v));
     return k;  /* reuse index */
   }
   else {  /* constant not found; create a new entry */
-    auto k = addk(proto, v);
+    const auto k = addk(proto, v);
     /* cache it for reuse; numerical value does not need GC barrier;
        table is not a metatable, so it does not need to invalidate cache */
     val.setInt(k);

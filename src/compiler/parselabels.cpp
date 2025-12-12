@@ -69,15 +69,14 @@ l_noret LexState::jumpscopeerror(FuncState *funcState, Labeldesc *gt) {
 ** (signaled by parameter 'bup').
 */
 void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup) {
-  int i;
-  Labellist *gl = &getDyndata()->gt;  /* list of gotos */
-  Labeldesc *gt = &(*gl)[g];  /* goto to be resolved */
+  Labellist* const gl = &getDyndata()->gt;  /* list of gotos */
+  Labeldesc* const gt = &(*gl)[g];  /* goto to be resolved */
   lua_assert(eqstr(*gt->name, *label->name));
   if (l_unlikely(gt->numberOfActiveVariables < label->numberOfActiveVariables))  /* enter some scope? */
     jumpscopeerror(funcState, gt);
   if (gt->close ||
       (label->numberOfActiveVariables < gt->numberOfActiveVariables && bup)) {  /* needs close? */
-    lu_byte stklevel = funcState->reglevel(label->numberOfActiveVariables);
+    const lu_byte stklevel = funcState->reglevel(label->numberOfActiveVariables);
     /* move jump to CLOSE position */
     funcState->getProto().getCode()[gt->pc + 1] = funcState->getProto().getCode()[gt->pc];
     /* put CLOSE instruction at original position */
@@ -85,7 +84,7 @@ void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup)
     gt->pc++;  /* must point to jump instruction */
   }
   funcState->patchlist(gt->pc, label->pc);  /* goto jumps to label */
-  for (i = g; i < gl->getN() - 1; i++)  /* remove goto from pending list */
+  for (int i = g; i < gl->getN() - 1; i++)  /* remove goto from pending list */
     (*gl)[i] = (*gl)[i + 1];
   gl->setN(gl->getN() - 1);
 }
@@ -97,7 +96,7 @@ void LexState::closegoto(FuncState *funcState, int g, Labeldesc *label, int bup)
 ** or all labels in current function).
 */
 Labeldesc *LexState::findlabel(TString* name, int ilb) {
-  Dyndata *dynData = getDyndata();
+  Dyndata* const dynData = getDyndata();
   for (; ilb < dynData->label.getN(); ilb++) {
     Labeldesc *lb = &dynData->label[ilb];
     if (eqstr(*lb->name, *name))  /* correct label? */
@@ -111,8 +110,8 @@ Labeldesc *LexState::findlabel(TString* name, int ilb) {
 ** Adds a new label/goto in the corresponding list.
 */
 int LexState::newlabelentry(FuncState *funcState, Labellist *l, TString* name, int line, int pc) {
-  int n = l->getN();
-  Labeldesc* desc = l->allocateNew();  /* LuaVector automatically grows */
+  const int n = l->getN();
+  Labeldesc* const desc = l->allocateNew();  /* LuaVector automatically grows */
   desc->name = name;
   desc->line = line;
   desc->numberOfActiveVariables = funcState->getNumActiveVars();
