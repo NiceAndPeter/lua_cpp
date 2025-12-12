@@ -324,7 +324,7 @@ void FuncState::singlevaraux(TString& n, expdesc& var, int base) {
 void FuncState::solvegotos(BlockCnt& blockCnt) {
   LexState& lexState = getLexState();
   Labellist *gl = &lexState.getDyndata()->gt;
-  int outlevel = reglevel(blockCnt.numberOfActiveVariables);  /* level outside the block */
+  const int outlevel = reglevel(blockCnt.numberOfActiveVariables);  /* level outside the block */
   int igt = blockCnt.firstgoto;  /* first goto in the finishing block */
   while (igt < gl->getN()) {   /* for each pending goto */
     Labeldesc *gt = &(*gl)[igt];
@@ -362,7 +362,7 @@ void FuncState::enterblock(BlockCnt& blk, lu_byte isloop) {
 void FuncState::leaveblock() {
   BlockCnt *blk = getBlock();
   LexState& lexstate = getLexState();
-  lu_byte stklevel = reglevel(blk->numberOfActiveVariables);  /* level outside block */
+  const lu_byte stklevel = reglevel(blk->numberOfActiveVariables);  /* level outside block */
   if (blk->previous && blk->upval)  /* need a 'close'? */
     codeABC(OP_CLOSE, stklevel, 0, 0);
   setFirstFreeRegister(stklevel);  /* free registers */

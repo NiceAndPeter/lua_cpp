@@ -1305,7 +1305,7 @@ void FuncState::self(expdesc& receiver, expdesc& methodKey) {
 }
 
 void FuncState::indexed(expdesc& t, expdesc& k) {
-  int keystr = (k.getKind() == VKSTR) ? str2K(k) : -1;
+  const int keystr = (k.getKind() == VKSTR) ? str2K(k) : -1;
   lua_assert(!hasjumps(t) &&
              (t.getKind() == VLOCAL || t.getKind() == VNONRELOC || t.getKind() == VUPVAL));
   if (t.getKind() == VUPVAL && !isKstr(k))  /* upvalue indexed by non 'Kstr'? */
