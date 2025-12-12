@@ -543,7 +543,7 @@ void Parser::yindex( expdesc& v) {
 void Parser::recfield( ConsControl& cc) {
   /* recfield -> (NAME | '['exp']') = exp */
   FuncState *funcstate = fs;
-  lu_byte reg = fs->getFirstFreeRegister();
+  const lu_byte reg = fs->getFirstFreeRegister();
   expdesc key;
   if (ls.getToken() == static_cast<int>(RESERVED::TK_NAME))
     codename(key);
@@ -598,8 +598,8 @@ void Parser::constructor( expdesc& table_exp) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
   FuncState *funcstate = fs;
-  auto line = ls.getLineNumber();
-  auto pc = funcstate->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
+  const auto line = ls.getLineNumber();
+  const auto pc = funcstate->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
   ConsControl cc;
   funcstate->code(0);  /* space for extra arg. */
   cc.na = cc.nh = cc.tostore = 0;
@@ -722,7 +722,7 @@ void Parser::funcargs( expdesc& f) {
     }
   }
   lua_assert(f.getKind() == VNONRELOC);
-  int base = f.getInfo();  /* base register for call */
+  const int base = f.getInfo();  /* base register for call */
   int nparams;
   if (hasmultret(args.getKind()))
     nparams = LUA_MULTRET;  /* open call */
