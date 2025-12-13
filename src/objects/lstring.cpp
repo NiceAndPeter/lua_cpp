@@ -74,16 +74,15 @@ size_t TString::calculateLongStringSize(size_t len, int kind) {
 
 
 static void tablerehash (TString **vect, unsigned int osize, unsigned int nsize) {
-  unsigned int i;
   /* clear new elements (only when growing) */
   if (nsize > osize)
     std::fill_n(vect + osize, nsize - osize, nullptr);
-  for (i = 0; i < osize; i++) {  /* rehash old part of the array */
+  for (unsigned int i = 0; i < osize; i++) {  /* rehash old part of the array */
     TString *p = vect[i];
     vect[i] = nullptr;
     while (p) {  /* for each string in the list */
-      TString *hnext = p->getNext();  /* save next */
-      unsigned int h = lmod(p->getHash(), nsize);  /* new position */
+      TString* const hnext = p->getNext();  /* save next */
+      const unsigned int h = lmod(p->getHash(), nsize);  /* new position */
       p->setNext(vect[h]);  /* chain it into array */
       vect[h] = p;
       p = hnext;
@@ -93,12 +92,11 @@ static void tablerehash (TString **vect, unsigned int osize, unsigned int nsize)
 
 
 void TString::resize(lua_State* L, unsigned int nsize) {
-  stringtable *tb = G(L)->getStringTable();
-  unsigned int osize = tb->getSize();
-  TString **newvect;
+  stringtable* const tb = G(L)->getStringTable();
+  const unsigned int osize = tb->getSize();
   if (nsize < osize)  /* shrinking table? */
     tablerehash(tb->getHash(), osize, nsize);  /* depopulate shrinking part */
-  newvect = luaM_reallocvector<TString*>(L, tb->getHash(), osize, nsize);
+  TString** const newvect = luaM_reallocvector<TString*>(L, tb->getHash(), osize, nsize);
   if (l_unlikely(newvect == nullptr)) {  /* reallocation failed? */
     if (nsize < osize)  /* was it shrinking table? */
       tablerehash(tb->getHash(), nsize, osize);  /* restore to original size */
@@ -114,9 +112,8 @@ void TString::resize(lua_State* L, unsigned int nsize) {
 
 
 void TString::clearCache(global_State* g) {
-  unsigned int i, j;
-  for (i = 0; i < STRCACHE_N; i++)
-    for (j = 0; j < STRCACHE_M; j++) {
+  for (unsigned int i = 0; i < STRCACHE_N; i++)
+    for (unsigned int j = 0; j < STRCACHE_M; j++) {
       if (iswhite(g->getStrCache(i, j)))  /* will entry be collected? */
         g->setStrCache(i, j, g->getMemErrMsg());  /* replace it with something fixed */
     }

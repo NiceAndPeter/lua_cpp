@@ -457,21 +457,21 @@ static unsigned keyinarray (const Table& t, const TValue *key) {
 static unsigned findindex (lua_State *L, const Table& t, TValue *key,
                                unsigned asize) {
   if (ttisnil(key)) return 0;  /* first iteration */
-  unsigned int i = keyinarray(t, key);
+  const unsigned int i = keyinarray(t, key);
   if (i != 0)  /* is 'key' inside array part? */
     return i;  /* yes; that's the index */
   else {
-    const TValue *n = getgeneric(t, key, 1);
+    const TValue* const n = getgeneric(t, key, 1);
     if (l_unlikely(isabstkey(n)))
       luaG_runerror(L, "invalid key to 'next'");  /* key not found */
     /* Calculate index in hash table with bounds checking */
-    const Node* node_ptr = reinterpret_cast<const Node*>(n);
-    const Node* base = gnode(&t, 0);
-    ptrdiff_t diff = node_ptr - base;
+    const Node* const node_ptr = reinterpret_cast<const Node*>(n);
+    const Node* const base = gnode(&t, 0);
+    const ptrdiff_t diff = node_ptr - base;
     lua_assert(diff >= 0 && static_cast<size_t>(diff) < t.nodeSize());
-    i = cast_uint(diff);
+    const unsigned int hashIndex = cast_uint(diff);
     /* hash elements are numbered after array ones */
-    return (i + 1) + asize;
+    return (hashIndex + 1) + asize;
   }
 }
 
