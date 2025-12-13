@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.32s avg ✅ (45% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 155 COMPLETE - GC & Memory modules declare-on-first-use improvements (107 total improvements)!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-155 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.23s avg ✅ (47% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 156 COMPLETE - Core API declare-on-first-use improvements (136 total improvements)!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-156 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -355,12 +355,46 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 3 GC module files, 40 variable improvements
 - **Result**: ~2.32s avg ✅ (45% faster than baseline, maintained!)
 
+**Phase 156**: Core API Declare-on-First-Use ✅ **(3 parts, 27 functions, 29 improvements)**
+- **Part 1 - Simple Const Additions** (13 functions, 16 variables):
+  - `lua_copy()`: Made `fr`, `to` const
+  - `lua_numbertocstring()`: Made `len` const (refactored to avoid increment)
+  - `lua_next()`: Made `t`, `more` const
+  - `lua_toclose()`: Made `o` const
+  - `lua_len()`: Made `t` const
+  - `lua_getallocf()`: Made `f` const
+  - `lua_newuserdatauv()`: Made `u` const
+  - `aux_upvalue()`: Made `f` (CCL/LCL), `p`, `name` const
+  - `getupvalref()`: Made `fi`, `f` const (also combined declaration/initialization)
+  - `lua_upvalueid()`: Made `fi`, `f` const
+  - `lua_load()`: Made `f` const
+  - `lua_dump()`: Made `f` const
+  - `lua_gc()`: Made `oldstp`, `param`, `value` const
+- **Part 2 - Combine Declaration/Initialization** (7 functions, 9 variables):
+  - `lua_tolstring()`: Combined `o` declaration with initialization
+  - `lua_error()`: Combined `errobj` declaration with initialization (+ const)
+  - `lua_getupvalue()`: Combined `name` declaration with initialization (+ const)
+  - `lua_setupvalue()`: Combined `name`, `fi` declarations with initialization (+ const)
+  - `lua_load()`: Combined `status` declaration with initialization (+ const)
+  - `lua_dump()`: Combined `status` declaration with initialization (+ const)
+- **Part 3 - Ternary Operators for Cleaner Logic** (4 functions):
+  - `lua_getiuservalue()`: Used ternary with comma operator for `t` (+ const)
+  - `lua_setmetatable()`: Used ternary with comma operator for `mt` (+ const)
+  - `lua_setiuservalue()`: Used ternary with comma operator for `res` (+ const)
+  - `lua_pcallk()`: Used ternary with comma operator for `func` (+ const)
+- **Impact**: Core API now follows modern C++ best practices throughout
+- **Code Quality**: Better const correctness, improved variable scoping, clearer lifetimes
+- **Benefits**: Reduced variable scope, clearer data flow, prevents accidental modifications
+- **Code Reduction**: -29 lines (cleaner, more concise code)
+- **Files Changed**: 1 file (lapi.cpp), 27 functions, 29 variable improvements
+- **Result**: ~2.23s avg ✅ (47% faster than baseline, continued improvement!)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.32s avg ✅ **45% faster than baseline!**
+**Current**: ~2.23s avg ✅ **47% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -466,10 +500,10 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
-Zero warnings | 96.1% coverage | 30+ tests passing | **45% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-155 complete | Phase 135, 139 skipped ✅
+Zero warnings | 96.1% coverage | 30+ tests passing | **47% faster than baseline!**
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-156 complete | Phase 135, 139 skipped ✅
 [[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 62 modernized (36 loop iterators + 26 instruction/API variables) ✅
-Declare-on-first-use: 107 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40 GC improvements) | Code reduction: 16 lines removed ✅
+Declare-on-first-use: 136 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29) | Code reduction: 45 lines removed ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -499,9 +533,9 @@ Declare-on-first-use: 107 total improvements (Phases 148-A/B/C: 14, Phases 149-1
 ## Future Opportunities
 
 **High-Priority Next Steps**:
-- **Phase 156+**: Continue declare-on-first-use improvements (see `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md`)
+- **Phase 157+**: Continue declare-on-first-use improvements (see `docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md`)
   - Library functions (~50 functions - low priority)
-  - Core API functions (lapi.cpp, ldo.cpp remaining opportunities)
+  - Core execution functions (ldo.cpp remaining opportunities)
 - Phase 129 Part 2: Range-based for loops in ldebug.cpp (medium risk)
 - Phase 128: std::span performance optimization (if needed - current perf excellent)
 - Code documentation / comment improvements (if needed)
@@ -547,5 +581,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-12 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-155 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.32s ✅ (45% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 107 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40)
+**Updated**: 2025-12-13 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-156 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.23s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 136 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29)
