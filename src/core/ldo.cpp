@@ -662,13 +662,12 @@ CallInfo* lua_State::preCall(StkId func, int nresults) {
 */
 // Convert to private lua_State method
 void lua_State::cCall(StkId func, int nResults, l_uint32 inc) {
-  CallInfo *ci_result;
   getNumberOfCCallsRef() += inc;
   if (l_unlikely(getCcalls(this) >= LUAI_MAXCCALLS)) {
     checkstackp(this, 0, func);  /* free any use of EXTRA_STACK */
     luaE_checkcstack(this);
   }
-  if ((ci_result = preCall(func, nResults)) != nullptr) {  /* Lua function? */
+  if (CallInfo* const ci_result = preCall(func, nResults)) {  /* Lua function? */
     ci_result->callStatusRef() |= CIST_FRESH;  /* mark that it is a "fresh" execute */
     getVM().execute(ci_result);  /* call it */
   }
@@ -756,7 +755,7 @@ void lua_State::finishCCall(CallInfo *ci_arg) {
     lua_KFunction const kf = ci_arg->getK();  /* continuation function */
     /* must have a continuation and must be able to call it */
     lua_assert(kf != nullptr && yieldable(this));
-    TStatus status_val = (ci_arg->callStatusRef() & CIST_YPCALL)
+    const TStatus status_val = (ci_arg->callStatusRef() & CIST_YPCALL)
                          ? finishPCallK(ci_arg)  /* was inside 'lua_pcallk'? finish it */
                          : LUA_YIELD;  /* default if there were no errors */
     adjustresults(this, LUA_MULTRET);  /* finish 'lua_callk' */
@@ -835,8 +834,8 @@ static int resume_error (lua_State *L, const char *msg, int narg) {
 */
 static void resume (lua_State *L, void *ud) {
   int n = *static_cast<int*>(ud);  /* number of arguments */
-  StkId firstArg = L->getTop().p - n;  /* first argument */
-  CallInfo *ci = L->getCI();
+  StkId const firstArg = L->getTop().p - n;  /* first argument */
+  CallInfo* const ci = L->getCI();
   if (L->getStatus() == LUA_OK)  /* starting a coroutine? */
     L->cCall( firstArg - 1, LUA_MULTRET, 0);  /* just call its body */
   else {  /* resuming from previous yield */

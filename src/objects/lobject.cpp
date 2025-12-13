@@ -237,10 +237,10 @@ static lua_Number lua_strx2number (const char *s, char **endptr) {
   int hasdot = 0;  /* true after seen a dot */
   *endptr = cast_charp(s);  /* nothing is valid yet */
   while (lisspace(cast_uchar(*s))) s++;  /* skip initial spaces */
-  int neg = isneg(&s);  /* check sign */
+  const int neg = isneg(&s);  /* check sign */
   if (!(*s == '0' && (*(s + 1) == 'x' || *(s + 1) == 'X')))  /* check '0x' */
     return l_mathop(0.0);  /* invalid format (no '0x') */
-  int dot = lua_getlocaledecpoint();
+  const int dot = lua_getlocaledecpoint();
   for (s += 2; ; s++) {  /* skip '0x' and read numeral */
     if (*s == dot) {
       if (hasdot) break;  /* second dot? stop loop */
@@ -263,7 +263,7 @@ static lua_Number lua_strx2number (const char *s, char **endptr) {
   if (*s == 'p' || *s == 'P') {  /* exponent part? */
     int exp1 = 0;  /* exponent value */
     s++;  /* skip 'p' */
-    int neg1 = isneg(&s);  /* exponent sign */
+    const int neg1 = isneg(&s);  /* exponent sign */
     if (!lisdigit(cast_uchar(*s)))
       return l_mathop(0.0);  /* invalid; must have at least one digit */
     while (lisdigit(cast_uchar(*s)))  /* read exponent */
