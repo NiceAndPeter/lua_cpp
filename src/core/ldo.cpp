@@ -483,7 +483,7 @@ void lua_State::moveResults(StkId res, int nres,
         res = luaF_close(this, res, CLOSEKTOP, 1);
         ci->callStatusRef() &= ~CIST_CLSRET;
         if (hookmask) {  /* if needed, call hook after '__close's */
-          ptrdiff_t savedres = this->saveStack(res);
+          ptrdiff_t const savedres = this->saveStack(res);
           retHook(ci, nres);
           res = this->restoreStack(savedres);  /* hook can move stack */
         }
@@ -505,7 +505,7 @@ void lua_State::moveResults(StkId res, int nres,
 */
 // Convert to lua_State method
 void lua_State::postCall(CallInfo *ci_arg, int nres) {
-  l_uint32 fwanted = ci_arg->callStatusRef() & (CIST_TBC | CIST_NRESULTS);
+  l_uint32 const fwanted = ci_arg->callStatusRef() & (CIST_TBC | CIST_NRESULTS);
   if (l_unlikely(getHookMask()) && !(fwanted & CIST_TBC))
     retHook(ci_arg, nres);
   /* move results to proper place */
@@ -775,9 +775,8 @@ void lua_State::finishCCall(CallInfo *ci_arg) {
 */
 // Convert to private lua_State method
 void lua_State::unrollContinuation(void *ud) {
-  CallInfo *ci_current;
   UNUSED(ud);
-  while ((ci_current = getCI()) != getBaseCI()) {  /* something in the stack */
+  for (CallInfo* ci_current; (ci_current = getCI()) != getBaseCI(); ) {  /* something in the stack */
     if (!ci_current->isLua())  /* C function? */
       finishCCall( ci_current);  /* complete its execution */
     else {  /* Lua function */
@@ -872,8 +871,7 @@ static void resume (lua_State *L, void *ud) {
 ** find a recover point).
 */
 static TStatus precover (lua_State *L, TStatus status) {
-  CallInfo *ci;
-  while (errorstatus(status) && (ci = L->findPCall()) != nullptr) {
+  for (CallInfo* ci; errorstatus(status) && (ci = L->findPCall()) != nullptr; ) {
     L->setCI(ci);  /* go down to recovery functions */
     ci->setRecoverStatus(status);  /* status to finish 'pcall' */
     status = L->rawRunProtected( unroll, nullptr);
@@ -884,7 +882,6 @@ static TStatus precover (lua_State *L, TStatus status) {
 
 LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs,
                                       int *nresults) {
-  TStatus status;
   lua_lock(L);
   if (L->getStatus() == LUA_OK) {  /* may be starting a coroutine */
     if (L->getCI() != L->getBaseCI())  /* not in base level? */
@@ -900,7 +897,7 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs,
   L->getNumberOfCCallsRef()++;
   luai_userstateresume(L, nargs);
   api_checkpop(L, (L->getStatus() == LUA_OK) ? nargs + 1 : nargs);
-  status = L->rawRunProtected( resume, &nargs);
+  TStatus status = L->rawRunProtected( resume, &nargs);
    /* continue running after recoverable errors */
   status = precover(L, status);
   if (l_likely(!errorstatus(status)))
@@ -924,10 +921,9 @@ LUA_API int lua_isyieldable (lua_State *L) {
 
 LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
                         lua_KFunction k) {
-  CallInfo *ci;
   luai_userstateyield(L, nresults);
   lua_lock(L);
-  ci = L->getCI();
+  CallInfo* const ci = L->getCI();
   api_checkpop(L, nresults);
   if (l_unlikely(!yieldable(L))) {
     if (L != mainthread(G(L)))
@@ -966,7 +962,7 @@ struct CloseP {
 ** Auxiliary function to call 'luaF_close' in protected mode.
 */
 static void closepaux (lua_State *L, void *ud) {
-  CloseP *pcl = static_cast<CloseP*>(ud);
+  CloseP* const pcl = static_cast<CloseP*>(ud);
   pcl->level = luaF_close(L, pcl->level, pcl->status, 0);
 }
 
