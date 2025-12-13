@@ -688,7 +688,7 @@ LUA_API int lua_rawget (lua_State *L, int idx) {
 
 LUA_API int lua_rawgeti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
-  Table *t = gettable(L, idx);
+  Table* const t = gettable(L, idx);
   LuaT tag;
   t->fastGeti(n, s2v(L->getTop().p), tag);
   return finishrawget(L, tag);
@@ -697,7 +697,7 @@ LUA_API int lua_rawgeti (lua_State *L, int idx, lua_Integer n) {
 
 LUA_API int lua_rawgetp (lua_State *L, int idx, const void *p) {
   lua_lock(L);
-  Table *t = gettable(L, idx);
+  Table* const t = gettable(L, idx);
   TValue k;
   setpvalue(&k, cast_voidp(p));
   return finishrawget(L, t->get(&k, s2v(L->getTop().p)));
@@ -706,7 +706,7 @@ LUA_API int lua_rawgetp (lua_State *L, int idx, const void *p) {
 
 LUA_API void lua_createtable (lua_State *L, int narray, int nrec) {
   lua_lock(L);
-  Table *t = Table::create(L);
+  Table* const t = Table::create(L);
   sethvalue2s(L, L->getTop().p, t);
   api_incr_top(L);
   if (narray > 0 || nrec > 0)
@@ -717,11 +717,9 @@ LUA_API void lua_createtable (lua_State *L, int narray, int nrec) {
 
 
 LUA_API int lua_getmetatable (lua_State *L, int objindex) {
-  const TValue *obj;
-  Table *mt;
-  int res = 0;
   lua_lock(L);
-  obj = L->getStackSubsystem().indexToValue(L,objindex);
+  const TValue* const obj = L->getStackSubsystem().indexToValue(L,objindex);
+  Table* mt;
   switch (ttype(obj)) {
     case LUA_TTABLE:
       mt = hvalue(obj)->getMetatable();
@@ -733,6 +731,7 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
       mt = G(L)->getMetatable(ttype(obj));
       break;
   }
+  int res = 0;
   if (mt != nullptr) {
     sethvalue2s(L, L->getTop().p, mt);
     api_incr_top(L);
@@ -744,11 +743,10 @@ LUA_API int lua_getmetatable (lua_State *L, int objindex) {
 
 
 LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
-  TValue *o;
-  int t;
   lua_lock(L);
-  o = L->getStackSubsystem().indexToValue(L,idx);
+  TValue* const o = L->getStackSubsystem().indexToValue(L,idx);
   api_check(L, ttisfulluserdata(o), "full userdata expected");
+  int t;
   if (n <= 0 || n > uvalue(o)->getNumUserValues()) {
     setnilvalue(s2v(L->getTop().p));
     t = LUA_TNONE;
@@ -771,10 +769,9 @@ LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
 ** t[k] = value at the top of the stack (where 'k' is a string)
 */
 static void auxsetstr (lua_State *L, const TValue *t, const char *k) {
-  int hres;
-  TString *str = TString::create(L, k);
+  TString* const str = TString::create(L, k);
   api_checkpop(L, 1);
-  hres = L->getVM().fastset(t, str, s2v(L->getTop().p - 1), [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetStr(strkey, val); });
+  const int hres = L->getVM().fastset(t, str, s2v(L->getTop().p - 1), [](Table* tbl, TString* strkey, TValue* val) { return tbl->psetStr(strkey, val); });
   if (hres == HOK) {
     L->getVM().finishfastset(t, s2v(L->getTop().p - 1));
     L->getStackSubsystem().pop();  /* pop value */
@@ -800,8 +797,8 @@ LUA_API void lua_setglobal (lua_State *L, const char *name) {
 LUA_API void lua_settable (lua_State *L, int idx) {
   lua_lock(L);
   api_checkpop(L, 2);
-  TValue *t = L->getStackSubsystem().indexToValue(L,idx);
-  int hres = L->getVM().fastset(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), [](Table* tbl, const TValue* key, TValue* val) { return tbl->pset(key, val); });
+  TValue* const t = L->getStackSubsystem().indexToValue(L,idx);
+  const int hres = L->getVM().fastset(t, s2v(L->getTop().p - 2), s2v(L->getTop().p - 1), [](Table* tbl, const TValue* key, TValue* val) { return tbl->pset(key, val); });
   if (hres == HOK)
     L->getVM().finishfastset(t, s2v(L->getTop().p - 1));
   else
@@ -820,7 +817,7 @@ LUA_API void lua_setfield (lua_State *L, int idx, const char *k) {
 LUA_API void lua_seti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   api_checkpop(L, 1);
-  TValue *t = L->getStackSubsystem().indexToValue(L,idx);
+  TValue* const t = L->getStackSubsystem().indexToValue(L,idx);
   int hres;
   L->getVM().fastseti(t, n, s2v(L->getTop().p - 1), hres);
   if (hres == HOK)
@@ -838,7 +835,7 @@ LUA_API void lua_seti (lua_State *L, int idx, lua_Integer n) {
 static void aux_rawset (lua_State *L, int idx, TValue *key, int n) {
   lua_lock(L);
   api_checkpop(L, n);
-  Table *t = gettable(L, idx);
+  Table* const t = gettable(L, idx);
   t->set(L, key, s2v(L->getTop().p - 1));
   invalidateTMcache(t);
   luaC_barrierback(L, obj2gco(t), s2v(L->getTop().p - 1));
@@ -862,7 +859,7 @@ LUA_API void lua_rawsetp (lua_State *L, int idx, const void *p) {
 LUA_API void lua_rawseti (lua_State *L, int idx, lua_Integer n) {
   lua_lock(L);
   api_checkpop(L, 1);
-  Table *t = gettable(L, idx);
+  Table* const t = gettable(L, idx);
   t->setInt(L, n, s2v(L->getTop().p - 1));
   luaC_barrierback(L, obj2gco(t), s2v(L->getTop().p - 1));
   L->getStackSubsystem().pop();
@@ -873,8 +870,8 @@ LUA_API void lua_rawseti (lua_State *L, int idx, lua_Integer n) {
 LUA_API int lua_setmetatable (lua_State *L, int objindex) {
   lua_lock(L);
   api_checkpop(L, 1);
-  TValue *obj = L->getStackSubsystem().indexToValue(L,objindex);
-  Table *mt;
+  TValue* const obj = L->getStackSubsystem().indexToValue(L,objindex);
+  Table* mt;
   if (ttisnil(s2v(L->getTop().p - 1)))
     mt = nullptr;
   else {
@@ -910,12 +907,11 @@ LUA_API int lua_setmetatable (lua_State *L, int objindex) {
 
 
 LUA_API int lua_setiuservalue (lua_State *L, int idx, int n) {
-  TValue *o;
-  int res;
   lua_lock(L);
   api_checkpop(L, 1);
-  o = L->getStackSubsystem().indexToValue(L,idx);
+  TValue* const o = L->getStackSubsystem().indexToValue(L,idx);
   api_check(L, ttisfulluserdata(o), "full userdata expected");
+  int res;
   if (!(cast_uint(n) - 1u < cast_uint(uvalue(o)->getNumUserValues())))
     res = 0;  /* 'n' not in [1, uvalue(o)->getNumUserValues()] */
   else {
@@ -946,14 +942,13 @@ inline void checkresults(lua_State* L, int na, int nr) {
 
 LUA_API void lua_callk (lua_State *L, int nargs, int nresults,
                         lua_KContext ctx, lua_KFunction k) {
-  StkId func;
   lua_lock(L);
   api_check(L, k == nullptr || !L->getCI()->isLua(),
     "cannot use continuations inside hooks");
   api_checkpop(L, nargs + 1);
   api_check(L, L->getStatus() == LUA_OK, "cannot do calls on non-normal thread");
   checkresults(L, nargs, nresults);
-  func = L->getTop().p - (nargs+1);
+  StkId const func = L->getTop().p - (nargs+1);
   if (k != nullptr && yieldable(L)) {  /* need to prepare continuation? */
     L->getCI()->setK(k);  /* save continuation */
     L->getCI()->setCtx(ctx);  /* save context */
@@ -977,7 +972,7 @@ struct CallS {  /* data to 'f_call' */
 
 
 static void f_call (lua_State *L, void *ud) {
-  CallS *c = static_cast<CallS*>(ud);
+  CallS* const c = static_cast<CallS*>(ud);
   L->callNoYield( c->func, c->nresults);
 }
 
