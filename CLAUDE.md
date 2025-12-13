@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.23s avg ✅ (47% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 156 COMPLETE - Core API declare-on-first-use improvements (136 total improvements)!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-156 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.24s avg ✅ (47% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 157 COMPLETE - Core execution & continuation declare-on-first-use improvements (144 total improvements)!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-157 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -389,12 +389,34 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 1 file (lapi.cpp), 27 functions, 29 variable improvements
 - **Result**: ~2.23s avg ✅ (47% faster than baseline, continued improvement!)
 
+**Phase 157**: Core Execution & Continuation - Declare-on-First-Use ✅ **(3 parts, 7 functions, 8 improvements)**
+- **Part 1 - Simple Const Additions** (3 functions, 4 variables):
+  - `postCall()`: Made `fwanted` const (call status flags for result handling)
+  - `lua_yieldk()`: Combined `ci` declaration with initialization (+ const)
+  - `closepaux()`: Made `pcl` const (close parameters pointer)
+- **Part 2 - Move Loop Variables to Conditions** (2 functions, 2 variables):
+  - `unrollContinuation()`: Moved `ci_current` to for-loop initialization
+    - Converted `while` to `for` with declaration in initializer
+    - Better scoping: variable only exists during loop execution
+  - `precover()`: Moved `ci` to for-loop initialization
+    - Converted `while` to `for` with declaration in initializer
+    - Clearer lifetime management for error recovery iteration
+- **Part 3 - Additional Improvements** (2 functions, 2 variables):
+  - `lua_resume()`: Combined `status` declaration with initialization
+  - `moveResults()`: Made `savedres` const (saved stack position for hook restoration)
+- **Impact**: Core execution paths now follow modern C++ best practices
+- **Code Quality**: Better const correctness, improved variable scoping, clearer lifetimes
+- **Pattern Improvements**: While-to-for conversions for more idiomatic C++ loop structure
+- **Code Reduction**: -4 lines (cleaner loop patterns)
+- **Files Changed**: 1 file (ldo.cpp), 7 functions, 8 variable improvements
+- **Result**: ~2.24s avg ✅ (47% faster than baseline, maintained!)
+
 ---
 
 ## Performance
 
 **Baseline**: 4.20s (Nov 2025) | **Target**: ≤4.33s (3% tolerance)
-**Current**: ~2.23s avg ✅ **47% faster than baseline!**
+**Current**: ~2.24s avg ✅ **47% faster than baseline!**
 
 ```bash
 # Benchmark (5 runs)
@@ -501,9 +523,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
 Zero warnings | 96.1% coverage | 30+ tests passing | **47% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-156 complete | Phase 135, 139 skipped ✅
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-157 complete | Phase 135, 139 skipped ✅
 [[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 62 modernized (36 loop iterators + 26 instruction/API variables) ✅
-Declare-on-first-use: 136 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29) | Code reduction: 45 lines removed ✅
+Declare-on-first-use: 144 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29, Phase 157: 8) | Code reduction: 49 lines removed ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -581,5 +603,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-13 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-156 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.23s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 136 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29)
+**Updated**: 2025-12-13 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-157 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.24s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 144 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29, Phase 157: 8)
