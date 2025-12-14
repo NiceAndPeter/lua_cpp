@@ -569,7 +569,7 @@ Declare-on-first-use: 144 total improvements (Phases 148-A/B/C: 14, Phases 149-1
 - Register index strong types (very invasive)
 - lua_State SRP refactoring (VM hot path risk)
 
-See `docs/TYPE_MODERNIZATION_ANALYSIS.md` and `docs/PHASE_SUGGESTIONS.md`
+See `docs/archive/TYPE_MODERNIZATION_ANALYSIS.md`
 
 ---
 
@@ -577,9 +577,15 @@ See `docs/TYPE_MODERNIZATION_ANALYSIS.md` and `docs/PHASE_SUGGESTIONS.md`
 
 **Primary**: [CLAUDE.md](CLAUDE.md) (this file) | [README.md](README.md) | [CMAKE_BUILD.md](docs/CMAKE_BUILD.md)
 
-**Architecture**: [SRP_ANALYSIS.md](docs/SRP_ANALYSIS.md) | [CPP_MODERNIZATION_ANALYSIS.md](docs/CPP_MODERNIZATION_ANALYSIS.md) | [TYPE_MODERNIZATION_ANALYSIS.md](docs/TYPE_MODERNIZATION_ANALYSIS.md)
+**Architecture**: See [docs/architecture/](docs/architecture/) - CPP modernization, GC architecture, header organization, memory, SRP analysis
 
-**Specialized**: [NECESSARY_MACROS.md](docs/NECESSARY_MACROS.md) | [PHASE_125_LUAV_WRAPPER_ELIMINATION.md](docs/PHASE_125_LUAV_WRAPPER_ELIMINATION.md) | [PHASE_130_POINTER_TO_REFERENCE.md](docs/PHASE_130_POINTER_TO_REFERENCE.md) | [PHASE_135_FAILED_ATTEMPT.md](docs/PHASE_135_FAILED_ATTEMPT.md) | [PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md](docs/PHASE_148_DECLARE_ON_FIRST_USE_PLAN.md) | [GC_SIMPLIFICATION_ANALYSIS.md](docs/GC_SIMPLIFICATION_ANALYSIS.md) | [SPAN_MODERNIZATION_PLAN.md](docs/SPAN_MODERNIZATION_PLAN.md) | [COVERAGE_ANALYSIS.md](docs/COVERAGE_ANALYSIS.md) | [UNDEFINED_BEHAVIOR_ANALYSIS.md](docs/UNDEFINED_BEHAVIOR_ANALYSIS.md)
+**Phases**: See [docs/phases/](docs/phases/) - Completed phase documentation (125, 130, 135, 138-139)
+
+**Planning**: See [docs/planning/](docs/planning/) - Active roadmaps (identifiers, declare-on-first-use)
+
+**Reference**: See [docs/reference/](docs/reference/) - Coverage, macros, undefined behavior
+
+**Archive**: See [docs/archive/](docs/archive/) - Historical documentation
 
 **CI/CD**: [.github/workflows/ci.yml](.github/workflows/ci.yml) | [coverage.yml](.github/workflows/coverage.yml) | [static-analysis.yml](.github/workflows/static-analysis.yml)
 
