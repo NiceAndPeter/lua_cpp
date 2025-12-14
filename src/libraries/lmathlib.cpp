@@ -29,8 +29,10 @@ inline constexpr lua_Number PI = l_mathop(3.141592653589793238462643383279502884
 
 static int math_abs (lua_State *L) {
   if (lua_isinteger(L, 1)) {
-    lua_Integer n = lua_tointeger(L, 1);
-    if (n < 0) n = (lua_Integer)(0u - (lua_Unsigned)n);
+    const lua_Integer n = [&]() {
+      lua_Integer val = lua_tointeger(L, 1);
+      return (val < 0) ? (lua_Integer)(0u - (lua_Unsigned)val) : val;
+    }();
     lua_pushinteger(L, n);
   }
   else
@@ -79,8 +81,7 @@ static int math_atan (lua_State *L) {
 
 static int math_toint (lua_State *L) {
   int valid;
-  lua_Integer n = lua_tointegerx(L, 1, &valid);
-  if (l_likely(valid))
+  if (const lua_Integer n = lua_tointegerx(L, 1, &valid); l_likely(valid))
     lua_pushinteger(L, n);
   else {
     luaL_checkany(L, 1);
@@ -176,21 +177,22 @@ static int math_ult (lua_State *L) {
 
 static int math_log (lua_State *L) {
   lua_Number x = luaL_checknumber(L, 1);
-  lua_Number res;
-  if (lua_isnoneornil(L, 2))
-    res = l_mathop(log)(x);
-  else {
-    lua_Number base = luaL_checknumber(L, 2);
+  const lua_Number res = [&]() {
+    if (lua_isnoneornil(L, 2))
+      return l_mathop(log)(x);
+    else {
+      lua_Number base = luaL_checknumber(L, 2);
 #if !defined(LUA_USE_C89)
-    if (base == l_mathop(2.0))
-      res = l_mathop(log2)(x);
-    else
+      if (base == l_mathop(2.0))
+        return l_mathop(log2)(x);
+      else
 #endif
-    if (base == l_mathop(10.0))
-      res = l_mathop(log10)(x);
-    else
-      res = l_mathop(log)(x)/l_mathop(log)(base);
-  }
+      if (base == l_mathop(10.0))
+        return l_mathop(log10)(x);
+      else
+        return l_mathop(log)(x)/l_mathop(log)(base);
+    }
+  }();
   lua_pushnumber(L, res);
   return 1;
 }

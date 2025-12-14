@@ -170,13 +170,12 @@ static int str_byte (lua_State *L) {
   lua_Integer pi = luaL_optinteger(L, 2, 1);
   size_t posi = posrelatI(pi, l);
   size_t pose = getendpos(L, 3, pi, l);
-  int n, i;
   if (posi > pose) return 0;  /* empty interval; return no values */
   if (l_unlikely(pose - posi >= (size_t)std::numeric_limits<int>::max()))  /* arithmetic overflow? */
     return luaL_error(L, "string slice too long");
-  n = (int)(pose -  posi) + 1;
+  const int n = (int)(pose -  posi) + 1;
   luaL_checkstack(L, n, "string slice too long");
-  for (i=0; i<n; i++)
+  for (int i=0; i<n; i++)
     lua_pushinteger(L, cast_uchar(s[posi + cast_uint(i) - 1]));
   return n;
 }
@@ -184,10 +183,9 @@ static int str_byte (lua_State *L) {
 
 static int str_char (lua_State *L) {
   int n = lua_gettop(L);  /* number of arguments */
-  int i;
   luaL_Buffer b;
   char *p = luaL_buffinitsize(L, &b, cast_uint(n));
-  for (i=1; i<=n; i++) {
+  for (int i=1; i<=n; i++) {
     lua_Unsigned c = (lua_Unsigned)luaL_checkinteger(L, i);
     luaL_argcheck(L, c <= (lua_Unsigned)UCHAR_MAX, i, "value out of range");
     p[i - 1] = cast_char(cast_uchar(c));
@@ -227,7 +225,7 @@ static int writer (lua_State *L, const void *b, size_t size, void *ud) {
 
 static int str_dump (lua_State *L) {
   struct str_Writer state;
-  int strip = lua_toboolean(L, 2);
+  const int strip = lua_toboolean(L, 2);
   luaL_argcheck(L, lua_type(L, 1) == LUA_TFUNCTION && !lua_iscfunction(L, 1),
                    1, "Lua function expected");
   /* ensure function is on the top of the stack and vacate slot 1 */
