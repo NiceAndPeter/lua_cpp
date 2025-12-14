@@ -86,12 +86,11 @@ static int tinsert (lua_State *L) {
       break;
     }
     case 3: {
-      lua_Integer i;
       pos = luaL_checkinteger(L, 2);  /* 2nd argument is the position */
       /* check whether 'pos' is in [1, e] */
       luaL_argcheck(L, (lua_Unsigned)pos - 1u < (lua_Unsigned)e, 2,
                        "position out of bounds");
-      for (i = e; i > pos; i--) {  /* move up elements */
+      for (lua_Integer i = e; i > pos; i--) {  /* move up elements */
         lua_geti(L, 1, i - 1);
         lua_seti(L, 1, i);  /* t[i] = t[i - 1] */
       }
@@ -138,20 +137,19 @@ static int tmove (lua_State *L) {
   checktab(L, 1, TAB_R);
   checktab(L, tt, TAB_W);
   if (e >= f) {  /* otherwise, nothing to move */
-    lua_Integer n, i;
     luaL_argcheck(L, f > 0 || e < LUA_MAXINTEGER + f, 3,
                   "too many elements to move");
-    n = e - f + 1;  /* number of elements to move */
+    const lua_Integer n = e - f + 1;  /* number of elements to move */
     luaL_argcheck(L, t <= LUA_MAXINTEGER - n + 1, 4,
                   "destination wrap around");
     if (t > e || t <= f || (tt != 1 && !lua_compare(L, 1, tt, LUA_OPEQ))) {
-      for (i = 0; i < n; i++) {
+      for (lua_Integer i = 0; i < n; i++) {
         lua_geti(L, 1, f + i);
         lua_seti(L, tt, t + i);
       }
     }
     else {
-      for (i = n - 1; i >= 0; i--) {
+      for (lua_Integer i = n - 1; i >= 0; i--) {
         lua_geti(L, 1, f + i);
         lua_seti(L, tt, t + i);
       }
@@ -197,11 +195,10 @@ static int tconcat (lua_State *L) {
 */
 
 static int tpack (lua_State *L) {
-  int i;
   int n = lua_gettop(L);  /* number of elements to pack */
   lua_createtable(L, n, 1);  /* create result table */
   lua_insert(L, 1);  /* put it at index 1 */
-  for (i = n; i >= 1; i--)  /* assign elements */
+  for (int i = n; i >= 1; i--)  /* assign elements */
     lua_seti(L, 1, i);
   lua_pushinteger(L, n);
   lua_setfield(L, 1, "n");  /* t.n = number of elements */
@@ -287,12 +284,11 @@ static int sort_comp (lua_State *L, int a, int b) {
   if (lua_isnil(L, 2))  /* no function? */
     return lua_compare(L, a, b, LUA_OPLT);  /* a < b */
   else {  /* function */
-    int res;
     lua_pushvalue(L, 2);    /* push function */
     lua_pushvalue(L, a-1);  /* -1 to compensate function */
     lua_pushvalue(L, b-2);  /* -2 to compensate function and 'a' */
     lua_call(L, 2, 1);      /* call function */
-    res = lua_toboolean(L, -1);  /* get result */
+    const int res = lua_toboolean(L, -1);  /* get result */
     lua_pop(L, 1);          /* pop result */
     return res;
   }

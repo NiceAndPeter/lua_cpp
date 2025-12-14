@@ -24,8 +24,7 @@
 
 static int luaB_print (lua_State *L) {
   int n = lua_gettop(L);  /* number of arguments */
-  int i;
-  for (i = 1; i <= n; i++) {  /* for each argument */
+  for (int i = 1; i <= n; i++) {  /* for each argument */
     size_t l;
     const char *s = luaL_tolstring(L, i, &l);  /* convert it to string */
     if (i > 1)  /* not the first element? */
@@ -97,11 +96,10 @@ static int luaB_tonumber (lua_State *L) {
   }
   else {
     size_t l;
-    const char *s;
     lua_Integer n = 0;  /* to avoid warnings */
     lua_Integer base = luaL_checkinteger(L, 2);
     luaL_checktype(L, 1, LUA_TSTRING);  /* no numbers as strings */
-    s = lua_tolstring(L, 1, &l);
+    const char* const s = lua_tolstring(L, 1, &l);
     luaL_argcheck(L, 2 <= base && base <= 36, 2, "base out of range");
     if (b_str2int(s, cast_uint(base), &n) == s + l) {
       lua_pushinteger(L, n);
@@ -137,7 +135,7 @@ static int luaB_getmetatable (lua_State *L) {
 
 
 static int luaB_setmetatable (lua_State *L) {
-  int t = lua_type(L, 2);
+  const int t = lua_type(L, 2);
   luaL_checktype(L, 1, LUA_TTABLE);
   luaL_argexpected(L, t == LUA_TNIL || t == LUA_TTABLE, 2, "nil or table");
   if (l_unlikely(luaL_getmetafield(L, 1, "__metatable") != LUA_TNIL))
@@ -157,7 +155,7 @@ static int luaB_rawequal (lua_State *L) {
 
 
 static int luaB_rawlen (lua_State *L) {
-  int t = lua_type(L, 1);
+  const int t = lua_type(L, 1);
   luaL_argexpected(L, t == LUA_TTABLE || t == LUA_TSTRING, 1,
                       "table or string");
   lua_pushinteger(L, l_castU2S(lua_rawlen(L, 1)));
@@ -258,7 +256,7 @@ static int luaB_collectgarbage (lua_State *L) {
 
 
 static int luaB_type (lua_State *L) {
-  int t = lua_type(L, 1);
+  const int t = lua_type(L, 1);
   luaL_argcheck(L, t != LUA_TNONE, 1, "value expected");
   lua_pushstring(L, lua_typename(L, t));
   return 1;
@@ -394,21 +392,22 @@ static const char *generic_reader (lua_State *L, void *ud, size_t *size) {
 
 
 static int luaB_load (lua_State *L) {
-  int status;
   size_t l;
   const char *s = lua_tolstring(L, 1, &l);
   const char *mode = getMode(L, 3);
   int env = (!lua_isnone(L, 4) ? 4 : 0);  /* 'env' index or 0 if no 'env' */
-  if (s != nullptr) {  /* loading a string? */
-    const char *chunkname = luaL_optstring(L, 2, s);
-    status = luaL_loadbufferx(L, s, l, chunkname, mode);
-  }
-  else {  /* loading from a reader function */
-    const char *chunkname = luaL_optstring(L, 2, "=(load)");
-    luaL_checktype(L, 1, LUA_TFUNCTION);
-    lua_settop(L, RESERVEDSLOT);  /* create reserved slot */
-    status = lua_load(L, generic_reader, nullptr, chunkname, mode);
-  }
+  const int status = [&]() {
+    if (s != nullptr) {  /* loading a string? */
+      const char *chunkname = luaL_optstring(L, 2, s);
+      return luaL_loadbufferx(L, s, l, chunkname, mode);
+    }
+    else {  /* loading from a reader function */
+      const char *chunkname = luaL_optstring(L, 2, "=(load)");
+      luaL_checktype(L, 1, LUA_TFUNCTION);
+      lua_settop(L, RESERVEDSLOT);  /* create reserved slot */
+      return lua_load(L, generic_reader, nullptr, chunkname, mode);
+    }
+  }();
   return load_aux(L, status, env);
 }
 
@@ -479,11 +478,10 @@ static int finishpcall (lua_State *L, int status, lua_KContext extra) {
 
 
 static int luaB_pcall (lua_State *L) {
-  int status;
   luaL_checkany(L, 1);
   lua_pushboolean(L, 1);  /* first result if no errors */
   lua_insert(L, 1);  /* put it in place */
-  status = lua_pcallk(L, lua_gettop(L) - 2, LUA_MULTRET, 0, 0, finishpcall);
+  const int status = lua_pcallk(L, lua_gettop(L) - 2, LUA_MULTRET, 0, 0, finishpcall);
   return finishpcall(L, status, 0);
 }
 
@@ -494,13 +492,12 @@ static int luaB_pcall (lua_State *L) {
 ** 2 to 'finishpcall' to skip the 2 first values when returning results.
 */
 static int luaB_xpcall (lua_State *L) {
-  int status;
   int n = lua_gettop(L);
   luaL_checktype(L, 2, LUA_TFUNCTION);  /* check error function */
   lua_pushboolean(L, 1);  /* first result */
   lua_pushvalue(L, 1);  /* function */
   lua_rotate(L, 3, 2);  /* move them below function's arguments */
-  status = lua_pcallk(L, n - 2, LUA_MULTRET, 2, 2, finishpcall);
+  const int status = lua_pcallk(L, n - 2, LUA_MULTRET, 2, 2, finishpcall);
   return finishpcall(L, status, 2);
 }
 
