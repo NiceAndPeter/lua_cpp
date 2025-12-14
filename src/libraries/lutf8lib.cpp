@@ -96,7 +96,7 @@ static int utflen (lua_State *L) {
   const char *s = luaL_checklstring(L, 1, &len);
   lua_Integer posi = u_posrelat(luaL_optinteger(L, 2, 1), len);
   lua_Integer posj = u_posrelat(luaL_optinteger(L, 3, -1), len);
-  int lax = lua_toboolean(L, 4);
+  const int lax = lua_toboolean(L, 4);
   luaL_argcheck(L, 1 <= posi && --posi <= (lua_Integer)len, 2,
                    "initial position out of bounds");
   luaL_argcheck(L, --posj < (lua_Integer)len, 3,
@@ -125,18 +125,16 @@ static int codepoint (lua_State *L) {
   const char *s = luaL_checklstring(L, 1, &len);
   lua_Integer posi = u_posrelat(luaL_optinteger(L, 2, 1), len);
   lua_Integer pose = u_posrelat(luaL_optinteger(L, 3, posi), len);
-  int lax = lua_toboolean(L, 4);
-  int n;
-  const char *se;
+  const int lax = lua_toboolean(L, 4);
   luaL_argcheck(L, posi >= 1, 2, "out of bounds");
   luaL_argcheck(L, pose <= (lua_Integer)len, 3, "out of bounds");
   if (posi > pose) return 0;  /* empty interval; return no values */
   if (pose - posi >= std::numeric_limits<int>::max())  /* (lua_Integer -> int) overflow? */
     return luaL_error(L, "string slice too long");
-  n = (int)(pose -  posi) + 1;  /* upper bound for number of returns */
+  int n = (int)(pose -  posi) + 1;  /* upper bound for number of returns */
   luaL_checkstack(L, n, "string slice too long");
   n = 0;  /* count the number of returns */
-  se = s + pose;  /* string end */
+  const char* const se = s + pose;  /* string end */
   for (s += posi - 1; s < se;) {
     l_uint32 code;
     s = utf8_decode(s, &code, !lax);
@@ -164,10 +162,9 @@ static int utfchar (lua_State *L) {
   if (n == 1)  /* optimize common case of single char */
     pushutfchar(L, 1);
   else {
-    int i;
     luaL_Buffer b;
     luaL_buffinit(L, &b);
-    for (i = 1; i <= n; i++) {
+    for (int i = 1; i <= n; i++) {
       pushutfchar(L, i);
       luaL_addvalue(&b);
     }
@@ -262,7 +259,7 @@ static int iter_auxlax (lua_State *L) {
 
 
 static int iter_codes (lua_State *L) {
-  int lax = lua_toboolean(L, 2);
+  const int lax = lua_toboolean(L, 2);
   const char *s = luaL_checkstring(L, 1);
   luaL_argcheck(L, !iscontp(s), 1, MSGInvalid);
   lua_pushcfunction(L, lax ? iter_auxlax : iter_auxstrict);

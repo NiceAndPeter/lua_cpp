@@ -55,7 +55,7 @@ static int db_getmetatable (lua_State *L) {
 
 
 static int db_setmetatable (lua_State *L) {
-  int t = lua_type(L, 2);
+  const int t = lua_type(L, 2);
   luaL_argexpected(L, t == LUA_TNIL || t == LUA_TTABLE, 2, "nil or table");
   lua_settop(L, 2);
   lua_setmetatable(L, 1);
@@ -64,7 +64,7 @@ static int db_setmetatable (lua_State *L) {
 
 
 static int db_getuservalue (lua_State *L) {
-  int n = (int)luaL_optinteger(L, 2, 1);
+  const int n = (int)luaL_optinteger(L, 2, 1);
   if (lua_type(L, 1) != LUA_TUSERDATA)
     luaL_pushfail(L);
   else if (lua_getiuservalue(L, 1, n) != LUA_TNONE) {
@@ -76,7 +76,7 @@ static int db_getuservalue (lua_State *L) {
 
 
 static int db_setuservalue (lua_State *L) {
-  int n = (int)luaL_optinteger(L, 3, 1);
+  const int n = (int)luaL_optinteger(L, 3, 1);
   luaL_checktype(L, 1, LUA_TUSERDATA);
   luaL_checkany(L, 2);
   lua_settop(L, 2);
