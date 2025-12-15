@@ -8,9 +8,9 @@ Converting Lua 5.5 from C to modern C++23:
 - **CRTP** for static polymorphism
 - **Full encapsulation** with private fields
 
-**Performance**: ~2.24s avg ✅ (47% faster than 4.20s baseline, target ≤4.33s)
-**Status**: Phase 157 COMPLETE - Core execution & continuation declare-on-first-use improvements (144 total improvements)!
-**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-157 | **Quality**: 96.1% coverage, zero warnings
+**Performance**: ~2.22s avg ✅ (47% faster than 4.20s baseline, target ≤4.33s)
+**Status**: Phase 161 COMPLETE - Library declare-on-first-use complete + Static function elimination planned!
+**Completed**: Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-161 | **Quality**: 96.1% coverage, zero warnings
 
 ---
 
@@ -411,6 +411,39 @@ Converting Lua 5.5 from C to modern C++23:
 - **Files Changed**: 1 file (ldo.cpp), 7 functions, 8 variable improvements
 - **Result**: ~2.24s avg ✅ (47% faster than baseline, maintained!)
 
+**Phase 158**: Library Functions - Declare-on-First-Use ✅ **(12 functions, 13 improvements)**
+- Applied declare-on-first-use patterns to library functions across multiple modules
+- **Patterns**: Const correctness, loop variable scoping, combined declaration/initialization
+- **Impact**: Library code now follows modern C++ best practices
+- **Files Changed**: Library modules (lbaselib.cpp, lstrlib.cpp, ltablib.cpp, etc.)
+- **Result**: ~2.22s avg ✅ (47% faster than baseline!)
+
+**Phase 159**: Additional Library Functions - Declare-on-First-Use ✅ **(11 functions, 13 improvements)**
+- Continued declare-on-first-use improvements in remaining library functions
+- **Patterns**: Variable scoping, const correctness throughout
+- **Impact**: Comprehensive library modernization
+- **Files Changed**: Additional library modules
+- **Result**: ~2.22s avg ✅ (maintained excellent performance!)
+
+**Phase 160**: Final Library Functions - Declare-on-First-Use ✅ **(8 functions, 9 improvements)**
+- Completed declare-on-first-use improvements for all library functions
+- **Total Improvements (Phases 158-160)**: 31 functions, 35 variable improvements
+- **Impact**: All library code now uses modern C++ declare-on-first-use patterns
+- **Files Changed**: Library modules (comprehensive coverage)
+- **Result**: ~2.22s avg ✅ (47% faster than baseline!)
+
+**Phase 161**: Base Library Const Correctness + Static Function Elimination Plan ✅
+- **lbaselib.cpp improvements** (3 variables):
+  - `luaB_warn()`: Made `n` const, moved loop counters to for-loop initialization
+  - `luaB_collectgarbage()`: Made `o`, `k`, `b` const
+- **Strategic Planning Document**: Added comprehensive `STATIC_FUNCTION_ELIMINATION_PLAN.md`
+  - Plan to eliminate all 609 file-scope static functions
+  - 3 tracks: class methods (~160), lua_State consolidation (~35), anonymous namespaces (~450)
+  - 15 phases across 4 batches for complete modernization
+- **Impact**: Minor improvements + strategic roadmap for next major modernization
+- **Files Changed**: 1 source file, 1 planning document
+- **Result**: ~2.22s avg ✅ (47% faster than baseline!)
+
 ---
 
 ## Performance
@@ -523,9 +556,9 @@ cmake -B build -DCMAKE_BUILD_TYPE=Debug -DLUA_ENABLE_ASAN=ON -DLUA_ENABLE_UBSAN=
 19/19 classes | ~520 macros converted (99.9%) | VirtualMachine complete | GC modularized
 All casts modern | All enums type-safe | CRTP active (9 types) | CI/CD with sanitizers
 Zero warnings | 96.1% coverage | 30+ tests passing | **47% faster than baseline!**
-Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-157 complete | Phase 135, 139 skipped ✅
+Phases 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-161 complete | Phase 135, 139 skipped ✅
 [[nodiscard]]: 102 annotations | Const correctness: Excellent ✅ | Identifiers: 62 modernized (36 loop iterators + 26 instruction/API variables) ✅
-Declare-on-first-use: 144 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29, Phase 157: 8) | Code reduction: 49 lines removed ✅
+Declare-on-first-use: 182 total improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29, Phase 157: 8, Phases 158-161: 38) | Code reduction: 52 lines removed ✅
 
 **Result**: Modern C++23 codebase with exceptional performance!
 
@@ -609,5 +642,5 @@ git add <files> && git commit -m "Phase N: Description" && git push -u origin <b
 
 ---
 
-**Updated**: 2025-12-13 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-157 ✅ | Phase 135, 139 skipped
-**Performance**: ~2.24s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 144 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29, Phase 157: 8)
+**Updated**: 2025-12-15 | **Phases**: 1-127, 129-1, 130-ALL, 131, 133, 134, 135-Rev, 136-161 ✅ | Phase 135, 139 skipped
+**Performance**: ~2.22s ✅ (47% faster than baseline!) | **Status**: Modern C++23, [[nodiscard]]: 102 annotations, excellent const-correctness, 62 identifiers modernized, 182 total declare-on-first-use improvements (Phases 148-A/B/C: 14, Phases 149-154: 53, Phase 155: 40, Phase 156: 29, Phase 157: 8, Phases 158-161: 38)
