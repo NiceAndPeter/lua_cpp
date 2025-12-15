@@ -697,6 +697,21 @@ private:
   int codesJ(int o, int sj, int k);
   int finaltarget(int i);
   void goiffalse(expdesc& e);
+
+  // Static utility functions (Phase 1D: formerly file-scope static functions in lcode.cpp)
+  static int tonumeral(const expdesc& expr, TValue *value);
+  static int fitsC(lua_Integer i);
+  static int fitsBx(lua_Integer i);
+  static void const2exp(TValue *value, expdesc& expr);
+  static bool isKint(expdesc& expr);
+  static bool isCint(expdesc& expr);
+  static bool isSCint(expdesc& expr);
+  static bool isSCnumber(expdesc& expr, int *intResult, int *isFloat);
+  static bool validop(int op, TValue *v1, TValue *v2);
+  static inline OpCode binopr2op(BinOpr opr, BinOpr baser, OpCode base);
+  static inline OpCode unopr2op(UnOpr opr);
+  static inline TMS binopr2TM(BinOpr opr);
+  static void swapexps(expdesc& e1, expdesc& e2);
 };
 
 

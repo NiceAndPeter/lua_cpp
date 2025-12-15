@@ -49,7 +49,7 @@ l_noret LexState::semerror(const char *fmt, ...) {
 ** If expression is a numeric constant, fills 'v' with its value
 ** and returns 1. Otherwise, returns 0.
 */
-static int tonumeral (const expdesc& expr, TValue *value) {
+int FuncState::tonumeral(const expdesc& expr, TValue *value) {
   if (hasjumps(expr))
     return 0;  /* not a numeral */
   switch (expr.getKind()) {
@@ -443,14 +443,14 @@ int FuncState::nilK() {
 ** (0 <= int2sC(i) && int2sC(i) <= MAXARG_C) but without risk of
 ** overflows in the hidden addition inside 'int2sC'.
 */
-static int fitsC (lua_Integer i) {
+int FuncState::fitsC(lua_Integer i) {
   return (l_castS2U(i) + OFFSET_sC <= cast_uint(MAXARG_C));
 }
 
 /*
 ** Check whether 'i' can be stored in an 'sBx' operand.
 */
-static int fitsBx (lua_Integer i) {
+int FuncState::fitsBx(lua_Integer i) {
   return (-OFFSET_sBx <= i && i <= MAXARG_Bx - OFFSET_sBx);
 }
 
@@ -465,7 +465,7 @@ void FuncState::floatCode(int reg, lua_Number flt) {
 /*
 ** Convert a constant in 'v' into an expression description 'e'
 */
-static void const2exp (TValue *value, expdesc& expr) {
+void FuncState::const2exp(TValue *value, expdesc& expr) {
   switch (ttypetag(value)) {
     case LuaT::NUMINT:
       expr.setKind(VKINT); expr.setIntValue(ivalue(value));
@@ -734,7 +734,7 @@ int FuncState::isKstr(expdesc& expr) {
 /*
 ** Check whether expression 'expr' is a literal integer.
 */
-static bool isKint (expdesc& expr) {
+bool FuncState::isKint(expdesc& expr) {
   return (expr.getKind() == VKINT && !hasjumps(expr));
 }
 
@@ -742,7 +742,7 @@ static bool isKint (expdesc& expr) {
 ** Check whether expression 'expr' is a literal integer in
 ** proper range to fit in register C
 */
-static bool isCint (expdesc& expr) {
+bool FuncState::isCint(expdesc& expr) {
   return isKint(expr) && (l_castS2U(expr.getIntValue()) <= l_castS2U(MAXARG_C));
 }
 
@@ -750,7 +750,7 @@ static bool isCint (expdesc& expr) {
 ** Check whether expression 'expr' is a literal integer in
 ** proper range to fit in register sC
 */
-static bool isSCint (expdesc& expr) {
+bool FuncState::isSCint(expdesc& expr) {
   return isKint(expr) && fitsC(expr.getIntValue());
 }
 
@@ -758,7 +758,7 @@ static bool isSCint (expdesc& expr) {
 ** Check whether expression 'e' is a literal integer or float in
 ** proper range to fit in a register (sB or sC).
 */
-static bool isSCnumber (expdesc& expr, int *intResult, int *isFloat) {
+bool FuncState::isSCnumber(expdesc& expr, int *intResult, int *isFloat) {
   lua_Integer intValue;
   if (expr.getKind() == VKINT)
     intValue = expr.getIntValue();
@@ -779,7 +779,7 @@ static bool isSCnumber (expdesc& expr, int *intResult, int *isFloat) {
 ** Bitwise operations need operands convertible to integers; division
 ** operations cannot have 0 as divisor.
 */
-static bool validop (int op, TValue *v1, TValue *v2) {
+bool FuncState::validop(int op, TValue *v1, TValue *v2) {
   switch (op) {
     case LUA_OPBAND: case LUA_OPBOR: case LUA_OPBXOR:
     case LUA_OPSHL: case LUA_OPSHR: case LUA_OPBNOT: {  /* conversion errors */
@@ -820,7 +820,7 @@ int FuncState::constfolding(int op, expdesc& e1, const expdesc& e2) {
 /*
 ** Convert a BinOpr to an OpCode  (ORDER OPR - ORDER OP)
 */
-static inline OpCode binopr2op (BinOpr opr, BinOpr baser, OpCode base) {
+inline OpCode FuncState::binopr2op(BinOpr opr, BinOpr baser, OpCode base) {
   lua_assert(baser <= opr &&
             ((baser == BinOpr::OPR_ADD && opr <= BinOpr::OPR_SHR) ||
              (baser == BinOpr::OPR_LT && opr <= BinOpr::OPR_LE)));
@@ -830,7 +830,7 @@ static inline OpCode binopr2op (BinOpr opr, BinOpr baser, OpCode base) {
 /*
 ** Convert a UnOpr to an OpCode  (ORDER OPR - ORDER OP)
 */
-static inline OpCode unopr2op (UnOpr opr) {
+inline OpCode FuncState::unopr2op(UnOpr opr) {
   return static_cast<OpCode>((cast_int(opr) - cast_int(UnOpr::OPR_MINUS)) +
                                        cast_int(OP_UNM));
 }
@@ -838,7 +838,7 @@ static inline OpCode unopr2op (UnOpr opr) {
 /*
 ** Convert a BinOpr to a tag method  (ORDER OPR - ORDER TM)
 */
-static inline TMS binopr2TM (BinOpr opr) {
+inline TMS FuncState::binopr2TM(BinOpr opr) {
   lua_assert(BinOpr::OPR_ADD <= opr && opr <= BinOpr::OPR_SHR);
   return static_cast<TMS>((cast_int(opr) - cast_int(BinOpr::OPR_ADD)) + cast_int(TMS::TM_ADD));
 }
@@ -928,7 +928,7 @@ int FuncState::finishbinexpneg(expdesc& e1, expdesc& e2, OpCode op, int line, TM
   }
 }
 
-static void swapexps (expdesc& e1, expdesc& e2) {
+void FuncState::swapexps(expdesc& e1, expdesc& e2) {
   expdesc temp = e1; e1 = e2; e2 = temp;  /* swap 'e1' and 'e2' */
 }
 
