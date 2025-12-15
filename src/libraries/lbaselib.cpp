@@ -43,12 +43,11 @@ static int luaB_print (lua_State *L) {
 ** the composition of a warning, leaving it unfinished.
 */
 static int luaB_warn (lua_State *L) {
-  int n = lua_gettop(L);  /* number of arguments */
-  int i;
+  const int n = lua_gettop(L);  /* number of arguments */
   luaL_checkstring(L, 1);  /* at least one argument */
-  for (i = 2; i <= n; i++)
+  for (int i = 2; i <= n; i++)
     luaL_checkstring(L, i);  /* make sure all arguments are strings */
-  for (i = 1; i < n; i++)  /* compose warning */
+  for (int i = 1; i < n; i++)  /* compose warning */
     lua_warning(L, lua_tostring(L, i), 1);
   lua_warning(L, lua_tostring(L, n), 0);  /* close warning */
   return 0;
@@ -203,11 +202,11 @@ static int luaB_collectgarbage (lua_State *L) {
   static const char optsnum[] = {LUA_GCSTOP, LUA_GCRESTART, LUA_GCCOLLECT,
     LUA_GCCOUNT, LUA_GCSTEP, LUA_GCISRUNNING, LUA_GCGEN, LUA_GCINC,
     LUA_GCPARAM};
-  int o = optsnum[luaL_checkoption(L, 1, "collect", opts)];
+  const int o = optsnum[luaL_checkoption(L, 1, "collect", opts)];
   switch (o) {
     case LUA_GCCOUNT: {
-      int k = lua_gc(L, o);
-      int b = lua_gc(L, LUA_GCCOUNTB);
+      const int k = lua_gc(L, o);
+      const int b = lua_gc(L, LUA_GCCOUNTB);
       checkvalres(k);
       lua_pushnumber(L, (lua_Number)k + ((lua_Number)b/1024));
       return 1;
