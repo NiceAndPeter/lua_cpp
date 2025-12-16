@@ -788,39 +788,53 @@ void lua_State::unrollContinuation(void *ud) {
 
 
 /*
-** Static wrapper for unrollContinuation to be used as Pfunc callback
+** Auxiliary structure to call 'luaF_close' in protected mode.
 */
-static void unroll (lua_State *L, void *ud) {
-  L->unrollContinuation(ud);
-}
+struct CloseP {
+  StkId level;
+  TStatus status;
+};
 
 
 /*
-** Try to find a suspended protected call (a "recover point") for the
-** given thread.
+** Execute a protected parser.
 */
-// Convert to private lua_State method
-CallInfo* lua_State::findPCall() {
-  for (CallInfo *ci_iter = getCI(); ci_iter != nullptr; ci_iter = ci_iter->getPrevious()) {  /* search for a pcall */
-    if (ci_iter->callStatusRef() & CIST_YPCALL)
-      return ci_iter;
+struct SParser {  /* data to 'f_parser' */
+  ZIO *z;
+  Mbuffer buff;  /* dynamic structure used by the scanner */
+  Dyndata dyd;  /* dynamic structures used by the parser */
+  const char *mode;
+  const char *name;
+
+  /* Constructor to properly initialize Dyndata */
+  explicit SParser(lua_State* L)
+    : z(nullptr), buff(), dyd(L), mode(nullptr), name(nullptr) {}
+};
+
+
+/*
+** Anonymous namespace for Pfunc callbacks (must remain free functions)
+** These are used with rawRunProtected() and cannot be class methods.
+*/
+namespace {
+
+/*
+** Utility function to check chunk loading mode
+*/
+void checkmode (lua_State *L, const char *mode, const char *x) {
+  if (strchr(mode, x[0]) == nullptr) {
+    luaO_pushfstring(L,
+       "attempt to load a %s chunk (mode is '%s')", x, mode);
+    L->doThrow(LUA_ERRSYNTAX);
   }
-  return nullptr;  /* no pending pcall */
 }
 
 
 /*
-** Signal an error in the call to 'lua_resume', not in the execution
-** of the coroutine itself. (Such errors should not be handled by any
-** coroutine error handler and should not kill the coroutine.)
+** Wrapper for unrollContinuation to be used as Pfunc callback
 */
-static int resume_error (lua_State *L, const char *msg, int narg) {
-  api_checkpop(L, narg);
-  L->getStackSubsystem().popN(narg);  /* remove args from the stack */
-  setsvalue2s(L, L->getTop().p, TString::create(L, msg));  /* push error message */
-  api_incr_top(L);
-  lua_unlock(L);
-  return LUA_ERRRUN;
+void unroll (lua_State *L, void *ud) {
+  L->unrollContinuation(ud);
 }
 
 
@@ -831,7 +845,7 @@ static int resume_error (lua_State *L, const char *msg, int narg) {
 ** function), plus erroneous cases: non-suspended coroutine or dead
 ** coroutine.
 */
-static void resume (lua_State *L, void *ud) {
+void resume (lua_State *L, void *ud) {
   int n = *static_cast<int*>(ud);  /* number of arguments */
   StkId const firstArg = L->getTop().p - n;  /* first argument */
   CallInfo* const ci = L->getCI();
@@ -863,6 +877,69 @@ static void resume (lua_State *L, void *ud) {
 
 
 /*
+** Auxiliary function to call 'luaF_close' in protected mode.
+*/
+void closepaux (lua_State *L, void *ud) {
+  CloseP* const pcl = static_cast<CloseP*>(ud);
+  pcl->level = luaF_close(L, pcl->level, pcl->status, 0);
+}
+
+
+void f_parser (lua_State *L, void *ud) {
+  LClosure *cl;
+  SParser *p = static_cast<SParser*>(ud);
+  const char *mode = p->mode ? p->mode : "bt";
+  int c = zgetc(p->z);  /* read first character */
+  if (c == LUA_SIGNATURE[0]) {
+    int fixed = 0;
+    if (strchr(mode, 'B') != nullptr)
+      fixed = 1;
+    else
+      checkmode(L, mode, "binary");
+    cl = luaU_undump(L, p->z, p->name, fixed);
+  }
+  else {
+    checkmode(L, mode, "text");
+    cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
+  }
+  lua_assert(cl->getNumUpvalues() == cl->getProto()->getUpvaluesSize());
+  cl->initUpvals(L);  /* Phase 25d */
+}
+
+} // namespace
+
+
+/*
+** Try to find a suspended protected call (a "recover point") for the
+** given thread.
+*/
+// Convert to private lua_State method
+CallInfo* lua_State::findPCall() {
+  for (CallInfo *ci_iter = getCI(); ci_iter != nullptr; ci_iter = ci_iter->getPrevious()) {  /* search for a pcall */
+    if (ci_iter->callStatusRef() & CIST_YPCALL)
+      return ci_iter;
+  }
+  return nullptr;  /* no pending pcall */
+}
+
+
+/*
+** Signal an error in the call to 'lua_resume', not in the execution
+** of the coroutine itself. (Such errors should not be handled by any
+** coroutine error handler and should not kill the coroutine.)
+*/
+// Convert to lua_State private method
+int lua_State::resumeError(const char *msg, int narg) {
+  api_checkpop(this, narg);
+  getStackSubsystem().popN(narg);  /* remove args from the stack */
+  setsvalue2s(this, getTop().p, TString::create(this, msg));  /* push error message */
+  api_incr_top(this);
+  lua_unlock(this);
+  return LUA_ERRRUN;
+}
+
+
+/*
 ** Unrolls a coroutine in protected mode while there are recoverable
 ** errors, that is, errors inside a protected call. (Any error
 ** interrupts 'unroll', and this loop protects it again so it can
@@ -870,13 +947,14 @@ static void resume (lua_State *L, void *ud) {
 ** (status == LUA_YIELD), or an unprotected error ('findpcall' doesn't
 ** find a recover point).
 */
-static TStatus precover (lua_State *L, TStatus status) {
-  for (CallInfo* ci; errorstatus(status) && (ci = L->findPCall()) != nullptr; ) {
-    L->setCI(ci);  /* go down to recovery functions */
-    ci->setRecoverStatus(status);  /* status to finish 'pcall' */
-    status = L->rawRunProtected( unroll, nullptr);
+// Convert to lua_State private method
+TStatus lua_State::recover(TStatus status_code) {
+  for (CallInfo* ci_pcall; errorstatus(status_code) && (ci_pcall = findPCall()) != nullptr; ) {
+    setCI(ci_pcall);  /* go down to recovery functions */
+    ci_pcall->setRecoverStatus(status_code);  /* status to finish 'pcall' */
+    status_code = rawRunProtected(unroll, nullptr);
   }
-  return status;
+  return status_code;
 }
 
 
@@ -885,21 +963,21 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs,
   lua_lock(L);
   if (L->getStatus() == LUA_OK) {  /* may be starting a coroutine */
     if (L->getCI() != L->getBaseCI())  /* not in base level? */
-      return resume_error(L, "cannot resume non-suspended coroutine", nargs);
+      return L->resumeError("cannot resume non-suspended coroutine", nargs);
     else if (L->getTop().p - (L->getCI()->funcRef().p + 1) == nargs)  /* no function? */
-      return resume_error(L, "cannot resume dead coroutine", nargs);
+      return L->resumeError("cannot resume dead coroutine", nargs);
   }
   else if (L->getStatus() != LUA_YIELD)  /* ended with errors? */
-    return resume_error(L, "cannot resume dead coroutine", nargs);
+    return L->resumeError("cannot resume dead coroutine", nargs);
   L->setNumberOfCCalls((from) ? getCcalls(from) : 0);
   if (getCcalls(L) >= LUAI_MAXCCALLS)
-    return resume_error(L, "C stack overflow", nargs);
+    return L->resumeError("C stack overflow", nargs);
   L->getNumberOfCCallsRef()++;
   luai_userstateresume(L, nargs);
   api_checkpop(L, (L->getStatus() == LUA_OK) ? nargs + 1 : nargs);
   TStatus status = L->rawRunProtected( resume, &nargs);
    /* continue running after recoverable errors */
-  status = precover(L, status);
+  status = L->recover(status);
   if (l_likely(!errorstatus(status)))
     lua_assert(status == L->getStatus());  /* normal end or yield */
   else {  /* unrecoverable error */
@@ -950,24 +1028,6 @@ LUA_API int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx,
 
 
 /*
-** Auxiliary structure to call 'luaF_close' in protected mode.
-*/
-struct CloseP {
-  StkId level;
-  TStatus status;
-};
-
-
-/*
-** Auxiliary function to call 'luaF_close' in protected mode.
-*/
-static void closepaux (lua_State *L, void *ud) {
-  CloseP* const pcl = static_cast<CloseP*>(ud);
-  pcl->level = luaF_close(L, pcl->level, pcl->status, 0);
-}
-
-
-/*
 ** Calls 'luaF_close' in protected mode. Return the original status
 ** or, in case of errors, the new status.
 */
@@ -1013,53 +1073,6 @@ TStatus lua_State::pCall(Pfunc func, void *u, ptrdiff_t old_top,
   return status_result;
 }
 
-
-
-/*
-** Execute a protected parser.
-*/
-struct SParser {  /* data to 'f_parser' */
-  ZIO *z;
-  Mbuffer buff;  /* dynamic structure used by the scanner */
-  Dyndata dyd;  /* dynamic structures used by the parser */
-  const char *mode;
-  const char *name;
-
-  /* Constructor to properly initialize Dyndata */
-  explicit SParser(lua_State* L)
-    : z(nullptr), buff(), dyd(L), mode(nullptr), name(nullptr) {}
-};
-
-
-static void checkmode (lua_State *L, const char *mode, const char *x) {
-  if (strchr(mode, x[0]) == nullptr) {
-    luaO_pushfstring(L,
-       "attempt to load a %s chunk (mode is '%s')", x, mode);
-    L->doThrow( LUA_ERRSYNTAX);
-  }
-}
-
-
-static void f_parser (lua_State *L, void *ud) {
-  LClosure *cl;
-  SParser *p = static_cast<SParser*>(ud);
-  const char *mode = p->mode ? p->mode : "bt";
-  int c = zgetc(p->z);  /* read first character */
-  if (c == LUA_SIGNATURE[0]) {
-    int fixed = 0;
-    if (strchr(mode, 'B') != nullptr)
-      fixed = 1;
-    else
-      checkmode(L, mode, "binary");
-    cl = luaU_undump(L, p->z, p->name, fixed);
-  }
-  else {
-    checkmode(L, mode, "text");
-    cl = luaY_parser(L, p->z, &p->buff, &p->dyd, p->name, c);
-  }
-  lua_assert(cl->getNumUpvalues() == cl->getProto()->getUpvaluesSize());
-  cl->initUpvals(L);  /* Phase 25d */
-}
 
 
 // Convert to lua_State method

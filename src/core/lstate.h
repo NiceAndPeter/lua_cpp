@@ -695,6 +695,10 @@ public:
   // Closure creation helper (VM-internal operation)
   void pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra);
 
+  // Phase 2A: ldo.cpp static function elimination (used by C API)
+  int resumeError(const char* msg, int narg);
+  TStatus recover(TStatus status);
+
 private:
   // Private helper methods (implementation details in ldo.cpp)
 
