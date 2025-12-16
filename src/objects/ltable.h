@@ -293,6 +293,60 @@ public:
   // Phase 122: Hot-path fast access methods (defined in lobject.h due to TMS dependency)
   inline void fastGeti(lua_Integer k, TValue* res, LuaT& tag) noexcept;
   inline void fastSeti(lua_Integer k, TValue* val, int& hres) noexcept;
+
+private:
+  // Phase 1A: Static function elimination - private methods (42 functions)
+  // Note: checkrange remains file-level static (used by arrayindex/ikeyinarray)
+
+  // === HASH FUNCTIONS (4) ===
+  Node* hashInt(lua_Integer i) const;
+  static unsigned int hashFloat(lua_Number n);
+  Node* mainPositionTV(const TValue* key) const;
+  Node* mainPositionFromNode(Node* nd) const;
+
+  // === KEY OPERATIONS (4) ===
+  static bool equalKey(const TValue* k1, const Node* n2, int deadok);
+  unsigned int keyInArray(const TValue* key) const;
+  unsigned int findIndexInternal(lua_State* L, TValue* key, unsigned arraysize) const;
+  bool arrayKeyIsEmpty(unsigned key) const;
+
+  // === GET/SET HELPERS (11) ===
+  TValue* getGeneric(const TValue* key, int deadok) const;
+  size_t sizeHash() const;
+  void freeHash(lua_State& L);
+  TValue* getIntFromHash(lua_Integer key) const;
+  bool hashKeyIsEmpty(lua_Unsigned key) const;
+  static LuaT finishNodeGet(const TValue* val, TValue* res);
+  TValue* HgetLongStr(TString* key) const;
+  TValue* HgetStrInternal(TString* key) const;
+  int retPsetCode(const TValue* slot) const;
+  int finishNodeSet(TValue* slot, TValue* val);
+  static bool rawFinishNodeSet(TValue* slot, TValue* val);
+
+  // === REHASHING (11) ===
+  static unsigned int computeSizes(unsigned int* nums, unsigned int& arrayCount);
+  static void countInt(lua_Integer key, unsigned int* nums, unsigned int& arrayCount);
+  void numUseArray(unsigned int* nums, unsigned int& total, unsigned int& arrayCount) const;
+  void numUseHash(unsigned int* nums, unsigned int& total, int& deleted, unsigned int& arrayCount) const;
+  static size_t concreteSize(unsigned int size);
+  Value* resizeArrayPart(lua_State* L, unsigned oldArraySize, unsigned newArraySize);
+  void setNodeVector(lua_State& L, unsigned size);
+  static void reinsertHash(lua_State& L, Table& oldTable, Table& newTable);
+  static void exchangeHashPart(Table& t1, Table& t2);
+  void reinsertOldSlice(unsigned oldArraySize, unsigned newArraySize);
+  void clearNewSlice(unsigned oldArraySize, unsigned newArraySize);
+  void rehashInternal(lua_State* L, const TValue* extraKey);
+
+  // === NODE MANAGEMENT (4) ===
+  Node* getFreePos();
+  int insertKey(const TValue* key, TValue* value);
+  void newCheckedKey(const TValue* key, TValue* value);
+  void newKey(lua_State* L, const TValue* key, TValue* value);
+
+  // === BOUNDARY SEARCH (3) ===
+  lua_Unsigned hashSearch(lua_State* L, unsigned arraysize);
+  unsigned int binSearch(unsigned int i, unsigned int j);
+  lua_Unsigned newHint(unsigned hint);
 };
 
 
