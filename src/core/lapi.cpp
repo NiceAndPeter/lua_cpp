@@ -155,12 +155,12 @@ LUA_API void lua_closeslot (lua_State *L, int idx) {
 ** Note that we move(copy) only the value inside the stack.
 ** (We do not move additional fields that may exist.)
 */
-static void reverse (lua_State *L, StkId from, StkId to) {
+void lua_State::reverseStack(StkId from, StkId to) {
   for (; from < to; from++, to--) {
     TValue temp;
     temp = *s2v(from);
     *s2v(from) = *s2v(to);  /* swap - use operator= */
-    L->getStackSubsystem().setSlot(to, &temp);
+    getStackSubsystem().setSlot(to, &temp);
   }
 }
 
@@ -176,9 +176,9 @@ LUA_API void lua_rotate (lua_State *L, int idx, int n) {
   api_check(L, L->getTbclist().p < segmentStart, "moving a to-be-closed slot");
   api_check(L, (n >= 0 ? n : -n) <= (segmentEnd - segmentStart + 1), "invalid 'n'");
   auto prefixEnd = (n >= 0 ? segmentEnd - n : segmentStart - n - 1);  /* end of prefix */
-  reverse(L, segmentStart, prefixEnd);  /* reverse the prefix with length 'n' */
-  reverse(L, prefixEnd + 1, segmentEnd);  /* reverse the suffix */
-  reverse(L, segmentStart, segmentEnd);  /* reverse the entire segment */
+  L->reverseStack(segmentStart, prefixEnd);  /* reverse the prefix with length 'n' */
+  L->reverseStack(prefixEnd + 1, segmentEnd);  /* reverse the suffix */
+  L->reverseStack(segmentStart, segmentEnd);  /* reverse the entire segment */
   lua_unlock(L);
 }
 

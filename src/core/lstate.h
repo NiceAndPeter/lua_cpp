@@ -754,6 +754,12 @@ private:
 
   // Phase 2D: Friend function that needs access to debug private methods
   friend int lua_getinfo(lua_State *L, const char *what, lua_Debug *ar);
+
+  // Phase 2E: API helper (lapi.cpp)
+  void reverseStack(StkId from, StkId to);
+
+  // Phase 2E: Friend function that needs access to API helper
+  friend void lua_rotate(lua_State *L, int idx, int n);
 };
 
 
