@@ -741,6 +741,19 @@ private:
   // Phase 2C: Friend functions that need access to TBC private methods
   friend void luaF_newtbcupval(lua_State *L, StkId level);
   friend StkId luaF_close(lua_State *L, StkId level, TStatus status, int yy);
+
+  // Phase 2D: Debug info helpers (ldebug.cpp)
+  const char* funcNameFromCall(CallInfo *callInfo, const char **name);
+  void collectValidLines(Closure *f);
+  const char* getFuncName(CallInfo *callInfo, const char **name);
+  int auxGetInfo(const char *what, lua_Debug *ar, Closure *f, CallInfo *callInfo);
+  const char* funcNameFromCode(const Proto *p, int pc, const char **name);
+  const char* formatVarInfo(const char *kind, const char *name);
+  const char* varInfo(const TValue *o);
+  l_noret typeErrorInternal(const TValue *o, const char *op, const char *extra);
+
+  // Phase 2D: Friend function that needs access to debug private methods
+  friend int lua_getinfo(lua_State *L, const char *what, lua_Debug *ar);
 };
 
 

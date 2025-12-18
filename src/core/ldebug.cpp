@@ -40,9 +40,6 @@ inline bool LuaClosure(const Closure* f) noexcept {
 static const char strlocal[] = "local";
 static const char strupval[] = "upvalue";
 
-static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
-                                                   const char **name);
-
 
 static int currentpc (CallInfo *ci) {
   lua_assert(ci->isLua());
@@ -306,17 +303,17 @@ static int nextline (const Proto *p, int currentline, size_t pc) {
 }
 
 
-static void collectvalidlines (lua_State *L, Closure *f) {
+void lua_State::collectValidLines(Closure *f) {
   if (!LuaClosure(f)) {
-    setnilvalue(s2v(L->getTop().p));
-    api_incr_top(L);
+    setnilvalue(s2v(getTop().p));
+    api_incr_top(this);
   }
   else {
     const Proto *p = reinterpret_cast<LClosure*>(f)->getProto();
     int currentline = p->getLineDefined();
-    Table *t = Table::create(L);  /* new table to store active lines */
-    sethvalue2s(L, L->getTop().p, t);  /* push it on stack */
-    api_incr_top(L);
+    Table *t = Table::create(this);  /* new table to store active lines */
+    sethvalue2s(this, getTop().p, t);  /* push it on stack */
+    api_incr_top(this);
     auto lineInfoSpan = p->getDebugInfo().getLineInfoSpan();
     if (!lineInfoSpan.empty()) {  /* proto with debug information? */
       size_t i;
@@ -332,24 +329,23 @@ static void collectvalidlines (lua_State *L, Closure *f) {
       }
       for (; i < lineInfoSpan.size(); i++) {  /* for each instruction */
         currentline = nextline(p, currentline, i);  /* get its line */
-        t->setInt(L, currentline, &v);  /* table[line] = true */
+        t->setInt(this, currentline, &v);  /* table[line] = true */
       }
     }
   }
 }
 
 
-static const char *getfuncname (lua_State *L, CallInfo *ci, const char **name) {
+const char* lua_State::getFuncName(CallInfo *callInfo, const char **name) {
   /* calling function is a known function? */
-  if (ci != nullptr && !(ci->getCallStatus() & CIST_TAIL))
-    return funcnamefromcall(L, ci->getPrevious(), name);
+  if (callInfo != nullptr && !(callInfo->getCallStatus() & CIST_TAIL))
+    return funcNameFromCall(callInfo->getPrevious(), name);
   else return nullptr;  /* no way to find a name */
 }
 
 
-static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
-                       Closure *f, CallInfo *ci) {
-  int status = 1;
+int lua_State::auxGetInfo(const char *what, lua_Debug *ar, Closure *f, CallInfo *callInfo) {
+  int infoStatus = 1;
   for (; *what; what++) {
     switch (*what) {
       case 'S': {
@@ -357,7 +353,7 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         break;
       }
       case 'l': {
-        ar->currentline = (ci && ci->isLua()) ? getcurrentline(ci) : -1;
+        ar->currentline = (callInfo && callInfo->isLua()) ? getcurrentline(callInfo) : -1;
         break;
       }
       case 'u': {
@@ -374,10 +370,10 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         break;
       }
       case 't': {
-        if (ci != nullptr) {
-          ar->istailcall = !!(ci->getCallStatus() & CIST_TAIL);
+        if (callInfo != nullptr) {
+          ar->istailcall = !!(callInfo->getCallStatus() & CIST_TAIL);
           ar->extraargs =
-                   cast_uchar((ci->getCallStatus() & MAX_CCMT) >> CIST_CCMT);
+                   cast_uchar((callInfo->getCallStatus() & MAX_CCMT) >> CIST_CCMT);
         }
         else {
           ar->istailcall = 0;
@@ -386,7 +382,7 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         break;
       }
       case 'n': {
-        ar->namewhat = getfuncname(L, ci, &ar->name);
+        ar->namewhat = getFuncName(callInfo, &ar->name);
         if (ar->namewhat == nullptr) {
           ar->namewhat = "";  /* not found */
           ar->name = nullptr;
@@ -394,21 +390,21 @@ static int auxgetinfo (lua_State *L, const char *what, lua_Debug *ar,
         break;
       }
       case 'r': {
-        if (ci == nullptr || !(ci->getCallStatus() & CIST_HOOKED))
+        if (callInfo == nullptr || !(callInfo->getCallStatus() & CIST_HOOKED))
           ar->ftransfer = ar->ntransfer = 0;
         else {
-          ar->ftransfer = L->getTransferInfo().ftransfer;
-          ar->ntransfer = L->getTransferInfo().ntransfer;
+          ar->ftransfer = getTransferInfo().ftransfer;
+          ar->ntransfer = getTransferInfo().ntransfer;
         }
         break;
       }
       case 'L':
       case 'f':  /* handled by lua_getinfo */
         break;
-      default: status = 0;  /* invalid option */
+      default: infoStatus = 0;  /* invalid option */
     }
   }
-  return status;
+  return infoStatus;
 }
 
 
@@ -429,13 +425,13 @@ LUA_API int lua_getinfo (lua_State *L, const char *what, lua_Debug *ar) {
     lua_assert(ttisfunction(func));
   }
   Closure *cl = ttisclosure(func) ? clvalue(func) : nullptr;
-  int status = auxgetinfo(L, what, ar, cl, ci);
+  int status = L->auxGetInfo(what, ar, cl, ci);
   if (strchr(what, 'f')) {
     L->getStackSubsystem().setSlot(L->getTop().p, func);
     api_incr_top(L);
   }
   if (strchr(what, 'L'))
-    collectvalidlines(L, cl);
+    L->collectValidLines(cl);
   lua_unlock(L);
   return status;
 }
@@ -631,8 +627,7 @@ static const char *getobjname (const Proto *p, int lastpc, int reg,
 ** Returns what the name is (e.g., "for iterator", "method",
 ** "metamethod") and sets '*name' to point to the name.
 */
-static const char *funcnamefromcode (lua_State *L, const Proto *p,
-                                     int pc, const char **name) {
+const char* lua_State::funcNameFromCode(const Proto *p, int pc, const char **name) {
   TMS metamethodEvent = (TMS)0;  /* (initial value avoids warnings) */
   Instruction i = p->getCode()[pc];  /* calling instruction */
   switch (InstructionView(i).opcode()) {
@@ -667,7 +662,7 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
     default:
       return nullptr;  /* cannot find a reasonable name */
   }
-  *name = getShortStringContents(G(L)->getTMName(static_cast<int>(metamethodEvent))) + 2;
+  *name = getShortStringContents(G(this)->getTMName(static_cast<int>(metamethodEvent))) + 2;
   return "metamethod";
 }
 
@@ -675,18 +670,17 @@ static const char *funcnamefromcode (lua_State *L, const Proto *p,
 /*
 ** Try to find a name for a function based on how it was called.
 */
-static const char *funcnamefromcall (lua_State *L, CallInfo *ci,
-                                                   const char **name) {
-  if (ci->getCallStatus() & CIST_HOOKED) {  /* was it called inside a hook? */
+const char* lua_State::funcNameFromCall(CallInfo *callInfo, const char **name) {
+  if (callInfo->getCallStatus() & CIST_HOOKED) {  /* was it called inside a hook? */
     *name = "?";
     return "hook";
   }
-  else if (ci->getCallStatus() & CIST_FIN) {  /* was it called as a finalizer? */
+  else if (callInfo->getCallStatus() & CIST_FIN) {  /* was it called as a finalizer? */
     *name = "__gc";
     return "metamethod";  /* report it as such */
   }
-  else if (ci->isLua())
-    return funcnamefromcode(L, ci->getFunc()->getProto(), currentpc(ci), name);
+  else if (callInfo->isLua())
+    return funcNameFromCode(callInfo->getFunc()->getProto(), currentpc(callInfo), name);
   else
     return nullptr;
 }
@@ -729,41 +723,39 @@ static const char *getupvalname (CallInfo *ci, const TValue *o,
 }
 
 
-static const char *formatvarinfo (lua_State *L, const char *kind,
-                                                const char *name) {
+const char* lua_State::formatVarInfo(const char *kind, const char *name) {
   if (kind == nullptr)
     return "";  /* no information */
   else
-    return luaO_pushfstring(L, " (%s '%s')", kind, name);
+    return luaO_pushfstring(this, " (%s '%s')", kind, name);
 }
 
 /*
 ** Build a string with a "description" for the value 'o', such as
 ** "variable 'x'" or "upvalue 'y'".
 */
-static const char *varinfo (lua_State *L, const TValue *o) {
-  CallInfo *ci = L->getCI();
+const char* lua_State::varInfo(const TValue *o) {
+  CallInfo *callInfo = getCI();
   const char *name = nullptr;  /* to avoid warnings */
   const char *kind = nullptr;
-  if (ci->isLua()) {
-    kind = getupvalname(ci, o, &name);  /* check whether 'o' is an upvalue */
+  if (callInfo->isLua()) {
+    kind = getupvalname(callInfo, o, &name);  /* check whether 'o' is an upvalue */
     if (!kind) {  /* not an upvalue? */
-      int reg = instack(ci, o);  /* try a register */
+      int reg = instack(callInfo, o);  /* try a register */
       if (reg >= 0)  /* is 'o' a register? */
-        kind = getobjname(ci->getFunc()->getProto(), currentpc(ci), reg, &name);
+        kind = getobjname(callInfo->getFunc()->getProto(), currentpc(callInfo), reg, &name);
     }
   }
-  return formatvarinfo(L, kind, name);
+  return formatVarInfo(kind, name);
 }
 
 
 /*
 ** Raise a type error
 */
-static l_noret typeerror (lua_State *L, const TValue *o, const char *op,
-                          const char *extra) {
-  const char *t = luaT_objtypename(L, o);
-  luaG_runerror(L, "attempt to %s a %s value%s", op, t, extra);
+l_noret lua_State::typeErrorInternal(const TValue *o, const char *op, const char *extra) {
+  const char *t = luaT_objtypename(this, o);
+  luaG_runerror(this, "attempt to %s a %s value%s", op, t, extra);
 }
 
 
@@ -773,7 +765,7 @@ static l_noret typeerror (lua_State *L, const TValue *o, const char *op,
 */
 // lua_State method
 l_noret lua_State::typeError(const TValue *o, const char *op) {
-  typeerror(this, o, op, varinfo(this, o));
+  typeErrorInternal(o, op, varInfo(o));
 }
 
 l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
@@ -789,9 +781,9 @@ l_noret luaG_typeerror (lua_State *L, const TValue *o, const char *op) {
 // lua_State method
 l_noret lua_State::callError(const TValue *o) {
   const char *name = nullptr;  /* to avoid warnings */
-  const char *kind = funcnamefromcall(this, ci, &name);
-  const char *extra = kind ? formatvarinfo(this, kind, name) : varinfo(this, o);
-  typeerror(this, o, "call", extra);
+  const char *kind = funcNameFromCall(ci, &name);
+  const char *extra = kind ? formatVarInfo(kind, name) : varInfo(o);
+  typeErrorInternal(o, "call", extra);
 }
 
 l_noret luaG_callerror (lua_State *L, const TValue *o) {
@@ -842,7 +834,7 @@ l_noret lua_State::toIntError(const TValue *p1, const TValue *p2) {
   lua_Integer temp;
   if (!tointegerns(p1, &temp))
     p2 = p1;
-  runError("number%s has no integer representation", varinfo(this, p2));
+  runError("number%s has no integer representation", varInfo(p2));
 }
 
 l_noret luaG_tointerror (lua_State *L, const TValue *p1, const TValue *p2) {
