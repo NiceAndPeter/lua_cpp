@@ -760,6 +760,18 @@ private:
 
   // Phase 2E: Friend function that needs access to API helper
   friend void lua_rotate(lua_State *L, int idx, int n);
+
+  // Phase 2F: API table access helpers (lapi.cpp)
+  int auxGetStr(const TValue *t, const char *k);
+  void auxSetStr(const TValue *t, const char *k);
+  void getGlobalTable(TValue *gt);
+
+  // Phase 2F: Friend functions that need access to table access helpers
+  friend int lua_getglobal(lua_State *L, const char *name);
+  friend int lua_getfield(lua_State *L, int idx, const char *k);
+  friend void lua_setglobal(lua_State *L, const char *name);
+  friend void lua_setfield(lua_State *L, int idx, const char *k);
+  friend int lua_load(lua_State *L, lua_Reader reader, void *data, const char *chunkname, const char *mode);
 };
 
 
