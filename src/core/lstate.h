@@ -714,6 +714,23 @@ private:
   void moveResults(StkId res, int nres, l_uint32 fwanted);
   CallInfo* prepareCallInfo(StkId func, unsigned status, StkId top);
   int preCallC(StkId func, unsigned status, lua_CFunction f);
+
+  // Phase 2B: State management helpers (lstate.cpp)
+  void freeCI();
+  void resetCI();
+  void stack_init(lua_State *L);
+  void freestack();
+  void preinit_thread(global_State *g);
+  void close_state();
+  void init_registry(global_State *g);
+
+  // Phase 2B: Friend functions that need access to private state management methods
+  friend void f_luaopen(lua_State *L, void *ud);
+  friend lua_State* lua_newthread(lua_State *L);
+  friend lua_State* lua_newstate(lua_Alloc f, void *ud, unsigned seed);
+  friend void lua_close(lua_State *L);
+  friend void luaE_freethread(lua_State *L, lua_State *L1);
+  friend TStatus luaE_resetthread(lua_State *L, TStatus status);
 };
 
 

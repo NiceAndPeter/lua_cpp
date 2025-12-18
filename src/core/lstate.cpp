@@ -98,14 +98,14 @@ CallInfo *luaE_extendCI (lua_State *L) {
 /*
 ** free all CallInfo structures not in use by a thread
 */
-static void freeCI (lua_State *L) {
-  CallInfo *ci = L->getCI();
-  CallInfo *next = ci->getNext();
-  ci->setNext(nullptr);
-  while ((ci = next) != nullptr) {
-    next = ci->getNext();
-    luaM_free(L, ci);
-    L->getNumberOfCallInfosRef()--;
+void lua_State::freeCI() {
+  CallInfo *callInfo = getCI();
+  CallInfo *nextCallInfo = callInfo->getNext();
+  callInfo->setNext(nullptr);
+  while ((callInfo = nextCallInfo) != nullptr) {
+    nextCallInfo = callInfo->getNext();
+    luaM_free(this, callInfo);
+    getNumberOfCallInfosRef()--;
   }
 }
 
@@ -156,67 +156,68 @@ LUAI_FUNC void luaE_incCstack (lua_State *L) {
 }
 
 
-static void resetCI (lua_State *L) {
-  CallInfo *ci = L->setCI(L->getBaseCI());
-  ci->funcRef().p = L->getStack().p;
-  setnilvalue(s2v(ci->funcRef().p));  /* 'function' entry for basic 'ci' */
-  ci->topRef().p = ci->funcRef().p + 1 + LUA_MINSTACK;  /* +1 for 'function' entry */
-  ci->setK(nullptr);
-  ci->setCallStatus(CIST_C);
-  L->setStatus(LUA_OK);
-  L->setErrFunc(0);  /* stack unwind can "throw away" the error function */
+void lua_State::resetCI() {
+  CallInfo *callInfo = setCI(getBaseCI());
+  callInfo->funcRef().p = getStack().p;
+  setnilvalue(s2v(callInfo->funcRef().p));  /* 'function' entry for basic 'ci' */
+  callInfo->topRef().p = callInfo->funcRef().p + 1 + LUA_MINSTACK;  /* +1 for 'function' entry */
+  callInfo->setK(nullptr);
+  callInfo->setCallStatus(CIST_C);
+  setStatus(LUA_OK);
+  setErrFunc(0);  /* stack unwind can "throw away" the error function */
 }
 
 
-static void stack_init (lua_State *L1, lua_State *L) {
+void lua_State::stack_init(lua_State *L) {
   /* initialize stack array via LuaStack subsystem */
-  L1->getStackSubsystem().init(L);
+  getStackSubsystem().init(L);
   /* initialize first ci */
-  resetCI(L1);
-  L1->getStackSubsystem().setTopPtr(L1->getStack().p + 1);  /* +1 for 'function' entry */
+  resetCI();
+  getStackSubsystem().setTopPtr(getStack().p + 1);  /* +1 for 'function' entry */
 }
 
 
-static void freestack (lua_State *L) {
-  L->setCI(L->getBaseCI());  /* free the entire 'ci' list */
-  freeCI(L);
-  lua_assert(L->getNumberOfCallInfos() == 0);
+void lua_State::freestack() {
+  setCI(getBaseCI());  /* free the entire 'ci' list */
+  freeCI();
+  lua_assert(getNumberOfCallInfos() == 0);
   /* free stack via LuaStack subsystem */
-  L->getStackSubsystem().free(L);
+  getStackSubsystem().free(this);
 }
 
 
 /*
 ** Create registry table and its predefined values
 */
-static void init_registry (lua_State *L, global_State *g) {
+void lua_State::init_registry(global_State *g) {
   /* create registry */
   TValue aux;
-  Table *registry = Table::create(L);
-  sethvalue(L, g->getRegistry(), registry);
-  registry->resize(L, LUA_RIDX_LAST, 0);
+  Table *registry = Table::create(this);
+  sethvalue(this, g->getRegistry(), registry);
+  registry->resize(this, LUA_RIDX_LAST, 0);
   /* registry[1] = false */
   setbfvalue(&aux);
-  registry->setInt(L, 1, &aux);
+  registry->setInt(this, 1, &aux);
   /* registry[LUA_RIDX_MAINTHREAD] = L */
-  setthvalue(L, &aux, L);
-  registry->setInt(L, LUA_RIDX_MAINTHREAD, &aux);
+  setthvalue(this, &aux, this);
+  registry->setInt(this, LUA_RIDX_MAINTHREAD, &aux);
   /* registry[LUA_RIDX_GLOBALS] = new table (table of globals) */
-  sethvalue(L, &aux, Table::create(L));
-  registry->setInt(L, LUA_RIDX_GLOBALS, &aux);
+  sethvalue(this, &aux, Table::create(this));
+  registry->setInt(this, LUA_RIDX_GLOBALS, &aux);
 }
 
 
 /*
 ** open parts of the state that may cause memory-allocation errors.
+** Phase 2B: Friend function (callback needs to access private methods)
 */
-static void f_luaopen (lua_State *L, void *ud) {
+void f_luaopen(lua_State *L, void *ud) {
   global_State *g = G(L);
   UNUSED(ud);
-  stack_init(L, L);  /* init stack */
+  L->stack_init(L);  /* init stack */
   // Phase 122: Allocate VirtualMachine (after stack, as VM may use stack operations)
   L->initVM();
-  init_registry(L, g);
+  L->init_registry(g);
   TString::init(L);
   luaT_init(L);
   luaX_init(L);
@@ -233,11 +234,11 @@ static void f_luaopen (lua_State *L, void *ud) {
 ** IMPORTANT: GC fields (next, tt, marked) must be set by caller BEFORE
 ** calling this function. The init() method preserves them.
 */
-static void preinit_thread (lua_State *L, global_State *g) {
-  L->init(g);  // Initialize lua_State fields (preserves GC fields)
-  L->resetHookCount();   // Initialize hookcount = basehookcount
-  L->getBaseCI()->setPrevious(nullptr);
-  L->getBaseCI()->setNext(nullptr);
+void lua_State::preinit_thread(global_State *g) {
+  init(g);  // Initialize lua_State fields (preserves GC fields)
+  resetHookCount();   // Initialize hookcount = basehookcount
+  getBaseCI()->setPrevious(nullptr);
+  getBaseCI()->setNext(nullptr);
 }
 
 
@@ -272,20 +273,20 @@ lu_mem luaE_threadsize (lua_State *L) {
 }
 
 
-static void close_state (lua_State *L) {
-  global_State *g = G(L);
+void lua_State::close_state() {
+  global_State *g = G(this);
   if (!g->isComplete())  /* closing a partially built state? */
-    luaC_freeallobjects(*L);  /* just collect its objects */
+    luaC_freeallobjects(*this);  /* just collect its objects */
   else {  /* closing a fully built state */
-    resetCI(L);
-    (void)L->closeProtected( 1, LUA_OK);  /* close all upvalues - ignore status during shutdown */
-    L->getStackSubsystem().setTopPtr(L->getStack().p + 1);  /* empty the stack to run finalizers */
-    luaC_freeallobjects(*L);  /* collect all objects */
-    luai_userstateclose(L);
+    resetCI();
+    (void)closeProtected( 1, LUA_OK);  /* close all upvalues - ignore status during shutdown */
+    getStackSubsystem().setTopPtr(getStack().p + 1);  /* empty the stack to run finalizers */
+    luaC_freeallobjects(*this);  /* collect all objects */
+    luai_userstateclose(this);
   }
-  luaM_freearray(L, G(L)->getStringTable()->getHash(), cast_sizet(G(L)->getStringTable()->getSize()));
-  L->closeVM();  // Phase 122: Free VirtualMachine before freeing stack
-  freestack(L);
+  luaM_freearray(this, G(this)->getStringTable()->getHash(), cast_sizet(G(this)->getStringTable()->getSize()));
+  closeVM();  // Phase 122: Free VirtualMachine before freeing stack
+  freestack();
   lua_assert(g->getTotalBytes() == sizeof(global_State));
   (*g->getFrealloc())(g->getUd(), g, sizeof(global_State), 0);  /* free main block */
 }
@@ -303,7 +304,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   /* anchor it on L stack */
   setthvalue2s(L, L->getTop().p, L1);
   api_incr_top(L);
-  preinit_thread(L1, g);
+  L1->preinit_thread(g);
   L1->setHookMask(L->getHookMask());
   L1->setBaseHookCount(L->getBaseHookCount());
   L1->setHook(L->getHook());
@@ -312,7 +313,7 @@ LUA_API lua_State *lua_newthread (lua_State *L) {
   memcpy(lua_getextraspace(L1), lua_getextraspace(mainthread(g)),
          LUA_EXTRASPACE);
   luai_userstatethread(L, L1);
-  stack_init(L1, L);  /* init stack */
+  L1->stack_init(L);  /* init stack */
   L1->initVM();  // Phase 122: Allocate VirtualMachine for new thread
   lua_unlock(L);
   return L1;
@@ -325,13 +326,13 @@ void luaE_freethread (lua_State *L, lua_State *L1) {
   lua_assert(L1->getOpenUpval() == nullptr);
   luai_userstatefree(L, L1);
   L1->closeVM();  // Phase 122: Free VirtualMachine before freeing stack
-  freestack(L1);
+  L1->freestack();
   luaM_free(L, l);
 }
 
 
 TStatus luaE_resetthread (lua_State *L, TStatus status) {
-  resetCI(L);
+  L->resetCI();
   if (status == LUA_YIELD)
     status = LUA_OK;
   status = L->closeProtected( 1, status);
@@ -366,7 +367,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   L->setType(ctb(LuaT::THREAD));
   g->setCurrentWhite(bitmask(WHITE0BIT));
   L->setMarked(g->getWhite());
-  preinit_thread(L, g);
+  L->preinit_thread(g);
   g->setAllGC(obj2gco(L));  /* by now, only object is the main thread */
   L->setNext(nullptr);
   incnny(L);  /* main thread is always non yieldable */
@@ -407,7 +408,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
   }
   if (L->rawRunProtected( f_luaopen, nullptr) != LUA_OK) {
     /* memory allocation error: free partial state */
-    close_state(L);
+    L->close_state();
     L = nullptr;
   }
   return L;
@@ -417,7 +418,7 @@ LUA_API lua_State *lua_newstate (lua_Alloc f, void *ud, unsigned seed) {
 LUA_API void lua_close (lua_State *L) {
   lua_lock(L);
   L = mainthread(G(L));  /* only the main thread can be closed */
-  close_state(L);
+  L->close_state();
 }
 
 
