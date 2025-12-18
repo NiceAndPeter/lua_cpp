@@ -731,6 +731,16 @@ private:
   friend void lua_close(lua_State *L);
   friend void luaE_freethread(lua_State *L, lua_State *L1);
   friend TStatus luaE_resetthread(lua_State *L, TStatus status);
+
+  // Phase 2C: TBC (to-be-closed) variable helpers (lfunc.cpp)
+  void callCloseMethod(TValue *obj, TValue *err, int yy);
+  void checkCloseMethod(StkId level);
+  void prepCallCloseMethod(StkId level, TStatus closeStatus, int yy);
+  void popTBCList();
+
+  // Phase 2C: Friend functions that need access to TBC private methods
+  friend void luaF_newtbcupval(lua_State *L, StkId level);
+  friend StkId luaF_close(lua_State *L, StkId level, TStatus status, int yy);
 };
 
 

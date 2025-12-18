@@ -124,19 +124,19 @@ UpVal *luaF_findupval (lua_State *L, StkId level) {
 ** boolean 'yy' controls whether the call is yieldable.
 ** (This function assumes EXTRA_STACK.)
 */
-static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
-  StkId top = L->getTop().p;
+void lua_State::callCloseMethod(TValue *obj, TValue *err, int yy) {
+  StkId top = getTop().p;
   StkId func = top;
-  const TValue *metamethod = luaT_gettmbyobj(L, obj, TMS::TM_CLOSE);
-  L->getStackSubsystem().setSlot(top++, metamethod);  /* will call metamethod... */
-  L->getStackSubsystem().setSlot(top++, obj);  /* with 'self' as the 1st argument */
+  const TValue *metamethod = luaT_gettmbyobj(this, obj, TMS::TM_CLOSE);
+  getStackSubsystem().setSlot(top++, metamethod);  /* will call metamethod... */
+  getStackSubsystem().setSlot(top++, obj);  /* with 'self' as the 1st argument */
   if (err != nullptr)  /* if there was an error... */
-    L->getStackSubsystem().setSlot(top++, err);  /* then error object will be 2nd argument */
-  L->getStackSubsystem().setTopPtr(top);  /* add function and arguments */
+    getStackSubsystem().setSlot(top++, err);  /* then error object will be 2nd argument */
+  getStackSubsystem().setTopPtr(top);  /* add function and arguments */
   if (yy)
-    L->call( func, 0);
+    call(func, 0);
   else
-    L->callNoYield( func, 0);
+    callNoYield(func, 0);
 }
 
 
@@ -144,13 +144,13 @@ static void callclosemethod (lua_State *L, TValue *obj, TValue *err, int yy) {
 ** Check whether object at given level has a close metamethod and raise
 ** an error if not.
 */
-static void checkclosemth (lua_State *L, StkId level) {
-  const TValue *metamethod = luaT_gettmbyobj(L, s2v(level), TMS::TM_CLOSE);
+void lua_State::checkCloseMethod(StkId level) {
+  const TValue *metamethod = luaT_gettmbyobj(this, s2v(level), TMS::TM_CLOSE);
   if (ttisnil(metamethod)) {  /* no metamethod? */
-    int idx = cast_int(level - L->getCI()->funcRef().p);  /* variable index */
-    const char *vname = luaG_findlocal(L, L->getCI(), idx, nullptr);
+    int idx = cast_int(level - getCI()->funcRef().p);  /* variable index */
+    const char *vname = luaG_findlocal(this, getCI(), idx, nullptr);
     if (vname == nullptr) vname = "?";
-    luaG_runerror(L, "variable '%s' got a non-closable value", vname);
+    luaG_runerror(this, "variable '%s' got a non-closable value", vname);
   }
 }
 
@@ -162,23 +162,22 @@ static void checkclosemth (lua_State *L, StkId level) {
 ** the 'level' of the upvalue being closed, as everything after that
 ** won't be used again.
 */
-static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
-                                            int yy) {
+void lua_State::prepCallCloseMethod(StkId level, TStatus closeStatus, int yy) {
   TValue *uv = s2v(level);  /* value being closed */
   TValue *errobj;
-  switch (status) {
+  switch (closeStatus) {
     case LUA_OK:
-      L->getStackSubsystem().setTopPtr(level + 1);  /* call will be at this level */
+      getStackSubsystem().setTopPtr(level + 1);  /* call will be at this level */
       /* FALLTHROUGH */
     case CLOSEKTOP:  /* don't need to change top */
       errobj = nullptr;  /* no error object */
       break;
     default:  /* 'luaD_seterrorobj' will set top to level + 2 */
       errobj = s2v(level + 1);  /* error object goes after 'uv' */
-      L->setErrorObj( status, level + 1);  /* set error object */
+      setErrorObj(closeStatus, level + 1);  /* set error object */
       break;
   }
-  callclosemethod(L, uv, errobj, yy);
+  callCloseMethod(uv, errobj, yy);
 }
 
 
@@ -193,7 +192,7 @@ void luaF_newtbcupval (lua_State *L, StkId level) {
   lua_assert(level > L->getTbclist().p);
   if (l_isfalse(s2v(level)))
     return;  /* false doesn't need to be closed */
-  checkclosemth(L, level);  /* value must have a close method */
+  L->checkCloseMethod(level);  /* value must have a close method */
   while (cast_uint(level - L->getTbclist().p) > MAXDELTA) {
     L->getTbclist().p += MAXDELTA;  /* create a dummy node at maximum delta */
     L->getTbclist().p->tbclist.delta = 0;
@@ -237,13 +236,13 @@ void luaF_closeupval (lua_State *L, StkId level) {
 /*
 ** Remove first element from the tbclist plus its dummy nodes.
 */
-static void poptbclist (lua_State *L) {
-  StkId tbc = L->getTbclist().p;
+void lua_State::popTBCList() {
+  StkId tbc = getTbclist().p;
   lua_assert(tbc->tbclist.delta > 0);  /* first element cannot be dummy */
   tbc -= tbc->tbclist.delta;
-  while (tbc > L->getStack().p && tbc->tbclist.delta == 0)
+  while (tbc > getStack().p && tbc->tbclist.delta == 0)
     tbc -= MAXDELTA;  /* remove dummy nodes */
-  L->getTbclist().p = tbc;
+  getTbclist().p = tbc;
 }
 
 
@@ -256,8 +255,8 @@ StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy) {
   luaF_closeupval(L, level);  /* first, close the upvalues */
   while (L->getTbclist().p >= level) {  /* traverse tbc's down to that level */
     StkId tbc = L->getTbclist().p;  /* get variable index */
-    poptbclist(L);  /* remove it from list */
-    prepcallclosemth(L, tbc, status, yy);  /* close variable */
+    L->popTBCList();  /* remove it from list */
+    L->prepCallCloseMethod(tbc, status, yy);  /* close variable */
     level = L->restoreStack(levelrel);
   }
   return level;
