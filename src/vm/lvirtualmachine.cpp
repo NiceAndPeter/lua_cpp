@@ -1,10 +1,8 @@
 /*
-** $Id: lvirtualmachine.cpp $
 ** Lua Virtual Machine - Implementation
 ** See Copyright Notice in lua.h
 */
 
-#define lvirtualmachine_cpp
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -26,7 +24,7 @@
 #include "lvm.h"
 
 /*
-** Phase 122 Part 2: Full implementations moved from luaV_* functions
+** Full implementations moved from the former luaV_* functions.
 */
 
 // Helper functions for execute() - copied from lvm.cpp since they're needed here now

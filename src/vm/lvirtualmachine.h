@@ -1,5 +1,4 @@
 /*
-** $Id: lvirtualmachine.h $
 ** Lua Virtual Machine - Encapsulation of VM operations
 ** See Copyright Notice in lua.h
 */

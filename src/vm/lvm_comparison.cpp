@@ -1,10 +1,8 @@
 /*
-** $Id: lvm_comparison.c $
 ** Comparison operations for Lua VM
 ** See Copyright Notice in lua.h
 */
 
-#define lvm_c
 #define LUA_CORE
 
 #include "lprefix.h"

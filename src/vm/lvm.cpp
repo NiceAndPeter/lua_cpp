@@ -1,10 +1,8 @@
 /*
-** $Id: lvm.c $
 ** Lua virtual machine
 ** See Copyright Notice in lua.h
 */
 
-#define lvm_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -395,8 +393,7 @@ inline void luai_threadyield(lua_State* L) noexcept {
 
 
 /*
-** lua_State VM operation methods (now delegate to VirtualMachine class)
-** Updated in Phase 122 Part 2 to use VirtualMachine instead of luaV_* functions
+** lua_State VM operation methods (delegate to the VirtualMachine class)
 */
 
 void lua_State::execute(CallInfo *callinfo) {
