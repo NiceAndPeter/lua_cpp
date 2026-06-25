@@ -1,10 +1,8 @@
 /*
-** $Id: loslib.c $
 ** Standard Operating System library
 ** See Copyright Notice in lua.h
 */
 
-#define loslib_c
 #define LUA_LIB
 
 #include "lprefix.h"

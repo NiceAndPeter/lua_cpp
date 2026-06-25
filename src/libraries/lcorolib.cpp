@@ -1,10 +1,8 @@
 /*
-** $Id: lcorolib.c $
 ** Coroutine Library
 ** See Copyright Notice in lua.h
 */
 
-#define lcorolib_c
 #define LUA_LIB
 
 #include "lprefix.h"

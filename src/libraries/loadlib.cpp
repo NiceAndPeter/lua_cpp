@@ -1,5 +1,4 @@
 /*
-** $Id: loadlib.c $
 ** Dynamic library loader for Lua
 ** See Copyright Notice in lua.h
 **
@@ -8,7 +7,6 @@
 ** systems.
 */
 
-#define loadlib_c
 #define LUA_LIB
 
 #include "lprefix.h"

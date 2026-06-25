@@ -1,10 +1,8 @@
 /*
-** $Id: lmathlib.c $
 ** Standard mathematical library
 ** See Copyright Notice in lua.h
 */
 
-#define lmathlib_c
 #define LUA_LIB
 
 #include "lprefix.h"
