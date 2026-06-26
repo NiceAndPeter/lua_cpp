@@ -185,8 +185,8 @@ LUA_API int lua_getstack (lua_State *L, int level, lua_Debug *ar) {
 }
 
 
-static const char *upvalname (const Proto *p, int uv) {
-  TString *s = check_exp(uv < p->getUpvaluesSize(), p->getUpvalues()[uv].getName());
+static const char *upvalname (const Proto *p, int upvalue) {
+  TString *s = check_exp(upvalue < p->getUpvaluesSize(), p->getUpvalues()[upvalue].getName());
   if (s == nullptr) return "?";
   else return getStringContents(s);
 }

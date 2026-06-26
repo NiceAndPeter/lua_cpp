@@ -481,9 +481,9 @@ void VirtualMachine::execute(CallInfo *callInfo) {
       }
       case OP_SETUPVAL: {
         auto ra = getRegisterA(i);
-        auto *uv = currentClosure->getUpval(InstructionView(i).b());
-        *uv->getVP() = *s2v(ra);
-        luaC_barrier(L, uv, s2v(ra));
+        auto *upvalue = currentClosure->getUpval(InstructionView(i).b());
+        *upvalue->getVP() = *s2v(ra);
+        luaC_barrier(L, upvalue, s2v(ra));
         break;
       }
       case OP_GETTABUP: {

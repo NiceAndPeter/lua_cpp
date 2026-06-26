@@ -216,10 +216,10 @@ static void dumpProtos (DumpState *D, const Proto& f) {
 static void dumpUpvalues (DumpState *D, const Proto& f) {
   auto upvalues = f.getUpvaluesSpan();
   dumpInt(D, static_cast<int>(upvalues.size()));
-  for (const auto& uv : upvalues) {
-    dumpByte(D, uv.getInStackRaw());
-    dumpByte(D, uv.getIndex());
-    dumpByte(D, uv.getKind());
+  for (const auto& upvalue : upvalues) {
+    dumpByte(D, upvalue.getInStackRaw());
+    dumpByte(D, upvalue.getIndex());
+    dumpByte(D, upvalue.getKind());
   }
 }
 
@@ -250,8 +250,8 @@ static void dumpDebug (DumpState *D, const Proto& f) {
   auto upvalues = f.getUpvaluesSpan();
   n = (D->strip) ? 0 : static_cast<int>(upvalues.size());
   dumpInt(D, n);
-  for (const auto& uv : upvalues.subspan(0, static_cast<size_t>(n))) {
-    dumpString(D, uv.getName());
+  for (const auto& upvalue : upvalues.subspan(0, static_cast<size_t>(n))) {
+    dumpString(D, upvalue.getName());
   }
 }
 

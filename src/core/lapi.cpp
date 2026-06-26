@@ -761,7 +761,7 @@ LUA_API int lua_getiuservalue (lua_State *L, int idx, int n) {
     t = LUA_TNONE;
   }
   else {
-    L->getStackSubsystem().setSlot(L->getTop().p, &uvalue(o)->getUserValue(n - 1)->uv);
+    L->getStackSubsystem().setSlot(L->getTop().p, &uvalue(o)->getUserValue(n - 1)->value);
     t = ttype(s2v(L->getTop().p));
   }
   api_incr_top(L);
@@ -924,7 +924,7 @@ LUA_API int lua_setiuservalue (lua_State *L, int idx, int n) {
   if (!(cast_uint(n) - 1u < cast_uint(uvalue(o)->getNumUserValues())))
     res = 0;  // 'n' not in [1, uvalue(o)->getNumUserValues()]
   else {
-    uvalue(o)->getUserValue(n - 1)->uv = *s2v(L->getTop().p - 1);
+    uvalue(o)->getUserValue(n - 1)->value = *s2v(L->getTop().p - 1);
     luaC_barrierback(L, gcvalue(o), s2v(L->getTop().p - 1));
     res = 1;
   }

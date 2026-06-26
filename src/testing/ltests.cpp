@@ -437,7 +437,7 @@ static void checkudata (GlobalState *g, Udata *u) {
   GCObject *hgc = obj2gco(u);
   checkobjrefN(g, hgc, u->getMetatable());
   for (i = 0; i < u->getNumUserValues(); i++)
-    checkvalref(g, hgc, &u->getUserValue(i)->uv);
+    checkvalref(g, hgc, &u->getUserValue(i)->value);
 }
 
 
@@ -470,11 +470,11 @@ static void checkLclosure (GlobalState *g, LClosure *cl) {
   int i;
   checkobjrefN(g, clgc, cl->getProto());
   for (i=0; i<cl->getNumUpvalues(); i++) {
-    UpVal *uv = cl->getUpval(i);
-    if (uv) {
-      checkobjrefN(g, clgc, uv);
-      if (!uv->isOpen())
-        checkvalref(g, obj2gco(uv), uv->getVP());
+    UpVal *upvalue = cl->getUpval(i);
+    if (upvalue) {
+      checkobjrefN(g, clgc, upvalue);
+      if (!upvalue->isOpen())
+        checkvalref(g, obj2gco(upvalue), upvalue->getVP());
     }
   }
 }
@@ -496,14 +496,14 @@ static int lua_checkpc (CallInfo *callInfo) {
 static void check_stack (GlobalState *g, lua_State *L1) {
   StkId o;
   CallInfo *callInfo;
-  UpVal *uv;
+  UpVal *upvalue;
   assert(!isdead(g, L1));
   if (L1->getStack().p == nullptr) {  // incomplete thread?
     assert(L1->getOpenUpval() == nullptr && L1->getCI() == nullptr);
     return;
   }
-  for (uv = L1->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
-    assert(uv->isOpen());  // must be open
+  for (upvalue = L1->getOpenUpval(); upvalue != nullptr; upvalue = upvalue->getOpenNext())
+    assert(upvalue->isOpen());  // must be open
   assert(L1->getTop().p <= L1->getStackLast().p);
   assert(L1->getTbclist().p <= L1->getTop().p);
   for (callInfo = L1->getCI(); callInfo != nullptr; callInfo = callInfo->getPrevious()) {

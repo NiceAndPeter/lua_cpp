@@ -136,9 +136,9 @@ void GCCore::clearkey(Node* n) {
 ** Free an upvalue object.
 ** Unlinks open upvalues and calls destructor before freeing.
 */
-void GCCore::freeupval(lua_State* L, UpVal* uv) {
-    if (uv->isOpen())
-        luaF_unlinkupval(uv);
-    uv->~UpVal();  // Call destructor
-    luaM_free(L, uv);
+void GCCore::freeupval(lua_State* L, UpVal* upvalue) {
+    if (upvalue->isOpen())
+        luaF_unlinkupval(upvalue);
+    upvalue->~UpVal();  // Call destructor
+    luaM_free(L, upvalue);
 }

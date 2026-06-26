@@ -526,7 +526,7 @@ public:
 
   UpVal* getOpenUpval() noexcept { return openupval; }
   const UpVal* getOpenUpval() const noexcept { return openupval; }
-  void setOpenUpval(UpVal* uv) noexcept { openupval = uv; }
+  void setOpenUpval(UpVal* upvalue) noexcept { openupval = upvalue; }
   UpVal** getOpenUpvalPtr() noexcept { return &openupval; }
 
   GCObject* getGclist() noexcept { return gclist; }

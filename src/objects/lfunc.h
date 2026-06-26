@@ -197,7 +197,7 @@ public:
   void setNumUpvalues(lu_byte n) noexcept { numberOfUpvalues = n; }
 
   UpVal* getUpval(int idx) const noexcept { return upvals[idx]; }
-  void setUpval(int idx, UpVal* uv) noexcept { upvals[idx] = uv; }
+  void setUpval(int idx, UpVal* upvalue) noexcept { upvals[idx] = upvalue; }
   UpVal** getUpvalPtr(int idx) noexcept { return &upvals[idx]; }
 
   GCObject* getGclist() const noexcept { return gclist; }
@@ -259,7 +259,7 @@ inline constexpr int CLOSEKTOP = (LUA_ERRERR + 1);
 LUAI_FUNC void luaF_newtbcupval (lua_State *L, StkId level);
 LUAI_FUNC void luaF_closeupval (lua_State *L, StkId level);
 [[nodiscard]] LUAI_FUNC StkId luaF_close (lua_State *L, StkId level, TStatus status, int yy);
-LUAI_FUNC void luaF_unlinkupval (UpVal *uv);
+LUAI_FUNC void luaF_unlinkupval (UpVal *upvalue);
 [[nodiscard]] LUAI_FUNC lu_mem luaF_protosize (Proto *p);
 LUAI_FUNC void luaF_freeproto (lua_State *L, Proto *f);
 [[nodiscard]] LUAI_FUNC const char *luaF_getlocalname (const Proto *func, int local_number,

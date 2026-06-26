@@ -140,11 +140,11 @@ void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
   ncl->setProto(p);
   setclLvalue2s(this, ra, ncl);  // anchor new closure in stack
   int i = 0;
-  for (const auto& uv : upvaluesSpan) {  // fill in its upvalues
-    if (uv.isInStack())  // upvalue refers to local variable?
-      ncl->setUpval(i, luaF_findupval(this, base + uv.getIndex()));
+  for (const auto& upvalue : upvaluesSpan) {  // fill in its upvalues
+    if (upvalue.isInStack())  // upvalue refers to local variable?
+      ncl->setUpval(i, luaF_findupval(this, base + upvalue.getIndex()));
     else  // get upvalue from enclosing function
-      ncl->setUpval(i, encup[uv.getIndex()]);
+      ncl->setUpval(i, encup[upvalue.getIndex()]);
     luaC_objbarrier(this, ncl, ncl->getUpval(i));
     i++;
   }

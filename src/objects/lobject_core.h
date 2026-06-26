@@ -353,7 +353,7 @@ constexpr void* pvalueraw(const Value& v) noexcept { return v.p; }
 
 // Ensures that addresses after this type are always fully aligned.
 typedef union UValue {
-  TValue uv;
+  TValue value;
   LUAI_MAXALIGN;  // ensures maximum alignment for udata bytes
 } UValue;
 
@@ -369,13 +369,13 @@ private:
   size_t len;  // number of bytes
   Table *metatable;
   GCObject *gclist;
-  UValue uv[1];  // user values
+  UValue userValues[1];  // user values
 
 public:
   // Constructor - initializes all fields to safe defaults
   Udata() noexcept
     : nuvalue(0), len(0), metatable(nullptr), gclist(nullptr) {
-    // Note: uv array will be initialized by caller if needed
+    // Note: userValues array will be initialized by caller if needed
   }
 
   // Destructor - trivial (GC handles deallocation)
@@ -406,14 +406,14 @@ public:
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
-  UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
-  const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
+  UValue* getUserValue(int idx) noexcept { return &userValues[idx]; }
+  const UValue* getUserValue(int idx) const noexcept { return &userValues[idx]; }
   // Note: getMemory() uses function udatamemoffset which requires Udata0 to be defined
   inline void* getMemory() noexcept;
   inline const void* getMemory() const noexcept;
 
   // Static method to compute UV offset (needed for udatamemoffset function)
-  static constexpr size_t uvOffset() noexcept { return offsetof(Udata, uv); }
+  static constexpr size_t uvOffset() noexcept { return offsetof(Udata, userValues); }
 };
 
 

@@ -64,12 +64,12 @@ void LClosure::initUpvals(lua_State* L) {
   int i;
   for (i = 0; i < numberOfUpvalues; i++) {
     // Use placement new - calls constructor (initializes to closed nil upvalue)
-    UpVal *uv = new (L, ctb(LuaT::UPVAL)) UpVal();
-    uv->setVP(uv->getValueSlot());  // make it closed
+    UpVal *upvalue = new (L, ctb(LuaT::UPVAL)) UpVal();
+    upvalue->setVP(upvalue->getValueSlot());  // make it closed
     // Constructor already sets value to nil, but keeping setnilvalue for clarity
-    setnilvalue(uv->getVP());
-    upvals[i] = uv;
-    luaC_objbarrier(L, this, uv);
+    setnilvalue(upvalue->getVP());
+    upvals[i] = upvalue;
+    luaC_objbarrier(L, this, upvalue);
   }
 }
 
@@ -80,19 +80,19 @@ void LClosure::initUpvals(lua_State* L) {
 **/
 static UpVal *newupval (lua_State *L, StkId level, UpVal **prev) {
   // Use placement new - calls constructor
-  UpVal *uv = new (L, ctb(LuaT::UPVAL)) UpVal();
+  UpVal *upvalue = new (L, ctb(LuaT::UPVAL)) UpVal();
   UpVal *next = *prev;
-  uv->setVP(s2v(level));  // current value lives in the stack
-  uv->setOpenNext(next);  // link it to list of open upvalues
-  uv->setOpenPrevious(prev);
+  upvalue->setVP(s2v(level));  // current value lives in the stack
+  upvalue->setOpenNext(next);  // link it to list of open upvalues
+  upvalue->setOpenPrevious(prev);
   if (next)
-    next->setOpenPrevious(uv->getOpenNextPtr());  // link next's previous to our next field
-  *prev = uv;
+    next->setOpenPrevious(upvalue->getOpenNextPtr());  // link next's previous to our next field
+  *prev = upvalue;
   if (!L->isInTwups()) {  // thread not in list of threads with upvalues?
     L->setTwups(G(L)->getTwups());  // link it to the list
     G(L)->setTwups(L);
   }
-  return uv;
+  return upvalue;
 }
 
 
@@ -160,7 +160,7 @@ static void checkclosemth (lua_State *L, StkId level) {
 */
 static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
                                             int yy) {
-  TValue *uv = s2v(level);  // value being closed
+  TValue *upvalue = s2v(level);  // value being closed
   TValue *errobj;
   switch (status) {
     case LUA_OK:
@@ -170,11 +170,11 @@ static void prepcallclosemth (lua_State *L, StkId level, TStatus status,
       errobj = nullptr;  // no error object
       break;
     default:  // 'luaD_seterrorobj' will set top to level + 2
-      errobj = s2v(level + 1);  // error object goes after 'uv'
+      errobj = s2v(level + 1);  // error object goes after 'upvalue'
       L->setErrorObj( status, level + 1);  // set error object
       break;
   }
-  callclosemethod(L, uv, errobj, yy);
+  callclosemethod(L, upvalue, errobj, yy);
 }
 
 
@@ -206,8 +206,8 @@ void UpVal::unlink() {
     getOpenNext()->setOpenPrevious(getOpenPrevious());
 }
 
-void luaF_unlinkupval (UpVal *uv) {
-  uv->unlink();
+void luaF_unlinkupval (UpVal *upvalue) {
+  upvalue->unlink();
 }
 
 
@@ -215,16 +215,16 @@ void luaF_unlinkupval (UpVal *uv) {
 ** Close all upvalues up to the given stack level.
 */
 void luaF_closeupval (lua_State *L, StkId level) {
-  UpVal *uv;
-  while ((uv = L->getOpenUpval()) != nullptr && uv->getLevel() >= level) {
-    TValue *slot = uv->getValueSlot();  // new position for value
-    lua_assert(uv->getLevel() < L->getTop().p);
-    luaF_unlinkupval(uv);  // remove upvalue from 'openupval' list
-    *slot = *uv->getVP();  /* move value to upvalue slot */
-    uv->setVP(slot);  // now current value lives here
-    if (!iswhite(uv)) {  // neither white nor dead?
-      nw2black(uv);  // closed upvalues cannot be gray
-      luaC_barrier(L, uv, slot);
+  UpVal *upvalue;
+  while ((upvalue = L->getOpenUpval()) != nullptr && upvalue->getLevel() >= level) {
+    TValue *slot = upvalue->getValueSlot();  // new position for value
+    lua_assert(upvalue->getLevel() < L->getTop().p);
+    luaF_unlinkupval(upvalue);  // remove upvalue from 'openupval' list
+    *slot = *upvalue->getVP();  /* move value to upvalue slot */
+    upvalue->setVP(slot);  // now current value lives here
+    if (!iswhite(upvalue)) {  // neither white nor dead?
+      nw2black(upvalue);  // closed upvalues cannot be gray
+      luaC_barrier(L, upvalue, slot);
     }
   }
 }

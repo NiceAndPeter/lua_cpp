@@ -254,12 +254,12 @@ static void reallymarkobject (GlobalState& g, GCObject *o) {
       break;
     }
     case static_cast<int>(ctb(LuaT::UPVAL)): {
-      UpVal *uv = gco2upv(o);
-      if (uv->isOpen())
-        set2gray(uv);  // open upvalues are kept gray
+      UpVal *upvalue = gco2upv(o);
+      if (upvalue->isOpen())
+        set2gray(upvalue);  // open upvalues are kept gray
       else
-        set2black(uv);  // closed upvalues are visited here
-      markvalue(g, uv->getVP());  // mark its content
+        set2black(upvalue);  // closed upvalues are visited here
+      markvalue(g, upvalue->getVP());  // mark its content
       break;
     }
     case static_cast<int>(ctb(LuaT::USERDATA)): {
@@ -365,8 +365,8 @@ void propagateall (GlobalState& g) {
 
 
 // Wrapper for GCCore::freeupval - now in gc_core module
-static void freeupval(lua_State* L, UpVal* uv) {
-  GCCore::freeupval(L, uv);
+static void freeupval(lua_State* L, UpVal* upvalue) {
+  GCCore::freeupval(L, upvalue);
 }
 
 
@@ -383,8 +383,8 @@ void freeobj (lua_State& L, GCObject *o) {
       break;
     }
     case static_cast<int>(ctb(LuaT::UPVAL)): {
-      UpVal *uv = gco2upv(o);
-      freeupval(&L, uv);  // Note: freeupval calls destructor internally
+      UpVal *upvalue = gco2upv(o);
+      freeupval(&L, upvalue);  // Note: freeupval calls destructor internally
       break;
     }
     case static_cast<int>(ctb(LuaT::LCL)): {

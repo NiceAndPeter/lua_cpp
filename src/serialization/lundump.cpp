@@ -288,13 +288,13 @@ static void loadUpvalues (LoadState *S, Proto& f) {
   f.setUpvaluesSize(n);
   auto upvaluesSpan = f.getUpvaluesSpan();
   // make array valid for GC
-  for (Upvaldesc& uv : upvaluesSpan) {
-    uv.setName(nullptr);
+  for (Upvaldesc& upvalue : upvaluesSpan) {
+    upvalue.setName(nullptr);
   }
-  for (Upvaldesc& uv : upvaluesSpan) {  // following calls can raise errors
-    uv.setInStack(loadByte(S));
-    uv.setIndex(loadByte(S));
-    uv.setKind(loadByte(S));
+  for (Upvaldesc& upvalue : upvaluesSpan) {  // following calls can raise errors
+    upvalue.setInStack(loadByte(S));
+    upvalue.setIndex(loadByte(S));
+    upvalue.setKind(loadByte(S));
   }
 }
 
@@ -342,8 +342,8 @@ static void loadDebug (LoadState *S, Proto& f) {
   if (n != 0) {  // does it have debug information?
     n = f.getUpvaluesSize();  // must be this many
     auto upvaluesSpan = f.getUpvaluesSpan();
-    for (Upvaldesc& uv : upvaluesSpan)
-      loadString(S, f, uv.getNamePtr());
+    for (Upvaldesc& upvalue : upvaluesSpan)
+      loadString(S, f, upvalue.getNamePtr());
   }
 }
 

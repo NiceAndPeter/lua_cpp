@@ -314,7 +314,7 @@ public:
   void setCode(Instruction* c) noexcept { code = c; }
   void setConstants(TValue* constants) noexcept { k = constants; }
   void setProtos(Proto** protos) noexcept { p = protos; }
-  void setUpvalues(Upvaldesc* uv) noexcept { upvalues = uv; }
+  void setUpvalues(Upvaldesc* upvalue) noexcept { upvalues = upvalue; }
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
 
   // Delegating setters for ProtoDebugInfo

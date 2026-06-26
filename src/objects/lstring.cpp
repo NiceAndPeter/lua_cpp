@@ -282,7 +282,7 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
 
   // Manually initialize fields (can't use constructor reliably for variable-size objects)
   // For Udata0 (nuvalue==0): only has nuvalue, len, metatable, bindata (NO gclist!)
-  // For Udata (nuvalue>0): has nuvalue, len, metatable, gclist, uv[]
+  // For Udata (nuvalue>0): has nuvalue, len, metatable, gclist, upvalue[]
   u->setNumUserValues(nuvalue);
   u->setLen(s);
   u->setMetatable(nullptr);
@@ -293,7 +293,7 @@ Udata *luaS_newudata (lua_State *L, size_t s, unsigned short nuvalue) {
 
   // Initialize user values to nil
   for (int i = 0; i < nuvalue; i++)
-    setnilvalue(&u->getUserValue(i)->uv);
+    setnilvalue(&u->getUserValue(i)->value);
   return u;
 }
 

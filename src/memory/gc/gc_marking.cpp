@@ -126,7 +126,7 @@ l_mem GCMarking::traverseudata(GlobalState& g, Udata* u) {
     int i;
     markobjectN(g, u->getMetatable());
     for (i = 0; i < u->getNumUserValues(); i++)
-        markvalue(g, &u->getUserValue(i)->uv);
+        markvalue(g, &u->getUserValue(i)->value);
     genlink(g, obj2gco(u));
     return 1 + u->getNumUserValues();
 }
@@ -166,8 +166,8 @@ l_mem GCMarking::traverseLclosure(GlobalState& g, LClosure* cl) {
     int i;
     markobjectN(g, cl->getProto());
     for (i = 0; i < cl->getNumUpvalues(); i++) {
-        UpVal* uv = cl->getUpval(i);
-        markobjectN(g, uv);
+        UpVal* upvalue = cl->getUpval(i);
+        markobjectN(g, upvalue);
     }
     return 1 + cl->getNumUpvalues();
 }
@@ -176,7 +176,7 @@ l_mem GCMarking::traverseLclosure(GlobalState& g, LClosure* cl) {
 ** Traverse a thread
 */
 l_mem GCMarking::traversethread(GlobalState& g, lua_State* th) {
-    UpVal* uv;
+    UpVal* upvalue;
     StkId o = th->getStack().p;
     if (isold(th) || g.getGCState() == GCState::Propagate)
         linkgclistThread(th, *g.getGrayAgainPtr());
@@ -186,8 +186,8 @@ l_mem GCMarking::traversethread(GlobalState& g, lua_State* th) {
                th->getOpenUpval() == nullptr || th->isInTwups());
     for (; o < th->getTop().p; o++)
         markvalue(g, s2v(o));
-    for (uv = th->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
-        markobject(g, uv);
+    for (upvalue = th->getOpenUpval(); upvalue != nullptr; upvalue = upvalue->getOpenNext())
+        markobject(g, upvalue);
     if (g.getGCState() == GCState::Atomic) {
         if (!g.getGCEmergency())
             th->shrinkStack();
@@ -221,12 +221,12 @@ void GCMarking::reallymarkobject(GlobalState& g, GCObject* o) {
             break;
         }
         case static_cast<int>(ctb(LuaT::UPVAL)): {
-            UpVal* uv = gco2upv(o);
-            if (uv->isOpen())
-                set2gray(uv);  // open upvalues kept gray
+            UpVal* upvalue = gco2upv(o);
+            if (upvalue->isOpen())
+                set2gray(upvalue);  // open upvalues kept gray
             else
-                set2black(uv);  // closed upvalues visited here
-            markvalue(g, uv->getVP());
+                set2black(upvalue);  // closed upvalues visited here
+            markvalue(g, upvalue->getVP());
             break;
         }
         case static_cast<int>(ctb(LuaT::USERDATA)): {
@@ -323,15 +323,15 @@ void GCMarking::remarkupvals(GlobalState& g) {
         if (!iswhite(thread) && thread->getOpenUpval() != nullptr)
             p = thread->getTwupsPtr();
         else {
-            UpVal* uv;
+            UpVal* upvalue;
             lua_assert(!isold(thread) || thread->getOpenUpval() == nullptr);
             *p = thread->getTwups();
             thread->setTwups(thread);  // mark out of list
-            for (uv = thread->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext()) {
-                lua_assert(getage(uv) <= getage(thread));
-                if (!iswhite(uv)) {
-                    lua_assert(uv->isOpen() && isgray(uv));
-                    markvalue(g, uv->getVP());
+            for (upvalue = thread->getOpenUpval(); upvalue != nullptr; upvalue = upvalue->getOpenNext()) {
+                lua_assert(getage(upvalue) <= getage(thread));
+                if (!iswhite(upvalue)) {
+                    lua_assert(upvalue->isOpen() && isgray(upvalue));
+                    markvalue(g, upvalue->getVP());
                 }
             }
         }
