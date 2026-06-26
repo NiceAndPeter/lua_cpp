@@ -194,6 +194,16 @@ public:
   friend bool operator<=(const TString& l, const TString& r) noexcept;
   friend bool operator==(const TString& l, const TString& r) noexcept;
   friend bool operator!=(const TString& l, const TString& r) noexcept;
+  friend struct TStringLayoutCheck;  // layout guard (offsetof needs private access)
+};
+
+// Layout guard: short strings store their data as an overlay that begins at
+// contentsOffset() (computed from a mirror struct). That offset must match where
+// the real 'contents' field sits, or short-string data and the long-string
+// 'contents' pointer would disagree if a field were ever added/reordered.
+struct TStringLayoutCheck {
+  static_assert(TString::contentsOffset() == offsetof(TString, contents),
+      "short-string overlay must start exactly at the 'contents' field");
 };
 
 
