@@ -85,6 +85,14 @@ typedef union {
   char padding[offsetof(Limbox_aux, follows_pNode)];
 } Limbox;
 
+// Layout guards for the single-block [Limbox][Node...] allocation (NodeArray):
+// the Node array placed right after a Limbox must stay aligned, and Limbox must
+// be able to hold its 'lastfree' pointer.
+static_assert(sizeof(Limbox) % alignof(Node) == 0,
+    "Node array placed after Limbox must remain correctly aligned");
+static_assert(sizeof(Limbox) >= sizeof(Node *),
+    "Limbox must be able to hold the 'lastfree' pointer");
+
 /*
 ** NodeArray: Zero-overhead wrapper for hash table node storage.
 ** Provides encapsulated access to nodes and optional Limbox metadata.

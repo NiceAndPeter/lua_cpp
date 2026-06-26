@@ -244,6 +244,15 @@ public:
   void checkFinalizer(lua_State* L, Table* mt);
 };
 
+// Layout guard: GCObject must occupy exactly two words and have NO tail padding
+// that a derived GC type could reuse for its first members. The allocator sets
+// 'tt'/'marked' before the derived constructor runs, so reusing the padding would
+// let that constructor clobber the GC header (the bug fixed by gcHeaderReserved_).
+static_assert(sizeof(GCObject) == 2 * sizeof(void*),
+    "GCObject must be exactly two words (no reusable tail padding) — see gcHeaderReserved_");
+static_assert(alignof(GCObject) == alignof(void*),
+    "GCObject alignment must match a pointer so the header sits at the object start");
+
 /*
 ** CRTP (Curiously Recurring Template Pattern) Base class for all GC-managed objects
 **
@@ -356,6 +365,11 @@ typedef union UValue {
   TValue value;
   LUAI_MAXALIGN;  // ensures maximum alignment for udata bytes
 } UValue;
+
+// Layout guard: a UValue must be able to hold and align a TValue (Udata stores
+// its user values as a UValue[] overlay; see Udata::userValues / uvOffset()).
+static_assert(sizeof(UValue) >= sizeof(TValue) && alignof(UValue) >= alignof(TValue),
+    "UValue must be able to hold and align a TValue");
 
 
 /*
