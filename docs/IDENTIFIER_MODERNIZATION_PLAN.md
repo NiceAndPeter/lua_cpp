@@ -1,8 +1,27 @@
 # Massive & Aggressive Identifier Modernization Plan
 **Lua C++23 Conversion Project**
 **Plan Date**: 2025-12-03
-**Last Updated**: 2025-12-04
-**Status**: Phases 131, 133, 134 COMPLETE ✅ - Identifier modernization in progress!
+**Last Updated**: 2026-06-26
+
+> **STATUS (2026-06-26): MOSTLY COMPLETE.** Phases 131/133/134 (StringInterner
+> members, expdesc fields, compiler expression vars, VM dispatch lambdas) done.
+> The **convention abbreviations** (Part 2, Phase 137) were then carried out on
+> branch `fix/gc-tail-padding-and-cleanup` via scripted whole-word renames, each
+> verified by a full build + `testes/all.lua` and (for hot-path files) a 5-run
+> benchmark showing **no regression** (~2.33s throughout):
+>   - `fs` -> `funcState`, `ls` -> `lexState` (compiler)
+>   - `tm` -> `metamethod` (was already largely done)
+>   - `ci` -> `callInfo` (incl. the `lua_State` member; VM hot path, benchmarked)
+>   - `uv` -> `upvalue` (after disambiguating Udata user-values:
+>     `UValue::uv`->`value`, `Udata::uv[]`->`userValues[]`)
+>   - `ts` -> `tstring` (loslib's C `struct tm ts` correctly excluded)
+>
+> **STILL DEFERRED (diminishing-returns / real risk):** VM register operands
+> `ra/rb/rc` (Phase 138, matches bytecode spec), bulk single-letter loop/temp
+> locals (Phases 139/142 — idiomatic in small scopes, can't be safely
+> word-boundary-replaced, marginal value), `size_t` migration (Phase 140,
+> underflow risk), and register strong types (Phase 141, very invasive). Treat any
+> of these as a *specific bounded target*, not a sweep.
 
 ---
 

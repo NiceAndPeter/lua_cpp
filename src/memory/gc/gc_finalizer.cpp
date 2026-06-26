@@ -1,10 +1,8 @@
 /*
-** $Id: gc_finalizer.cpp $
 ** Garbage Collector - Finalizer Module
 ** See Copyright Notice in lua.h
 */
 
-#define lgc_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -30,7 +28,7 @@
 ** - Finalization control (separatetobefnz, callallpendingfinalizers)
 */
 
-/* Note: maskcolors and color manipulation functions are now in lgc.h */
+// Note: maskcolors and color manipulation functions are now in lgc.h
 
 
 /*
@@ -43,7 +41,7 @@
 ** If possible, shrink string table.
 ** Called during finalization to optimize memory usage.
 */
-void GCFinalizer::checkSizes(lua_State* L, global_State& g) {
+void GCFinalizer::checkSizes(lua_State* L, GlobalState& g) {
     if (!g.getGCEmergency()) {
         if (g.getStringTable()->getNumElements() < g.getStringTable()->getSize() / 4)
             TString::resize(L, g.getStringTable()->getSize() / 2);
@@ -74,7 +72,7 @@ void GCFinalizer::checkpointer(GCObject** p, GCObject* o) {
 ** Correct pointers to objects inside 'allgc' list when
 ** object 'o' is being removed from the list.
 */
-void GCFinalizer::correctpointers(global_State& g, GCObject* o) {
+void GCFinalizer::correctpointers(GlobalState& g, GCObject* o) {
     checkpointer(g.getSurvivalPtr(), o);
     checkpointer(g.getOld1Ptr(), o);
     checkpointer(g.getReallyOldPtr(), o);
@@ -92,17 +90,17 @@ void GCFinalizer::correctpointers(global_State& g, GCObject* o) {
 ** Get the next udata to be finalized from the 'tobefnz' list, and
 ** link it back into the 'allgc' list.
 */
-GCObject* GCFinalizer::udata2finalize(global_State& g) {
-    GCObject* o = g.getToBeFnz();  /* get first element */
+GCObject* GCFinalizer::udata2finalize(GlobalState& g) {
+    GCObject* o = g.getToBeFnz();  // get first element
     lua_assert(tofinalize(o));
-    g.setToBeFnz(o->getNext());  /* remove it from 'tobefnz' list */
-    o->setNext(g.getAllGC());  /* return it to 'allgc' list */
+    g.setToBeFnz(o->getNext());  // remove it from 'tobefnz' list
+    o->setNext(g.getAllGC());  // return it to 'allgc' list
     g.setAllGC(o);
-    o->clearMarkedBit(FINALIZEDBIT);  /* object is "normal" again */
+    o->clearMarkedBit(FINALIZEDBIT);  // object is "normal" again
     if (g.isSweepPhase())
-        makewhite(&g, o);  /* "sweep" object */
+        makewhite(&g, o);  // "sweep" object
     else if (getage(o) == GCAge::Old1)
-        g.setFirstOld1(o);  /* it is the first OLD1 object in the list */
+        g.setFirstOld1(o);  // it is the first OLD1 object in the list
     return o;
 }
 
@@ -147,32 +145,32 @@ void GCFinalizer::dothecall(lua_State* L, void* ud) {
 ** again in the next GC cycle if it becomes unreachable again.
 */
 void GCFinalizer::GCTM(lua_State* L) {
-    global_State* g = G(L);
+    GlobalState* g = G(L);
     const TValue* metamethod;
     TValue v;
     lua_assert(!g->getGCEmergency());
     setgcovalue(L, &v, udata2finalize(*g));
     metamethod = luaT_gettmbyobj(L, &v, TMS::TM_GC);
 
-    if (!notm(metamethod)) {  /* is there a finalizer? */
+    if (!notm(metamethod)) {  // is there a finalizer?
         TStatus status;
         lu_byte oldah = L->getAllowHook();
         lu_byte oldgcstp = g->getGCStp();
-        g->setGCStp(oldgcstp | GCSTPGC);  /* avoid GC steps */
-        L->setAllowHook(0);  /* stop debug hooks during GC metamethod */
-        L->getStackSubsystem().setSlot(L->getTop().p, metamethod);  /* push finalizer... */
+        g->setGCStp(oldgcstp | GCSTPGC);  // avoid GC steps
+        L->setAllowHook(0);  // stop debug hooks during GC metamethod
+        L->getStackSubsystem().setSlot(L->getTop().p, metamethod);  // push finalizer...
         L->getStackSubsystem().push();
-        L->getStackSubsystem().setSlot(L->getTop().p, &v);  /* ... and its argument */
+        L->getStackSubsystem().setSlot(L->getTop().p, &v);  // ... and its argument
         L->getStackSubsystem().push();
-        L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  /* will run a finalizer */
+        L->getCI()->setCallStatus(L->getCI()->getCallStatus() | CIST_FIN);  // will run a finalizer
         status = L->pCall(dothecall, nullptr, L->saveStack(L->getTop().p - 2), 0);
-        L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  /* not running a finalizer anymore */
-        L->setAllowHook(oldah);  /* restore hooks */
-        g->setGCStp(oldgcstp);  /* restore state */
+        L->getCI()->setCallStatus(L->getCI()->getCallStatus() & ~CIST_FIN);  // not running a finalizer anymore
+        L->setAllowHook(oldah);  // restore hooks
+        g->setGCStp(oldgcstp);  // restore state
 
-        if (l_unlikely(status != LUA_OK)) {  /* error while running __gc? */
+        if (l_unlikely(status != LUA_OK)) {  // error while running __gc?
             luaE_warnerror(L, "__gc");
-            L->getStackSubsystem().pop();  /* pops error object */
+            L->getStackSubsystem().pop();  // pops error object
         }
     }
 }
@@ -191,20 +189,20 @@ void GCFinalizer::GCTM(lua_State* L) {
 ** don't need to be traversed. In incremental mode, 'finobjold1' is nullptr,
 ** so the whole list is traversed.)
 */
-void GCFinalizer::separatetobefnz(global_State& g, int all) {
+void GCFinalizer::separatetobefnz(GlobalState& g, int all) {
     GCObject* curr;
     GCObject** p = g.getFinObjPtr();
     GCObject** lastnext = findlast(g.getToBeFnzPtr());
 
-    while ((curr = *p) != g.getFinObjOld1()) {  /* traverse all finalizable objects */
+    while ((curr = *p) != g.getFinObjOld1()) {  // traverse all finalizable objects
         lua_assert(tofinalize(curr));
-        if (!(iswhite(curr) || all))  /* not being collected? */
-            p = curr->getNextPtr();  /* don't bother with it */
+        if (!(iswhite(curr) || all))  // not being collected?
+            p = curr->getNextPtr();  // don't bother with it
         else {
-            if (curr == g.getFinObjSur())  /* removing 'finobjsur'? */
-                g.setFinObjSur(curr->getNext());  /* correct it */
+            if (curr == g.getFinObjSur())  // removing 'finobjsur'?
+                g.setFinObjSur(curr->getNext());  // correct it
             *p = curr->getNext();  /* remove 'curr' from 'finobj' list */
-            curr->setNext(*lastnext);  /* link at the end of 'tobefnz' list */
+            curr->setNext(*lastnext);  // link at the end of 'tobefnz' list
             *lastnext = curr;
             lastnext = curr->getNextPtr();
         }
@@ -217,7 +215,7 @@ void GCFinalizer::separatetobefnz(global_State& g, int all) {
 ** Processes entire tobefnz list until empty.
 */
 void GCFinalizer::callallpendingfinalizers(lua_State* L) {
-    global_State* g = G(L);
+    GlobalState* g = G(L);
     while (g->getToBeFnz())
         GCTM(L);
 }

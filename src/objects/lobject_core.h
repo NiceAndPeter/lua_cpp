@@ -1,5 +1,4 @@
 /*
-** $Id: lobject_core.h $
 ** Core GC object types and TValue helpers
 ** See Copyright Notice in lua.h
 */
@@ -11,18 +10,18 @@
 
 #include "llimits.h"
 #include "lua.h"
-#include "ltvalue.h"  /* TValue class */
+#include "ltvalue.h"  // TValue class
 
-/* Forward declarations */
+// Forward declarations
 enum class GCAge : lu_byte;
 class Table;
-class lua_State;
+struct lua_State;
 
 /*
 ** Extra types for collectable non-values
 ** Note: LUA_TUPVAL and LUA_TPROTO now defined in ltvalue.h
 */
-inline constexpr int LUA_TDEADKEY = (LUA_NUMTYPES+2);  /* removed keys in tables */
+inline constexpr int LUA_TDEADKEY = (LUA_NUMTYPES+2);  // removed keys in tables
 
 /*
 ** number of all possible types (including LUA_TNONE but excluding DEADKEY)
@@ -37,7 +36,7 @@ inline constexpr int LUA_TOTALTYPES = (LUA_NUMTYPES + 3);
 ** Note: LUA_VNIL, LUA_VEMPTY, LUA_VABSTKEY, LUA_VNOTABLE now defined in ltvalue.h
 */
 
-/* macro to test for (any kind of) nil */
+// macro to test for (any kind of) nil
 constexpr bool ttisnil(const TValue* v) noexcept { return checktype(v, LUA_TNIL); }
 
 constexpr bool TValue::isNil() const noexcept { return checktype(this, LUA_TNIL); }
@@ -52,7 +51,7 @@ constexpr bool tagisempty(int tag) noexcept { return novariant(tag) == LUA_TNIL;
 constexpr bool tagisempty(LuaT tag) noexcept { return novariant(tag) == LUA_TNIL; }
 
 
-/* macro to test for a standard nil */
+// macro to test for a standard nil
 constexpr bool ttisstrictnil(const TValue* o) noexcept { return checktag(o, LuaT::NIL); }
 
 constexpr bool TValue::isStrictNil() const noexcept { return checktag(this, LuaT::NIL); }
@@ -86,14 +85,14 @@ constexpr bool isempty(const TValue* v) noexcept { return ttisnil(v); }
 constexpr bool TValue::isEmpty() const noexcept { return isNil(); }
 
 
-/* macro defining a value corresponding to an absent key */
+// macro defining a value corresponding to an absent key
 #define ABSTKEYCONSTANT		{nullptr}, LuaT::ABSTKEY
 
 
-/* mark an entry as empty */
+// mark an entry as empty
 inline void setempty(TValue* v) noexcept { settt_(v, LuaT::EMPTY); }
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
@@ -122,7 +121,7 @@ constexpr bool TValue::isFalseLike() const noexcept { return isFalse() || isNil(
 inline void setbfvalue(TValue* obj) noexcept { obj->setFalse(); }
 inline void setbtvalue(TValue* obj) noexcept { obj->setTrue(); }
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
@@ -138,9 +137,9 @@ constexpr bool TValue::isThread() const noexcept { return checktag(this, ctb(Lua
 
 inline lua_State* thvalue(const TValue* o) noexcept { return o->threadValue(); }
 
-/* setthvalue now defined as inline function below */
+// setthvalue now defined as inline function below
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
@@ -171,7 +170,7 @@ inline lua_Integer ivalue(const TValue* o) noexcept { return o->intValue(); }
 constexpr lua_Number fltvalueraw(const Value& v) noexcept { return v.n; }
 constexpr lua_Integer ivalueraw(const Value& v) noexcept { return v.i; }
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
@@ -185,50 +184,63 @@ constexpr lua_Integer ivalueraw(const Value& v) noexcept { return v.i; }
 */
 
 
-/* Common type for all collectable objects */
+// Common type for all collectable objects
 class GCObject {
 protected:
-  mutable GCObject* next;     /* GC list linkage (mutable for GC bookkeeping) */
-  LuaT tt;                     /* Type tag (immutable) */
-  mutable lu_byte marked;      /* GC mark bits (mutable for GC bookkeeping) */
+  mutable GCObject* next;  // GC list linkage (mutable for GC bookkeeping)
+  LuaT tt;  // Type tag (immutable)
+  mutable lu_byte marked;  // GC mark bits (mutable for GC bookkeeping)
+  /*
+  ** Reserve the remaining bytes of this 16-byte aligned header so that derived
+  ** GC types cannot reuse GCObject's tail padding for their own members.
+  **
+  ** This is REQUIRED for correctness, not cosmetic. GC objects are allocated by
+  ** luaC_newobjdt(), which sets 'tt' and 'marked' BEFORE the derived type's
+  ** constructor runs (placement new). If a derived type (e.g. Proto) places its
+  ** first members in this tail padding, the compiler may initialise them with a
+  ** store to the enclosing aligned word, clobbering 'tt'/'marked' that were just
+  ** set by the allocator. The corrupted type tag then trips the GC marker.
+  ** Reserving the padding forces derived members past the header (offset 16).
+  */
+  lu_byte gcHeaderReserved_[sizeof(GCObject*) - 2 * sizeof(lu_byte)];
 
 public:
   // Inline accessors
   GCObject* getNext() const noexcept { return next; }
-  void setNext(GCObject* n) const noexcept { next = n; }  /* const - next is mutable */
+  void setNext(GCObject* n) const noexcept { next = n; }  // const - next is mutable
   // Pointer-to-pointer for efficient GC list manipulation (allows in-place removal)
-  GCObject** getNextPtr() const noexcept { return &next; }  /* const - next is mutable */
+  GCObject** getNextPtr() const noexcept { return &next; }  // const - next is mutable
   LuaT getType() const noexcept { return tt; }
   void setType(LuaT t) noexcept { tt = t; }
-  void setType(lu_byte t) noexcept { tt = static_cast<LuaT>(t); }  /* for legacy code */
+  void setType(lu_byte t) noexcept { tt = static_cast<LuaT>(t); }  // for legacy code
   lu_byte getMarked() const noexcept { return marked; }
-  void setMarked(lu_byte m) const noexcept { marked = m; }  /* const - marked is mutable */
+  void setMarked(lu_byte m) const noexcept { marked = m; }  // const - marked is mutable
   bool isMarked() const noexcept { return marked != 0; }
 
   // Marked field bit manipulation methods (const - marked is mutable)
   void setMarkedBit(int bit) const noexcept {
-    lua_assert(bit >= 0 && bit < 8);  /* lu_byte is 8 bits */
+    lua_assert(bit >= 0 && bit < 8);  // lu_byte is 8 bits
     marked |= cast_byte(1 << bit);
   }
   void clearMarkedBit(int bit) const noexcept {
-    lua_assert(bit >= 0 && bit < 8);  /* lu_byte is 8 bits */
+    lua_assert(bit >= 0 && bit < 8);  // lu_byte is 8 bits
     marked &= cast_byte(~(1 << bit));
   }
   void clearMarkedBits(int mask) const noexcept { marked &= cast_byte(~mask); }
 
   // Marked field bit manipulation helpers (for backward compatibility)
-  lu_byte& getMarkedRef() const noexcept { return marked; }  /* const - marked is mutable */
+  lu_byte& getMarkedRef() const noexcept { return marked; }  // const - marked is mutable
 
   // GC color and age methods (defined in lgc.h after constants are available)
   inline bool isWhite() const noexcept;
   inline bool isBlack() const noexcept;
   inline bool isGray() const noexcept;
   inline GCAge getAge() const noexcept;
-  inline void setAge(GCAge age) const noexcept;  /* const - marked is mutable */
+  inline void setAge(GCAge age) const noexcept;  // const - marked is mutable
   inline bool isOld() const noexcept;
 
   // GC operations (implemented in lgc.cpp)
-  void fix(lua_State* L) const;  /* const - only modifies mutable GC fields */
+  void fix(lua_State* L) const;  // const - only modifies mutable GC fields
   void checkFinalizer(lua_State* L, Table* mt);
 };
 
@@ -274,19 +286,19 @@ class GCBase: public GCObject {
 public:
     // Accessor methods (preferred over direct field access)
     constexpr GCObject* getNext() const noexcept { return next; }
-    constexpr void setNext(GCObject* n) const noexcept { next = n; }  /* const - next is mutable */
+    constexpr void setNext(GCObject* n) const noexcept { next = n; }  // const - next is mutable
 
     constexpr LuaT getType() const noexcept { return tt; }
     constexpr void setType(LuaT t) noexcept { tt = t; }
-    constexpr void setType(lu_byte t) noexcept { tt = static_cast<LuaT>(t); }  /* for legacy code */
+    constexpr void setType(lu_byte t) noexcept { tt = static_cast<LuaT>(t); }  // for legacy code
 
     constexpr lu_byte getMarked() const noexcept { return marked; }
-    constexpr void setMarked(lu_byte m) const noexcept { marked = m; }  /* const - marked is mutable */
+    constexpr void setMarked(lu_byte m) const noexcept { marked = m; }  // const - marked is mutable
 
     constexpr bool isMarked() const noexcept { return marked != 0; }
 
     // GC color and age methods (defined in lgc.h after constants)
-    inline void setAge(GCAge age) const noexcept;  /* const - marked is mutable */
+    inline void setAge(GCAge age) const noexcept;  // const - marked is mutable
     inline bool isOld() const noexcept;
 
     // Cast to GCObject* for compatibility
@@ -307,14 +319,14 @@ inline GCObject* gcvalue(const TValue* o) noexcept { return o->gcValue(); }
 
 constexpr GCObject* gcvalueraw(const Value& v) noexcept { return v.gc; }
 
-/* setgcovalue now defined as inline function below */
+// setgcovalue now defined as inline function below
 
-/* collectable object has the same tag as the original value (inline version) */
+// collectable object has the same tag as the original value (inline version)
 inline bool righttt(const TValue* obj) noexcept { return ttypetag(obj) == withvariant(gcvalue(obj)->getType()); }
 
 inline bool TValue::hasRightType() const noexcept { return typeTag() == withvariant(gcValue()->getType()); }
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
@@ -336,13 +348,13 @@ inline Udata* uvalue(const TValue* o) noexcept { return o->userdataValue(); }
 
 constexpr void* pvalueraw(const Value& v) noexcept { return v.p; }
 
-/* setpvalue and setuvalue now defined as inline functions below */
+// setpvalue and setuvalue now defined as inline functions below
 
 
-/* Ensures that addresses after this type are always fully aligned. */
+// Ensures that addresses after this type are always fully aligned.
 typedef union UValue {
-  TValue uv;
-  LUAI_MAXALIGN;  /* ensures maximum alignment for udata bytes */
+  TValue value;
+  LUAI_MAXALIGN;  // ensures maximum alignment for udata bytes
 } UValue;
 
 
@@ -353,29 +365,29 @@ typedef union UValue {
 // Udata inherits from GCBase (CRTP)
 class Udata : public GCBase<Udata> {
 private:
-  unsigned short nuvalue;  /* number of user values */
-  size_t len;  /* number of bytes */
+  unsigned short nuvalue;  // number of user values
+  size_t len;  // number of bytes
   Table *metatable;
   GCObject *gclist;
-  UValue uv[1];  /* user values */
+  UValue userValues[1];  // user values
 
 public:
-  // Phase 50: Constructor - initializes all fields to safe defaults
+  // Constructor - initializes all fields to safe defaults
   Udata() noexcept
     : nuvalue(0), len(0), metatable(nullptr), gclist(nullptr) {
-    // Note: uv array will be initialized by caller if needed
+    // Note: userValues array will be initialized by caller if needed
   }
 
-  // Phase 50: Destructor - trivial (GC handles deallocation)
+  // Destructor - trivial (GC handles deallocation)
   // MUST be empty (not = default) for variable-size objects
   ~Udata() noexcept {}
 
-  // Phase 50: Special placement new for variable-size objects
+  // Special placement new for variable-size objects
   static void* operator new(size_t /*size*/, void* ptr) noexcept {
     return ptr;  // Just return the pointer, no allocation
   }
 
-  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  // Placement new operator - integrates with Lua's GC (implemented in lgc.h)
   static void* operator new(size_t size, lua_State* L, LuaT tt, size_t extra = 0);
 
   // Disable regular new/delete (must use placement new with GC)
@@ -394,14 +406,14 @@ public:
   void setGclist(GCObject* gc) noexcept { gclist = gc; }
   // For GC gray list traversal - allows efficient list manipulation
   GCObject** getGclistPtr() noexcept { return &gclist; }
-  UValue* getUserValue(int idx) noexcept { return &uv[idx]; }
-  const UValue* getUserValue(int idx) const noexcept { return &uv[idx]; }
+  UValue* getUserValue(int idx) noexcept { return &userValues[idx]; }
+  const UValue* getUserValue(int idx) const noexcept { return &userValues[idx]; }
   // Note: getMemory() uses function udatamemoffset which requires Udata0 to be defined
   inline void* getMemory() noexcept;
   inline const void* getMemory() const noexcept;
 
   // Static method to compute UV offset (needed for udatamemoffset function)
-  static constexpr size_t uvOffset() noexcept { return offsetof(Udata, uv); }
+  static constexpr size_t uvOffset() noexcept { return offsetof(Udata, userValues); }
 };
 
 
@@ -416,15 +428,14 @@ public:
 */
 // Udata0 inherits from GCBase (CRTP)
 typedef struct Udata0 : public GCBase<Udata0> {
-  unsigned short nuvalue;  /* number of user values */
-  size_t len;  /* number of bytes */
+  unsigned short nuvalue;  // number of user values
+  size_t len;  // number of bytes
   Table *metatable;
   union {LUAI_MAXALIGN;} bindata;
 } Udata0;
 
 
-/* compute the offset of the memory area of a userdata */
-// Phase 49: Convert macro to constexpr function
+// compute the offset of the memory area of a userdata
 // offsetof for non-standard-layout types (classes with GCBase inheritance)
 // This triggers -Winvalid-offsetof but is safe because we control the memory layout
 constexpr inline size_t udatamemoffset(int nuv) noexcept {
@@ -432,8 +443,7 @@ constexpr inline size_t udatamemoffset(int nuv) noexcept {
 	                  : Udata::uvOffset() + (sizeof(UValue) * static_cast<size_t>(nuv));
 }
 
-/* get the address of the memory block inside 'Udata' */
-// Phase 49: Convert macro to inline function with const overload
+// get the address of the memory block inside 'Udata'
 inline char* getudatamem(Udata* u) noexcept {
 	return cast_charp(u) + udatamemoffset(u->getNumUserValues());
 }
@@ -441,8 +451,7 @@ inline const char* getudatamem(const Udata* u) noexcept {
 	return cast_charp(u) + udatamemoffset(u->getNumUserValues());
 }
 
-/* compute the size of a userdata */
-// Phase 49: Convert macro to constexpr function
+// compute the size of a userdata
 constexpr inline size_t sizeudata(int nuv, size_t nb) noexcept {
 	return udatamemoffset(nuv) + nb;
 }
@@ -455,7 +464,7 @@ inline const void* Udata::getMemory() const noexcept {
   return getudatamem(this);  // Calls const overload
 }
 
-/* }================================================================== */
+// }==================================================================
 
 
 #endif

@@ -1,10 +1,8 @@
 /*
-** $Id: ltests.c $
 ** Internal Module for Debugging of the Lua Implementation
 ** See Copyright Notice in lua.h
 */
 
-#define ltests_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -18,7 +16,7 @@
 
 #include "lua.h"
 
-/* When assertions are disabled, many check functions have unused parameters/variables */
+// When assertions are disabled, many check functions have unused parameters/variables
 #ifndef LUAI_ASSERT
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -75,7 +73,7 @@ static void badexit (const char *fmt, const char *s1, const char *s2) {
   fprintf(stderr, fmt, s1);
   if (s2)
     fprintf(stderr, "extra info: %s\n", s2);
-  /* avoid assertion failures when exiting */
+  // avoid assertion failures when exiting
   l_memcontrol.numblocks = l_memcontrol.total = 0;
   exit(EXIT_FAILURE);
 }
@@ -87,7 +85,7 @@ static int tpanic (lua_State *L) {
                   : "error object is not a string";
   return (badexit("PANIC: unprotected error in call to Lua API (%s)\n",
                    msg, nullptr),
-          0);  /* do not return to Lua */
+          0);  // do not return to Lua
 }
 
 
@@ -103,11 +101,11 @@ static int tpanic (lua_State *L) {
 */
 static void warnf (void *ud, const char *msg, int tocont) {
   lua_State *L = static_cast<lua_State*>(ud);
-  static char buff[200] = "";  /* should be enough for tests... */
+  static char buff[200] = "";  // should be enough for tests...
   static int onoff = 0;
-  static int mode = 0;  /* start in normal mode */
+  static int mode = 0;  // start in normal mode
   static int lasttocont = 0;
-  if (!lasttocont && !tocont && *msg == '@') {  /* control message? */
+  if (!lasttocont && !tocont && *msg == '@') {  // control message?
     if (buff[0] != '\0')
       badexit("Control warning during warning: %s\naborting...\n", msg, buff);
     if (strcmp(msg, "@off") == 0)
@@ -128,39 +126,39 @@ static void warnf (void *ud, const char *msg, int tocont) {
   lasttocont = tocont;
   if (strlen(msg) >= sizeof(buff) - strlen(buff))
     badexit("warnf-buffer overflow (%s)\n", msg, buff);
-  strcat(buff, msg);  /* add new message to current warning */
-  if (!tocont) {  /* message finished? */
+  strcat(buff, msg);  // add new message to current warning
+  if (!tocont) {  // message finished?
     lua_unlock(L);
     luaL_checkstack(L, 1, "warn stack space");
     lua_getglobal(L, "_WARN");
     if (!lua_toboolean(L, -1))
-      lua_pop(L, 1);  /* ok, no previous unexpected warning */
+      lua_pop(L, 1);  // ok, no previous unexpected warning
     else {
       badexit("Unhandled warning in store mode: %s\naborting...\n",
               lua_tostring(L, -1), buff);
     }
     lua_lock(L);
     switch (mode) {
-      case 0: {  /* normal */
-        if (buff[0] != '#' && onoff)  /* unexpected warning? */
+      case 0: {  // normal
+        if (buff[0] != '#' && onoff)  // unexpected warning?
           badexit("Unexpected warning in test mode: %s\naborting...\n",
                   buff, nullptr);
-      }  /* FALLTHROUGH */
-      case 1: {  /* allow */
+      }  // FALLTHROUGH
+      case 1: {  // allow
         if (onoff)
-          fprintf(stderr, "Lua warning: %s\n", buff);  /* print warning */
+          fprintf(stderr, "Lua warning: %s\n", buff);  // print warning
         break;
       }
-      case 2: {  /* store */
+      case 2: {  // store
         lua_unlock(L);
         luaL_checkstack(L, 1, "warn stack space");
         lua_pushstring(L, buff);
-        lua_setglobal(L, "_WARN");  /* assign message to global '_WARN' */
+        lua_setglobal(L, "_WARN");  // assign message to global '_WARN'
         lua_lock(L);
         break;
       }
     }
-    buff[0] = '\0';  /* prepare buffer for next warning */
+    buff[0] = '\0';  // prepare buffer for next warning
   }
 }
 
@@ -171,7 +169,7 @@ static void warnf (void *ud, const char *msg, int tocont) {
 ** =======================================================================
 */
 
-#define MARK		0x55  /* 01010101 (a nice pattern) */
+#define MARK		0x55  // 01010101 (a nice pattern)
 
 typedef union memHeader {
   LUAI_MAXALIGN;
@@ -184,15 +182,15 @@ typedef union memHeader {
 
 #if !defined(EXTERNMEMCHECK)
 
-/* full memory check */
-#define MARKSIZE	16  /* size of marks after each block */
+// full memory check
+#define MARKSIZE	16  // size of marks after each block
 #define fillmem(mem,size)	memset(mem, -MARK, size)
 
 #else
 
-/* external memory check: don't do it twice */
+// external memory check: don't do it twice
 #define MARKSIZE	0
-#define fillmem(mem,size)	/* empty */
+#define fillmem(mem,size)  // empty
 
 #endif
 
@@ -206,13 +204,13 @@ static void freeblock (Memcontrol *mc, memHeader *block) {
   if (block) {
     size_t size = block->d.size;
     int i;
-    for (i = 0; i < MARKSIZE; i++) {  /* check marks after block */
+    for (i = 0; i < MARKSIZE; i++) {  // check marks after block
       lua_assert(*(cast_charp(block + 1) + size + i) == MARK);
     }
     mc->objcount[block->d.type]--;
-    fillmem(block, sizeof(memHeader) + size + MARKSIZE);  /* erase block */
-    free(block);  /* actually free block */
-    mc->numblocks--;  /* update counts */
+    fillmem(block, sizeof(memHeader) + size + MARKSIZE);  // erase block
+    free(block);  // actually free block
+    mc->numblocks--;  // update counts
     mc->total -= size;
   }
 }
@@ -222,8 +220,8 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
   Memcontrol *mc = static_cast<Memcontrol*>(ud);
   memHeader *block = static_cast<memHeader*>(b);
   int type;
-  if (mc->memlimit == 0) {  /* first time? */
-    char *limit = getenv("MEMLIMIT");  /* initialize memory limit */
+  if (mc->memlimit == 0) {  // first time?
+    char *limit = getenv("MEMLIMIT");  // initialize memory limit
     mc->memlimit = limit ? strtoul(limit, nullptr, 10) : ULONG_MAX;
   }
   if (block == nullptr) {
@@ -231,7 +229,7 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
     oldsize = 0;
   }
   else {
-    block--;  /* go to real header */
+    block--;  // go to real header
     type = block->d.type;
     lua_assert(oldsize == block->d.size);
   }
@@ -241,31 +239,31 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
   }
   if (mc->failnext) {
     mc->failnext = 0;
-    return nullptr;  /* fake a single memory allocation error */
+    return nullptr;  // fake a single memory allocation error
   }
-  if (mc->countlimit != ~0UL && size != oldsize) {  /* count limit in use? */
+  if (mc->countlimit != ~0UL && size != oldsize) {  // count limit in use?
     if (mc->countlimit == 0)
-      return nullptr;  /* fake a memory allocation error */
+      return nullptr;  // fake a memory allocation error
     mc->countlimit--;
   }
   if (size > oldsize && mc->total+size-oldsize > mc->memlimit)
-    return nullptr;  /* fake a memory allocation error */
+    return nullptr;  // fake a memory allocation error
   else {
     memHeader *newblock;
     int i;
     size_t commonsize = (oldsize < size) ? oldsize : size;
     size_t realsize = sizeof(memHeader) + size + MARKSIZE;
-    if (realsize < size) return nullptr;  /* arithmetic overflow! */
-    newblock = static_cast<memHeader*>(malloc(realsize));  /* alloc a new block */
+    if (realsize < size) return nullptr;  // arithmetic overflow!
+    newblock = static_cast<memHeader*>(malloc(realsize));  // alloc a new block
     if (newblock == nullptr)
-      return nullptr;  /* really out of memory? */
+      return nullptr;  // really out of memory?
     if (block) {
-      memcpy(newblock + 1, block + 1, commonsize);  /* copy old contents */
-      freeblock(mc, block);  /* erase (and check) old copy */
+      memcpy(newblock + 1, block + 1, commonsize);  // copy old contents
+      freeblock(mc, block);  // erase (and check) old copy
     }
-    /* initialize new part of the block with something weird */
+    // initialize new part of the block with something weird
     fillmem(cast_charp(newblock + 1) + commonsize, size - commonsize);
-    /* initialize marks after block */
+    // initialize marks after block
     for (i = 0; i < MARKSIZE; i++)
       *(cast_charp(newblock + 1) + size + i) = MARK;
     newblock->d.size = size;
@@ -280,7 +278,7 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
 }
 
 
-/* }====================================================================== */
+// }======================================================================
 
 
 
@@ -304,13 +302,13 @@ void *debug_realloc (void *ud, void *b, size_t oldsize, size_t size) {
 ** continue to be visited in all collections, and therefore can point to
 ** new objects. They, and only they, are old but gray.)
 */
-static bool testobjref1 (global_State *g, GCObject *f, GCObject *t) {
+static bool testobjref1 (GlobalState *g, GCObject *f, GCObject *t) {
   if (isdead(g,t)) return false;
   if (g->isSweepPhase())
-    return true;  /* no invariants */
+    return true;  // no invariants
   else if (g->getGCKind() != GCKind::GenerationalMinor)
-    return !(isblack(f) && iswhite(t));  /* basic incremental invariant */
-  else {  /* generational mode */
+    return !(isblack(f) && iswhite(t));  // basic incremental invariant
+  else {  // generational mode
     if ((getage(f) == GCAge::Old && isblack(f)) && !isold(t))
       return false;
     if ((getage(f) == GCAge::Old1 || getage(f) == GCAge::Touched2) &&
@@ -321,9 +319,9 @@ static bool testobjref1 (global_State *g, GCObject *f, GCObject *t) {
 }
 
 
-static void printobj (global_State *g, GCObject *o) {
+static void printobj (GlobalState *g, GCObject *o) {
   printf("||%s(%p)-%c%c(%02X)||",
-           ttypename(novariant(o->getType())), (void *)o,
+           ttypename(novariant(o->getType())), static_cast<void *>(o),
            isdead(g,o) ? 'd' : isblack(o) ? 'b' : iswhite(o) ? 'w' : 'g',
            "ns01oTt"[static_cast<size_t>(getage(o))], o->getMarked());
   if (o->getType() == ctb(LuaT::SHRSTR) || o->getType() == ctb(LuaT::LNGSTR))
@@ -375,7 +373,7 @@ void lua_printvalue (TValue *v) {
 }
 
 
-static bool testobjref (global_State *g, GCObject *f, GCObject *t) {
+static bool testobjref (GlobalState *g, GCObject *f, GCObject *t) {
   bool r1 = testobjref1(g, f, t);
   if (!r1) {
     printf("%d(%02X) - ", static_cast<int>(g->getGCState()), g->getCurrentWhite());
@@ -388,7 +386,7 @@ static bool testobjref (global_State *g, GCObject *f, GCObject *t) {
 }
 
 
-static void checkobjref (global_State *g, GCObject *f, GCObject *t) {
+static void checkobjref (GlobalState *g, GCObject *f, GCObject *t) {
 #ifdef LUAI_ASSERT
     assert(testobjref(g, f, t));
 #else
@@ -406,12 +404,12 @@ static void checkobjref (global_State *g, GCObject *f, GCObject *t) {
 #define checkobjrefN(g,f,t)	{ if (t) checkobjref(g,f,obj2gco(t)); }
 
 
-static void checkvalref (global_State *g, GCObject *f, const TValue *t) {
+static void checkvalref (GlobalState *g, GCObject *f, const TValue *t) {
   assert(!iscollectable(t) || (righttt(t) && testobjref(g, f, gcvalue(t))));
 }
 
 
-static void checktable (global_State *g, Table *h) {
+static void checktable (GlobalState *g, Table *h) {
   unsigned int i;
   unsigned int asize = h->arraySize();
   Node *n, *limit = gnode(h, h->nodeSize());
@@ -434,16 +432,16 @@ static void checktable (global_State *g, Table *h) {
 }
 
 
-static void checkudata (global_State *g, Udata *u) {
+static void checkudata (GlobalState *g, Udata *u) {
   int i;
   GCObject *hgc = obj2gco(u);
   checkobjrefN(g, hgc, u->getMetatable());
   for (i = 0; i < u->getNumUserValues(); i++)
-    checkvalref(g, hgc, &u->getUserValue(i)->uv);
+    checkvalref(g, hgc, &u->getUserValue(i)->value);
 }
 
 
-static void checkproto (global_State *g, Proto *f) {
+static void checkproto (GlobalState *g, Proto *f) {
   GCObject *fgc = obj2gco(f);
   checkobjrefN(g, fgc, f->getSource());
   for (const auto& constant : f->getConstantsSpan()) {
@@ -459,7 +457,7 @@ static void checkproto (global_State *g, Proto *f) {
 }
 
 
-static void checkCclosure (global_State *g, CClosure *cl) {
+static void checkCclosure (GlobalState *g, CClosure *cl) {
   GCObject *clgc = obj2gco(cl);
   int i;
   for (i = 0; i < cl->getNumUpvalues(); i++)
@@ -467,57 +465,57 @@ static void checkCclosure (global_State *g, CClosure *cl) {
 }
 
 
-static void checkLclosure (global_State *g, LClosure *cl) {
+static void checkLclosure (GlobalState *g, LClosure *cl) {
   GCObject *clgc = obj2gco(cl);
   int i;
   checkobjrefN(g, clgc, cl->getProto());
   for (i=0; i<cl->getNumUpvalues(); i++) {
-    UpVal *uv = cl->getUpval(i);
-    if (uv) {
-      checkobjrefN(g, clgc, uv);
-      if (!uv->isOpen())
-        checkvalref(g, obj2gco(uv), uv->getVP());
+    UpVal *upvalue = cl->getUpval(i);
+    if (upvalue) {
+      checkobjrefN(g, clgc, upvalue);
+      if (!upvalue->isOpen())
+        checkvalref(g, obj2gco(upvalue), upvalue->getVP());
     }
   }
 }
 
 
-static int lua_checkpc (CallInfo *ci) {
-  if (!ci->isLua()) return 1;
+static int lua_checkpc (CallInfo *callInfo) {
+  if (!callInfo->isLua()) return 1;
   else {
-    StkId f = ci->funcRef().p;
+    StkId f = callInfo->funcRef().p;
     Proto *p = clLvalue(s2v(f))->getProto();
     auto codeSpan = p->getCodeSpan();
-    const Instruction* savedPC = ci->getSavedPC();
+    const Instruction* savedPC = callInfo->getSavedPC();
     return codeSpan.data() <= savedPC &&
            savedPC <= codeSpan.data() + codeSpan.size();
   }
 }
 
 
-static void check_stack (global_State *g, lua_State *L1) {
+static void check_stack (GlobalState *g, lua_State *L1) {
   StkId o;
-  CallInfo *ci;
-  UpVal *uv;
+  CallInfo *callInfo;
+  UpVal *upvalue;
   assert(!isdead(g, L1));
-  if (L1->getStack().p == nullptr) {  /* incomplete thread? */
+  if (L1->getStack().p == nullptr) {  // incomplete thread?
     assert(L1->getOpenUpval() == nullptr && L1->getCI() == nullptr);
     return;
   }
-  for (uv = L1->getOpenUpval(); uv != nullptr; uv = uv->getOpenNext())
-    assert(uv->isOpen());  /* must be open */
+  for (upvalue = L1->getOpenUpval(); upvalue != nullptr; upvalue = upvalue->getOpenNext())
+    assert(upvalue->isOpen());  // must be open
   assert(L1->getTop().p <= L1->getStackLast().p);
   assert(L1->getTbclist().p <= L1->getTop().p);
-  for (ci = L1->getCI(); ci != nullptr; ci = ci->getPrevious()) {
-    assert(ci->topRef().p <= L1->getStackLast().p);
-    assert(lua_checkpc(ci));
+  for (callInfo = L1->getCI(); callInfo != nullptr; callInfo = callInfo->getPrevious()) {
+    assert(callInfo->topRef().p <= L1->getStackLast().p);
+    assert(lua_checkpc(callInfo));
   }
   for (o = L1->getStack().p; o < L1->getStackLast().p; o++)
-    checkliveness(L1, s2v(o));  /* entire stack must have valid values */
+    checkliveness(L1, s2v(o));  // entire stack must have valid values
 }
 
 
-static void checkrefs (global_State *g, GCObject *o) {
+static void checkrefs (GlobalState *g, GCObject *o) {
   switch (static_cast<int>(o->getType())) {
     case static_cast<int>(ctb(LuaT::USERDATA)): {
       checkudata(g, gco2u(o));
@@ -549,7 +547,7 @@ static void checkrefs (global_State *g, GCObject *o) {
     }
     case static_cast<int>(ctb(LuaT::SHRSTR)):
     case static_cast<int>(ctb(LuaT::LNGSTR)): {
-      assert(!isgray(o));  /* strings are never gray */
+      assert(!isgray(o));  // strings are never gray
       break;
     }
     default: assert(0);
@@ -569,13 +567,13 @@ static void checkrefs (global_State *g, GCObject *o) {
 **     threads, and open upvalues.
 **   * 'touched1' objects must be gray.
 */
-static void checkobject (global_State *g, GCObject *o, int maybedead,
+static void checkobject (GlobalState *g, GCObject *o, int maybedead,
                          GCAge listage) {
   if (isdead(g, o))
     assert(maybedead);
   else {
     assert(g->getGCState() != GCState::Pause || iswhite(o));
-    if (g->getGCKind() == GCKind::GenerationalMinor) {  /* generational mode? */
+    if (g->getGCKind() == GCKind::GenerationalMinor) {  // generational mode?
       assert(getage(o) >= listage);
       if (isold(o)) {
         assert(!iswhite(o));
@@ -592,14 +590,14 @@ static void checkobject (global_State *g, GCObject *o, int maybedead,
 }
 
 
-static l_mem checkgraylist (global_State *g, GCObject *o) {
-  int total = 0;  /* count number of elements in the list */
-  cast_void(g);  /* better to keep it if we need to print an object */
+static l_mem checkgraylist (GlobalState *g, GCObject *o) {
+  int total = 0;  // count number of elements in the list
+  cast_void(g);  // better to keep it if we need to print an object
   while (o) {
     assert(!!isgray(o) ^ (getage(o) == GCAge::Touched2));
     assert(!testbit(o->getMarked(), TESTBIT));
     if (g->keepInvariant())
-      o->setMarkedBit(TESTBIT);  /* mark that object is in a gray list */
+      o->setMarkedBit(TESTBIT);  // mark that object is in a gray list
     total++;
     switch (static_cast<int>(o->getType())) {
       case static_cast<int>(ctb(LuaT::TABLE)): o = gco2t(o)->getGclist(); break;
@@ -611,7 +609,7 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
         assert(gco2u(o)->getNumUserValues() > 0);
         o = gco2u(o)->getGclist();
         break;
-      default: assert(0);  /* other objects cannot be in a gray list */
+      default: assert(0);  // other objects cannot be in a gray list
     }
   }
   return total;
@@ -621,8 +619,8 @@ static l_mem checkgraylist (global_State *g, GCObject *o) {
 /*
 ** Check objects in gray lists.
 */
-static l_mem checkgrays (global_State *g) {
-  l_mem total = 0;  /* count number of elements in all lists */
+static l_mem checkgrays (GlobalState *g) {
+  l_mem total = 0;  // count number of elements in all lists
   if (!g->keepInvariant()) return total;
   total += checkgraylist(g, g->getGray());
   total += checkgraylist(g, g->getGrayAgain());
@@ -638,27 +636,27 @@ static l_mem checkgrays (global_State *g) {
 ** 'count' and check its TESTBIT. (It must have been previously set by
 ** 'checkgraylist'.)
 */
-static void incifingray (global_State *g, GCObject *o, l_mem *count) {
+static void incifingray (GlobalState *g, GCObject *o, l_mem *count) {
   if (!g->keepInvariant())
-    return;  /* gray lists not being kept in these phases */
+    return;  // gray lists not being kept in these phases
   if (o->getType() == ctb(LuaT::UPVAL)) {
-    /* only open upvalues can be gray */
+    // only open upvalues can be gray
     assert(!isgray(o) || gco2upv(o)->isOpen());
-    return;  /* upvalues are never in gray lists */
+    return;  // upvalues are never in gray lists
   }
-  /* these are the ones that must be in gray lists */
+  // these are the ones that must be in gray lists
   if (isgray(o) || getage(o) == GCAge::Touched2) {
     (*count)++;
     assert(testbit(o->getMarked(), TESTBIT));
-    o->clearMarkedBit(TESTBIT);  /* prepare for next cycle */
+    o->clearMarkedBit(TESTBIT);  // prepare for next cycle
   }
 }
 
 
-static l_mem checklist (global_State *g, int maybedead, int tof,
+static l_mem checklist (GlobalState *g, int maybedead, int tof,
   GCObject *newl, GCObject *survival, GCObject *old, GCObject *reallyold) {
   GCObject *o;
-  l_mem total = 0;  /* number of object that should be in  gray lists */
+  l_mem total = 0;  // number of object that should be in  gray lists
   for (o = newl; o != survival; o = o->getNext()) {
     checkobject(g, o, maybedead, GCAge::New);
     incifingray(g, o, &total);
@@ -684,11 +682,11 @@ static l_mem checklist (global_State *g, int maybedead, int tof,
 
 
 int lua_checkmemory (lua_State *L) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   GCObject *o;
   int maybedead;
-  l_mem totalin;  /* total of objects that are in gray lists */
-  l_mem totalshould;  /* total of objects that should be in gray lists */
+  l_mem totalin;  // total of objects that are in gray lists
+  l_mem totalshould;  // total of objects that should be in gray lists
   if (g->keepInvariant()) {
     assert(!iswhite(mainthread(g)));
     assert(!iswhite(gcvalue(g->getRegistry())));
@@ -697,21 +695,21 @@ int lua_checkmemory (lua_State *L) {
   assert(g->getSweepGC() == nullptr || g->isSweepPhase());
   totalin = checkgrays(g);
 
-  /* check 'fixedgc' list */
+  // check 'fixedgc' list
   for (o = g->getFixedGC(); o != nullptr; o = o->getNext()) {
     assert(o->getType() == ctb(LuaT::SHRSTR) && isgray(o) && getage(o) == GCAge::Old);
   }
 
-  /* check 'allgc' list */
+  // check 'allgc' list
   maybedead = (GCState::Atomic < g->getGCState() && g->getGCState() <= GCState::SweepAllGC);
   totalshould = checklist(g, maybedead, 0, g->getAllGC(),
                              g->getSurvival(), g->getOld1(), g->getReallyOld());
 
-  /* check 'finobj' list */
+  // check 'finobj' list
   totalshould += checklist(g, 0, 1, g->getFinObj(),
                               g->getFinObjSur(), g->getFinObjOld1(), g->getFinObjROld());
 
-  /* check 'tobefnz' list */
+  // check 'tobefnz' list
   for (o = g->getToBeFnz(); o != nullptr; o = o->getNext()) {
     checkobject(g, o, 0, GCAge::New);
     incifingray(g, o, &totalshould);
@@ -723,7 +721,7 @@ int lua_checkmemory (lua_State *L) {
   return 0;
 }
 
-/* }====================================================== */
+// }======================================================
 
 
 
@@ -785,7 +783,7 @@ static int listcode (lua_State *L) {
   setnameval(L, "numparams", p->getNumParams());
   pc = 0;
   for (const auto& instr : p->getCodeSpan()) {
-    (void)instr;  /* unused */
+    (void)instr;  // unused
     char buff[100];
     lua_pushinteger(L, pc+1);
     lua_pushstring(L, buildop(p, pc, buff));
@@ -806,7 +804,7 @@ static int printcode (lua_State *L) {
   printf("numparams: %d\n", p->getNumParams());
   pc = 0;
   for (const auto& instr : p->getCodeSpan()) {
-    (void)instr;  /* unused */
+    (void)instr;  // unused
     char buff[100];
     printf("%s\n", buildop(p, pc, buff));
     pc++;
@@ -862,12 +860,12 @@ static int listlocals (lua_State *L) {
   luaL_argcheck(L, lua_isfunction(L, 1) && !lua_iscfunction(L, 1),
                  1, "Lua function expected");
   p = getproto(obj_at(L, 1));
-  while ((name = p->getLocalName(++i, pc)) != nullptr)  /* Phase 25b */
+  while ((name = p->getLocalName(++i, pc)) != nullptr)
     lua_pushstring(L, name);
   return i-1;
 }
 
-/* }====================================================== */
+// }======================================================
 
 
 
@@ -887,15 +885,15 @@ void lua_printstack (lua_State *L) {
 int lua_printallstack (lua_State *L) {
   StkId p;
   int i = 1;
-  CallInfo *ci = L->getBaseCI();
+  CallInfo *callInfo = L->getBaseCI();
   printf("stack: >>\n");
   for (p = L->getStack().p; p < L->getTop().p; p++) {
-    if (ci != nullptr && p == ci->funcRef().p) {
+    if (callInfo != nullptr && p == callInfo->funcRef().p) {
       printf("  ---\n");
-      if (ci == L->getCI())
-        ci = nullptr;  /* printed last frame */
+      if (callInfo == L->getCI())
+        callInfo = nullptr;  // printed last frame
       else
-        ci = ci->getNext();
+        callInfo = callInfo->getNext();
     }
     printf("%3d: ", i++);
     lua_printvalue(s2v(p));
@@ -920,7 +918,7 @@ static int get_limits (lua_State *L) {
 static int get_sizes (lua_State *L) {
   lua_newtable(L);
   setnameval(L, "Lua state", sizeof(lua_State));
-  setnameval(L, "global state", sizeof(global_State));
+  setnameval(L, "global state", sizeof(GlobalState));
   setnameval(L, "TValue", sizeof(TValue));
   setnameval(L, "Node", sizeof(Node));
   setnameval(L, "stack Value", sizeof(StackValue));
@@ -1036,7 +1034,7 @@ static int gc_state (lua_State *L) {
     static_cast<int>(GCState::Propagate), static_cast<int>(GCState::EnterAtomic), static_cast<int>(GCState::Atomic), static_cast<int>(GCState::SweepAllGC), static_cast<int>(GCState::SweepFinObj),
     static_cast<int>(GCState::SweepToBeFnz), static_cast<int>(GCState::SweepEnd), static_cast<int>(GCState::CallFin), static_cast<int>(GCState::Pause), -1};
   int option = states[luaL_checkoption(L, 1, "", statenames)];
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   if (option == -1) {
     lua_pushstring(L, statenames[static_cast<int>(g->getGCState())]);
     return 1;
@@ -1045,10 +1043,10 @@ static int gc_state (lua_State *L) {
     if (g->getGCKind() != GCKind::Incremental)
       luaL_error(L, "cannot change states in generational mode");
     lua_lock(L);
-    if (option < static_cast<int>(g->getGCState())) {  /* must cross 'pause'? */
-      luaC_runtilstate(*L, GCState::Pause, 1);  /* run until pause */
+    if (option < static_cast<int>(g->getGCState())) {  // must cross 'pause'?
+      luaC_runtilstate(*L, GCState::Pause, 1);  // run until pause
     }
-    luaC_runtilstate(*L, static_cast<GCState>(option), 0);  /* do not skip propagation state */
+    luaC_runtilstate(*L, static_cast<GCState>(option), 0);  // do not skip propagation state
     lua_assert(static_cast<int>(g->getGCState()) == option);
     lua_unlock(L);
     return 0;
@@ -1060,7 +1058,7 @@ static int tracinggc = 0;
 void luai_tracegctest (lua_State *L, int first) {
   if (!tracinggc) return;
   else {
-    global_State *g = G(L);
+    GlobalState *g = G(L);
     lua_unlock(L);
     g->setGCStp(GCSTPGC);
     lua_checkstack(L, 10);
@@ -1086,12 +1084,12 @@ static int tracegc (lua_State *L) {
 
 static int hash_query (lua_State *L) {
   if (lua_isnone(L, 2)) {
-    TString *ts;
+    TString *tstring;
     luaL_argcheck(L, lua_type(L, 1) == LUA_TSTRING, 1, "string expected");
-    ts = tsvalue(obj_at(L, 1));
-    if (ts->getType() == ctb(LuaT::LNGSTR))
-      (void)ts->hashLongStr();  /* make sure long string has a hash - hash also stored in object */
-    lua_pushinteger(L, cast_int(ts->getHash()));
+    tstring = tsvalue(obj_at(L, 1));
+    if (tstring->getType() == ctb(LuaT::LNGSTR))
+      (void)tstring->hashLongStr();  // make sure long string has a hash - hash also stored in object
+    lua_pushinteger(L, cast_int(tstring->getHash()));
   }
   else {
     TValue *o = obj_at(L, 1);
@@ -1158,7 +1156,7 @@ static int table_query (lua_State *L) {
 
 
 static int gc_query (lua_State *L) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   lua_pushstring(L, g->getGCKind() == GCKind::Incremental ? "inc"
                   : g->getGCKind() == GCKind::GenerationalMajor ? "genmajor"
                   : "genminor");
@@ -1187,7 +1185,7 @@ static int test_applyparam (lua_State *L) {
 
 
 static int string_query (lua_State *L) {
-  stringtable *tb = G(L)->getStringTable();
+  StringTable *tb = G(L)->getStringTable();
   int s = cast_int(luaL_optinteger(L, 1, 0)) - 1;
   if (s == -1) {
     lua_pushinteger(L ,tb->getSize());
@@ -1195,10 +1193,10 @@ static int string_query (lua_State *L) {
     return 2;
   }
   else if (cast_uint(s) < tb->getSize()) {
-    TString *ts;
+    TString *tstring;
     int n = 0;
-    for (ts = tb->getHash()[s]; ts != nullptr; ts = ts->getNext()) {
-      setsvalue2s(L, L->getTop().p, ts);
+    for (tstring = tb->getHash()[s]; tstring != nullptr; tstring = tstring->getNext()) {
+      setsvalue2s(L, L->getTop().p, tstring);
       api_incr_top(L);
       n++;
     }
@@ -1209,10 +1207,10 @@ static int string_query (lua_State *L) {
 
 
 static int getreftable (lua_State *L) {
-  if (lua_istable(L, 2))  /* is there a table as second argument? */
-    return 2;  /* use it as the table */
+  if (lua_istable(L, 2))  // is there a table as second argument?
+    return 2;  // use it as the table
   else
-    return LUA_REGISTRYINDEX;  /* default is to use the register */
+    return LUA_REGISTRYINDEX;  // default is to use the register
 }
 
 
@@ -1222,8 +1220,8 @@ static int tref (lua_State *L) {
   luaL_checkany(L, 1);
   lua_pushvalue(L, 1);
   lua_pushinteger(L, luaL_ref(L, t));
-  cast_void(level);  /* to avoid warnings */
-  lua_assert(lua_gettop(L) == level+1);  /* +1 for result */
+  cast_void(level);  // to avoid warnings
+  lua_assert(lua_gettop(L) == level+1);  // +1 for result
   return 1;
 }
 
@@ -1232,7 +1230,7 @@ static int getref (lua_State *L) {
   int t = getreftable(L);
   int level = lua_gettop(L);
   lua_rawgeti(L, t, luaL_checkinteger(L, 1));
-  cast_void(level);  /* to avoid warnings */
+  cast_void(level);  // to avoid warnings
   lua_assert(lua_gettop(L) == level+1);
   return 1;
 }
@@ -1241,7 +1239,7 @@ static int unref (lua_State *L) {
   int t = getreftable(L);
   int level = lua_gettop(L);
   luaL_unref(L, t, cast_int(luaL_checkinteger(L, 1)));
-  cast_void(level);  /* to avoid warnings */
+  cast_void(level);  // to avoid warnings
   lua_assert(lua_gettop(L) == level);
   return 0;
 }
@@ -1351,9 +1349,9 @@ static int loadlib (lua_State *L) {
   luaL_openselectedlibs(L1, load, preload);
   luaL_requiref(L1, "T", luaB_opentests, 0);
   lua_assert(lua_type(L1, -1) == LUA_TTABLE);
-  /* 'requiref' should not reload module already loaded... */
-  luaL_requiref(L1, "T", nullptr, 1);  /* seg. fault if it reloads */
-  /* ...but should return the same module */
+  // 'requiref' should not reload module already loaded...
+  luaL_requiref(L1, "T", nullptr, 1);  // seg. fault if it reloads
+  // ...but should return the same module
   lua_assert(lua_compare(L1, -1, -2, LUA_OPEQ));
   return 0;
 }
@@ -1403,13 +1401,13 @@ struct Aux { jmp_buf jb; const char *paniccode; lua_State *L; };
 */
 static int panicback (lua_State *L) {
   struct Aux *b;
-  lua_checkstack(L, 1);  /* open space for 'Aux' struct */
-  lua_getfield(L, LUA_REGISTRYINDEX, "_jmpbuf");  /* get 'Aux' struct */
-  b = (struct Aux *)lua_touserdata(L, -1);
-  lua_pop(L, 1);  /* remove 'Aux' struct */
-  runC(b->L, L, b->paniccode);  /* run optional panic code */
+  lua_checkstack(L, 1);  // open space for 'Aux' struct
+  lua_getfield(L, LUA_REGISTRYINDEX, "_jmpbuf");  // get 'Aux' struct
+  b = static_cast<struct Aux *>(lua_touserdata(L, -1));
+  lua_pop(L, 1);  // remove 'Aux' struct
+  runC(b->L, L, b->paniccode);  // run optional panic code
   longjmp(b->jb, 1);
-  return 1;  /* to avoid warnings */
+  return 1;  // to avoid warnings
 }
 
 static int checkpanic (lua_State *L) {
@@ -1420,20 +1418,20 @@ static int checkpanic (lua_State *L) {
   lua_Alloc f = lua_getallocf(L, &ud);
   b.paniccode = luaL_optstring(L, 2, "");
   b.L = L;
-  L1 = lua_newstate(f, ud, 0);  /* create new state */
-  if (L1 == nullptr) {  /* error? */
+  L1 = lua_newstate(f, ud, 0);  // create new state
+  if (L1 == nullptr) {  // error?
     lua_pushstring(L, MEMERRMSG);
     return 1;
   }
-  lua_atpanic(L1, panicback);  /* set its panic function */
+  lua_atpanic(L1, panicback);  // set its panic function
   lua_pushlightuserdata(L1, &b);
-  lua_setfield(L1, LUA_REGISTRYINDEX, "_jmpbuf");  /* store 'Aux' struct */
-  if (setjmp(b.jb) == 0) {  /* set jump buffer */
-    runC(L, L1, code);  /* run code unprotected */
+  lua_setfield(L1, LUA_REGISTRYINDEX, "_jmpbuf");  // store 'Aux' struct
+  if (setjmp(b.jb) == 0) {  // set jump buffer
+    runC(L, L1, code);  // run code unprotected
     lua_pushliteral(L, "no errors");
   }
-  else {  /* error handling */
-    /* move error message to original state */
+  else {  // error handling
+    // move error message to original state
     lua_pushstring(L, lua_tostring(L1, -1));
   }
   lua_close(L1);
@@ -1458,16 +1456,16 @@ static int externstr (lua_State *L) {
   size_t len;
   const char *s = luaL_checklstring(L, 1, &len);
   void *ud;
-  lua_Alloc allocf = lua_getallocf(L, &ud);  /* get allocation function */
-  /* create the buffer */
+  lua_Alloc allocf = lua_getallocf(L, &ud);  // get allocation function
+  // create the buffer
   char *buff = cast_charp((*allocf)(ud, nullptr, 0, len + 1));
-  if (buff == nullptr) {  /* memory error? */
+  if (buff == nullptr) {  // memory error?
     lua_pushliteral(L, "not enough memory");
-    lua_error(L);  /* raise a memory error */
+    lua_error(L);  // raise a memory error
   }
-  /* copy string content to buffer, including ending 0 */
+  // copy string content to buffer, including ending 0
   memcpy(buff, s, (len + 1) * sizeof(char));
-  /* create external string */
+  // create external string
   lua_pushexternalstring(L, buff, len, allocf, ud);
   return 1;
 }
@@ -1488,8 +1486,8 @@ static const char *const delimits = " \t\n,;";
 static void skip (const char **pc) {
   for (;;) {
     if (**pc != '\0' && strchr(delimits, **pc)) (*pc)++;
-    else if (**pc == '#') {  /* comment? */
-      while (**pc != '\n' && **pc != '\0') (*pc)++;  /* until end-of-line */
+    else if (**pc == '#') {  // comment?
+      while (**pc != '\n' && **pc != '\0') (*pc)++;  // until end-of-line
     }
     else break;
   }
@@ -1557,7 +1555,7 @@ static int getindex_aux (lua_State *L, lua_State *L1, const char **pc) {
     case 'U': return lua_upvalueindex(getnum_aux(L, L1, pc));
     default: {
       int n;
-      (*pc)--;  /* to read again */
+      (*pc)--;  // to read again
       n = getnum_aux(L, L1, pc);
       if (n == 0) return 0;
       else return lua_absindex(L1, n);
@@ -1638,7 +1636,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
       int sz = getnum;
       const char *msg = getstring;
       if (*msg == '\0')
-        msg = nullptr;  /* to test 'luaL_checkstack' with no message */
+        msg = nullptr;  // to test 'luaL_checkstack' with no message
       luaL_checkstack(L1, sz, msg);
     }
     else if EQ("rawcheckstack") {
@@ -1646,7 +1644,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
       lua_pushboolean(L1, lua_checkstack(L1, sz));
     }
     else if EQ("compare") {
-      const char *opt = getstring;  /* EQ, LT, or LE */
+      const char *opt = getstring;  // EQ, LT, or LE
       int op = (opt[0] == 'E') ? LUA_OPEQ
                                : (opt[1] == 'T') ? LUA_OPLT : LUA_OPLE;
       int a = getindex;
@@ -1745,7 +1743,7 @@ static int runC (lua_State *L, lua_State *L1, const char *pc) {
       lua_newthread(L1);
     }
     else if EQ("resetthread") {
-      lua_pushinteger(L1, lua_resetthread(L1));  /* deprecated */
+      lua_pushinteger(L1, lua_resetthread(L1));  // deprecated
     }
     else if EQ("newuserdata") {
       lua_newuserdata(L1, cast_sizet(getnum));
@@ -1963,7 +1961,7 @@ static struct X { int x; } x;
     else if EQ("tostring") {
       const char *s = lua_tostring(L1, getindex);
       const char *s1 = lua_pushstring(L1, s);
-      cast_void(s1);  /* to avoid warnings */
+      cast_void(s1);  // to avoid warnings
       lua_longassert((s == nullptr && s1 == nullptr) || strcmp(s, s1) == 0);
     }
     else if EQ("Ltolstring") {
@@ -1976,10 +1974,10 @@ static struct X { int x; } x;
       int f = getindex;
       int t = getindex;
       lua_State *fs = (f == 0) ? L1 : lua_tothread(L1, f);
-      lua_State *ts = (t == 0) ? L1 : lua_tothread(L1, t);
+      lua_State *tstring = (t == 0) ? L1 : lua_tothread(L1, t);
       int n = getnum;
       if (n == 0) n = lua_gettop(fs);
-      lua_xmove(fs, ts, n);
+      lua_xmove(fs, tstring, n);
     }
     else if EQ("isyieldable") {
       lua_pushboolean(L1, lua_isyieldable(lua_tothread(L1, getindex)));
@@ -2048,7 +2046,7 @@ static int makeCfunc (lua_State *L) {
 }
 
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
@@ -2065,12 +2063,12 @@ static void Chook (lua_State *L, lua_Debug *ar) {
   const char *const events [] = {"call", "ret", "line", "count", "tailcall"};
   lua_getfield(L, LUA_REGISTRYINDEX, "C_HOOK");
   lua_pushlightuserdata(L, L);
-  lua_gettable(L, -2);  /* get C_HOOK[L] (script saved by sethookaux) */
-  scpt = lua_tostring(L, -1);  /* not very religious (string will be popped) */
-  lua_pop(L, 2);  /* remove C_HOOK and script */
-  lua_pushstring(L, events[ar->event]);  /* may be used by script */
-  lua_pushinteger(L, ar->currentline);  /* may be used by script */
-  runC(L, L, scpt);  /* run script from C_HOOK[L] */
+  lua_gettable(L, -2);  // get C_HOOK[L] (script saved by sethookaux)
+  scpt = lua_tostring(L, -1);  // not very religious (string will be popped)
+  lua_pop(L, 2);  // remove C_HOOK and script
+  lua_pushstring(L, events[ar->event]);  // may be used by script
+  lua_pushinteger(L, ar->currentline);  // may be used by script
+  runC(L, L, scpt);  // run script from C_HOOK[L]
 }
 
 
@@ -2078,27 +2076,27 @@ static void Chook (lua_State *L, lua_Debug *ar) {
 ** sets 'registry.C_HOOK[L] = scpt' and sets 'Chook' as a hook
 */
 static void sethookaux (lua_State *L, int mask, int count, const char *scpt) {
-  if (*scpt == '\0') {  /* no script? */
-    lua_sethook(L, nullptr, 0, 0);  /* turn off hooks */
+  if (*scpt == '\0') {  // no script?
+    lua_sethook(L, nullptr, 0, 0);  // turn off hooks
     return;
   }
-  lua_getfield(L, LUA_REGISTRYINDEX, "C_HOOK");  /* get C_HOOK table */
-  if (!lua_istable(L, -1)) {  /* no hook table? */
-    lua_pop(L, 1);  /* remove previous value */
-    lua_newtable(L);  /* create new C_HOOK table */
+  lua_getfield(L, LUA_REGISTRYINDEX, "C_HOOK");  // get C_HOOK table
+  if (!lua_istable(L, -1)) {  // no hook table?
+    lua_pop(L, 1);  // remove previous value
+    lua_newtable(L);  // create new C_HOOK table
     lua_pushvalue(L, -1);
-    lua_setfield(L, LUA_REGISTRYINDEX, "C_HOOK");  /* register it */
+    lua_setfield(L, LUA_REGISTRYINDEX, "C_HOOK");  // register it
   }
   lua_pushlightuserdata(L, L);
   lua_pushstring(L, scpt);
-  lua_settable(L, -3);  /* C_HOOK[L] = script */
+  lua_settable(L, -3);  // C_HOOK[L] = script
   lua_sethook(L, Chook, mask, count);
 }
 
 
 static int sethook (lua_State *L) {
   if (lua_isnoneornil(L, 1))
-    lua_sethook(L, nullptr, 0, 0);  /* turn off hooks */
+    lua_sethook(L, nullptr, 0, 0);  // turn off hooks
   else {
     const char *scpt = luaL_checkstring(L, 1);
     const char *smask = luaL_checkstring(L, 2);
@@ -2122,7 +2120,7 @@ static int coresume (lua_State *L) {
   if (status != LUA_OK && status != LUA_YIELD) {
     lua_pushboolean(L, 0);
     lua_insert(L, -2);
-    return 2;  /* return false + error message */
+    return 2;  // return false + error message
   }
   else {
     lua_pushboolean(L, 1);
@@ -2149,7 +2147,7 @@ static int nonblock (lua_State *L) {
 }
 #endif
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
@@ -2162,39 +2160,39 @@ static int testvector (lua_State *L) {
   int n = cast_int(luaL_checkinteger(L, 1));
   luaL_argcheck(L, n >= 0 && n <= 1000000, 1, "value out of range");
 
-  global_State *g = G(L);
+  GlobalState *g = G(L);
 
-  /* Get memory before allocation */
+  // Get memory before allocation
   lua_Integer membefore = static_cast<lua_Integer>(g->getTotalBytes());
 
-  /* Create and populate a LuaVector */
+  // Create and populate a LuaVector
   {
     LuaVector<int> vec(L);
 
-    /* Reserve to avoid multiple reallocations */
+    // Reserve to avoid multiple reallocations
     vec.reserve(static_cast<size_t>(n));
 
-    /* Fill with values */
+    // Fill with values
     for (int i = 0; i < n; i++) {
       vec.push_back(i * 2);
     }
 
-    /* Verify contents */
+    // Verify contents
     for (int i = 0; i < n; i++) {
       luaL_argcheck(L, vec[static_cast<size_t>(i)] == i * 2, 1, "vector content mismatch");
     }
 
-    /* Check size */
+    // Check size
     luaL_argcheck(L, vec.size() == static_cast<size_t>(n), 1, "vector size mismatch");
 
-    /* Get memory during allocation */
+    // Get memory during allocation
     lua_Integer memduring = static_cast<lua_Integer>(g->getTotalBytes());
 
-    /* Push allocated bytes */
+    // Push allocated bytes
     lua_pushinteger(L, memduring - membefore);
   }
 
-  /* Vector is now destroyed, memory should be freed */
+  // Vector is now destroyed, memory should be freed
   return 1;
 }
 
@@ -2267,11 +2265,11 @@ int luaB_opentests (lua_State *L) {
   lua_atpanic(L, &tpanic);
   lua_setwarnf(L, &warnf, L);
   lua_pushboolean(L, 0);
-  lua_setglobal(L, "_WARN");  /* _WARN = false */
+  lua_setglobal(L, "_WARN");  // _WARN = false
   regcodes(L);
   atexit(checkfinalmem);
   lua_assert(f == debug_realloc && ud == cast_voidp(&l_memcontrol));
-  lua_setallocf(L, f, ud);  /* exercise this function */
+  lua_setallocf(L, f, ud);  // exercise this function
   luaL_newlib(L, tests_funcs);
   return 1;
 }

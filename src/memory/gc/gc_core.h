@@ -1,5 +1,4 @@
 /*
-** $Id: gc_core.h $
 ** Garbage Collector - Core Utilities Module
 ** See Copyright Notice in lua.h
 */
@@ -68,9 +67,9 @@ public:
     **
     ** Parameters:
     ** - L: Lua state
-    ** - uv: Upvalue to free
+    ** - upvalue: Upvalue to free
     */
-    static void freeupval(lua_State* L, UpVal* uv);
+    static void freeupval(lua_State* L, UpVal* upvalue);
 };
 
-#endif /* gc_core_h */
+#endif  // gc_core_h

@@ -1,5 +1,4 @@
 /*
-** $Id: lctype.h $
 ** 'ctype' functions for Lua
 ** See Copyright Notice in lua.h
 */
@@ -19,17 +18,17 @@
 #if !defined(LUA_USE_CTYPE)
 
 #if 'A' == 65 && '0' == 48
-/* ASCII case: can use its own tables; faster and fixed */
+// ASCII case: can use its own tables; faster and fixed
 #define LUA_USE_CTYPE	0
 #else
-/* must use standard C ctype */
+// must use standard C ctype
 #define LUA_USE_CTYPE	1
 #endif
 
 #endif
 
 
-#if !LUA_USE_CTYPE	/* { */
+#if !LUA_USE_CTYPE  // {
 
 #include <climits>
 
@@ -42,7 +41,7 @@ inline constexpr int PRINTBIT = 2;
 inline constexpr int SPACEBIT = 3;
 inline constexpr int XDIGITBIT = 4;
 
-/* one entry for each character and for -1 (EOZ) */
+// one entry for each character and for -1 (EOZ)
 LUAI_DDEC(const lu_byte luai_ctype_[UCHAR_MAX + 2];)
 
 inline constexpr int MASK(int B) noexcept {
@@ -95,7 +94,7 @@ inline int ltolower(int c) noexcept {
 }
 
 
-#else			/* }{ */
+#else  // }{
 
 /*
 ** use standard C ctypes
@@ -131,7 +130,7 @@ inline int ltolower(int c) noexcept {
 	return tolower(c);
 }
 
-#endif			/* } */
+#endif  // }
 
 #endif
 

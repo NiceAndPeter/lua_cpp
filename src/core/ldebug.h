@@ -1,5 +1,4 @@
 /*
-** $Id: ldebug.h $
 ** Auxiliary functions from Debug Interface module
 ** See Copyright Notice in lua.h
 */
@@ -10,15 +9,6 @@
 
 #include "lstate.h"
 
-
-/* Phase 44.5: CallInfo and Proto macros replaced with methods:
-** - pcRel(pc, p) → p->getPCRelative(pc)
-** - ci_func(ci) → ci->getFunc()
-*/
-
-/* Phase 44.4: resethookcount macro replaced with lua_State method:
-** - resethookcount(L) → L->resetHookCount()
-*/
 
 /*
 ** mark for entries in 'lineinfo' array that has absolute information in
@@ -37,7 +27,7 @@ inline constexpr int MAXIWTHABS = 128;
 
 
 LUAI_FUNC int luaG_getfuncline (const Proto *f, int pc);
-LUAI_FUNC const char *luaG_findlocal (lua_State *L, CallInfo *ci, int n,
+LUAI_FUNC const char *luaG_findlocal (lua_State *L, CallInfo *callInfo, int n,
                                                     StkId *pos);
 LUAI_FUNC l_noret luaG_typeerror (lua_State *L, const TValue *o,
                                                 const char *opname);

@@ -1,5 +1,4 @@
 /*
-** $Id: llex.h $
 ** Lexical Analyzer
 ** See Copyright Notice in lua.h
 */
@@ -12,8 +11,8 @@
 #include "lobject.h"
 #include "lzio.h"
 
-/* Forward declarations */
-class expdesc;
+// Forward declarations
+class ExpDesc;
 struct Labeldesc;
 class Labellist;
 struct ConsControl;
@@ -24,18 +23,18 @@ struct BlockCnt;
 ** grep "ORDER OPR" if you change these enums  (ORDER OP)
 */
 enum class BinOpr {
-  /* arithmetic operators */
+  // arithmetic operators
   OPR_ADD, OPR_SUB, OPR_MUL, OPR_MOD, OPR_POW,
   OPR_DIV, OPR_IDIV,
-  /* bitwise operators */
+  // bitwise operators
   OPR_BAND, OPR_BOR, OPR_BXOR,
   OPR_SHL, OPR_SHR,
-  /* string operator */
+  // string operator
   OPR_CONCAT,
-  /* comparison operators */
+  // comparison operators
   OPR_EQ, OPR_LT, OPR_LE,
   OPR_NE, OPR_GT, OPR_GE,
-  /* logical operators */
+  // logical operators
   OPR_AND, OPR_OR,
   OPR_NOBINOPR
 };
@@ -59,27 +58,27 @@ inline constexpr int FIRST_RESERVED = UCHAR_MAX + 1;
 * grep "ORDER RESERVED"
 */
 enum class RESERVED {
-  /* terminal symbols denoted by reserved words */
+  // terminal symbols denoted by reserved words
   TK_AND = FIRST_RESERVED, TK_BREAK,
   TK_DO, TK_ELSE, TK_ELSEIF, TK_END, TK_FALSE, TK_FOR, TK_FUNCTION,
   TK_GLOBAL, TK_GOTO, TK_IF, TK_IN, TK_LOCAL, TK_NIL, TK_NOT, TK_OR,
   TK_REPEAT, TK_RETURN, TK_THEN, TK_TRUE, TK_UNTIL, TK_WHILE,
-  /* other terminal symbols */
+  // other terminal symbols
   TK_IDIV, TK_CONCAT, TK_DOTS, TK_EQ, TK_GE, TK_LE, TK_NE,
   TK_SHL, TK_SHR,
   TK_DBCOLON, TK_EOS,
   TK_FLT, TK_INT, TK_NAME, TK_STRING
 };
 
-/* number of reserved words */
+// number of reserved words
 inline constexpr int NUM_RESERVED = (cast_int(static_cast<int>(RESERVED::TK_WHILE)-FIRST_RESERVED + 1));
 
 
 typedef union {
   lua_Number r;
   lua_Integer i;
-  TString *ts;
-} SemInfo;  /* semantics information */
+  TString *tstring;
+} SemInfo;  // semantics information
 
 
 typedef struct Token {
@@ -88,14 +87,14 @@ typedef struct Token {
 } Token;
 
 
-/* Phase 94: Subsystem for input character stream handling */
+// Subsystem for input character stream handling
 class InputScanner {
 private:
-  int current;      /* current character (charint) */
-  int linenumber;   /* input line counter */
-  int lastline;     /* line of last token 'consumed' */
-  ZIO *z;           /* input stream */
-  TString *source;  /* current source name */
+  int current;  // current character (charint)
+  int linenumber;  // input line counter
+  int lastline;  // line of last token 'consumed'
+  ZIO *z;  // input stream
+  TString *source;  // current source name
 
 public:
   // Accessors
@@ -118,11 +117,11 @@ public:
   bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
 };
 
-/* Phase 94: Subsystem for token state management */
+// Subsystem for token state management
 class TokenState {
 private:
-  Token current;    /* current token */
-  Token lookahead;  /* look ahead token */
+  Token current;  // current token
+  Token lookahead;  // look ahead token
 
 public:
   // Accessors
@@ -132,14 +131,14 @@ public:
   Token& getLookaheadRef() noexcept { return lookahead; }
 };
 
-/* Phase 94: Subsystem for string interning and buffer management */
+// Subsystem for string interning and buffer management
 class StringInterner {
 private:
-  Mbuffer *buff;  /* buffer for tokens */
-  Table *h;       /* to avoid collection/reuse strings */
-  TString *environmentName;  /* environment variable name */
-  TString *breakLabelName;  /* "break" name (used as a label) */
-  TString *globalKeywordName;  /* "global" name (when not a reserved word) */
+  Mbuffer *buff;  // buffer for tokens
+  Table *h;  // to avoid collection/reuse strings
+  TString *environmentName;  // environment variable name
+  TString *breakLabelName;  // "break" name (used as a label)
+  TString *globalKeywordName;  // "global" name (when not a reserved word)
 
 public:
   // Accessors
@@ -156,11 +155,11 @@ public:
   void setGlobalName(TString* gbl) noexcept { globalKeywordName = gbl; }
 };
 
-/* Phase 95: Lexical state - focused on tokenization only
+/* Lexical state - focused on tokenization only
 ** Parser-specific fields and methods moved to Parser class */
 class LexState {
 public:
-  // Phase 96: Direct subsystem access for performance
+  // Direct subsystem access for performance
   // These subsystems are frequently accessed in hot paths, so we make them
   // public to eliminate indirection overhead from delegating accessor methods
   InputScanner scanner;
@@ -170,10 +169,10 @@ public:
 private:
   // Shared state (lexer + parser)
   struct lua_State *L;
-  class Dyndata *dyd;  /* dynamic structures shared by lexer and parser */
+  class Dyndata *dyd;  // dynamic structures shared by lexer and parser
 
 public:
-  // Phase 94: Accessors delegating to subsystems
+  // Accessors delegating to subsystems
 
   // InputScanner accessors
   int getCurrentChar() const noexcept { return scanner.getCurrent(); }
@@ -198,7 +197,7 @@ public:
   const Token& getLookahead() const noexcept { return tokens.getLookahead(); }
   Token& getLookaheadRef() noexcept { return tokens.getLookaheadRef(); }
 
-  // Phase 96: Hot-path token accessors - frequently used in parser
+  // Hot-path token accessors - frequently used in parser
   // Direct access to token value without going through full getCurrentToken() call
   inline int getToken() const noexcept { return tokens.getCurrent().token; }
   inline void setToken(int tok) noexcept { tokens.getCurrentRef().token = tok; }
@@ -236,14 +235,14 @@ public:
 
   // Parser utility methods (used by FuncState, kept in LexState for access)
   Labeldesc *findlabel(TString *name, int ilb);
-  int newlabelentry(class FuncState *fs, Labellist *l, TString *name, int line, int pc);
-  void closegoto(class FuncState *fs, int g, Labeldesc *label, int bup);
-  l_noret jumpscopeerror(class FuncState *fs, Labeldesc *gt);
-  void createlabel(class FuncState *fs, TString *name, int line, int last);
-  l_noret undefgoto(class FuncState *fs, Labeldesc *gt);
+  int newlabelentry(class FuncState *funcState, Labellist *l, TString *name, int line, int pc);
+  void closegoto(class FuncState *funcState, int g, Labeldesc *label, int bup);
+  l_noret jumpscopeerror(class FuncState *funcState, Labeldesc *gt);
+  void createlabel(class FuncState *funcState, TString *name, int line, int last);
+  l_noret undefgoto(class FuncState *funcState, Labeldesc *gt);
 
 private:
-  // Phase 93: Lexer helper methods (converted from static functions)
+  // Lexer helper methods (converted from static functions)
   // Batch 1: Trivial functions
   void save(int c);
   void incLineNumber();
@@ -257,7 +256,7 @@ private:
   int readDecEsc();
   const char* txtToken(int token);
   size_t skipSep();
-  TString* anchorStr(TString *ts);
+  TString* anchorStr(TString *tstring);
 
   // Batch 3: Medium functions
   l_noret lexError(const char *msg, int token);
@@ -268,6 +267,7 @@ private:
   // Batch 4: Complex functions
   void readLongString(SemInfo *seminfo, size_t sep);
   void readString(int del, SemInfo *seminfo);
+  int readName(SemInfo *seminfo);  // identifier or reserved word
   int lex(SemInfo *seminfo);
 };
 

@@ -1,5 +1,4 @@
 /*
-** $Id: lvirtualmachine.h $
 ** Lua Virtual Machine - Encapsulation of VM operations
 ** See Copyright Notice in lua.h
 */
@@ -11,7 +10,7 @@
 #include "lvm.h"
 #include "lgc.h"
 
-/* Forward declarations */
+// Forward declarations
 struct lua_State;
 struct CallInfo;
 class Table;
@@ -43,7 +42,7 @@ public:
     VirtualMachine& operator=(VirtualMachine&&) noexcept = default;
 
     // === EXECUTION === (lvm.cpp)
-    void execute(CallInfo *ci);
+    void execute(CallInfo *callInfo);
     void finishOp();
 
     // === TYPE CONVERSIONS === (lvm_conversion.cpp)

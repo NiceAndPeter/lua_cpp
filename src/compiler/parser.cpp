@@ -1,10 +1,8 @@
 /*
-** $Id: lparser.c $
 ** Lua Parser - Parser Class Methods
 ** See Copyright Notice in lua.h
 */
 
-#define lparser_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -46,18 +44,17 @@ inline bool eqstr(const TString& a, const TString& b) noexcept {
 }
 
 
-/* Phase 123: Convert check_condition macro to inline function */
 inline void check_condition(Parser* parser, bool c, const char* msg) {
 	if (!c) parser->getLexState().syntaxError(msg);
 }
 
 
-inline void enterlevel(LexState* ls) {
-	luaE_incCstack(ls->getLuaState());
+inline void enterlevel(LexState* lexState) {
+	luaE_incCstack(lexState->getLuaState());
 }
 
-inline void leavelevel(LexState* ls) noexcept {
-	ls->getLuaState()->getNumberOfCCallsRef()--;
+inline void leavelevel(LexState* lexState) noexcept {
+	lexState->getLuaState()->getNumberOfCCallsRef()--;
 }
 
 
@@ -65,23 +62,23 @@ inline void leavelevel(LexState* ls) noexcept {
 ** nodes for block list (list of active blocks)
 */
 typedef struct BlockCnt {
-  struct BlockCnt *previous;  /* chain */
-  int firstlabel;  /* index of first label in this block */
-  int firstgoto;  /* index of first pending goto in this block */
-  short numberOfActiveVariables;  /* number of active declarations at block entry */
-  lu_byte upval;  /* true if some variable in the block is an upvalue */
-  lu_byte isloop;  /* 1 if 'block' is a loop; 2 if it has pending breaks */
-  lu_byte insidetbc;  /* true if inside the scope of a to-be-closed var. */
+  struct BlockCnt *previous;  // chain
+  int firstlabel;  // index of first label in this block
+  int firstgoto;  // index of first pending goto in this block
+  short numberOfActiveVariables;  // number of active declarations at block entry
+  lu_byte upval;  // true if some variable in the block is an upvalue
+  lu_byte isloop;  // 1 if 'block' is a loop; 2 if it has pending breaks
+  lu_byte insidetbc;  // true if inside the scope of a to-be-closed var.
 } BlockCnt;
 
 
 typedef struct ConsControl {
-  expdesc v;  /* last list item read */
-  expdesc *t;  /* table descriptor */
-  int nh;  /* total number of 'record' elements */
-  int na;  /* number of array elements already stored */
-  int tostore;  /* number of array elements pending to be stored */
-  int maxtostore;  /* maximum number of pending elements */
+  ExpDesc v;  // last list item read
+  ExpDesc *t;  // table descriptor
+  int nh;  // total number of 'record' elements
+  int na;  // number of array elements already stored
+  int tostore;  // number of array elements pending to be stored
+  int maxtostore;  // maximum number of pending elements
 } ConsControl;
 
 
@@ -141,22 +138,22 @@ inline BinOpr getbinopr (int op) noexcept {
 ** Priority table for binary operators.
 */
 static const struct {
-  lu_byte left;  /* left priority for each binary operator */
-  lu_byte right; /* right priority */
-} priority[] = {  /* ORDER OPR */
-   {10, 10}, {10, 10},           /* '+' '-' */
-   {11, 11}, {11, 11},           /* '*' '%' */
-   {14, 13},                  /* '^' (right associative) */
-   {11, 11}, {11, 11},           /* '/' '//' */
-   {6, 6}, {4, 4}, {5, 5},   /* '&' '|' '~' */
-   {7, 7}, {7, 7},           /* '<<' '>>' */
-   {9, 8},                   /* '..' (right associative) */
-   {3, 3}, {3, 3}, {3, 3},   /* ==, <, <= */
-   {3, 3}, {3, 3}, {3, 3},   /* ~=, >, >= */
-   {2, 2}, {1, 1}            /* and, or */
+  lu_byte left;  // left priority for each binary operator
+  lu_byte right;  // right priority
+} priority[] = {  // ORDER OPR
+   {10, 10}, {10, 10},  // '+' '-'
+   {11, 11}, {11, 11},  // '*' '%'
+   {14, 13},  // '^' (right associative)
+   {11, 11}, {11, 11},  // '/' '//'
+   {6, 6}, {4, 4}, {5, 5},  // '&' '|' '~'
+   {7, 7}, {7, 7},  // '<<' '>>'
+   {9, 8},  // '..' (right associative)
+   {3, 3}, {3, 3}, {3, 3},  // ==, <, <=
+   {3, 3}, {3, 3}, {3, 3},  // ~=, >, >=
+   {2, 2}, {1, 1}  // and, or
 };
 
-#define UNARY_PRIORITY	12  /* priority for unary operators */
+#define UNARY_PRIORITY	12  // priority for unary operators
 
 
 /*
@@ -165,19 +162,19 @@ static const struct {
 */
 struct LHS_assign {
   struct LHS_assign *prev;
-  expdesc v;  /* variable (global, local, upvalue, or indexed) */
+  ExpDesc v;  // variable (global, local, upvalue, or indexed)
 };
 
 
 l_noret Parser::error_expected(int token) {
-  ls.syntaxError(
-      luaO_pushfstring(ls.getLuaState(), "%s expected", ls.tokenToStr(token)));
+  lexState.syntaxError(
+      luaO_pushfstring(lexState.getLuaState(), "%s expected", lexState.tokenToStr(token)));
 }
 
 
 int Parser::testnext(int c) {
-  if (ls.getToken() == c) {
-    ls.nextToken();
+  if (lexState.getToken() == c) {
+    lexState.nextToken();
     return 1;
   }
   else return 0;
@@ -188,7 +185,7 @@ int Parser::testnext(int c) {
 ** Check that next token is 'c'.
 */
 void Parser::check(int c) {
-  if (ls.getToken() != c)
+  if (lexState.getToken() != c)
     error_expected(c);
 }
 
@@ -198,7 +195,7 @@ void Parser::check(int c) {
 */
 void Parser::checknext(int c) {
   check(c);
-  ls.nextToken();
+  lexState.nextToken();
 }
 
 
@@ -209,27 +206,27 @@ void Parser::checknext(int c) {
 */
 void Parser::check_match(int what, int who, int where) {
   if (l_unlikely(!testnext(what))) {
-    if (where == ls.getLineNumber())  /* all in the same line? */
-      error_expected(what);  /* do not need a complex message */
+    if (where == lexState.getLineNumber())  // all in the same line?
+      error_expected(what);  // do not need a complex message
     else {
-      ls.syntaxError(luaO_pushfstring(ls.getLuaState(),
+      lexState.syntaxError(luaO_pushfstring(lexState.getLuaState(),
              "%s expected (to close %s at line %d)",
-              ls.tokenToStr(what), ls.tokenToStr(who), where));
+              lexState.tokenToStr(what), lexState.tokenToStr(who), where));
     }
   }
 }
 
 
 TString *Parser::str_checkname() {
-  TString *ts;
+  TString *tstring;
   check(static_cast<int>(RESERVED::TK_NAME));
-  ts = ls.getSemInfo().ts;
-  ls.nextToken();
-  return ts;
+  tstring = lexState.getSemInfo().tstring;
+  lexState.nextToken();
+  return tstring;
 }
 
 
-void Parser::codename(expdesc& expr) {
+void Parser::codename(ExpDesc& expr) {
   expr.initString(str_checkname());
 }
 
@@ -239,12 +236,12 @@ void Parser::codename(expdesc& expr) {
 ** information).
 */
 int Parser::new_varkind(TString* name, lu_byte kind) {
-  Dyndata *dynData = ls.getDyndata();
+  Dyndata *dynData = lexState.getDyndata();
   Vardesc *var;
-  var = dynData->actvar().allocateNew();  /* LuaVector automatically grows */
-  var->vd.kind = kind;  /* default */
+  var = dynData->actvar().allocateNew();  // LuaVector automatically grows
+  var->vd.kind = kind;  // default
   var->vd.name = name;
-  return dynData->actvar().getN() - 1 - fs->getFirstLocal();
+  return dynData->actvar().getN() - 1 - funcState->getFirstLocal();
 }
 
 
@@ -261,37 +258,37 @@ int Parser::new_localvar(TString& name) {
 ** (Unless noted otherwise, all variables are referred to by their
 ** compiler indices.)
 */
-void Parser::check_readonly(expdesc& expr) {
+void Parser::check_readonly(ExpDesc& expr) {
   // FuncState passed as parameter
-  TString *variableName = nullptr;  /* to be set if variable is const */
+  TString *variableName = nullptr;  // to be set if variable is const
   switch (expr.getKind()) {
     case VCONST: {
-      variableName = ls.getDyndata()->actvar()[expr.getInfo()].vd.name;
+      variableName = lexState.getDyndata()->actvar()[expr.getInfo()].vd.name;
       break;
     }
     case VLOCAL: {
-      Vardesc *vardesc = fs->getlocalvardesc(expr.getLocalVarIndex());
-      if (vardesc->vd.kind != VDKREG)  /* not a regular variable? */
+      Vardesc *vardesc = funcState->getlocalvardesc(expr.getLocalVarIndex());
+      if (vardesc->vd.kind != VDKREG)  // not a regular variable?
         variableName = vardesc->vd.name;
       break;
     }
     case VUPVAL: {
-      Upvaldesc *up = &fs->getProto().getUpvalues()[expr.getInfo()];
+      Upvaldesc *up = &funcState->getProto().getUpvalues()[expr.getInfo()];
       if (up->getKind() != VDKREG)
         variableName = up->getName();
       break;
     }
-    case VINDEXUP: case VINDEXSTR: case VINDEXED: {  /* global variable */
-      if (expr.isIndexedReadOnly())  /* read-only? */
-        variableName = tsvalue(&fs->getProto().getConstants()[expr.getIndexedStringKeyIndex()]);
+    case VINDEXUP: case VINDEXSTR: case VINDEXED: {  // global variable
+      if (expr.isIndexedReadOnly())  // read-only?
+        variableName = tsvalue(&funcState->getProto().getConstants()[expr.getIndexedStringKeyIndex()]);
       break;
     }
     default:
-      lua_assert(expr.getKind() == VINDEXI);  /* this one doesn't need any check */
-      return;  /* integer index cannot be read-only */
+      lua_assert(expr.getKind() == VINDEXI);  // this one doesn't need any check
+      return;  // integer index cannot be read-only
   }
   if (variableName)
-    ls.semerror("attempt to assign to const variable '%s'", getStringContents(variableName));
+    lexState.semerror("attempt to assign to const variable '%s'", getStringContents(variableName));
 }
 
 
@@ -300,13 +297,13 @@ void Parser::check_readonly(expdesc& expr) {
 */
 void Parser::adjustlocalvars(int nvars) {
   // FuncState passed as parameter
-  auto regLevel = fs->nvarstack();
+  auto regLevel = funcState->nvarstack();
   for (int i = 0; i < nvars; i++) {
-    auto vidx = fs->getNumActiveVarsRef()++;
-    Vardesc *var = fs->getlocalvardesc(vidx);
+    auto vidx = funcState->getNumActiveVarsRef()++;
+    Vardesc *var = funcState->getlocalvardesc(vidx);
     var->vd.registerIndex = cast_byte(regLevel++);
-    var->vd.protoLocalVarIndex = fs->registerlocalvar(*var->vd.name);
-    fs->checklimit(regLevel, MAXVARS, "local variables");
+    var->vd.protoLocalVarIndex = funcState->registerlocalvar(*var->vd.name);
+    funcState->checklimit(regLevel, MAXVARS, "local variables");
   }
 }
 
@@ -315,41 +312,41 @@ void Parser::adjustlocalvars(int nvars) {
 ** Close the scope for all variables up to level 'tolevel'.
 ** (debug info.)
 */
-void Parser::buildglobal(TString& varname, expdesc& var) {
+void Parser::buildglobal(TString& varname, ExpDesc& var) {
   // FuncState passed as parameter
-  var.init(VGLOBAL, -1);  /* global by default */
-  fs->singlevaraux(*ls.getEnvName(), var, 1);  /* get environment variable */
+  var.init(VGLOBAL, -1);  // global by default
+  funcState->singlevaraux(*lexState.getEnvName(), var, 1);  // get environment variable
   if (var.getKind() == VGLOBAL)
-    ls.semerror("_ENV is global when accessing variable '%s'", getStringContents(&varname));
-  fs->exp2anyregup(var);  /* _ENV could be a constant */
-  expdesc key;
-  key.initString(&varname);  /* key is variable name */
-  fs->indexed(var, key);  /* 'var' represents _ENV[varname] */
+    lexState.semerror("_ENV is global when accessing variable '%s'", getStringContents(&varname));
+  funcState->exp2anyregup(var);  // _ENV could be a constant
+  ExpDesc key;
+  key.initString(&varname);  // key is variable name
+  funcState->indexed(var, key);  // 'var' represents _ENV[varname]
 }
 
 
 /*
 ** Find a variable with the given name, handling global variables too.
 */
-void Parser::buildvar(TString& varname, expdesc& var) {
+void Parser::buildvar(TString& varname, ExpDesc& var) {
   // FuncState passed as parameter
-  var.init(VGLOBAL, -1);  /* global by default */
-  fs->singlevaraux(varname, var, 1);
-  if (var.getKind() == VGLOBAL) {  /* global name? */
+  var.init(VGLOBAL, -1);  // global by default
+  funcState->singlevaraux(varname, var, 1);
+  if (var.getKind() == VGLOBAL) {  // global name?
     auto info = var.getInfo();
-    /* global by default in the scope of a global declaration? */
+    // global by default in the scope of a global declaration?
     if (info == -2)
-      ls.semerror("variable '%s' not declared", getStringContents(&varname));
+      lexState.semerror("variable '%s' not declared", getStringContents(&varname));
     buildglobal(varname, var);
-    if (info != -1 && ls.getDyndata()->actvar()[info].vd.kind == GDKCONST)
-      var.setIndexedReadOnly(1);  /* mark variable as read-only */
-    else  /* anyway must be a global */
-      lua_assert(info == -1 || ls.getDyndata()->actvar()[info].vd.kind == GDKREG);
+    if (info != -1 && lexState.getDyndata()->actvar()[info].vd.kind == GDKCONST)
+      var.setIndexedReadOnly(1);  // mark variable as read-only
+    else  // anyway must be a global
+      lua_assert(info == -1 || lexState.getDyndata()->actvar()[info].vd.kind == GDKREG);
   }
 }
 
 
-void Parser::singlevar(expdesc& var) {
+void Parser::singlevar(ExpDesc& var) {
   buildvar(*str_checkname(), var);
 }
 
@@ -358,33 +355,33 @@ void Parser::singlevar(expdesc& var) {
 ** Adjust the number of results from an expression list 'e' with 'nexps'
 ** expressions to 'nvars' values.
 */
-void Parser::adjust_assign(int variableCount, int expressionCount, expdesc& lastExpr) {
+void Parser::adjust_assign(int variableCount, int expressionCount, ExpDesc& lastExpr) {
   // FuncState passed as parameter
-  auto needed = variableCount - expressionCount;  /* extra values needed */
-  if (hasmultret(lastExpr.getKind())) {  /* last expression has multiple returns? */
-    auto extra = needed + 1;  /* discount last expression itself */
+  auto needed = variableCount - expressionCount;  // extra values needed
+  if (hasmultret(lastExpr.getKind())) {  // last expression has multiple returns?
+    auto extra = needed + 1;  // discount last expression itself
     if (extra < 0)
       extra = 0;
-    fs->setreturns(lastExpr, extra);  /* last exp. provides the difference */
+    funcState->setreturns(lastExpr, extra);  // last exp. provides the difference
   }
   else {
-    if (lastExpr.getKind() != VVOID)  /* at least one expression? */
-      fs->exp2nextreg(lastExpr);  /* close last expression */
-    if (needed > 0)  /* missing values? */
-      fs->nil(fs->getFirstFreeRegister(), needed);  /* complete with nils */
+    if (lastExpr.getKind() != VVOID)  // at least one expression?
+      funcState->exp2nextreg(lastExpr);  // close last expression
+    if (needed > 0)  // missing values?
+      funcState->nil(funcState->getFirstFreeRegister(), needed);  // complete with nils
   }
   if (needed > 0)
-    fs->reserveregs(needed);  /* registers for extra values */
-  else  /* adding 'needed' is actually a subtraction */
-    fs->setFirstFreeRegister(cast_byte(fs->getFirstFreeRegister() + needed));  /* remove extra values */
+    funcState->reserveregs(needed);  // registers for extra values
+  else  // adding 'needed' is actually a subtraction
+    funcState->setFirstFreeRegister(cast_byte(funcState->getFirstFreeRegister() + needed));  // remove extra values
 }
 
 
 int Parser::newgotoentry(TString& name, int line) {
   // FuncState passed as parameter
-  auto pc = fs->jump();  /* create jump */
-  fs->codeABC(OP_CLOSE, 0, 1, 0);  /* spaceholder, marked as dead */
-  return ls.newlabelentry(fs, &ls.getDyndata()->gt, &name, line, pc);
+  auto pc = funcState->jump();  // create jump
+  funcState->codeABC(OP_CLOSE, 0, 1, 0);  // spaceholder, marked as dead
+  return lexState.newlabelentry(funcState, &lexState.getDyndata()->gt, &name, line, pc);
 }
 
 
@@ -397,9 +394,9 @@ int Parser::newgotoentry(TString& name, int line) {
 */
 Proto *Parser::addprototype() {
   Proto *clp;
-  lua_State *state = ls.getLuaState();
-  FuncState *funcstate = fs;
-  Proto &proto = funcstate->getProto();  /* prototype of current function */
+  lua_State *state = lexState.getLuaState();
+  FuncState *funcstate = funcState;
+  Proto &proto = funcstate->getProto();  // prototype of current function
   if (funcstate->getNumberOfNestedPrototypes() >= proto.getProtosSize()) {
     auto oldsize = proto.getProtosSize();
     luaM_growvector<Proto*>(state, proto.getProtosRef(), funcstate->getNumberOfNestedPrototypes(), proto.getProtosSizeRef(), MAXARG_Bx, "functions");
@@ -420,17 +417,17 @@ Proto *Parser::addprototype() {
 ** are in use at that time.
 
 */
-void Parser::codeclosure( expdesc& v) {
-  FuncState *funcstate = fs->getPrev();
+void Parser::codeclosure( ExpDesc& v) {
+  FuncState *funcstate = funcState->getPrev();
   v.init(VRELOC, funcstate->codeABx(OP_CLOSURE, 0, funcstate->getNumberOfNestedPrototypes() - 1));
-  funcstate->exp2nextreg(v);  /* fix it at the last register */
+  funcstate->exp2nextreg(v);  // fix it at the last register
 }
 
 
 void Parser::open_func(FuncState *funcstate, BlockCnt& bl) {
-  lua_State *state = ls.getLuaState();
+  lua_State *state = lexState.getLuaState();
   Proto& f = funcstate->getProto();
-  funcstate->setPrev(fs);  /* linked list of funcstates */
+  funcstate->setPrev(funcState);  // linked list of funcstates
   setFuncState(funcstate);
   funcstate->setPC(0);
   funcstate->setPreviousLine(f.getLineDefined());
@@ -444,24 +441,24 @@ void Parser::open_func(FuncState *funcstate, BlockCnt& bl) {
   funcstate->setNumDebugVars(0);
   funcstate->setNumActiveVars(0);
   funcstate->setNeedClose(0);
-  funcstate->setFirstLocal(ls.getDyndata()->actvar().getN());
-  funcstate->setFirstLabel(ls.getDyndata()->label.getN());
+  funcstate->setFirstLocal(lexState.getDyndata()->actvar().getN());
+  funcstate->setFirstLabel(lexState.getDyndata()->label.getN());
   funcstate->setBlock(nullptr);
-  f.setSource(ls.getSource());
+  f.setSource(lexState.getSource());
   luaC_objbarrier(state, &f, f.getSource());
-  f.setMaxStackSize(2);  /* registers 0/1 are always valid */
-  funcstate->setKCache(Table::create(state));  /* create table for function */
-  sethvalue2s(state, state->getTop().p, funcstate->getKCache());  /* anchor it */
-  state->inctop();  /* Phase 25e */
+  f.setMaxStackSize(2);  // registers 0/1 are always valid
+  funcstate->setKCache(Table::create(state));  // create table for function
+  sethvalue2s(state, state->getTop().p, funcstate->getKCache());  // anchor it
+  state->inctop();
   funcstate->enterblock(bl, 0);
 }
 
 
 void Parser::close_func() {
-  lua_State *state = ls.getLuaState();
-  FuncState *funcstate = fs;
+  lua_State *state = lexState.getLuaState();
+  FuncState *funcstate = funcState;
   Proto &f = funcstate->getProto();
-  funcstate->ret(luaY_nvarstack(funcstate), 0);  /* final return */
+  funcstate->ret(luaY_nvarstack(funcstate), 0);  // final return
   funcstate->leaveblock();
   lua_assert(funcstate->getBlock() == nullptr);
   funcstate->finish();
@@ -474,7 +471,7 @@ void Parser::close_func() {
   luaM_shrinkvector<LocVar>(state, f.getLocVarsRef(), f.getLocVarsSizeRef(), funcstate->getNumDebugVars());
   luaM_shrinkvector<Upvaldesc>(state, f.getUpvaluesRef(), f.getUpvaluesSizeRef(), funcstate->getNumUpvalues());
   setFuncState(funcstate->getPrev());
-  state->getStackSubsystem().pop();  /* pop kcache table */
+  state->getStackSubsystem().pop();  // pop kcache table
   luaC_checkGC(state);
 }
 
@@ -492,7 +489,7 @@ void Parser::close_func() {
 ** so it is handled in separate.
 */
 int Parser::block_follow( int withuntil) {
-  switch (ls.getToken()) {
+  switch (lexState.getToken()) {
     case static_cast<int>(RESERVED::TK_ELSE): case static_cast<int>(RESERVED::TK_ELSEIF):
     case static_cast<int>(RESERVED::TK_END): case static_cast<int>(RESERVED::TK_EOS):
       return 1;
@@ -503,33 +500,33 @@ int Parser::block_follow( int withuntil) {
 
 
 void Parser::statlist() {
-  /* statlist -> { stat [';'] } */
+  // statlist -> { stat [';'] }
   while (!block_follow(1)) {
-    if (ls.getToken() == static_cast<int>(RESERVED::TK_RETURN)) {
+    if (lexState.getToken() == static_cast<int>(RESERVED::TK_RETURN)) {
       statement();
-      return;  /* 'return' must be last statement */
+      return;  // 'return' must be last statement
     }
     statement();
   }
 }
 
 
-void Parser::fieldsel( expdesc& v) {
-  /* fieldsel -> ['.' | ':'] NAME */
-  FuncState *funcstate = fs;
+void Parser::fieldsel( ExpDesc& v) {
+  // fieldsel -> ['.' | ':'] NAME
+  FuncState *funcstate = funcState;
   funcstate->exp2anyregup(v);
-  ls.nextToken();  /* skip the dot or colon */
-  expdesc key;
+  lexState.nextToken();  // skip the dot or colon
+  ExpDesc key;
   codename(key);
   funcstate->indexed(v, key);
 }
 
 
-void Parser::yindex( expdesc& v) {
-  /* index -> '[' expr ']' */
-  ls.nextToken();  /* skip the '[' */
+void Parser::yindex( ExpDesc& v) {
+  // index -> '[' expr ']'
+  lexState.nextToken();  // skip the '['
   expr(v);
-  fs->exp2val(v);
+  funcState->exp2val(v);
   checknext( ']');
 }
 
@@ -541,13 +538,13 @@ void Parser::yindex( expdesc& v) {
 */
 
 void Parser::recfield( ConsControl& cc) {
-  /* recfield -> (NAME | '['exp']') = exp */
-  FuncState *funcstate = fs;
-  lu_byte reg = fs->getFirstFreeRegister();
-  expdesc tab, key, val;
-  if (ls.getToken() == static_cast<int>(RESERVED::TK_NAME))
+  // recfield -> (NAME | '['exp']') = exp
+  FuncState *funcstate = funcState;
+  lu_byte reg = funcState->getFirstFreeRegister();
+  ExpDesc tab, key, val;
+  if (lexState.getToken() == static_cast<int>(RESERVED::TK_NAME))
     codename(key);
-  else  /* ls.getToken() == '[' */
+  else  // lexState.getToken() == '['
     yindex(key);
   cc.nh++;
   checknext( '=');
@@ -555,22 +552,22 @@ void Parser::recfield( ConsControl& cc) {
   funcstate->indexed(tab, key);
   expr(val);
   funcstate->storevar(tab, val);
-  funcstate->setFirstFreeRegister(reg);  /* free registers */
+  funcstate->setFirstFreeRegister(reg);  // free registers
 }
 
 
 void Parser::listfield( ConsControl& cc) {
-  /* listfield -> exp */
+  // listfield -> exp
   expr(cc.v);
   cc.tostore++;
 }
 
 
 void Parser::field( ConsControl& cc) {
-  /* field -> listfield | recfield */
-  switch(ls.getToken()) {
-    case static_cast<int>(RESERVED::TK_NAME): {  /* may be 'listfield' or 'recfield' */
-      if (ls.lookaheadToken() != '=')  /* expression? */
+  // field -> listfield | recfield
+  switch(lexState.getToken()) {
+    case static_cast<int>(RESERVED::TK_NAME): {  // may be 'listfield' or 'recfield'
+      if (lexState.lookaheadToken() != '=')  // expression?
         listfield(cc);
       else
         recfield(cc);
@@ -593,25 +590,25 @@ void Parser::field( ConsControl& cc) {
 ** emitting a 'SETLIST' instruction, based on how many registers are
 ** available.
 */
-void Parser::constructor( expdesc& table_exp) {
+void Parser::constructor( ExpDesc& table_exp) {
   /* constructor -> '{' [ field { sep field } [sep] ] '}'
      sep -> ',' | ';' */
-  FuncState *funcstate = fs;
-  auto line = ls.getLineNumber();
+  FuncState *funcstate = funcState;
+  auto line = lexState.getLineNumber();
   auto pc = funcstate->codevABCk(OP_NEWTABLE, 0, 0, 0, 0);
   ConsControl cc;
-  funcstate->code(0);  /* space for extra arg. */
+  funcstate->code(0);  // space for extra arg.
   cc.na = cc.nh = cc.tostore = 0;
   cc.t = &table_exp;
-  table_exp.init(VNONRELOC, funcstate->getFirstFreeRegister());  /* table will be at stack top */
+  table_exp.init(VNONRELOC, funcstate->getFirstFreeRegister());  // table will be at stack top
   funcstate->reserveregs(1);
-  cc.v.init(VVOID, 0);  /* no value (yet) */
+  cc.v.init(VVOID, 0);  // no value (yet)
   checknext( '{' /*}*/);
   cc.maxtostore = funcstate->maxtostore();
   do {
-    if (ls.getToken() == /*{*/ '}') break;
-    if (cc.v.getKind() != VVOID)  /* is there a previous list item? */
-      funcstate->closelistfield(cc);  /* close it */
+    if (lexState.getToken() == /*{*/ '}') break;
+    if (cc.v.getKind() != VVOID)  // is there a previous list item?
+      funcstate->closelistfield(cc);  // close it
     field(cc);
     luaY_checklimit(funcstate, cc.tostore + cc.na + cc.nh, MAX_CNST,
                     "items in a constructor");
@@ -621,68 +618,68 @@ void Parser::constructor( expdesc& table_exp) {
   funcstate->settablesize(pc, static_cast<unsigned>(table_exp.getInfo()), static_cast<unsigned>(cc.na), static_cast<unsigned>(cc.nh));
 }
 
-/* }====================================================================== */
+// }======================================================================
 
 
 void Parser::parlist() {
-  /* parlist -> [ {NAME ','} (NAME | '...') ] */
-  FuncState *funcstate = fs;
+  // parlist -> [ {NAME ','} (NAME | '...') ]
+  FuncState *funcstate = funcState;
   Proto &f = funcstate->getProto();
   int nparams = 0;
   int isvararg = 0;
-  if (ls.getToken() != ')') {  /* is 'parlist' not empty? */
+  if (lexState.getToken() != ')') {  // is 'parlist' not empty?
     do {
-      switch (ls.getToken()) {
+      switch (lexState.getToken()) {
         case static_cast<int>(RESERVED::TK_NAME): {
           new_localvar(*str_checkname());
           nparams++;
           break;
         }
         case static_cast<int>(RESERVED::TK_DOTS): {
-          ls.nextToken();
+          lexState.nextToken();
           isvararg = 1;
           break;
         }
-        default: ls.syntaxError( "<name> or '...' expected");
+        default: lexState.syntaxError( "<name> or '...' expected");
       }
     } while (!isvararg && testnext( ','));
   }
   adjustlocalvars(nparams);
   f.setNumParams(cast_byte(funcstate->getNumActiveVars()));
   if (isvararg)
-    funcstate->setvararg(f.getNumParams());  /* declared vararg */
-  funcstate->reserveregs(funcstate->getNumActiveVars());  /* reserve registers for parameters */
+    funcstate->setvararg(f.getNumParams());  // declared vararg
+  funcstate->reserveregs(funcstate->getNumActiveVars());  // reserve registers for parameters
 }
 
 
-void Parser::body( expdesc& funcExpr, int isMethod, int line) {
-  /* body ->  '(' parlist ')' block END */
+void Parser::body( ExpDesc& funcExpr, int isMethod, int line) {
+  // body ->  '(' parlist ')' block END
   Proto* proto = addprototype();
   proto->setLineDefined(line);
-  FuncState new_fs(*proto, ls);
+  FuncState new_fs(*proto, lexState);
   BlockCnt bl;
   open_func(&new_fs, bl);
   checknext( '(');
   if (isMethod) {
-    new_localvarliteral("self");  /* create 'self' parameter */
+    new_localvarliteral("self");  // create 'self' parameter
     adjustlocalvars(1);
   }
   parlist();
   checknext( ')');
   statlist();
-  new_fs.getProto().setLastLineDefined(ls.getLineNumber());
+  new_fs.getProto().setLastLineDefined(lexState.getLineNumber());
   check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_FUNCTION), line);
   codeclosure(funcExpr);
   close_func();
 }
 
 
-int Parser::explist( expdesc& v) {
-  /* explist -> expr { ',' expr } */
-  int n = 1;  /* at least one expression */
+int Parser::explist( ExpDesc& v) {
+  // explist -> expr { ',' expr }
+  int n = 1;  // at least one expression
   expr(v);
   while (testnext( ',')) {
-    fs->exp2nextreg(v);
+    funcState->exp2nextreg(v);
     expr(v);
     n++;
   }
@@ -690,15 +687,15 @@ int Parser::explist( expdesc& v) {
 }
 
 
-void Parser::funcargs( expdesc& f) {
-  FuncState *funcstate = fs;
-  expdesc args;
+void Parser::funcargs( ExpDesc& f) {
+  FuncState *funcstate = funcState;
+  ExpDesc args;
   int base, nparams;
-  auto line = ls.getLineNumber();
-  switch (ls.getToken()) {
-    case '(': {  /* funcargs -> '(' [ explist ] ')' */
-      ls.nextToken();
-      if (ls.getToken() == ')')  /* arg list is empty? */
+  auto line = lexState.getLineNumber();
+  switch (lexState.getToken()) {
+    case '(': {  // funcargs -> '(' [ explist ] ')'
+      lexState.nextToken();
+      if (lexState.getToken() == ')')  // arg list is empty?
         args.setKind(VVOID);
       else {
         explist(args);
@@ -712,22 +709,22 @@ void Parser::funcargs( expdesc& f) {
       constructor(args);
       break;
     }
-    case static_cast<int>(RESERVED::TK_STRING): {  /* funcargs -> STRING */
-      args.initString(ls.getSemInfo().ts);
-      ls.nextToken();  /* must use 'seminfo' before 'next' */
+    case static_cast<int>(RESERVED::TK_STRING): {  // funcargs -> STRING
+      args.initString(lexState.getSemInfo().tstring);
+      lexState.nextToken();  // must use 'seminfo' before 'next'
       break;
     }
     default: {
-      ls.syntaxError( "function arguments expected");
+      lexState.syntaxError( "function arguments expected");
     }
   }
   lua_assert(f.getKind() == VNONRELOC);
-  base = f.getInfo();  /* base register for call */
+  base = f.getInfo();  // base register for call
   if (hasmultret(args.getKind()))
-    nparams = LUA_MULTRET;  /* open call */
+    nparams = LUA_MULTRET;  // open call
   else {
     if (args.getKind() != VVOID)
-      funcstate->exp2nextreg(args);  /* close last argument */
+      funcstate->exp2nextreg(args);  // close last argument
     nparams = funcstate->getFirstFreeRegister() - (base+1);
   }
   f.init(VCALL, funcstate->codeABC(OP_CALL, base, nparams+1, 2));
@@ -747,15 +744,15 @@ void Parser::funcargs( expdesc& f) {
 */
 
 
-void Parser::primaryexp( expdesc& v) {
-  /* primaryexp -> NAME | '(' expr ')' */
-  switch (ls.getToken()) {
+void Parser::primaryexp( ExpDesc& v) {
+  // primaryexp -> NAME | '(' expr ')'
+  switch (lexState.getToken()) {
     case '(': {
-      auto line = ls.getLineNumber();
-      ls.nextToken();
+      auto line = lexState.getLineNumber();
+      lexState.nextToken();
       expr(v);
       check_match( ')', '(', line);
-      fs->dischargevars(v);
+      funcState->dischargevars(v);
       return;
     }
     case static_cast<int>(RESERVED::TK_NAME): {
@@ -763,33 +760,33 @@ void Parser::primaryexp( expdesc& v) {
       return;
     }
     default: {
-      ls.syntaxError( "unexpected symbol");
+      lexState.syntaxError( "unexpected symbol");
     }
   }
 }
 
 
-void Parser::suffixedexp( expdesc& v) {
+void Parser::suffixedexp( ExpDesc& v) {
   /* suffixedexp ->
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
-  FuncState *funcstate = fs;
+  FuncState *funcstate = funcState;
   primaryexp(v);
   for (;;) {
-    switch (ls.getToken()) {
-      case '.': {  /* fieldsel */
+    switch (lexState.getToken()) {
+      case '.': {  // fieldsel
         fieldsel(v);
         break;
       }
-      case '[': {  /* '[' exp ']' */
-        expdesc key;
+      case '[': {  // '[' exp ']'
+        ExpDesc key;
         funcstate->exp2anyregup(v);
         yindex(key);
         funcstate->indexed(v, key);
         break;
       }
-      case ':': {  /* ':' NAME funcargs */
-        expdesc key;
-        ls.nextToken();
+      case ':': {  // ':' NAME funcargs
+        ExpDesc key;
+        lexState.nextToken();
         codename(key);
         funcstate->self(v, key);
         funcargs(v);
@@ -806,22 +803,22 @@ void Parser::suffixedexp( expdesc& v) {
 }
 
 
-void Parser::simpleexp( expdesc& v) {
+void Parser::simpleexp( ExpDesc& v) {
   /* simpleexp -> FLT | INT | STRING | NIL | TRUE | FALSE | ... |
                   constructor | FUNCTION body | suffixedexp */
-  switch (ls.getToken()) {
+  switch (lexState.getToken()) {
     case static_cast<int>(RESERVED::TK_FLT): {
       v.init(VKFLT, 0);
-      v.setFloatValue(ls.getSemInfo().r);
+      v.setFloatValue(lexState.getSemInfo().r);
       break;
     }
     case static_cast<int>(RESERVED::TK_INT): {
       v.init(VKINT, 0);
-      v.setIntValue(ls.getSemInfo().i);
+      v.setIntValue(lexState.getSemInfo().i);
       break;
     }
     case static_cast<int>(RESERVED::TK_STRING): {
-      v.initString(ls.getSemInfo().ts);
+      v.initString(lexState.getSemInfo().tstring);
       break;
     }
     case static_cast<int>(RESERVED::TK_NIL): {
@@ -836,8 +833,8 @@ void Parser::simpleexp( expdesc& v) {
       v.init(VFALSE, 0);
       break;
     }
-    case static_cast<int>(RESERVED::TK_DOTS): {  /* vararg */
-      FuncState *funcstate = fs;
+    case static_cast<int>(RESERVED::TK_DOTS): {  // vararg
+      FuncState *funcstate = funcState;
       check_condition(this, funcstate->getProto().getFlag() & PF_ISVARARG,
                       "cannot use '...' outside a vararg function");
       v.init(VVARARG, funcstate->codeABC(OP_VARARG, 0, 0, 1));
@@ -848,8 +845,8 @@ void Parser::simpleexp( expdesc& v) {
       return;
     }
     case static_cast<int>(RESERVED::TK_FUNCTION): {
-      ls.nextToken();
-      body(v, 0, ls.getLineNumber());
+      lexState.nextToken();
+      body(v, 0, lexState.getLineNumber());
       return;
     }
     default: {
@@ -857,45 +854,45 @@ void Parser::simpleexp( expdesc& v) {
       return;
     }
   }
-  ls.nextToken();
+  lexState.nextToken();
 }
 
 
-BinOpr Parser::subexpr( expdesc& v, int limit) {
+BinOpr Parser::subexpr( ExpDesc& v, int limit) {
   BinOpr op;
   UnOpr uop;
-  enterlevel(&ls);
-  uop = getunopr(ls.getToken());
-  if (uop != UnOpr::OPR_NOUNOPR) {  /* prefix (unary) operator? */
-    int line = ls.getLineNumber();
-    ls.nextToken();  /* skip operator */
+  enterlevel(&lexState);
+  uop = getunopr(lexState.getToken());
+  if (uop != UnOpr::OPR_NOUNOPR) {  // prefix (unary) operator?
+    int line = lexState.getLineNumber();
+    lexState.nextToken();  // skip operator
     subexpr(v, UNARY_PRIORITY);
-    fs->prefix(uop, v, line);
+    funcState->prefix(uop, v, line);
   }
   else simpleexp(v);
-  /* expand while operators have priorities higher than 'limit' */
-  op = getbinopr(ls.getToken());
+  // expand while operators have priorities higher than 'limit'
+  op = getbinopr(lexState.getToken());
   while (op != BinOpr::OPR_NOBINOPR && priority[static_cast<int>(op)].left > limit) {
-    expdesc v2;
+    ExpDesc v2;
     BinOpr nextop;
-    int line = ls.getLineNumber();
-    ls.nextToken();  /* skip operator */
-    fs->infix(op, v);
-    /* read sub-expression with higher priority */
+    int line = lexState.getLineNumber();
+    lexState.nextToken();  // skip operator
+    funcState->infix(op, v);
+    // read sub-expression with higher priority
     nextop = subexpr(v2, priority[static_cast<int>(op)].right);
-    fs->posfix(op, v, v2, line);
+    funcState->posfix(op, v, v2, line);
     op = nextop;
   }
-  leavelevel(&ls);
-  return op;  /* return first untreated operator */
+  leavelevel(&lexState);
+  return op;  // return first untreated operator
 }
 
 
-void Parser::expr( expdesc& v) {
+void Parser::expr( ExpDesc& v) {
   subexpr(v, 0);
 }
 
-/* }==================================================================== */
+// }====================================================================
 
 
 
@@ -907,8 +904,8 @@ void Parser::expr( expdesc& v) {
 
 
 void Parser::block() {
-  /* block -> statlist */
-  FuncState *funcstate = fs;
+  // block -> statlist
+  FuncState *funcstate = funcState;
   BlockCnt bl;
   funcstate->enterblock(bl, 0);
   statlist();
@@ -922,35 +919,35 @@ void Parser::block() {
 ** table. If so, save original upvalue/local value in a safe place and
 ** use this safe copy in the previous assignment.
 */
-void Parser::check_conflict( struct LHS_assign *lh, expdesc& v) {
-  FuncState *funcstate = fs;
-  lu_byte extra = funcstate->getFirstFreeRegister();  /* eventual position to save local variable */
+void Parser::check_conflict( struct LHS_assign *lh, ExpDesc& v) {
+  FuncState *funcstate = funcState;
+  lu_byte extra = funcstate->getFirstFreeRegister();  // eventual position to save local variable
   int conflict = 0;
-  for (; lh; lh = lh->prev) {  /* check all previous assignments */
-    if (expdesc::isIndexed(lh->v.getKind())) {  /* assignment to table field? */
-      if (lh->v.getKind() == VINDEXUP) {  /* is table an upvalue? */
+  for (; lh; lh = lh->prev) {  // check all previous assignments
+    if (ExpDesc::isIndexed(lh->v.getKind())) {  // assignment to table field?
+      if (lh->v.getKind() == VINDEXUP) {  // is table an upvalue?
         if (v.getKind() == VUPVAL && lh->v.getIndexedTableReg() == v.getInfo()) {
-          conflict = 1;  /* table is the upvalue being assigned now */
+          conflict = 1;  // table is the upvalue being assigned now
           lh->v.setKind(VINDEXSTR);
-          lh->v.setIndexedTableReg(extra);  /* assignment will use safe copy */
+          lh->v.setIndexedTableReg(extra);  // assignment will use safe copy
         }
       }
-      else {  /* table is a register */
+      else {  // table is a register
         if (v.getKind() == VLOCAL && lh->v.getIndexedTableReg() == v.getLocalRegister()) {
-          conflict = 1;  /* table is the local being assigned now */
-          lh->v.setIndexedTableReg(extra);  /* assignment will use safe copy */
+          conflict = 1;  // table is the local being assigned now
+          lh->v.setIndexedTableReg(extra);  // assignment will use safe copy
         }
-        /* is index the local being assigned? */
+        // is index the local being assigned?
         if (lh->v.getKind() == VINDEXED && v.getKind() == VLOCAL &&
             lh->v.getIndexedKeyIndex() == v.getLocalRegister()) {
           conflict = 1;
-          lh->v.setIndexedKeyIndex(extra);  /* previous assignment will use safe copy */
+          lh->v.setIndexedKeyIndex(extra);  // previous assignment will use safe copy
         }
       }
     }
   }
   if (conflict) {
-    /* copy upvalue/local value to a temporary (in position 'extra') */
+    // copy upvalue/local value to a temporary (in position 'extra')
     if (v.getKind() == VLOCAL)
       funcstate->codeABC(OP_MOVE, extra, v.getLocalRegister(), 0);
     else
@@ -960,49 +957,49 @@ void Parser::check_conflict( struct LHS_assign *lh, expdesc& v) {
 }
 
 
-/* Create code to store the "top" register in 'var' */
+// Create code to store the "top" register in 'var'
 void Parser::restassign( struct LHS_assign *lh, int nvars) {
-  expdesc e;
-  check_condition(this, expdesc::isVar(lh->v.getKind()), "syntax error");
+  ExpDesc e;
+  check_condition(this, ExpDesc::isVar(lh->v.getKind()), "syntax error");
   check_readonly(lh->v);
-  if (testnext( ',')) {  /* restassign -> ',' suffixedexp restassign */
+  if (testnext( ',')) {  // restassign -> ',' suffixedexp restassign
     struct LHS_assign nv;
     nv.prev = lh;
     suffixedexp(nv.v);
-    if (!expdesc::isIndexed(nv.v.getKind()))
+    if (!ExpDesc::isIndexed(nv.v.getKind()))
       check_conflict(lh, nv.v);
-    enterlevel(&ls);  /* control recursion depth */
+    enterlevel(&lexState);  // control recursion depth
     restassign(&nv, nvars+1);
-    leavelevel(&ls);
+    leavelevel(&lexState);
   }
-  else {  /* restassign -> '=' explist */
+  else {  // restassign -> '=' explist
     int nexps;
     checknext( '=');
     nexps = explist(e);
     if (nexps != nvars)
       adjust_assign(nvars, nexps, e);
     else {
-      fs->setoneret(e);  /* close last expression */
-      fs->storevar(lh->v, e);
-      return;  /* avoid default */
+      funcState->setoneret(e);  // close last expression
+      funcState->storevar(lh->v, e);
+      return;  // avoid default
     }
   }
-  fs->storevartop(lh->v);  /* default assignment */
+  funcState->storevartop(lh->v);  // default assignment
 }
 
 
 int Parser::cond() {
-  /* cond -> exp */
-  expdesc v;
-  expr(v);  /* read condition */
-  if (v.getKind() == VNIL) v.setKind(VFALSE);  /* 'falses' are all equal here */
-  fs->goiftrue(v);
+  // cond -> exp
+  ExpDesc v;
+  expr(v);  // read condition
+  if (v.getKind() == VNIL) v.setKind(VFALSE);  // 'falses' are all equal here
+  funcState->goiftrue(v);
   return v.getFalseList();
 }
 
 
 void Parser::gotostat( int line) {
-  TString *name = str_checkname();  /* label's name */
+  TString *name = str_checkname();  // label's name
   newgotoentry(*name, line);
 }
 
@@ -1011,16 +1008,16 @@ void Parser::gotostat( int line) {
 ** Break statement. Semantically equivalent to "goto break".
 */
 void Parser::breakstat( int line) {
-  BlockCnt *bl;  /* to look for an enclosing loop */
-  for (bl = fs->getBlock(); bl != nullptr; bl = bl->previous) {
-    if (bl->isloop)  /* found one? */
+  BlockCnt *bl;  // to look for an enclosing loop
+  for (bl = funcState->getBlock(); bl != nullptr; bl = bl->previous) {
+    if (bl->isloop)  // found one?
       goto ok;
   }
-  ls.syntaxError( "break outside loop");
+  lexState.syntaxError( "break outside loop");
  ok:
-  bl->isloop = 2;  /* signal that block has pending breaks */
-  ls.nextToken();  /* skip break */
-  newgotoentry(*ls.getBreakName(), line);
+  bl->isloop = 2;  // signal that block has pending breaks
+  lexState.nextToken();  // skip break
+  newgotoentry(*lexState.getBreakName(), line);
 }
 
 
@@ -1029,28 +1026,28 @@ void Parser::breakstat( int line) {
 ** current function.
 */
 void Parser::checkrepeated(TString& name) {
-  Labeldesc *lb = ls.findlabel(&name, fs->getFirstLabel());
-  if (l_unlikely(lb != nullptr))  /* already defined? */
-    ls.semerror( "label '%s' already defined on line %d",
-                      getStringContents(&name), lb->line);  /* error */
+  Labeldesc *lb = lexState.findlabel(&name, funcState->getFirstLabel());
+  if (l_unlikely(lb != nullptr))  // already defined?
+    lexState.semerror( "label '%s' already defined on line %d",
+                      getStringContents(&name), lb->line);  // error
 }
 
 
 void Parser::labelstat(TString& name, int line) {
-  /* label -> '::' NAME '::' */
-  checknext(static_cast<int>(RESERVED::TK_DBCOLON));  /* skip double colon */
-  while (ls.getToken() == ';' || ls.getToken() == static_cast<int>(RESERVED::TK_DBCOLON))
-    statement();  /* skip other no-op statements */
-  checkrepeated(name);  /* check for repeated labels */
-  ls.createlabel(fs, &name, line, block_follow(0));
+  // label -> '::' NAME '::'
+  checknext(static_cast<int>(RESERVED::TK_DBCOLON));  // skip double colon
+  while (lexState.getToken() == ';' || lexState.getToken() == static_cast<int>(RESERVED::TK_DBCOLON))
+    statement();  // skip other no-op statements
+  checkrepeated(name);  // check for repeated labels
+  lexState.createlabel(funcState, &name, line, block_follow(0));
 }
 
 
 void Parser::whilestat( int line) {
-  /* whilestat -> WHILE cond DO block END */
-  FuncState *funcstate = fs;
+  // whilestat -> WHILE cond DO block END
+  FuncState *funcstate = funcState;
   BlockCnt bl;
-  ls.nextToken();  /* skip WHILE */
+  lexState.nextToken();  // skip WHILE
   auto whileinit = funcstate->getlabel();
   auto condexit = cond();
   funcstate->enterblock(bl, 1);
@@ -1059,31 +1056,31 @@ void Parser::whilestat( int line) {
   funcstate->patchlist(funcstate->jump(), whileinit);
   check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_WHILE), line);
   funcstate->leaveblock();
-  funcstate->patchtohere(condexit);  /* false conditions finish the loop */
+  funcstate->patchtohere(condexit);  // false conditions finish the loop
 }
 
 
 void Parser::repeatstat( int line) {
-  /* repeatstat -> REPEAT block UNTIL cond */
-  FuncState *funcstate = fs;
+  // repeatstat -> REPEAT block UNTIL cond
+  FuncState *funcstate = funcState;
   auto repeat_init = funcstate->getlabel();
   BlockCnt bl1, bl2;
-  funcstate->enterblock(bl1, 1);  /* loop block */
-  funcstate->enterblock(bl2, 0);  /* scope block */
-  ls.nextToken();  /* skip REPEAT */
+  funcstate->enterblock(bl1, 1);  // loop block
+  funcstate->enterblock(bl2, 0);  // scope block
+  lexState.nextToken();  // skip REPEAT
   statlist();
   check_match(static_cast<int>(RESERVED::TK_UNTIL), static_cast<int>(RESERVED::TK_REPEAT), line);
-  auto condexit = cond();  /* read condition (inside scope block) */
-  funcstate->leaveblock();  /* finish scope */
-  if (bl2.upval) {  /* upvalues? */
-    int exit = funcstate->jump();  /* normal exit must jump over fix */
-    funcstate->patchtohere(condexit);  /* repetition must close upvalues */
+  auto condexit = cond();  // read condition (inside scope block)
+  funcstate->leaveblock();  // finish scope
+  if (bl2.upval) {  // upvalues?
+    int exit = funcstate->jump();  // normal exit must jump over fix
+    funcstate->patchtohere(condexit);  // repetition must close upvalues
     funcstate->codeABC(OP_CLOSE, funcstate->reglevel(bl2.numberOfActiveVariables), 0, 0);
-    condexit = funcstate->jump();  /* repeat after closing upvalues */
-    funcstate->patchtohere(exit);  /* normal exit comes to here */
+    condexit = funcstate->jump();  // repeat after closing upvalues
+    funcstate->patchtohere(exit);  // normal exit comes to here
   }
-  funcstate->patchlist(condexit, repeat_init);  /* close the loop */
-  funcstate->leaveblock();  /* finish loop */
+  funcstate->patchlist(condexit, repeat_init);  // close the loop
+  funcstate->leaveblock();  // finish loop
 }
 
 
@@ -1093,9 +1090,9 @@ void Parser::repeatstat( int line) {
 **
 */
 void Parser::exp1() {
-  expdesc e;
+  ExpDesc e;
   expr(e);
-  fs->exp2nextreg(e);
+  funcState->exp2nextreg(e);
   lua_assert(e.getKind() == VNONRELOC);
 }
 
@@ -1106,22 +1103,22 @@ void Parser::exp1() {
 ** a back jump.
 */
 void Parser::forbody( int base, int line, int nvars, int isgen) {
-  /* forbody -> DO block */
+  // forbody -> DO block
   static const OpCode forprep[2] = {OP_FORPREP, OP_TFORPREP};
   static const OpCode forloop[2] = {OP_FORLOOP, OP_TFORLOOP};
   BlockCnt bl;
-  FuncState *funcstate = fs;
+  FuncState *funcstate = funcState;
   int prep, endfor;
   checknext(static_cast<int>(RESERVED::TK_DO));
   prep = funcstate->codeABx(forprep[isgen], base, 0);
-  funcstate->getFirstFreeRegisterRef()--;  /* both 'forprep' remove one register from the stack */
-  funcstate->enterblock(bl, 0);  /* scope for declared variables */
+  funcstate->getFirstFreeRegisterRef()--;  // both 'forprep' remove one register from the stack
+  funcstate->enterblock(bl, 0);  // scope for declared variables
   adjustlocalvars(nvars);
   funcstate->reserveregs(nvars);
   block();
-  funcstate->leaveblock();  /* end of scope for declared variables */
+  funcstate->leaveblock();  // end of scope for declared variables
   funcstate->fixforjump(prep, funcstate->getlabel(), 0);
-  if (isgen) {  /* generic for? */
+  if (isgen) {  // generic for?
     funcstate->codeABC(OP_TFORCALL, base, 0, nvars);
     funcstate->fixline(line);
   }
@@ -1132,162 +1129,162 @@ void Parser::forbody( int base, int line, int nvars, int isgen) {
 
 
 void Parser::fornum(TString& varname, int line) {
-  /* fornum -> NAME = exp,exp[,exp] forbody */
-  FuncState *funcstate = fs;
+  // fornum -> NAME = exp,exp[,exp] forbody
+  FuncState *funcstate = funcState;
   int base = funcstate->getFirstFreeRegister();
   new_localvarliteral("(for state)");
   new_localvarliteral("(for state)");
-  new_varkind(&varname, RDKCONST);  /* control variable */
+  new_varkind(&varname, RDKCONST);  // control variable
   checknext( '=');
-  exp1();  /* initial value */
+  exp1();  // initial value
   checknext( ',');
-  exp1();  /* limit */
+  exp1();  // limit
   if (testnext( ','))
-    exp1();  /* optional step */
-  else {  /* default step = 1 */
+    exp1();  // optional step
+  else {  // default step = 1
     funcstate->intCode(funcstate->getFirstFreeRegister(), 1);
     funcstate->reserveregs(1);
   }
-  adjustlocalvars(2);  /* start scope for internal variables */
+  adjustlocalvars(2);  // start scope for internal variables
   forbody(base, line, 1, 0);
 }
 
 
 void Parser::forlist(TString& indexname) {
-  /* forlist -> NAME {,NAME} IN explist forbody */
-  FuncState *funcstate = fs;
-  expdesc e;
-  int nvars = 4;  /* function, state, closing, control */
+  // forlist -> NAME {,NAME} IN explist forbody
+  FuncState *funcstate = funcState;
+  ExpDesc e;
+  int nvars = 4;  // function, state, closing, control
   int base = funcstate->getFirstFreeRegister();
-  /* create internal variables */
-  new_localvarliteral("(for state)");  /* iterator function */
-  new_localvarliteral("(for state)");  /* state */
-  new_localvarliteral("(for state)");  /* closing var. (after swap) */
-  new_varkind(&indexname, RDKCONST);  /* control variable */
-  /* other declared variables */
+  // create internal variables
+  new_localvarliteral("(for state)");  // iterator function
+  new_localvarliteral("(for state)");  // state
+  new_localvarliteral("(for state)");  // closing var. (after swap)
+  new_varkind(&indexname, RDKCONST);  // control variable
+  // other declared variables
   while (testnext( ',')) {
     new_localvar(*str_checkname());
     nvars++;
   }
   checknext(static_cast<int>(RESERVED::TK_IN));
-  int line = ls.getLineNumber();
+  int line = lexState.getLineNumber();
   adjust_assign(4, explist(e), e);
-  adjustlocalvars(3);  /* start scope for internal variables */
-  funcstate->marktobeclosed();  /* last internal var. must be closed */
-  funcstate->checkstack(2);  /* extra space to call iterator */
+  adjustlocalvars(3);  // start scope for internal variables
+  funcstate->marktobeclosed();  // last internal var. must be closed
+  funcstate->checkstack(2);  // extra space to call iterator
   forbody(base, line, nvars - 3, 1);
 }
 
 
 void Parser::forstat( int line) {
-  /* forstat -> FOR (fornum | forlist) END */
-  FuncState *funcstate = fs;
+  // forstat -> FOR (fornum | forlist) END
+  FuncState *funcstate = funcState;
   TString *varname;
   BlockCnt bl;
-  funcstate->enterblock(bl, 1);  /* scope for loop and control variables */
-  ls.nextToken();  /* skip 'for' */
-  varname = str_checkname();  /* first variable name */
-  switch (ls.getToken()) {
+  funcstate->enterblock(bl, 1);  // scope for loop and control variables
+  lexState.nextToken();  // skip 'for'
+  varname = str_checkname();  // first variable name
+  switch (lexState.getToken()) {
     case '=': fornum(*varname, line); break;
     case ',': case static_cast<int>(RESERVED::TK_IN): forlist(*varname); break;
-    default: ls.syntaxError( "'=' or 'in' expected");
+    default: lexState.syntaxError( "'=' or 'in' expected");
   }
   check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_FOR), line);
-  funcstate->leaveblock();  /* loop scope ('break' jumps to this point) */
+  funcstate->leaveblock();  // loop scope ('break' jumps to this point)
 }
 
 
 void Parser::test_then_block( int *escapelist) {
-  /* test_then_block -> [IF | ELSEIF] cond THEN block */
-  FuncState *funcstate = fs;
-  ls.nextToken();  /* skip IF or ELSEIF */
-  int condtrue = cond();  /* read condition */
+  // test_then_block -> [IF | ELSEIF] cond THEN block
+  FuncState *funcstate = funcState;
+  lexState.nextToken();  // skip IF or ELSEIF
+  int condtrue = cond();  // read condition
   checknext(static_cast<int>(RESERVED::TK_THEN));
-  block();  /* 'then' part */
-  if (ls.getToken() == static_cast<int>(RESERVED::TK_ELSE) ||
-      ls.getToken() == static_cast<int>(RESERVED::TK_ELSEIF))  /* followed by 'else'/'elseif'? */
-    funcstate->concat(escapelist, funcstate->jump());  /* must jump over it */
+  block();  // 'then' part
+  if (lexState.getToken() == static_cast<int>(RESERVED::TK_ELSE) ||
+      lexState.getToken() == static_cast<int>(RESERVED::TK_ELSEIF))  // followed by 'else'/'elseif'?
+    funcstate->concat(escapelist, funcstate->jump());  // must jump over it
   funcstate->patchtohere(condtrue);
 }
 
 
 void Parser::ifstat( int line) {
-  /* ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END */
-  FuncState *funcstate = fs;
-  int escapelist = NO_JUMP;  /* exit list for finished parts */
-  test_then_block(&escapelist);  /* IF cond THEN block */
-  while (ls.getToken() == static_cast<int>(RESERVED::TK_ELSEIF))
-    test_then_block(&escapelist);  /* ELSEIF cond THEN block */
+  // ifstat -> IF cond THEN block {ELSEIF cond THEN block} [ELSE block] END
+  FuncState *funcstate = funcState;
+  int escapelist = NO_JUMP;  // exit list for finished parts
+  test_then_block(&escapelist);  // IF cond THEN block
+  while (lexState.getToken() == static_cast<int>(RESERVED::TK_ELSEIF))
+    test_then_block(&escapelist);  // ELSEIF cond THEN block
   if (testnext(static_cast<int>(RESERVED::TK_ELSE)))
-    block();  /* 'else' part */
+    block();  // 'else' part
   check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_IF), line);
-  funcstate->patchtohere(escapelist);  /* patch escape list to 'if' end */
+  funcstate->patchtohere(escapelist);  // patch escape list to 'if' end
 }
 
 
 void Parser::localfunc() {
-  expdesc b;
-  FuncState *funcstate = fs;
-  int fvar = funcstate->getNumActiveVars();  /* function's variable index */
-  new_localvar(*str_checkname());  /* new local variable */
-  adjustlocalvars(1);  /* enter its scope */
-  body(b, 0, ls.getLineNumber());  /* function created in next register */
-  /* debug information will only see the variable after this point! */
+  ExpDesc b;
+  FuncState *funcstate = funcState;
+  int fvar = funcstate->getNumActiveVars();  // function's variable index
+  new_localvar(*str_checkname());  // new local variable
+  adjustlocalvars(1);  // enter its scope
+  body(b, 0, lexState.getLineNumber());  // function created in next register
+  // debug information will only see the variable after this point!
   funcstate->localdebuginfo( fvar)->setStartPC(funcstate->getPC());
 }
 
 
 lu_byte Parser::getvarattribute( lu_byte df) {
-  /* attrib -> ['<' NAME '>'] */
+  // attrib -> ['<' NAME '>']
   if (testnext( '<')) {
-    TString *ts = str_checkname();
-    const char *attr = getStringContents(ts);
+    TString *tstring = str_checkname();
+    const char *attr = getStringContents(tstring);
     checknext( '>');
     if (strcmp(attr, "const") == 0)
-      return RDKCONST;  /* read-only variable */
+      return RDKCONST;  // read-only variable
     else if (strcmp(attr, "close") == 0)
-      return RDKTOCLOSE;  /* to-be-closed variable */
+      return RDKTOCLOSE;  // to-be-closed variable
     else
-      ls.semerror( "unknown attribute '%s'", attr);
+      lexState.semerror( "unknown attribute '%s'", attr);
   }
-  return df;  /* return default value */
+  return df;  // return default value
 }
 
 
 void Parser::localstat() {
-  /* stat -> LOCAL NAME attrib { ',' NAME attrib } ['=' explist] */
-  FuncState *funcstate = fs;
-  int toclose = -1;  /* index of to-be-closed variable (if any) */
-  int vidx;  /* index of last variable */
+  // stat -> LOCAL NAME attrib { ',' NAME attrib } ['=' explist]
+  FuncState *funcstate = funcState;
+  int toclose = -1;  // index of to-be-closed variable (if any)
+  int vidx;  // index of last variable
   int nvars = 0;
-  /* get prefixed attribute (if any); default is regular local variable */
+  // get prefixed attribute (if any); default is regular local variable
   lu_byte defkind = getvarattribute(VDKREG);
-  do {  /* for each variable */
-    TString *vname = str_checkname();  /* get its name */
-    lu_byte kind = getvarattribute(defkind);  /* postfixed attribute */
-    vidx = new_varkind(vname, kind);  /* predeclare it */
-    if (kind == RDKTOCLOSE) {  /* to-be-closed? */
-      if (toclose != -1)  /* one already present? */
-        ls.semerror( "multiple to-be-closed variables in local list");
+  do {  // for each variable
+    TString *vname = str_checkname();  // get its name
+    lu_byte kind = getvarattribute(defkind);  // postfixed attribute
+    vidx = new_varkind(vname, kind);  // predeclare it
+    if (kind == RDKTOCLOSE) {  // to-be-closed?
+      if (toclose != -1)  // one already present?
+        lexState.semerror( "multiple to-be-closed variables in local list");
       toclose = funcstate->getNumActiveVars() + nvars;
     }
     nvars++;
   } while (testnext( ','));
-  expdesc e;
+  ExpDesc e;
   int nexps;
-  if (testnext( '='))  /* initialization? */
+  if (testnext( '='))  // initialization?
     nexps = explist(e);
   else {
     e.setKind(VVOID);
     nexps = 0;
   }
-  Vardesc *var = funcstate->getlocalvardesc( vidx);  /* retrieve last variable */
-  if (nvars == nexps &&  /* no adjustments? */
-      var->vd.kind == RDKCONST &&  /* last variable is const? */
-      funcstate->exp2const(e, &var->k)) {  /* compile-time constant? */
-    var->vd.kind = RDKCTC;  /* variable is a compile-time constant */
-    adjustlocalvars(nvars - 1);  /* exclude last variable */
-    funcstate->getNumActiveVarsRef()++;  /* but count it */
+  Vardesc *var = funcstate->getlocalvardesc( vidx);  // retrieve last variable
+  if (nvars == nexps &&  // no adjustments?
+      var->vd.kind == RDKCONST &&  // last variable is const?
+      funcstate->exp2const(e, &var->k)) {  // compile-time constant?
+    var->vd.kind = RDKCTC;  // variable is a compile-time constant
+    adjustlocalvars(nvars - 1);  // exclude last variable
+    funcstate->getNumActiveVarsRef()++;  // but count it
   }
   else {
     adjust_assign(nvars, nexps, e);
@@ -1301,10 +1298,10 @@ lu_byte Parser::getglobalattribute( lu_byte df) {
   lu_byte kind = getvarattribute(df);
   switch (kind) {
     case RDKTOCLOSE:
-      ls.semerror( "global variables cannot be to-be-closed");
-      return kind;  /* to avoid warnings */
+      lexState.semerror( "global variables cannot be to-be-closed");
+      return kind;  // to avoid warnings
     case RDKCONST:
-      return GDKCONST;  /* adjust kind for global variable */
+      return GDKCONST;  // adjust kind for global variable
     default:
       return kind;
   }
@@ -1312,64 +1309,64 @@ lu_byte Parser::getglobalattribute( lu_byte df) {
 
 
 void Parser::globalnames( lu_byte defkind) {
-  FuncState *funcstate = fs;
+  FuncState *funcstate = funcState;
   int nvars = 0;
-  int lastidx;  /* index of last registered variable */
-  do {  /* for each name */
+  int lastidx;  // index of last registered variable
+  do {  // for each name
     TString *vname = str_checkname();
     lu_byte kind = getglobalattribute(defkind);
     lastidx = new_varkind( vname, kind);
     nvars++;
   } while (testnext( ','));
-  if (testnext( '=')) {  /* initialization? */
-    expdesc e;
+  if (testnext( '=')) {  // initialization?
+    ExpDesc e;
     int i;
-    int nexps = explist(e);  /* read list of expressions */
+    int nexps = explist(e);  // read list of expressions
     adjust_assign(nvars, nexps, e);
-    for (i = 0; i < nvars; i++) {  /* for each variable */
-      expdesc var;
+    for (i = 0; i < nvars; i++) {  // for each variable
+      ExpDesc var;
       TString *varname = funcstate->getlocalvardesc(lastidx - i)->vd.name;
-      buildglobal(*varname, var);  /* create global variable in 'var' */
+      buildglobal(*varname, var);  // create global variable in 'var'
       funcstate->storevartop(var);
     }
   }
-  funcstate->setNumActiveVars(cast_short(funcstate->getNumActiveVars() + nvars));  /* activate declaration */
+  funcstate->setNumActiveVars(cast_short(funcstate->getNumActiveVars() + nvars));  // activate declaration
 }
 
 
 void Parser::globalstat() {
   /* globalstat -> (GLOBAL) attrib '*'
      globalstat -> (GLOBAL) attrib NAME attrib {',' NAME attrib} */
-  FuncState *funcstate = fs;
-  /* get prefixed attribute (if any); default is regular global variable */
+  FuncState *funcstate = funcState;
+  // get prefixed attribute (if any); default is regular global variable
   lu_byte defkind = getglobalattribute(GDKREG);
   if (!testnext( '*'))
     globalnames(defkind);
   else {
-    /* use nullptr as name to represent '*' entries */
+    // use nullptr as name to represent '*' entries
     new_varkind( nullptr, defkind);
-    funcstate->getNumActiveVarsRef()++;  /* activate declaration */
+    funcstate->getNumActiveVarsRef()++;  // activate declaration
   }
 }
 
 
 void Parser::globalfunc( int line) {
-  /* globalfunc -> (GLOBAL FUNCTION) NAME body */
-  expdesc var, b;
-  FuncState *funcstate = fs;
+  // globalfunc -> (GLOBAL FUNCTION) NAME body
+  ExpDesc var, b;
+  FuncState *funcstate = funcState;
   TString *fname = str_checkname();
-  new_varkind( fname, GDKREG);  /* declare global variable */
-  funcstate->getNumActiveVarsRef()++;  /* enter its scope */
+  new_varkind( fname, GDKREG);  // declare global variable
+  funcstate->getNumActiveVarsRef()++;  // enter its scope
   buildglobal(*fname, var);
-  body(b, 0, ls.getLineNumber());  /* compile and return closure in 'b' */
+  body(b, 0, lexState.getLineNumber());  // compile and return closure in 'b'
   funcstate->storevar(var, b);
-  funcstate->fixline(line);  /* definition "happens" in the first line */
+  funcstate->fixline(line);  // definition "happens" in the first line
 }
 
 
 void Parser::globalstatfunc( int line) {
-  /* stat -> GLOBAL globalfunc | GLOBAL globalstat */
-  ls.nextToken();  /* skip 'global' */
+  // stat -> GLOBAL globalfunc | GLOBAL globalstat
+  lexState.nextToken();  // skip 'global'
   if (testnext(static_cast<int>(RESERVED::TK_FUNCTION)))
     globalfunc(line);
   else
@@ -1377,13 +1374,13 @@ void Parser::globalstatfunc( int line) {
 }
 
 
-int Parser::funcname( expdesc& v) {
-  /* funcname -> NAME {fieldsel} [':' NAME] */
+int Parser::funcname( ExpDesc& v) {
+  // funcname -> NAME {fieldsel} [':' NAME]
   int ismethod = 0;
   singlevar(v);
-  while (ls.getToken() == '.')
+  while (lexState.getToken() == '.')
     fieldsel(v);
-  if (ls.getToken() == ':') {
+  if (lexState.getToken() == ':') {
     ismethod = 1;
     fieldsel(v);
   }
@@ -1392,129 +1389,129 @@ int Parser::funcname( expdesc& v) {
 
 
 void Parser::funcstat( int line) {
-  /* funcstat -> FUNCTION funcname body */
-  expdesc v, b;
-  ls.nextToken();  /* skip FUNCTION */
+  // funcstat -> FUNCTION funcname body
+  ExpDesc v, b;
+  lexState.nextToken();  // skip FUNCTION
   int ismethod = funcname(v);
   check_readonly(v);
   body(b, ismethod, line);
-  fs->storevar(v, b);
-  fs->fixline(line);  /* definition "happens" in the first line */
+  funcState->storevar(v, b);
+  funcState->fixline(line);  // definition "happens" in the first line
 }
 
 
 void Parser::exprstat() {
-  /* stat -> func | assignment */
-  FuncState *funcstate = fs;
+  // stat -> func | assignment
+  FuncState *funcstate = funcState;
   struct LHS_assign v;
   suffixedexp(v.v);
-  if (ls.getToken() == '=' || ls.getToken() == ',') { /* stat -> assignment ? */
+  if (lexState.getToken() == '=' || lexState.getToken() == ',') {  // stat -> assignment ?
     v.prev = nullptr;
     restassign(&v, 1);
   }
-  else {  /* stat -> func */
+  else {  // stat -> func
     Instruction *inst;
     check_condition(this, v.v.getKind() == VCALL, "syntax error");
     inst = &getinstruction(funcstate, v.v);
-    SETARG_C(*inst, 1);  /* call statement uses no results */
+    SETARG_C(*inst, 1);  // call statement uses no results
   }
 }
 
 
 void Parser::retstat() {
-  /* stat -> RETURN [explist] [';'] */
-  FuncState *funcstate = fs;
-  expdesc e;
-  int nret;  /* number of values being returned */
-  int first = luaY_nvarstack(funcstate);  /* first slot to be returned */
-  if (block_follow(1) || ls.getToken() == ';')
-    nret = 0;  /* return no values */
+  // stat -> RETURN [explist] [';']
+  FuncState *funcstate = funcState;
+  ExpDesc e;
+  int nret;  // number of values being returned
+  int first = luaY_nvarstack(funcstate);  // first slot to be returned
+  if (block_follow(1) || lexState.getToken() == ';')
+    nret = 0;  // return no values
   else {
-    nret = explist(e);  /* optional return values */
+    nret = explist(e);  // optional return values
     if (hasmultret(e.getKind())) {
       funcstate->setreturns(e, LUA_MULTRET);
-      if (e.getKind() == VCALL && nret == 1 && !funcstate->getBlock()->insidetbc) {  /* tail call? */
+      if (e.getKind() == VCALL && nret == 1 && !funcstate->getBlock()->insidetbc) {  // tail call?
         SET_OPCODE(getinstruction(funcstate,e), OP_TAILCALL);
         lua_assert(InstructionView(getinstruction(funcstate,e)).a() == luaY_nvarstack(funcstate));
       }
-      nret = LUA_MULTRET;  /* return all values */
+      nret = LUA_MULTRET;  // return all values
     }
     else {
-      if (nret == 1)  /* only one single value? */
-        first = funcstate->exp2anyreg(e);  /* can use original slot */
-      else {  /* values must go to the top of the stack */
+      if (nret == 1)  // only one single value?
+        first = funcstate->exp2anyreg(e);  // can use original slot
+      else {  // values must go to the top of the stack
         funcstate->exp2nextreg(e);
         lua_assert(nret == funcstate->getFirstFreeRegister() - first);
       }
     }
   }
   funcstate->ret(first, nret);
-  testnext( ';');  /* skip optional semicolon */
+  testnext( ';');  // skip optional semicolon
 }
 
 
 void Parser::statement() {
-  int line = ls.getLineNumber();  /* may be needed for error messages */
-  enterlevel(&ls);
-  switch (ls.getToken()) {
-    case ';': {  /* stat -> ';' (empty statement) */
-      ls.nextToken();  /* skip ';' */
+  int line = lexState.getLineNumber();  // may be needed for error messages
+  enterlevel(&lexState);
+  switch (lexState.getToken()) {
+    case ';': {  // stat -> ';' (empty statement)
+      lexState.nextToken();  // skip ';'
       break;
     }
-    case static_cast<int>(RESERVED::TK_IF): {  /* stat -> ifstat */
+    case static_cast<int>(RESERVED::TK_IF): {  // stat -> ifstat
       ifstat(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_WHILE): {  /* stat -> whilestat */
+    case static_cast<int>(RESERVED::TK_WHILE): {  // stat -> whilestat
       whilestat(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_DO): {  /* stat -> DO block END */
-      ls.nextToken();  /* skip DO */
+    case static_cast<int>(RESERVED::TK_DO): {  // stat -> DO block END
+      lexState.nextToken();  // skip DO
       block();
       check_match(static_cast<int>(RESERVED::TK_END), static_cast<int>(RESERVED::TK_DO), line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_FOR): {  /* stat -> forstat */
+    case static_cast<int>(RESERVED::TK_FOR): {  // stat -> forstat
       forstat(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_REPEAT): {  /* stat -> repeatstat */
+    case static_cast<int>(RESERVED::TK_REPEAT): {  // stat -> repeatstat
       repeatstat(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_FUNCTION): {  /* stat -> funcstat */
+    case static_cast<int>(RESERVED::TK_FUNCTION): {  // stat -> funcstat
       funcstat(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_LOCAL): {  /* stat -> localstat */
-      ls.nextToken();  /* skip LOCAL */
-      if (testnext(static_cast<int>(RESERVED::TK_FUNCTION)))  /* local function? */
+    case static_cast<int>(RESERVED::TK_LOCAL): {  // stat -> localstat
+      lexState.nextToken();  // skip LOCAL
+      if (testnext(static_cast<int>(RESERVED::TK_FUNCTION)))  // local function?
         localfunc();
       else
         localstat();
       break;
     }
-    case static_cast<int>(RESERVED::TK_GLOBAL): {  /* stat -> globalstatfunc */
+    case static_cast<int>(RESERVED::TK_GLOBAL): {  // stat -> globalstatfunc
       globalstatfunc(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_DBCOLON): {  /* stat -> label */
-      ls.nextToken();  /* skip double colon */
+    case static_cast<int>(RESERVED::TK_DBCOLON): {  // stat -> label
+      lexState.nextToken();  // skip double colon
       labelstat(*str_checkname(), line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_RETURN): {  /* stat -> retstat */
-      ls.nextToken();  /* skip RETURN */
+    case static_cast<int>(RESERVED::TK_RETURN): {  // stat -> retstat
+      lexState.nextToken();  // skip RETURN
       retstat();
       break;
     }
-    case static_cast<int>(RESERVED::TK_BREAK): {  /* stat -> breakstat */
+    case static_cast<int>(RESERVED::TK_BREAK): {  // stat -> breakstat
       breakstat(line);
       break;
     }
-    case static_cast<int>(RESERVED::TK_GOTO): {  /* stat -> 'goto' NAME */
-      ls.nextToken();  /* skip 'goto' */
+    case static_cast<int>(RESERVED::TK_GOTO): {  // stat -> 'goto' NAME
+      lexState.nextToken();  // skip 'goto'
       gotostat(line);
       break;
     }
@@ -1522,32 +1519,32 @@ void Parser::statement() {
     case static_cast<int>(RESERVED::TK_NAME): {
       /* compatibility code to parse global keyword when "global"
          is not reserved */
-      if (ls.getSemInfo().ts == ls.getGlobalName()) {  /* current = "global"? */
-        int lk = ls.lookaheadToken();
+      if (lexState.getSemInfo().tstring == lexState.getGlobalName()) {  // current = "global"?
+        int lk = lexState.lookaheadToken();
         if (lk == '<' || lk == static_cast<int>(RESERVED::TK_NAME) || lk == '*' || lk == static_cast<int>(RESERVED::TK_FUNCTION)) {
           /* 'global <attrib>' or 'global name' or 'global *' or
              'global function' */
           globalstatfunc(line);
           break;
         }
-      }  /* else... */
+      }  // else...
     }
 #endif
-    /* FALLTHROUGH */
-    default: {  /* stat -> func | assignment */
+    // FALLTHROUGH
+    default: {  // stat -> func | assignment
       exprstat();
       break;
     }
   }
-  lua_assert(fs->getProto().getMaxStackSize() >= fs->getFirstFreeRegister() &&
-             fs->getFirstFreeRegister() >= luaY_nvarstack(fs));
-  fs->setFirstFreeRegister(luaY_nvarstack(fs));  /* free registers */
-  leavelevel(&ls);
+  lua_assert(funcState->getProto().getMaxStackSize() >= funcState->getFirstFreeRegister() &&
+             funcState->getFirstFreeRegister() >= luaY_nvarstack(funcState));
+  funcState->setFirstFreeRegister(luaY_nvarstack(funcState));  // free registers
+  leavelevel(&lexState);
 }
 
-/* }====================================================================== */
+// }======================================================================
 
-/* }====================================================================== */
+// }======================================================================
 
 
 /*
@@ -1558,15 +1555,15 @@ void Parser::mainfunc(FuncState *funcstate) {
   BlockCnt bl;
   Upvaldesc *env;
   open_func(funcstate, bl);
-  funcstate->setvararg(0);  /* main function is always declared vararg */
-  env = funcstate->allocupvalue();  /* ...set environment upvalue */
+  funcstate->setvararg(0);  // main function is always declared vararg
+  env = funcstate->allocupvalue();  // ...set environment upvalue
   env->setInStack(1);
   env->setIndex(0);
   env->setKind(VDKREG);
-  env->setName(ls.getEnvName());
-  luaC_objbarrier(ls.getLuaState(), &funcstate->getProto(), env->getName());
-  ls.nextToken();  /* read first token */
-  statlist();  /* parse main body */
+  env->setName(lexState.getEnvName());
+  luaC_objbarrier(lexState.getLuaState(), &funcstate->getProto(), env->getName());
+  lexState.nextToken();  // read first token
+  statlist();  // parse main body
   check(static_cast<int>(RESERVED::TK_EOS));
   close_func();
 }

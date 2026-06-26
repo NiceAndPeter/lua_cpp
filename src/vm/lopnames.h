@@ -1,5 +1,4 @@
 /*
-** $Id: lopnames.h $
 ** Opcode names
 ** See Copyright Notice in lua.h
 */
@@ -11,7 +10,7 @@
 #include <cstddef>
 
 
-/* ORDER OP */
+// ORDER OP
 
 static constexpr std::array<const char*, 84> opnames = {
   "MOVE",

@@ -1,5 +1,4 @@
 /*
-** $Id: ltable.h $
 ** Lua tables (hash)
 ** See Copyright Notice in lua.h
 */
@@ -9,10 +8,10 @@
 
 #include <span>
 
-#include "lobject_core.h"  /* GCBase, TValue, GCObject */
+#include "lobject_core.h"  // GCBase, TValue, GCObject
 
-/* Forward declarations */
-class lua_State;
+// Forward declarations
+struct lua_State;
 class TString;
 typedef union StackValue *StkId;
 
@@ -37,19 +36,18 @@ inline Table* hvalue(const TValue* o) noexcept { return o->tableValue(); }
 ** of the key's fields ('key_tt' and 'key_val') not forming a proper
 ** 'TValue' allows for a smaller size for 'Node' both in 4-byte
 ** and 8-byte alignments.
-** Phase 44.2: Converted from union to class with proper encapsulation
 */
 class Node {
 private:
   union {
     struct {
-      Value value_;  /* value */
-      LuaT tt_;   /* value type tag */
-      LuaT key_tt;  /* key type */
-      int next;  /* for chaining */
-      Value key_val;  /* key value */
+      Value value_;  // value
+      LuaT tt_;  // value type tag
+      LuaT key_tt;  // key type
+      int next;  // for chaining
+      Value key_val;  // key value
     } u;
-    TValue i_val;  /* direct access to node's value as a proper 'TValue' */
+    TValue i_val;  // direct access to node's value as a proper 'TValue'
   };
 
 public:
@@ -146,31 +144,29 @@ public:
 };
 
 
-/* Phase 44.2: setnodekey and getnodekey macros replaced with Node::setKey() and Node::getKey() methods */
-
 
 // Table inherits from GCBase (CRTP)
 class Table : public GCBase<Table> {
 private:
-  mutable lu_byte flags;  /* 1<<p means tagmethod(p) is not present (mutable for metamethod caching) */
-  lu_byte logSizeOfNodeArray;  /* log2 of number of slots of 'node' array */
-  unsigned int asize;  /* number of slots in 'array' array */
-  Value *array;  /* array part */
+  mutable lu_byte flags;  // 1<<p means tagmethod(p) is not present (mutable for metamethod caching)
+  lu_byte logSizeOfNodeArray;  // log2 of number of slots of 'node' array
+  unsigned int asize;  // number of slots in 'array' array
+  Value *array;  // array part
   Node *node;
   Table *metatable;
   GCObject *gclist;
 
 public:
-  // Phase 50: Constructor - initializes all fields to safe defaults
+  // Constructor - initializes all fields to safe defaults
   Table() noexcept
     : flags(0), logSizeOfNodeArray(0), asize(0), array(nullptr),
       node(nullptr), metatable(nullptr), gclist(nullptr) {
   }
 
-  // Phase 50: Destructor - trivial (GC handles deallocation)
+  // Destructor - trivial (GC handles deallocation)
   ~Table() noexcept = default;
 
-  // Phase 50: Placement new operator - integrates with Lua's GC (implemented in lgc.h)
+  // Placement new operator - integrates with Lua's GC (implemented in lgc.h)
   static void* operator new(size_t size, lua_State* L, LuaT tt);
 
   // Disable regular new/delete (must use placement new with GC)
@@ -198,7 +194,7 @@ public:
   const Value* getArray() const noexcept { return array; }
   void setArray(Value* arr) noexcept { array = arr; }
 
-  // Phase 115.3: std::span accessors for array part
+  // std::span accessors for array part
   std::span<Value> getArraySpan() noexcept {
     return std::span(array, asize);
   }
@@ -226,7 +222,7 @@ public:
   void setNoDummy() noexcept { flags &= cast_byte(~(1 << 6)); }
   // invalidateTMCache uses maskflags from ltm.h, so can't inline here - use macro instead
 
-  // Phase 44.1: Additional table helper methods
+  // Additional table helper methods
   unsigned int allocatedNodeSize() const noexcept {
     return isDummy() ? 0 : nodeSize();
   }
@@ -259,7 +255,7 @@ public:
     return (1u << x);
   }
 
-  // Node accessors (Phase 19: Table macro reduction)
+  // Node accessors
   Node* getNode(unsigned int i) noexcept { return &node[i]; }
   const Node* getNode(unsigned int i) const noexcept { return &node[i]; }
 
@@ -285,42 +281,24 @@ public:
   [[nodiscard]] int tableNext(lua_State* L, StkId key) const;  // renamed from next() to avoid conflict with GC field
   [[nodiscard]] lua_Unsigned getn(lua_State* L);
 
-  // Phase 33: Factory and helper methods
+  // Factory and helper methods
   [[nodiscard]] static Table* create(lua_State* L);  // Factory method (replaces luaH_new)
   void destroy(lua_State* L);  // Explicit destructor (replaces luaH_free)
   [[nodiscard]] Node* mainPosition(const TValue* key) const;  // replaces luaH_mainposition
 
-  // Phase 122: Hot-path fast access methods (defined in lobject.h due to TMS dependency)
+  // Hot-path fast access methods (defined in lobject.h due to TMS dependency)
   inline void fastGeti(lua_Integer k, TValue* res, LuaT& tag) noexcept;
   inline void fastSeti(lua_Integer k, TValue* val, int& hres) noexcept;
 };
 
 
-/*
-** Phase 44.2: Node key macros replaced with Node class methods:
-** - keytt(node) → node->getKeyType()
-** - keyval(node) → node->getKeyValue()
-** - keyisnil(node) → node->isKeyNil()
-** - keyisinteger(node) → node->isKeyInteger()
-** - keyival(node) → node->getKeyIntValue()
-** - keyisshrstr(node) → node->isKeyShrStr()
-** - keystrval(node) → node->getKeyStrValue()
-** - setnilkey(node) → node->setKeyNil()
-** - keyiscollectable(n) → n->isKeyCollectable()
-** - gckey(n) → n->getKeyGC()
-** - gckeyN(n) → n->getKeyGCOrNull()
-** - setdeadkey(node) → node->setKeyDead()
-** - keyisdead(node) → node->isKeyDead()
-*/
-
-/* }================================================================== */
+// }==================================================================
 
 
-// Phase 19: Table accessor macros converted to inline functions
 // Note: Returns Node* even for const Table* to support Lua's read/write lookup semantics
 inline Node* gnode(Table* t, unsigned int i) noexcept { return t->getNode(i); }
 inline Node* gnode(const Table* t, unsigned int i) noexcept {
-  return const_cast<Table*>(t)->getNode(i);  /* Lookup functions need mutable access */
+  return const_cast<Table*>(t)->getNode(i);  // Lookup functions need mutable access
 }
 inline TValue* gval(Node* n) noexcept { return n->getValue(); }
 inline const TValue* gval(const Node* n) noexcept { return n->getValue(); }
@@ -344,17 +322,13 @@ inline int gnext(const Node* n) noexcept { return n->getNext(); }
 
 inline constexpr lu_byte BITDUMMY = (1 << 6);
 inline constexpr lu_byte NOTBITDUMMY = cast_byte(~BITDUMMY);
-/* Phase 44.1: isdummy, setnodummy, setdummy now Table methods isDummy(), setNoDummy(), setDummy() */
-/* Phase 44.1: allocsizenode now Table::allocatedNodeSize() method */
-/* Phase 44.1: nodefromval replaced with direct cast(Node*, v) */
 
 
 
-// Phase 88: luaH_fastgeti and luaH_fastseti converted to inline functions
 // Definitions moved after farr2val and fval2arr are defined (see below)
 
 
-/* results from pset */
+// results from pset
 inline constexpr int HOK = 0;
 inline constexpr int HNOTFOUND = 1;
 inline constexpr int HNOTATABLE = 2;
@@ -399,22 +373,16 @@ inline constexpr int HFIRSTNODE = 3;
 ** and getArrayVal().
 */
 
-/* Phase 44.1: getArrTag now Table::getArrayTag(k) method */
-/* Phase 44.1: getArrVal now Table::getArrayVal(k) method */
-
 
 /*
 ** The unsigned between the two arrays is used as a hint for #t;
 ** see luaH_getn. It is stored there to avoid wasting space in
 ** the structure Table for tables with no array part.
 */
-/* Phase 44.1: lenhint now Table::getLenHint() method */
 
 
 /*
 ** Move TValues to/from arrays, using C indices
-** Phase 27: Converted to inline functions using TValue methods
-** Phase 44.1: Updated to use Table methods instead of macros
 */
 inline void arr2obj(const Table* h, lua_Unsigned k, TValue* val) noexcept {
   val->setType(*h->getArrayTag(k));
@@ -442,12 +410,12 @@ inline void fval2arr(Table* h, lua_Unsigned k, LuaT* tag, const TValue* val) noe
 }
 
 /*
-** Phase 122: Hot-path table access inline methods
+** Hot-path table access inline methods
 ** Implementations moved to lobject.h (after ltm.h include) to access TMS enum
 */
 
 #if defined(LUA_DEBUG)
-// Phase 122: For debug builds only - mainPosition is already a Table method
+// For debug builds only - mainPosition is already a Table method
 LUAI_FUNC Node *luaH_mainposition (const Table *t, const TValue *key);
 #endif
 

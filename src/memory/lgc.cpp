@@ -1,10 +1,8 @@
 /*
-** $Id: lgc.c $
 ** Garbage Collector
 ** See Copyright Notice in lua.h
 */
 
-#define lgc_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -77,15 +75,14 @@
 ** are now in lgc.h for use by all GC modules. */
 
 
-/* Phase 127: Convert gcvalarr macro to inline function
-** Access to collectable objects in array part of tables
+/* Access to collectable objects in array part of tables
 ** Note: markvalue, markkey, markobject, markobjectN are already defined in gc_marking.h
 */
 inline GCObject* gcvalarr(Table* t, unsigned int i) noexcept {
 	return (static_cast<lu_byte>(*(t)->getArrayTag(i)) & BIT_ISCOLLECTABLE) ? (t)->getArrayVal(i)->gc : nullptr;
 }
 
-static void reallymarkobject (global_State& g, GCObject *o);
+static void reallymarkobject (GlobalState& g, GCObject *o);
 
 
 /*
@@ -107,42 +104,40 @@ inline Node* gnodelast(const Table* h) noexcept {
 }
 
 
-/* Wrapper for GCCore::objsize - now in gc_core module */
+// Wrapper for GCCore::objsize - now in gc_core module
 static l_mem objsize(GCObject* o) {
   return GCCore::objsize(o);
 }
 
 
-/* Wrapper for GCCore::getgclist - now in gc_core module */
+// Wrapper for GCCore::getgclist - now in gc_core module
 static GCObject** getgclist(GCObject* o) {
   return GCCore::getgclist(o);
 }
 
 
-/* Wrapper for GCCore::linkgclist_ - now in gc_core module */
+// Wrapper for GCCore::linkgclist_ - now in gc_core module
 static void linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
   GCCore::linkgclist_(o, pnext, list);
 }
 
-/* Phase 128: Convert linkgclist and linkobjgclist macros to template functions
-** Link a collectable object 'o' with a known type into the list 'p'.
-*/
+// Link a collectable object 'o' with a known type into the list 'p'.
 template<typename T>
 inline void linkgclist(T* o, GCObject*& p) {
 	linkgclist_(obj2gco(o), &(o)->gclist, &p);
 }
 
-/* Specialized version for Table (with encapsulated gclist) */
+// Specialized version for Table (with encapsulated gclist)
 inline void linkgclistTable(Table *h, GCObject *&p) {
   linkgclist_(obj2gco(h), h->getGclistPtr(), &p);
 }
 
-/* Specialized version for lua_State (with encapsulated gclist) */
+// Specialized version for lua_State (with encapsulated gclist)
 inline void linkgclistThread(lua_State *th, GCObject *&p) {
   linkgclist_(obj2gco(th), th->getGclistPtr(), &p);
 }
 
-/* Link a generic collectable object 'o' into the list 'p'. */
+// Link a generic collectable object 'o' into the list 'p'.
 template<typename T>
 inline void linkobjgclist(T* o, GCObject*& p) {
 	linkgclist_(obj2gco(o), getgclist(o), &p);
@@ -150,7 +145,7 @@ inline void linkobjgclist(T* o, GCObject*& p) {
 
 
 
-/* Note: clearkey() is now in GCCore module, used by GCMarking::traversestrongtable */
+// Note: clearkey() is now in GCCore module, used by GCMarking::traversestrongtable
 
 
 /*
@@ -167,19 +162,19 @@ inline void linkobjgclist(T* o, GCObject*& p) {
 ** white from dead.)
 */
 void luaC_barrier_ (lua_State& L, GCObject *o, GCObject *v) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   lua_assert(isblack(o) && iswhite(v) && !isdead(g, v) && !isdead(g, o));
-  if (g->keepInvariant()) {  /* must keep invariant? */
-    reallymarkobject(*g, v);  /* restore invariant */
+  if (g->keepInvariant()) {  // must keep invariant?
+    reallymarkobject(*g, v);  // restore invariant
     if (isold(o)) {
-      lua_assert(!isold(v));  /* white object could not be old */
-      setage(v, GCAge::Old0);  /* restore generational invariant */
+      lua_assert(!isold(v));  // white object could not be old
+      setage(v, GCAge::Old0);  // restore generational invariant
     }
   }
-  else {  /* sweep phase */
+  else {  // sweep phase
     lua_assert(g->isSweepPhase());
-    if (g->getGCKind() != GCKind::GenerationalMinor)  /* incremental mode? */
-      makewhite(g, o);  /* mark 'o' as white to avoid other barriers */
+    if (g->getGCKind() != GCKind::GenerationalMinor)  // incremental mode?
+      makewhite(g, o);  // mark 'o' as white to avoid other barriers
   }
 }
 
@@ -189,16 +184,16 @@ void luaC_barrier_ (lua_State& L, GCObject *o, GCObject *v) {
 ** pointing to a white object as gray again.
 */
 void luaC_barrierback_ (lua_State& L, GCObject *o) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   lua_assert(isblack(o) && !isdead(g, o));
   lua_assert((g->getGCKind() != GCKind::GenerationalMinor)
           || (isold(o) && getage(o) != GCAge::Touched1));
-  if (getage(o) == GCAge::Touched2)  /* already in gray list? */
-    set2gray(o);  /* make it gray to become touched1 */
-  else  /* link it in 'grayagain' and paint it gray */
+  if (getage(o) == GCAge::Touched2)  // already in gray list?
+    set2gray(o);  // make it gray to become touched1
+  else  // link it in 'grayagain' and paint it gray
     linkobjgclist(o, *g->getGrayAgainPtr());
-  if (isold(o))  /* generational mode? */
-    setage(o, GCAge::Touched1);  /* touched in current cycle */
+  if (isold(o))  // generational mode?
+    setage(o, GCAge::Touched1);  // touched in current cycle
 }
 
 
@@ -209,7 +204,7 @@ void luaC_barrierback_ (lua_State& L, GCObject *o) {
 ** and link it to 'allgc' list.
 */
 GCObject *luaC_newobjdt (lua_State& L, LuaT tt, size_t sz, size_t offset) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   char *p = cast_charp(luaM_newobject(&L, novariant(tt), sz));
   GCObject *o = reinterpret_cast<GCObject*>(p + offset);
   o->setMarked(g->getWhite());
@@ -227,7 +222,7 @@ GCObject *luaC_newobj (lua_State& L, LuaT tt, size_t sz) {
   return luaC_newobjdt(L, tt, sz, 0);
 }
 
-/* }====================================================== */
+// }======================================================
 
 
 
@@ -250,35 +245,35 @@ GCObject *luaC_newobj (lua_State& L, LuaT tt, size_t sz) {
 ** for at most two levels: An upvalue cannot refer to another upvalue
 ** (only closures can), and a userdata's metatable must be a table.
 */
-static void reallymarkobject (global_State& g, GCObject *o) {
+static void reallymarkobject (GlobalState& g, GCObject *o) {
   g.setGCMarked(g.getGCMarked() + objsize(o));
   switch (static_cast<int>(o->getType())) {
     case static_cast<int>(ctb(LuaT::SHRSTR)):
     case static_cast<int>(ctb(LuaT::LNGSTR)): {
-      set2black(o);  /* nothing to visit */
+      set2black(o);  // nothing to visit
       break;
     }
     case static_cast<int>(ctb(LuaT::UPVAL)): {
-      UpVal *uv = gco2upv(o);
-      if (uv->isOpen())
-        set2gray(uv);  /* open upvalues are kept gray */
+      UpVal *upvalue = gco2upv(o);
+      if (upvalue->isOpen())
+        set2gray(upvalue);  // open upvalues are kept gray
       else
-        set2black(uv);  /* closed upvalues are visited here */
-      markvalue(g, uv->getVP());  /* mark its content */
+        set2black(upvalue);  // closed upvalues are visited here
+      markvalue(g, upvalue->getVP());  // mark its content
       break;
     }
     case static_cast<int>(ctb(LuaT::USERDATA)): {
       Udata *u = gco2u(o);
-      if (u->getNumUserValues() == 0) {  /* no user values? */
-        markobjectN(g, u->getMetatable());  /* mark its metatable */
-        set2black(u);  /* nothing else to mark */
+      if (u->getNumUserValues() == 0) {  // no user values?
+        markobjectN(g, u->getMetatable());  // mark its metatable
+        set2black(u);  // nothing else to mark
         break;
       }
-      /* else... */
-    }  /* FALLTHROUGH */
+      // else...
+    }  // FALLTHROUGH
     case static_cast<int>(ctb(LuaT::LCL)): case static_cast<int>(ctb(LuaT::CCL)): case static_cast<int>(ctb(LuaT::TABLE)):
     case static_cast<int>(ctb(LuaT::THREAD)): case static_cast<int>(ctb(LuaT::PROTO)): {
-      linkobjgclist(o, *g.getGrayPtr());  /* to be visited later */
+      linkobjgclist(o, *g.getGrayPtr());  // to be visited later
       break;
     }
     default: lua_assert(0); break;
@@ -286,21 +281,21 @@ static void reallymarkobject (global_State& g, GCObject *o) {
 }
 
 
-/* Note: markmt is now in GCMarking module, called from GCCollector */
+// Note: markmt is now in GCMarking module, called from GCCollector
 
 
-/* Note: markbeingfnz is now in GCMarking module, called from GCCollector */
+// Note: markbeingfnz is now in GCMarking module, called from GCCollector
 
 
-/* Note: remarkupvals is now in GCMarking module, called from GCCollector */
+// Note: remarkupvals is now in GCMarking module, called from GCCollector
 
 
-/* Note: cleargraylists is now global_State::clearGrayLists() method */
+// Note: cleargraylists is now GlobalState::clearGrayLists() method
 
 
-/* Note: restartcollection is now in GCMarking module, called from GCCollector */
+// Note: restartcollection is now in GCMarking module, called from GCCollector
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
@@ -310,7 +305,7 @@ static void reallymarkobject (global_State& g, GCObject *o) {
 */
 
 
-/* Note: genlink() is now in GCMarking module, called from traverse functions */
+// Note: genlink() is now in GCMarking module, called from traverse functions
 
 
 /*
@@ -324,7 +319,7 @@ static void reallymarkobject (global_State& g, GCObject *o) {
 ** Wrapper for traverseweakvalue - delegates to GCWeak module.
 ** See gc_weak.cpp for implementation.
 */
-void traverseweakvalue (global_State& g, Table *h) {
+void traverseweakvalue (GlobalState& g, Table *h) {
   GCWeak::traverseweakvalue(g, h);
 }
 
@@ -338,22 +333,22 @@ void traverseweakvalue (global_State& g, Table *h) {
 ** traverse one gray object, turning it to black. Return an estimate
 ** of the number of slots traversed.
 */
-/* Wrapper for GCMarking::propagatemark() - now in gc_marking module */
-static l_mem propagatemark(global_State& g) {
+// Wrapper for GCMarking::propagatemark() - now in gc_marking module
+static l_mem propagatemark(GlobalState& g) {
   return GCMarking::propagatemark(g);
 }
 
 
-/* Made non-static for use by GCCollector module */
-void propagateall (global_State& g) {
+// Made non-static for use by GCCollector module
+void propagateall (GlobalState& g) {
   while (g.getGray())
     propagatemark(g);
 }
 
 
-/* Note: convergeephemerons is now in GCWeak module, called from GCCollector */
+// Note: convergeephemerons is now in GCWeak module, called from GCCollector
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
@@ -363,33 +358,33 @@ void propagateall (global_State& g) {
 */
 
 
-/* Note: clearbykeys is now in GCWeak module, called from GCCollector */
+// Note: clearbykeys is now in GCWeak module, called from GCCollector
 
 
-/* Note: clearbyvalues is now in GCWeak module, called from GCCollector */
+// Note: clearbyvalues is now in GCWeak module, called from GCCollector
 
 
-/* Wrapper for GCCore::freeupval - now in gc_core module */
-static void freeupval(lua_State* L, UpVal* uv) {
-  GCCore::freeupval(L, uv);
+// Wrapper for GCCore::freeupval - now in gc_core module
+static void freeupval(lua_State* L, UpVal* upvalue) {
+  GCCore::freeupval(L, upvalue);
 }
 
 
-// Phase 50: Call destructors before freeing memory (proper RAII)
-// Made non-static for use by gc_sweeping module (Phase 2)
+// Call destructors before freeing memory (proper RAII)
+// Made non-static for use by gc_sweeping module
 void freeobj (lua_State& L, GCObject *o) {
   assert_code(l_mem newmem = G(L)->getTotalBytes() - objsize(o));
   switch (static_cast<int>(o->getType())) {
     case static_cast<int>(ctb(LuaT::PROTO)): {
       Proto *p = gco2p(o);
-      p->free(&L);  /* Phase 25b - frees internal arrays */
+      p->free(&L);  // frees internal arrays
       // Proto destructor is trivial, but call it for completeness
       p->~Proto();
       break;
     }
     case static_cast<int>(ctb(LuaT::UPVAL)): {
-      UpVal *uv = gco2upv(o);
-      freeupval(&L, uv);  // Note: freeupval calls destructor internally
+      UpVal *upvalue = gco2upv(o);
+      freeupval(&L, upvalue);  // Note: freeupval calls destructor internally
       break;
     }
     case static_cast<int>(ctb(LuaT::LCL)): {
@@ -419,20 +414,20 @@ void freeobj (lua_State& L, GCObject *o) {
       break;
     }
     case static_cast<int>(ctb(LuaT::SHRSTR)): {
-      TString *ts = gco2ts(o);
-      size_t sz = sizestrshr(cast_uint(ts->getShrlen()));
-      ts->remove(&L);  /* use method instead of free function */
+      TString *tstring = gco2ts(o);
+      size_t sz = sizestrshr(cast_uint(tstring->getShrlen()));
+      tstring->remove(&L);  // use method instead of free function
       // DON'T call destructor for TString - it's empty and might cause issues with variable-size objects
-      // ts->~TString();
-      luaM_freemem(&L, ts, sz);
+      // tstring->~TString();
+      luaM_freemem(&L, tstring, sz);
       break;
     }
     case static_cast<int>(ctb(LuaT::LNGSTR)): {
-      TString *ts = gco2ts(o);
-      if (ts->getShrlen() == LSTRMEM)  /* must free external string? */
-        (*ts->getFalloc())(ts->getUserData(), ts->getContentsField(), ts->getLnglen() + 1, 0);
-      ts->~TString();  // Call destructor
-      luaM_freemem(&L, ts, TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen()));
+      TString *tstring = gco2ts(o);
+      if (tstring->getShrlen() == LSTRMEM)  // must free external string?
+        (*tstring->getFalloc())(tstring->getUserData(), tstring->getContentsField(), tstring->getLnglen() + 1, 0);
+      tstring->~TString();  // Call destructor
+      luaM_freemem(&L, tstring, TString::calculateLongStringSize(tstring->getLnglen(), tstring->getShrlen()));
       break;
     }
     default: lua_assert(0);
@@ -474,8 +469,8 @@ void freeobj (lua_State& L, GCObject *o) {
 ** The countin parameter limits work per step. This allows sweeping to be
 ** interleaved with program execution, preventing long pauses.
 */
-/* sweeplist now in GCSweeping module */
-/* }====================================================== */
+// sweeplist now in GCSweeping module
+// }======================================================
 
 
 /*
@@ -484,10 +479,10 @@ void freeobj (lua_State& L, GCObject *o) {
 ** =======================================================
 */
 
-/* Note: checkSizes is now in GCFinalizer module, called from GCCollector */
+// Note: checkSizes is now in GCFinalizer module, called from GCCollector
 
 
-/* Note: udata2finalize, dothecall, GCTM now in GCFinalizer module */
+// Note: udata2finalize, dothecall, GCTM now in GCFinalizer module
 
 
 /*
@@ -499,14 +494,14 @@ static void callallpendingfinalizers (lua_State& L) {
 }
 
 
-/* findlast, checkpointer now in GCFinalizer module */
+// findlast, checkpointer now in GCFinalizer module
 
 
 /*
 ** Wrapper for separatetobefnz - delegates to GCFinalizer module.
 ** See gc_finalizer.cpp for implementation.
 */
-static void separatetobefnz (global_State& g, int all) {
+static void separatetobefnz (GlobalState& g, int all) {
   GCFinalizer::separatetobefnz(g, all);
 }
 
@@ -515,7 +510,7 @@ static void separatetobefnz (global_State& g, int all) {
 ** Wrapper for correctpointers - delegates to GCFinalizer module.
 ** See gc_finalizer.cpp for implementation.
 */
-static void correctpointers (global_State& g, GCObject *o) {
+static void correctpointers (GlobalState& g, GCObject *o) {
   GCFinalizer::correctpointers(g, o);
 }
 
@@ -525,7 +520,7 @@ static void correctpointers (global_State& g, GCObject *o) {
 ** search the list to find it) and link it in 'finobj' list.
 */
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
@@ -550,10 +545,10 @@ static void correctpointers (global_State& g, GCObject *o) {
 */
 
 
-/* Note: setpause is now global_State::setPause() method */
+// Note: setpause is now GlobalState::setPause() method
 
 
-/* Note: sweep2old is now in GCSweeping module, called from GCCollector */
+// Note: sweep2old is now in GCSweeping module, called from GCCollector
 
 /*
 ** Correct a list of gray objects. Return a pointer to the last element
@@ -571,22 +566,22 @@ static GCObject **correctgraylist (GCObject **p) {
   while ((curr = *p) != nullptr) {
     GCObject **next = getgclist(curr);
     if (iswhite(curr))
-      goto remove;  /* remove all white objects */
-    else if (getage(curr) == GCAge::Touched1) {  /* touched in this cycle? */
+      goto remove;  // remove all white objects
+    else if (getage(curr) == GCAge::Touched1) {  // touched in this cycle?
       lua_assert(isgray(curr));
-      nw2black(curr);  /* make it black, for next barrier */
+      nw2black(curr);  // make it black, for next barrier
       setage(curr, GCAge::Touched2);
-      goto remain;  /* keep it in the list and go to next element */
+      goto remain;  // keep it in the list and go to next element
     }
     else if (curr->getType() == ctb(LuaT::THREAD)) {
       lua_assert(isgray(curr));
-      goto remain;  /* keep non-white threads on the list */
+      goto remain;  // keep non-white threads on the list
     }
-    else {  /* everything else is removed */
-      lua_assert(isold(curr));  /* young objects should be white here */
-      if (getage(curr) == GCAge::Touched2)  /* advance from TOUCHED2... */
-        setage(curr, GCAge::Old);  /* ... to OLD */
-      nw2black(curr);  /* make object black (to be removed) */
+    else {  // everything else is removed
+      lua_assert(isold(curr));  // young objects should be white here
+      if (getage(curr) == GCAge::Touched2)  // advance from TOUCHED2...
+        setage(curr, GCAge::Old);  // ... to OLD
+      nw2black(curr);  // make object black (to be removed)
       goto remove;
     }
     remove: *p = *next; continue;
@@ -596,34 +591,34 @@ static GCObject **correctgraylist (GCObject **p) {
 }
 
 
-/* Note: correctgraylists is now global_State::correctGrayLists() method */
+// Note: correctgraylists is now GlobalState::correctGrayLists() method
 
 
-/* Note: markold is now in GCMarking module */
+// Note: markold is now in GCMarking module
 
 
-/* Note: finishgencycle is now in GCCollector module */
+// Note: finishgencycle is now in GCCollector module
 
 
 /*
 ** Wrapper for GCCollector::minor2inc() - now in gc_collector module
 */
-static void minor2inc (lua_State *L, global_State *g, GCKind kind) {
+static void minor2inc (lua_State *L, GlobalState *g, GCKind kind) {
   GCCollector::minor2inc(L, g, kind);
 }
 
 
-/* Note: checkminormajor is now global_State::checkMinorMajor() method */
+// Note: checkminormajor is now GlobalState::checkMinorMajor() method
 
 /*
 ** Wrapper for GCCollector::youngcollection() - now in gc_collector module
 */
-static void youngcollection (lua_State& L, global_State& g) {
+static void youngcollection (lua_State& L, GlobalState& g) {
   GCCollector::youngcollection(&L, &g);
 }
 
 
-/* Note: atomic2gen is now in GCCollector module */
+// Note: atomic2gen is now in GCCollector module
 
 
 /*
@@ -632,8 +627,8 @@ static void youngcollection (lua_State& L, global_State& g) {
 ** the base, GCmajorminor, which is the number of bytes being used
 ** after the last major collection.
 */
-/* Wrapper for global_State::setMinorDebt() - now a method */
-static void setminordebt(global_State* g) {
+// Wrapper for GlobalState::setMinorDebt() - now a method
+static void setminordebt(GlobalState* g) {
   g->setMinorDebt();
 }
 
@@ -641,7 +636,7 @@ static void setminordebt(global_State* g) {
 /*
 ** Wrapper for GCCollector::entergen() - now in gc_collector module
 */
-static void entergen (lua_State& L, global_State& g) {
+static void entergen (lua_State& L, GlobalState& g) {
   GCCollector::entergen(&L, &g);
 }
 
@@ -650,12 +645,12 @@ static void entergen (lua_State& L, global_State& g) {
 ** Change collector mode to 'newmode'.
 */
 void luaC_changemode (lua_State& L, GCKind newmode) {
-  global_State *g = G(L);
-  if (g->getGCKind() == GCKind::GenerationalMajor)  /* doing major collections? */
-    g->setGCKind(GCKind::Incremental);  /* already incremental but in name */
-  if (newmode != g->getGCKind()) {  /* does it need to change? */
-    if (newmode == GCKind::Incremental)  /* entering incremental mode? */
-      minor2inc(&L, g, GCKind::Incremental);  /* entering incremental mode */
+  GlobalState *g = G(L);
+  if (g->getGCKind() == GCKind::GenerationalMajor)  // doing major collections?
+    g->setGCKind(GCKind::Incremental);  // already incremental but in name
+  if (newmode != g->getGCKind()) {  // does it need to change?
+    if (newmode == GCKind::Incremental)  // entering incremental mode?
+      minor2inc(&L, g, GCKind::Incremental);  // entering incremental mode
     else {
       lua_assert(newmode == GCKind::GenerationalMinor);
       entergen(L, *g);
@@ -667,14 +662,14 @@ void luaC_changemode (lua_State& L, GCKind newmode) {
 /*
 ** Wrapper for GCCollector::fullgen() - now in gc_collector module
 */
-static void fullgen (lua_State& L, global_State& g) {
+static void fullgen (lua_State& L, GlobalState& g) {
   GCCollector::fullgen(&L, &g);
 }
 
 
-/* Note: checkmajorminor is now in GCCollector module */
+// Note: checkmajorminor is now in GCCollector module
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
@@ -684,7 +679,7 @@ static void fullgen (lua_State& L, global_State& g) {
 */
 
 
-/* Note: entersweep is now in GCSweeping module, called from GCCollector */
+// Note: entersweep is now in GCSweeping module, called from GCCollector
 
 
 /*
@@ -701,23 +696,23 @@ static void deletelist (lua_State& L, GCObject *p, GCObject *limit) {
 ** then free all objects, except for the main thread.
 */
 void luaC_freeallobjects (lua_State& L) {
-  global_State *g = G(L);
-  g->setGCStp(GCSTPCLS);  /* no extra finalizers after here */
+  GlobalState *g = G(L);
+  g->setGCStp(GCSTPCLS);  // no extra finalizers after here
   luaC_changemode(L, GCKind::Incremental);
-  separatetobefnz(*g, 1);  /* separate all objects with finalizers */
+  separatetobefnz(*g, 1);  // separate all objects with finalizers
   lua_assert(g->getFinObj() == nullptr);
   callallpendingfinalizers(L);
   deletelist(L, g->getAllGC(), obj2gco(mainthread(g)));
-  lua_assert(g->getFinObj() == nullptr);  /* no new finalizers */
-  deletelist(L, g->getFixedGC(), nullptr);  /* collect fixed objects */
+  lua_assert(g->getFinObj() == nullptr);  // no new finalizers
+  deletelist(L, g->getFixedGC(), nullptr);  // collect fixed objects
   lua_assert(g->getStringTable()->getNumElements() == 0);
 }
 
 
-/* Note: atomic is now in GCCollector module */
+// Note: atomic is now in GCCollector module
 
 
-/* Note: sweepstep is now in GCSweeping module, called from GCCollector::singlestep */
+// Note: sweepstep is now in GCSweeping module, called from GCCollector::singlestep
 
 
 /*
@@ -727,7 +722,7 @@ static l_mem singlestep (lua_State& L, int fast) {
   return GCCollector::singlestep(&L, fast);
 }
 
-/* Special return values (now in GCCollector class as constants) */
+// Special return values (now in GCCollector class as constants)
 #define step2pause	GCCollector::STEP_2_PAUSE
 #define atomicstep	GCCollector::ATOMIC_STEP
 #define step2minor	GCCollector::STEP_2_MINOR
@@ -739,7 +734,7 @@ static l_mem singlestep (lua_State& L, int fast) {
 ** here is always true.)
 */
 void luaC_runtilstate (lua_State& L, GCState state, int fast) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   lua_assert(g->getGCKind() == GCKind::Incremental);
   while (state != g->getGCState())
     singlestep(L, fast);
@@ -750,7 +745,7 @@ void luaC_runtilstate (lua_State& L, GCState state, int fast) {
 /*
 ** Wrapper for GCCollector::incstep() - now in gc_collector module
 */
-static void incstep (lua_State& L, global_State& g) {
+static void incstep (lua_State& L, GlobalState& g) {
   GCCollector::incstep(&L, &g);
 }
 
@@ -765,14 +760,14 @@ static void incstep (lua_State& L, global_State& g) {
 ** at every single check.)
 */
 void luaC_step (lua_State& L) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   lua_assert(!g->getGCEmergency());
-  if (!g->isGCRunning()) {  /* not running? */
-    if (g->getGCStp() & GCSTPUSR)  /* stopped by the user? */
+  if (!g->isGCRunning()) {  // not running?
+    if (g->getGCStp() & GCSTPUSR)  // stopped by the user?
       luaE_setdebt(g, 20000);
   }
   else {
-    luai_tracegc(&L, 1);  /* for internal debugging */
+    luai_tracegc(&L, 1);  // for internal debugging
     switch (g->getGCKind()) {
       case GCKind::Incremental: case GCKind::GenerationalMajor:
         incstep(L, *g);
@@ -782,7 +777,7 @@ void luaC_step (lua_State& L) {
         setminordebt(g);
         break;
     }
-    luai_tracegc(&L, 0);  /* for internal debugging */
+    luai_tracegc(&L, 0);  // for internal debugging
   }
 }
 
@@ -790,7 +785,7 @@ void luaC_step (lua_State& L) {
 /*
 ** Wrapper for GCCollector::fullinc() - now in gc_collector module
 */
-static void fullinc (lua_State& L, global_State& g) {
+static void fullinc (lua_State& L, GlobalState& g) {
   GCCollector::fullinc(&L, &g);
 }
 
@@ -801,9 +796,9 @@ static void fullinc (lua_State& L, global_State& g) {
 ** unexpected ways (running finalizers and shrinking some structures).
 */
 void luaC_fullgc (lua_State& L, int isemergency) {
-  global_State *g = G(L);
+  GlobalState *g = G(L);
   lua_assert(!g->getGCEmergency());
-  g->setGCEmergency(cast_byte(isemergency));  /* set flag */
+  g->setGCEmergency(cast_byte(isemergency));  // set flag
   switch (g->getGCKind()) {
     case GCKind::GenerationalMinor: fullgen(L, *g); break;
     case GCKind::Incremental: fullinc(L, *g); break;
@@ -816,12 +811,12 @@ void luaC_fullgc (lua_State& L, int isemergency) {
   g->setGCEmergency(0);
 }
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
 ** {======================================================
-** global_State GC control method implementations
+** GlobalState GC control method implementations
 ** =======================================================
 */
 
@@ -829,7 +824,7 @@ void luaC_fullgc (lua_State& L, int isemergency) {
 ** Clear all gray lists.
 ** Called when entering sweep phase or restarting collection.
 */
-void global_State::clearGrayLists() {
+void GlobalState::clearGrayLists() {
   *getGrayPtr() = *getGrayAgainPtr() = nullptr;
   *getWeakPtr() = *getAllWeakPtr() = *getEphemeronPtr() = nullptr;
 }
@@ -839,7 +834,7 @@ void global_State::clearGrayLists() {
 ** Set the "time" to wait before starting a new incremental cycle.
 ** Cycle will start when memory usage hits (marked * pause / 100).
 */
-void global_State::setPause() {
+void GlobalState::setPause() {
   l_mem threshold = applygcparam(this, PAUSE, getGCMarked());
   l_mem debt = threshold - getTotalBytes();
   if (debt < 0) debt = 0;
@@ -851,7 +846,7 @@ void global_State::setPause() {
 ** Set debt for the next minor collection in generational mode.
 ** Collection triggers when memory grows genminormul% relative to base.
 */
-void global_State::setMinorDebt() {
+void GlobalState::setMinorDebt() {
   luaE_setdebt(this, applygcparam(this, MINORMUL, getGCMajorMinor()));
 }
 
@@ -860,10 +855,10 @@ void global_State::setMinorDebt() {
 ** Check whether to shift from minor to major collection.
 ** Shifts if accumulated old bytes exceeds minormajor% of lived bytes.
 */
-int global_State::checkMinorMajor() {
+int GlobalState::checkMinorMajor() {
   l_mem limit = applygcparam(this, MINORMAJOR, getGCMajorMinor());
   if (limit == 0)
-    return 0;  /* special case: 'minormajor' 0 stops major collections */
+    return 0;  // special case: 'minormajor' 0 stops major collections
   return (getGCMarked() >= limit);
 }
 
@@ -872,7 +867,7 @@ int global_State::checkMinorMajor() {
 ** Correct all gray lists for generational mode.
 ** Coalesces them into 'grayagain' list.
 */
-void global_State::correctGrayLists() {
+void GlobalState::correctGrayLists() {
   GCObject **list = correctgraylist(getGrayAgainPtr());
   *list = getWeak(); setWeak(nullptr);
   list = correctgraylist(list);
@@ -882,43 +877,43 @@ void global_State::correctGrayLists() {
   correctgraylist(list);
 }
 
-/* }====================================================== */
+// }======================================================
 
 
 /*
 ** GCObject method implementations
 */
-void GCObject::fix(lua_State* L) const {  /* const - only modifies mutable GC fields */
-  global_State *g = G(L);
-  lua_assert(g->getAllGC() == this);  /* object must be 1st in 'allgc' list! */
-  set2gray(this);  /* they will be gray forever */
-  setage(this, GCAge::Old);  /* and old forever */
-  g->setAllGC(getNext());  /* remove object from 'allgc' list */
-  setNext(g->getFixedGC());  /* link it to 'fixedgc' list */
+void GCObject::fix(lua_State* L) const {  // const - only modifies mutable GC fields
+  GlobalState *g = G(L);
+  lua_assert(g->getAllGC() == this);  // object must be 1st in 'allgc' list!
+  set2gray(this);  // they will be gray forever
+  setage(this, GCAge::Old);  // and old forever
+  g->setAllGC(getNext());  // remove object from 'allgc' list
+  setNext(g->getFixedGC());  // link it to 'fixedgc' list
   g->setFixedGC(this);
 }
 
 void GCObject::checkFinalizer(lua_State* L, Table* mt) {
-  global_State *g = G(L);
-  if (tofinalize(this) ||                 /* obj. is already marked... */
-      gfasttm(g, mt, TMS::TM_GC) == nullptr ||    /* or has no finalizer... */
-      (g->getGCStp() & GCSTPCLS))                   /* or closing state? */
-    return;  /* nothing to be done */
-  else {  /* move 'this' to 'finobj' list */
+  GlobalState *g = G(L);
+  if (tofinalize(this) ||  // obj. is already marked...
+      gfasttm(g, mt, TMS::TM_GC) == nullptr ||  // or has no finalizer...
+      (g->getGCStp() & GCSTPCLS))  // or closing state?
+    return;  // nothing to be done
+  else {  // move 'this' to 'finobj' list
     GCObject **p;
     if (g->isSweepPhase()) {
-      makewhite(g, this);  /* "sweep" object 'this' */
-      if (g->getSweepGC() == &this->next)  /* should not remove 'sweepgc' object */
-        g->setSweepGC(GCSweeping::sweeptolive(L, g->getSweepGC()));  /* change 'sweepgc' */
+      makewhite(g, this);  // "sweep" object 'this'
+      if (g->getSweepGC() == &this->next)  // should not remove 'sweepgc' object
+        g->setSweepGC(GCSweeping::sweeptolive(L, g->getSweepGC()));  // change 'sweepgc'
     }
     else
       correctpointers(*g, this);
-    /* search for pointer pointing to 'this' */
+    // search for pointer pointing to 'this'
     for (p = g->getAllGCPtr(); *p != this; p = (*p)->getNextPtr()) { /* empty */ }
     *p = getNext();  /* remove 'this' from 'allgc' list */
-    setNext(g->getFinObj());  /* link it in 'finobj' list */
+    setNext(g->getFinObj());  // link it in 'finobj' list
     g->setFinObj(this);
-    setMarkedBit(FINALIZEDBIT);  /* mark it as such */
+    setMarkedBit(FINALIZEDBIT);  // mark it as such
   }
 }
 

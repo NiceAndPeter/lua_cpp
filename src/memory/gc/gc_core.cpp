@@ -1,10 +1,8 @@
 /*
-** $Id: gc_core.cpp $
 ** Garbage Collector - Core Utilities Module
 ** See Copyright Notice in lua.h
 */
 
-#define lgc_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -53,13 +51,13 @@ l_mem GCCore::objsize(GCObject* o) {
             break;
         }
         case static_cast<int>(ctb(LuaT::SHRSTR)): {
-            TString* ts = gco2ts(o);
-            res = sizestrshr(cast_uint(ts->getShrlen()));
+            TString* tstring = gco2ts(o);
+            res = sizestrshr(cast_uint(tstring->getShrlen()));
             break;
         }
         case static_cast<int>(ctb(LuaT::LNGSTR)): {
-            TString* ts = gco2ts(o);
-            res = TString::calculateLongStringSize(ts->getLnglen(), ts->getShrlen());
+            TString* tstring = gco2ts(o);
+            res = TString::calculateLongStringSize(tstring->getLnglen(), tstring->getShrlen());
             break;
         }
         case static_cast<int>(ctb(LuaT::UPVAL)): {
@@ -89,7 +87,7 @@ GCObject** GCCore::getgclist(GCObject* o) {
             return u->getGclistPtr();
         }
         case static_cast<int>(ctb(LuaT::UPVAL)):
-            /* UpVals use the base GCObject 'next' field for gray list linkage */
+            // UpVals use the base GCObject 'next' field for gray list linkage
             return o->getNextPtr();
         case static_cast<int>(ctb(LuaT::SHRSTR)):
         case static_cast<int>(ctb(LuaT::LNGSTR)):
@@ -112,10 +110,10 @@ GCObject** GCCore::getgclist(GCObject* o) {
 ** The object is set to gray and added to the specified list.
 */
 void GCCore::linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
-    lua_assert(!isgray(o));  /* cannot be in a gray list */
+    lua_assert(!isgray(o));  // cannot be in a gray list
     *pnext = *list;
     *list = o;
-    set2gray(o);  /* now it is */
+    set2gray(o);  // now it is
 }
 
 
@@ -130,7 +128,7 @@ void GCCore::linkgclist_(GCObject* o, GCObject** pnext, GCObject** list) {
 void GCCore::clearkey(Node* n) {
     lua_assert(isempty(gval(n)));
     if (n->isKeyCollectable())
-        n->setKeyDead();  /* unused key; remove it */
+        n->setKeyDead();  // unused key; remove it
 }
 
 
@@ -138,9 +136,9 @@ void GCCore::clearkey(Node* n) {
 ** Free an upvalue object.
 ** Unlinks open upvalues and calls destructor before freeing.
 */
-void GCCore::freeupval(lua_State* L, UpVal* uv) {
-    if (uv->isOpen())
-        luaF_unlinkupval(uv);
-    uv->~UpVal();  // Call destructor
-    luaM_free(L, uv);
+void GCCore::freeupval(lua_State* L, UpVal* upvalue) {
+    if (upvalue->isOpen())
+        luaF_unlinkupval(upvalue);
+    upvalue->~UpVal();  // Call destructor
+    luaM_free(L, upvalue);
 }

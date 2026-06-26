@@ -1,5 +1,4 @@
 /*
-** $Id: lstate.h $
 ** Global State
 ** See Copyright Notice in lua.h
 */
@@ -11,12 +10,12 @@
 
 #include <utility>
 
-/* Some header files included here need this definition */
+// Some header files included here need this definition
 typedef struct CallInfo CallInfo;
-class global_State;  /* forward declaration */
-class VirtualMachine;  /* forward declaration */
+class GlobalState;  // forward declaration
+class VirtualMachine;  // forward declaration
 
-/* Type of protected functions, to be run by 'runprotected' */
+// Type of protected functions, to be run by 'runprotected'
 typedef void (*Pfunc) (lua_State *L, void *ud);
 
 
@@ -106,15 +105,15 @@ typedef void (*Pfunc) (lua_State *L, void *ud);
 ** instruction.)
 */
 
-/* Non-yieldable call increment */
+// Non-yieldable call increment
 inline constexpr unsigned int nyci = (0x10000 | 1);
 
 
 /*
-** lua_longjmp now defined in ldo.cpp (no longer uses jmp_buf)
+** LuaLongJmp now defined in ldo.cpp (no longer uses jmp_buf)
 ** Forward declaration for error handler chain
 */
-struct lua_longjmp;
+struct LuaLongJmp;
 
 
 /*
@@ -173,17 +172,17 @@ inline bool operator<(GCState lhs, GCState rhs)
 ** Kinds of Garbage Collection
 */
 enum class GCKind : lu_byte {
-	Incremental       = 0,  /* incremental gc */
-	GenerationalMinor = 1,  /* generational gc in minor (regular) mode */
-	GenerationalMajor = 2   /* generational in major mode */
+	Incremental       = 0,  // incremental gc
+	GenerationalMinor = 1,  // generational gc in minor (regular) mode
+	GenerationalMajor = 2  // generational in major mode
 };
 
 
-class stringtable {
+class StringTable {
 private:
-  TString **hash;  /* array of buckets (linked lists of strings) */
-  unsigned int numberOfElements;  /* number of elements */
-  unsigned int tableSize;  /* number of buckets */
+  TString **hash;  // array of buckets (linked lists of strings)
+  unsigned int numberOfElements;  // number of elements
+  unsigned int tableSize;  // number of buckets
 
 public:
   // Inline accessors
@@ -211,35 +210,35 @@ inline constexpr int MAXRESULTS = 250;
 /*
 ** Bits in CallInfo status
 */
-/* bits 0-7 are the expected number of results from this function + 1 */
+// bits 0-7 are the expected number of results from this function + 1
 inline constexpr l_uint32 CIST_NRESULTS = 0xffu;
 
-/* bits 8-11 count call metamethods (and their extra arguments) */
-inline constexpr int CIST_CCMT = 8;  /* the offset, not the mask */
+// bits 8-11 count call metamethods (and their extra arguments)
+inline constexpr int CIST_CCMT = 8;  // the offset, not the mask
 inline constexpr l_uint32 MAX_CCMT = (0xfu << CIST_CCMT);
 
-/* Bits 12-14 are used for CIST_RECST (see below) */
-inline constexpr int CIST_RECST = 12;  /* the offset, not the mask */
+// Bits 12-14 are used for CIST_RECST (see below)
+inline constexpr int CIST_RECST = 12;  // the offset, not the mask
 
-/* call is running a C function (still in first 16 bits) */
+// call is running a C function (still in first 16 bits)
 inline constexpr l_uint32 CIST_C = (1u << (CIST_RECST + 3));
-/* call is on a fresh "luaV_execute" frame */
+// call is on a fresh "luaV_execute" frame
 inline constexpr l_uint32 CIST_FRESH = (cast(l_uint32, CIST_C) << 1);
-/* function is closing tbc variables */
+// function is closing tbc variables
 inline constexpr l_uint32 CIST_CLSRET = (CIST_FRESH << 1);
-/* function has tbc variables to close */
+// function has tbc variables to close
 inline constexpr l_uint32 CIST_TBC = (CIST_CLSRET << 1);
-/* original value of 'allowhook' */
+// original value of 'allowhook'
 inline constexpr l_uint32 CIST_OAH = (CIST_TBC << 1);
-/* call is running a debug hook */
+// call is running a debug hook
 inline constexpr l_uint32 CIST_HOOKED = (CIST_OAH << 1);
-/* doing a yieldable protected call */
+// doing a yieldable protected call
 inline constexpr l_uint32 CIST_YPCALL = (CIST_HOOKED << 1);
-/* call was tail called */
+// call was tail called
 inline constexpr l_uint32 CIST_TAIL = (CIST_YPCALL << 1);
-/* last hook called yielded */
+// last hook called yielded
 inline constexpr l_uint32 CIST_HOOKYIELD = (CIST_TAIL << 1);
-/* function "called" a finalizer */
+// function "called" a finalizer
 inline constexpr l_uint32 CIST_FIN = (CIST_HOOKYIELD << 1);
 
 
@@ -258,25 +257,25 @@ inline constexpr l_uint32 CIST_FIN = (CIST_HOOKYIELD << 1);
 */
 struct CallInfo {
 private:
-  StkIdRel func;  /* function index in the stack */
-  StkIdRel top;  /* top for this function */
-  struct CallInfo *previous, *next;  /* dynamic call link */
+  StkIdRel func;  // function index in the stack
+  StkIdRel top;  // top for this function
+  struct CallInfo *previous, *next;  // dynamic call link
   union {
-    struct {  /* only for Lua functions */
+    struct {  // only for Lua functions
       const Instruction *savedpc;
-      volatile l_signalT trap;  /* function is tracing lines/counts */
-      int numberOfExtraArgs;  /* # of extra arguments in vararg functions */
+      volatile l_signalT trap;  // function is tracing lines/counts
+      int numberOfExtraArgs;  // # of extra arguments in vararg functions
     } l;
-    struct {  /* only for C functions */
-      lua_KFunction k;  /* continuation in case of yields */
+    struct {  // only for C functions
+      lua_KFunction k;  // continuation in case of yields
       ptrdiff_t old_errfunc;
-      lua_KContext ctx;  /* context info. in case of yields */
+      lua_KContext ctx;  // context info. in case of yields
     } c;
   } u;
   union {
-    int funcidx;  /* called-function index */
-    int numberOfYielded;  /* number of values yielded */
-    int numberOfResults;  /* number of values returned */
+    int funcidx;  // called-function index
+    int numberOfYielded;  // number of values yielded
+    int numberOfResults;  // number of values returned
   } u2;
   l_uint32 callstatus;
 
@@ -368,7 +367,7 @@ public:
   int getNRes() const noexcept { return u2.numberOfResults; }
   void setNRes(int n) noexcept { u2.numberOfResults = n; }
 
-  // Phase 44.5: Additional CallInfo helper methods
+  // Additional CallInfo helper methods
 
   // Get Lua closure from CallInfo
   LClosure* getFunc() const noexcept {
@@ -381,7 +380,6 @@ public:
   }
 };
 
-/* Phase 44.5: get_nresults macro replaced with CallInfo::getNResults() method */
 
 /*
 ** Field CIST_RECST stores the "recover status", used to keep the error
@@ -396,48 +394,48 @@ public:
 */
 struct lua_State : public GCBase<lua_State> {
 private:
-  // Stack subsystem (SRP refactoring - Phase 93)
-  LuaStack stack_;  /* stack management subsystem */
+  // Stack subsystem (SRP refactoring)
+  LuaStack stack_;  // stack management subsystem
 
-  // VM operations subsystem (Phase 122)
-  VirtualMachine* vm_;  /* VM operations encapsulation (pointer to break circular dependency) */
+  // VM operations subsystem
+  VirtualMachine* vm_;  // VM operations encapsulation (pointer to break circular dependency)
 
   // CallInfo fields (encapsulated)
-  CallInfo *ci;  /* call info for current function */
-  CallInfo base_ci;  /* CallInfo for first level (C host) */
+  CallInfo *callInfo;  // call info for current function
+  CallInfo base_ci;  // CallInfo for first level (C host)
 
   // Step 3: GC and state management fields (encapsulated)
-  mutable global_State *l_G;  /* mutable: GC can happen during any operation */
-  UpVal *openupval;  /* list of open upvalues in this stack */
+  mutable GlobalState *l_G;  // mutable: GC can happen during any operation
+  UpVal *openupval;  // list of open upvalues in this stack
   GCObject *gclist;
-  lua_State *twups;  /* list of threads with open upvalues */
+  lua_State *twups;  // list of threads with open upvalues
 
   // Step 4: Status and error handling fields (encapsulated)
   TStatus status;
-  struct lua_longjmp *errorJmp;  /* current error recover point */
-  ptrdiff_t errfunc;  /* current error handling function (stack index) */
+  struct LuaLongJmp *errorJmp;  // current error recover point
+  ptrdiff_t errfunc;  // current error handling function (stack index)
 
   // Step 5: Hook and debug fields (encapsulated)
   volatile lua_Hook hook;
   volatile l_signalT hookmask;
   lu_byte allowhook;
-  int oldpc;  /* last pc traced */
+  int oldpc;  // last pc traced
   int basehookcount;
   int hookcount;
-  struct {  /* info about transferred values (for call/return hooks) */
-    int ftransfer;  /* offset of first value transferred */
-    int ntransfer;  /* number of values transferred */
+  struct {  // info about transferred values (for call/return hooks)
+    int ftransfer;  // offset of first value transferred
+    int ntransfer;  // number of values transferred
   } transferinfo;
 
   // Step 6: Call counter fields (encapsulated)
-  l_uint32 numberOfCCalls;  /* number of nested non-yieldable or C calls */
-  int numberOfCallInfos;  /* number of items in 'ci' list */
+  l_uint32 numberOfCCalls;  // number of nested non-yieldable or C calls
+  int numberOfCallInfos;  // number of items in 'callInfo' list
 
 public:
   // Initialize lua_State fields (GC base fields must already be set by caller)
   // This is called instead of a constructor to avoid C++ object initialization
   // that might interfere with GC fields (next, tt, marked)
-  void init(global_State* g) noexcept {
+  void init(GlobalState* g) noexcept {
     // Link to global state
     l_G = g;
 
@@ -452,7 +450,7 @@ public:
     stack_.getTop().p = nullptr;
 
     // CallInfo fields
-    ci = nullptr;
+    callInfo = nullptr;
     numberOfCallInfos = 0;
     // base_ci initialized via placement new to call its constructor
     new (&base_ci) CallInfo();
@@ -483,7 +481,7 @@ public:
     numberOfCCalls = 0;
   }
 
-  // VM subsystem accessor (Phase 122)
+  // VM subsystem accessor
   inline VirtualMachine& getVM() noexcept { return *vm_; }
   inline const VirtualMachine& getVM() const noexcept { return *vm_; }
 
@@ -512,23 +510,23 @@ public:
   inline int getStackSize() const noexcept { return stack_.getSize(); }
 
   // Step 2: CallInfo field accessors
-  CallInfo* getCI() noexcept { return ci; }
-  const CallInfo* getCI() const noexcept { return ci; }
-  CallInfo* setCI(CallInfo* c) noexcept { ci = c; return ci; }  // Returns value for chaining
-  CallInfo** getCIPtr() noexcept { return &ci; }
+  CallInfo* getCI() noexcept { return callInfo; }
+  const CallInfo* getCI() const noexcept { return callInfo; }
+  CallInfo* setCI(CallInfo* c) noexcept { callInfo = c; return callInfo; }  // Returns value for chaining
+  CallInfo** getCIPtr() noexcept { return &callInfo; }
 
   CallInfo* getBaseCI() noexcept { return &base_ci; }
   const CallInfo* getBaseCI() const noexcept { return &base_ci; }
 
   // Step 3: GC and state management field accessors
-  global_State* getGlobalState() noexcept { return l_G; }
-  global_State* getGlobalState() const noexcept { return l_G; }  // mutable field
-  void setGlobalState(global_State* g) noexcept { l_G = g; }
-  global_State*& getGlobalStateRef() noexcept { return l_G; }  // For G() macro
+  GlobalState* getGlobalState() noexcept { return l_G; }
+  GlobalState* getGlobalState() const noexcept { return l_G; }  // mutable field
+  void setGlobalState(GlobalState* g) noexcept { l_G = g; }
+  GlobalState*& getGlobalStateRef() noexcept { return l_G; }  // For G() macro
 
   UpVal* getOpenUpval() noexcept { return openupval; }
   const UpVal* getOpenUpval() const noexcept { return openupval; }
-  void setOpenUpval(UpVal* uv) noexcept { openupval = uv; }
+  void setOpenUpval(UpVal* upvalue) noexcept { openupval = upvalue; }
   UpVal** getOpenUpvalPtr() noexcept { return &openupval; }
 
   GCObject* getGclist() noexcept { return gclist; }
@@ -545,10 +543,10 @@ public:
   TStatus getStatus() const noexcept { return status; }
   void setStatus(TStatus s) noexcept { status = s; }
 
-  lua_longjmp* getErrorJmp() noexcept { return errorJmp; }
-  const lua_longjmp* getErrorJmp() const noexcept { return errorJmp; }
-  void setErrorJmp(lua_longjmp* ej) noexcept { errorJmp = ej; }
-  lua_longjmp** getErrorJmpPtr() noexcept { return &errorJmp; }
+  LuaLongJmp* getErrorJmp() noexcept { return errorJmp; }
+  const LuaLongJmp* getErrorJmp() const noexcept { return errorJmp; }
+  void setErrorJmp(LuaLongJmp* ej) noexcept { errorJmp = ej; }
+  LuaLongJmp** getErrorJmpPtr() noexcept { return &errorJmp; }
 
   ptrdiff_t getErrFunc() const noexcept { return errfunc; }
   void setErrFunc(ptrdiff_t ef) noexcept { errfunc = ef; }
@@ -590,7 +588,7 @@ public:
   void incrementNonYieldable() noexcept { numberOfCCalls += 0x10000; }
   void decrementNonYieldable() noexcept { numberOfCCalls -= 0x10000; }
 
-  // Phase 44.4: Additional lua_State helper methods
+  // Additional lua_State helper methods
 
   // Thread with upvalues list check
   bool isInTwups() const noexcept {
@@ -602,7 +600,7 @@ public:
     hookcount = basehookcount;
   }
 
-  // VM lifecycle management (Phase 122)
+  // VM lifecycle management
   void initVM();    // Allocate VirtualMachine (implemented in lstate.cpp)
   void closeVM();   // Deallocate VirtualMachine (implemented in lstate.cpp)
 
@@ -616,7 +614,7 @@ public:
   }
 
   // Existing accessors (kept for compatibility)
-  CallInfo* getCallInfo() const noexcept { return ci; }  // Alias for getCI()
+  CallInfo* getCallInfo() const noexcept { return callInfo; }  // Alias for getCI()
 
   // Stack operation methods - delegate to stack_ subsystem
   inline void inctop() { stack_.incTop(this); }
@@ -632,12 +630,12 @@ public:
 
   // Hook/debugging methods (implemented in ldo.cpp)
   void callHook(int event, int line, int fTransfer, int nTransfer);
-  void hookCall(CallInfo *ci);
+  void hookCall(CallInfo *callInfo);
 
   // Call operation methods (implemented in ldo.cpp)
   [[nodiscard]] CallInfo* preCall(StkId func, int nResults);
-  void postCall(CallInfo *ci, int nres);
-  [[nodiscard]] int preTailCall(CallInfo *ci, StkId func, int narg1, int delta);
+  void postCall(CallInfo *callInfo, int nres);
+  [[nodiscard]] int preTailCall(CallInfo *callInfo, StkId func, int narg1, int delta);
   void call(StkId func, int nResults);
   void callNoYield(StkId func, int nResults);
 
@@ -650,12 +648,12 @@ public:
   // Internal helper methods (used by Pfunc callbacks in ldo.cpp)
   void cCall(StkId func, int nResults, l_uint32 inc);
   void unrollContinuation(void *ud);
-  [[nodiscard]] TStatus finishPCallK(CallInfo *ci);
-  void finishCCall(CallInfo *ci);
+  [[nodiscard]] TStatus finishPCallK(CallInfo *callInfo);
+  void finishCCall(CallInfo *callInfo);
   [[nodiscard]] CallInfo* findPCall();
 
   // Error and debug methods (implemented in ldebug.cpp)
-  const char* findLocal(CallInfo *ci, int n, StkId *pos);
+  const char* findLocal(CallInfo *callInfo, int n, StkId *pos);
   l_noret typeError(const TValue *o, const char *opname);
   l_noret callError(const TValue *o);
   l_noret forError(const TValue *o, const char *what);
@@ -704,7 +702,7 @@ private:
   int stackInUse();
 
   // Call/hook helpers
-  void retHook(CallInfo *ci, int nres);
+  void retHook(CallInfo *callInfo, int nres);
   unsigned tryFuncTM(StkId func, unsigned status);
   void genMoveResults(StkId res, int nres, int wanted);
   void moveResults(StkId res, int nres, l_uint32 fwanted);
@@ -717,22 +715,22 @@ private:
 ** Inline helper functions for lua_State (defined after class for complete type)
 */
 
-/* true if this thread does not have non-yieldable calls in the stack */
+// true if this thread does not have non-yieldable calls in the stack
 inline constexpr bool yieldable(const lua_State* L) noexcept {
 	return ((L->getNumberOfCCalls() & 0xffff0000) == 0);
 }
 
-/* real number of C calls */
+// real number of C calls
 inline constexpr l_uint32 getCcalls(const lua_State* L) noexcept {
 	return (L->getNumberOfCCalls() & 0xffff);
 }
 
-/* Increment the number of non-yieldable calls */
+// Increment the number of non-yieldable calls
 inline void incnny(lua_State* L) noexcept {
 	L->incrementNonYieldable();
 }
 
-/* Decrement the number of non-yieldable calls */
+// Decrement the number of non-yieldable calls
 inline void decnny(lua_State* L) noexcept {
 	L->decrementNonYieldable();
 }
@@ -748,15 +746,15 @@ typedef struct LX {
 
 
 /*
-** global_State Subsystems - Single Responsibility Principle refactoring
-** These classes separate global_State's 46+ fields into focused components
+** GlobalState Subsystems - Single Responsibility Principle refactoring
+** These classes separate GlobalState's 46+ fields into focused components
 */
 
-/* 1. Memory Allocator - Memory allocation management */
+// 1. Memory Allocator - Memory allocation management
 class MemoryAllocator {
 private:
-  lua_Alloc frealloc;  /* function to reallocate memory */
-  void *ud;            /* auxiliary data to 'frealloc' */
+  lua_Alloc frealloc;  // function to reallocate memory
+  void *ud;  // auxiliary data to 'frealloc'
 
 public:
   inline lua_Alloc getFrealloc() const noexcept { return frealloc; }
@@ -766,13 +764,13 @@ public:
 };
 
 
-/* 2. GC Accounting - Memory tracking for garbage collection */
+// 2. GC Accounting - Memory tracking for garbage collection
 class GCAccounting {
 private:
-  l_mem totalbytes;    /* Total allocated bytes + debt */
-  l_mem debt;          /* Bytes counted but not yet allocated */
-  l_mem marked;        /* Objects marked in current GC cycle */
-  l_mem majorminor;    /* Counter to control major-minor shifts */
+  l_mem totalbytes;  // Total allocated bytes + debt
+  l_mem debt;  // Bytes counted but not yet allocated
+  l_mem marked;  // Objects marked in current GC cycle
+  l_mem majorminor;  // Counter to control major-minor shifts
 
 public:
   inline l_mem getTotalBytes() const noexcept { return totalbytes; }
@@ -795,16 +793,16 @@ public:
 };
 
 
-/* 3. GC Parameters - Garbage collector configuration and state */
+// 3. GC Parameters - Garbage collector configuration and state
 class GCParameters {
 private:
-  lu_byte params[LUA_GCPN];  /* GC tuning parameters */
-  lu_byte currentwhite;      /* Current white color for GC */
-  lu_byte state;             /* State of garbage collector */
-  lu_byte kind;              /* Kind of GC running (incremental/generational) */
-  lu_byte stopem;            /* Stops emergency collections */
-  lu_byte stp;               /* Control whether GC is running */
-  lu_byte emergency;         /* True if this is emergency collection */
+  lu_byte params[LUA_GCPN];  // GC tuning parameters
+  lu_byte currentwhite;  // Current white color for GC
+  lu_byte state;  // State of garbage collector
+  lu_byte kind;  // Kind of GC running (incremental/generational)
+  lu_byte stopem;  // Stops emergency collections
+  lu_byte stp;  // Control whether GC is running
+  lu_byte emergency;  // True if this is emergency collection
 
 public:
   inline lu_byte* getParams() noexcept { return params; }
@@ -833,32 +831,32 @@ public:
 };
 
 
-/* 4. GC Object Lists - Linked lists of GC-managed objects */
+// 4. GC Object Lists - Linked lists of GC-managed objects
 class GCObjectLists {
 private:
-  /* Incremental collector lists */
-  GCObject *allgc;        /* All collectable objects */
-  GCObject **sweepgc;     /* Current sweep position */
-  GCObject *finobj;       /* Objects with finalizers */
-  GCObject *gray;         /* Gray objects (mark phase) */
-  GCObject *grayagain;    /* Objects to revisit */
-  GCObject *weak;         /* Weak-value tables */
-  GCObject *ephemeron;    /* Ephemeron tables (weak keys) */
-  GCObject *allweak;      /* All-weak tables */
-  GCObject *tobefnz;      /* To be finalized */
-  mutable GCObject *fixedgc;      /* Never collected objects (mutable for GC bookkeeping) */
+  // Incremental collector lists
+  GCObject *allgc;  // All collectable objects
+  GCObject **sweepgc;  // Current sweep position
+  GCObject *finobj;  // Objects with finalizers
+  GCObject *gray;  // Gray objects (mark phase)
+  GCObject *grayagain;  // Objects to revisit
+  GCObject *weak;  // Weak-value tables
+  GCObject *ephemeron;  // Ephemeron tables (weak keys)
+  GCObject *allweak;  // All-weak tables
+  GCObject *tobefnz;  // To be finalized
+  mutable GCObject *fixedgc;  // Never collected objects (mutable for GC bookkeeping)
 
-  /* Generational collector lists */
-  GCObject *survival;     /* Survived one GC cycle */
-  GCObject *old1;         /* Old generation 1 */
-  GCObject *reallyold;    /* Old generation 2+ */
-  GCObject *firstold1;    /* First OLD1 object (optimization) */
-  GCObject *finobjsur;    /* Survival objects with finalizers */
-  GCObject *finobjold1;   /* Old1 objects with finalizers */
-  GCObject *finobjrold;   /* Really old objects with finalizers */
+  // Generational collector lists
+  GCObject *survival;  // Survived one GC cycle
+  GCObject *old1;  // Old generation 1
+  GCObject *reallyold;  // Old generation 2+
+  GCObject *firstold1;  // First OLD1 object (optimization)
+  GCObject *finobjsur;  // Survival objects with finalizers
+  GCObject *finobjold1;  // Old1 objects with finalizers
+  GCObject *finobjrold;  // Really old objects with finalizers
 
 public:
-  /* Incremental collector accessors */
+  // Incremental collector accessors
   inline GCObject* getAllGC() const noexcept { return allgc; }
   inline void setAllGC(GCObject* gc) noexcept { allgc = gc; }
   inline GCObject** getAllGCPtr() noexcept { return &allgc; }
@@ -896,10 +894,10 @@ public:
   inline GCObject** getToBeFnzPtr() noexcept { return &tobefnz; }
 
   inline GCObject* getFixedGC() const noexcept { return fixedgc; }
-  inline void setFixedGC(const GCObject* fgc) const noexcept { fixedgc = const_cast<GCObject*>(fgc); }  /* const - fixedgc is GC list */
+  inline void setFixedGC(const GCObject* fgc) const noexcept { fixedgc = const_cast<GCObject*>(fgc); }  // const - fixedgc is GC list
   inline GCObject** getFixedGCPtr() noexcept { return &fixedgc; }
 
-  /* Generational collector accessors */
+  // Generational collector accessors
   inline GCObject* getSurvival() const noexcept { return survival; }
   inline void setSurvival(GCObject* s) noexcept { survival = s; }
   inline GCObject** getSurvivalPtr() noexcept { return &survival; }
@@ -930,29 +928,29 @@ public:
 };
 
 
-/* 5. String Cache - String interning and caching */
+// 5. String Cache - String interning and caching
 class StringCache {
 private:
-  stringtable strt;                               /* String interning table */
-  TString *cache[STRCACHE_N][STRCACHE_M];        /* API string cache */
+  StringTable strt;  // String interning table
+  TString *cache[STRCACHE_N][STRCACHE_M];  // API string cache
 
 public:
-  inline stringtable* getTable() noexcept { return &strt; }
-  inline const stringtable* getTable() const noexcept { return &strt; }
+  inline StringTable* getTable() noexcept { return &strt; }
+  inline const StringTable* getTable() const noexcept { return &strt; }
 
   inline TString* getCache(unsigned int n, unsigned int m) const noexcept { return cache[n][m]; }
   inline void setCache(unsigned int n, unsigned int m, TString* str) noexcept { cache[n][m] = str; }
 };
 
 
-/* 6. Type System - Type metatables and core values */
+// 6. Type System - Type metatables and core values
 class TypeSystem {
 private:
-  TValue registry;                    /* Lua registry */
-  TValue nilvalue;                    /* Canonical nil value */
-  unsigned int seed;                  /* Hash seed for randomization */
-  Table *metatables[LUA_NUMTYPES];   /* Metatables for basic types */
-  TString *tmname[static_cast<int>(TMS::TM_N)];             /* Tag method names */
+  TValue registry;  // Lua registry
+  TValue nilvalue;  // Canonical nil value
+  unsigned int seed;  // Hash seed for randomization
+  Table *metatables[LUA_NUMTYPES];  // Metatables for basic types
+  TString *tmname[static_cast<int>(TMS::TM_N)];  // Tag method names
 
 public:
   inline TValue* getRegistry() noexcept { return &registry; }
@@ -975,15 +973,15 @@ public:
 };
 
 
-/* 7. Runtime Services - Runtime state and service functions */
+// 7. Runtime Services - Runtime state and service functions
 class RuntimeServices {
 private:
-  lua_State *twups;           /* Threads with open upvalues */
-  lua_CFunction panic;        /* Panic handler for unprotected errors */
-  TString *memerrmsg;         /* Memory error message */
-  lua_WarnFunction warnf;     /* Warning function */
-  void *ud_warn;              /* Auxiliary data for warning function */
-  LX mainth;                  /* Main thread of this state */
+  lua_State *twups;  // Threads with open upvalues
+  lua_CFunction panic;  // Panic handler for unprotected errors
+  TString *memerrmsg;  // Memory error message
+  lua_WarnFunction warnf;  // Warning function
+  void *ud_warn;  // Auxiliary data for warning function
+  LX mainth;  // Main thread of this state
 
 public:
   inline lua_State* getTwups() const noexcept { return twups; }
@@ -1010,19 +1008,19 @@ public:
 /*
 ** 'global state', shared by all threads of this state
 */
-class global_State {
+class GlobalState {
 private:
-  /* Subsystems (SRP refactoring) */
-  MemoryAllocator memory;        /* Memory allocation management */
-  GCAccounting gcAccounting;     /* GC memory tracking */
-  GCParameters gcParams;         /* GC configuration & state */
-  GCObjectLists gcLists;         /* GC object linked lists */
-  StringCache strings;           /* String interning & caching */
-  TypeSystem types;              /* Type metatables & core values */
-  RuntimeServices runtime;       /* Runtime state & services */
+  // Subsystems (SRP refactoring)
+  MemoryAllocator memory;  // Memory allocation management
+  GCAccounting gcAccounting;  // GC memory tracking
+  GCParameters gcParams;  // GC configuration & state
+  GCObjectLists gcLists;  // GC object linked lists
+  StringCache strings;  // String interning & caching
+  TypeSystem types;  // Type metatables & core values
+  RuntimeServices runtime;  // Runtime state & services
 
 public:
-  /* Subsystem access methods (for direct subsystem manipulation) */
+  // Subsystem access methods (for direct subsystem manipulation)
   inline MemoryAllocator& getMemoryAllocator() noexcept { return memory; }
   inline const MemoryAllocator& getMemoryAllocator() const noexcept { return memory; }
   inline GCAccounting& getGCAccountingSubsystem() noexcept { return gcAccounting; }
@@ -1038,13 +1036,13 @@ public:
   inline RuntimeServices& getRuntimeServicesSubsystem() noexcept { return runtime; }
   inline const RuntimeServices& getRuntimeServicesSubsystem() const noexcept { return runtime; }
 
-  /* Delegating accessors for MemoryAllocator */
+  // Delegating accessors for MemoryAllocator
   inline lua_Alloc getFrealloc() const noexcept { return memory.getFrealloc(); }
   inline void setFrealloc(lua_Alloc f) noexcept { memory.setFrealloc(f); }
   inline void* getUd() const noexcept { return memory.getUd(); }
   inline void setUd(void* u) noexcept { memory.setUd(u); }
 
-  /* Delegating accessors for GCAccounting */
+  // Delegating accessors for GCAccounting
   inline l_mem getGCTotalBytes() const noexcept { return gcAccounting.getTotalBytes(); }
   inline void setGCTotalBytes(l_mem bytes) noexcept { gcAccounting.setTotalBytes(bytes); }
   inline l_mem& getGCTotalBytesRef() noexcept { return gcAccounting.getTotalBytesRef(); }
@@ -1063,7 +1061,7 @@ public:
   inline void setGCMajorMinor(l_mem mm) noexcept { gcAccounting.setMajorMinor(mm); }
   inline l_mem& getGCMajorMinorRef() noexcept { return gcAccounting.getMajorMinorRef(); }
 
-  /* Delegating accessors for GCParameters */
+  // Delegating accessors for GCParameters
   inline lu_byte* getGCParams() noexcept { return gcParams.getParams(); }
   inline const lu_byte* getGCParams() const noexcept { return gcParams.getParams(); }
   inline lu_byte getGCParam(int idx) const noexcept { return gcParams.getParam(idx); }
@@ -1091,7 +1089,7 @@ public:
   inline lu_byte getGCEmergency() const noexcept { return gcParams.getEmergency(); }
   inline void setGCEmergency(lu_byte em) noexcept { gcParams.setEmergency(em); }
 
-  /* Delegating accessors for GCObjectLists (incremental) */
+  // Delegating accessors for GCObjectLists (incremental)
   inline GCObject* getAllGC() const noexcept { return gcLists.getAllGC(); }
   inline void setAllGC(GCObject* gc) noexcept { gcLists.setAllGC(gc); }
   inline GCObject** getAllGCPtr() noexcept { return gcLists.getAllGCPtr(); }
@@ -1129,10 +1127,10 @@ public:
   inline GCObject** getToBeFnzPtr() noexcept { return gcLists.getToBeFnzPtr(); }
 
   inline GCObject* getFixedGC() const noexcept { return gcLists.getFixedGC(); }
-  inline void setFixedGC(const GCObject* fgc) const noexcept { gcLists.setFixedGC(fgc); }  /* const - fixedgc is mutable */
+  inline void setFixedGC(const GCObject* fgc) const noexcept { gcLists.setFixedGC(fgc); }  // const - fixedgc is mutable
   inline GCObject** getFixedGCPtr() noexcept { return gcLists.getFixedGCPtr(); }
 
-  /* Delegating accessors for GCObjectLists (generational) */
+  // Delegating accessors for GCObjectLists (generational)
   inline GCObject* getSurvival() const noexcept { return gcLists.getSurvival(); }
   inline void setSurvival(GCObject* s) noexcept { gcLists.setSurvival(s); }
   inline GCObject** getSurvivalPtr() noexcept { return gcLists.getSurvivalPtr(); }
@@ -1161,14 +1159,14 @@ public:
   inline void setFinObjROld(GCObject* for_) noexcept { gcLists.setFinObjROld(for_); }
   inline GCObject** getFinObjROldPtr() noexcept { return gcLists.getFinObjROldPtr(); }
 
-  /* Delegating accessors for StringCache */
-  inline stringtable* getStringTable() noexcept { return strings.getTable(); }
-  inline const stringtable* getStringTable() const noexcept { return strings.getTable(); }
+  // Delegating accessors for StringCache
+  inline StringTable* getStringTable() noexcept { return strings.getTable(); }
+  inline const StringTable* getStringTable() const noexcept { return strings.getTable(); }
 
   inline TString* getStrCache(unsigned int n, unsigned int m) const noexcept { return strings.getCache(n, m); }
   inline void setStrCache(unsigned int n, unsigned int m, TString* str) noexcept { strings.setCache(n, m, str); }
 
-  /* Delegating accessors for TypeSystem */
+  // Delegating accessors for TypeSystem
   inline TValue* getRegistry() noexcept { return types.getRegistry(); }
   inline const TValue* getRegistry() const noexcept { return types.getRegistry(); }
 
@@ -1187,7 +1185,7 @@ public:
   inline void setTMName(int idx, TString* name) noexcept { types.setTMName(idx, name); }
   inline TString** getTMNamePtr(int idx) noexcept { return types.getTMNamePtr(idx); }
 
-  /* Delegating accessors for RuntimeServices */
+  // Delegating accessors for RuntimeServices
   inline lua_State* getTwups() const noexcept { return runtime.getTwups(); }
   inline void setTwups(lua_State* tw) noexcept { runtime.setTwups(tw); }
   inline lua_State** getTwupsPtr() noexcept { return runtime.getTwupsPtr(); }
@@ -1207,29 +1205,29 @@ public:
   inline LX* getMainThread() noexcept { return runtime.getMainThread(); }
   inline const LX* getMainThread() const noexcept { return runtime.getMainThread(); }
 
-  /* GC control methods (formerly static functions in lgc.cpp) */
-  void setPause();           /* Set debt for next GC cycle based on pause parameter */
-  void setMinorDebt();       /* Set debt for next minor collection (generational mode) */
-  int checkMinorMajor();     /* Check if should switch from minor to major collection */
-  void clearGrayLists();     /* Clear all gray lists (called when entering sweep) */
-  void correctGrayLists();   /* Correct gray lists for generational mode */
+  // GC control methods (formerly static functions in lgc.cpp)
+  void setPause();  // Set debt for next GC cycle based on pause parameter
+  void setMinorDebt();  // Set debt for next minor collection (generational mode)
+  int checkMinorMajor();  // Check if should switch from minor to major collection
+  void clearGrayLists();  // Clear all gray lists (called when entering sweep)
+  void correctGrayLists();  // Correct gray lists for generational mode
 };
 
 
-/* Get global state from lua_State (returns reference to allow assignment) */
-inline global_State*& G(lua_State* L) noexcept { return L->getGlobalStateRef(); }
-inline global_State* G(const lua_State* L) noexcept { return L->getGlobalState(); }
-/* Reference overloads for pointer-to-reference conversion */
-inline global_State*& G(lua_State& L) noexcept { return L.getGlobalStateRef(); }
-inline global_State* G(const lua_State& L) noexcept { return L.getGlobalState(); }
+// Get global state from lua_State (returns reference to allow assignment)
+inline GlobalState*& G(lua_State* L) noexcept { return L->getGlobalStateRef(); }
+inline GlobalState* G(const lua_State* L) noexcept { return L->getGlobalState(); }
+// Reference overloads for pointer-to-reference conversion
+inline GlobalState*& G(lua_State& L) noexcept { return L.getGlobalStateRef(); }
+inline GlobalState* G(const lua_State& L) noexcept { return L.getGlobalState(); }
 
-/* Get main thread from global_State */
-inline lua_State* mainthread(global_State* g) noexcept { return &g->getMainThread()->l; }
-inline const lua_State* mainthread(const global_State* g) noexcept { return &g->getMainThread()->l; }
+// Get main thread from GlobalState
+inline lua_State* mainthread(GlobalState* g) noexcept { return &g->getMainThread()->l; }
+inline const lua_State* mainthread(const GlobalState* g) noexcept { return &g->getMainThread()->l; }
 
-// Phase 88: Define gfasttm() and fasttm() inline functions (declared in ltm.h)
-// Must be defined here after global_State is fully defined
-inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept {
+// Define gfasttm() and fasttm() inline functions (declared in ltm.h)
+// Must be defined here after GlobalState is fully defined
+inline const TValue* gfasttm(GlobalState* g, const Table* mt, TMS e) noexcept {
 	return checknoTM(mt, e) ? nullptr : luaT_gettm(mt, e, g->getTMName(static_cast<int>(e)));
 }
 
@@ -1244,7 +1242,7 @@ inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept {
 ** Each GC type inherits from GCBase<T> and has proper memory layout.
 */
 
-/* Convert GCObject to specific types using reinterpret_cast */
+// Convert GCObject to specific types using reinterpret_cast
 inline TString* gco2ts(GCObject* o) noexcept {
 	lua_assert(novariant(o->getType()) == LUA_TSTRING);
 	return reinterpret_cast<TString*>(o);
@@ -1300,13 +1298,13 @@ inline GCObject* obj2gco(void* v) noexcept {
 	return reinterpret_cast<GCObject*>(v);
 }
 
-/* Const overload for GC marking - returns non-const to modify mutable GC fields */
+// Const overload for GC marking - returns non-const to modify mutable GC fields
 inline GCObject* obj2gco(const void* v) noexcept {
 	return reinterpret_cast<GCObject*>(const_cast<void*>(v));
 }
 
 
-LUAI_FUNC void luaE_setdebt (global_State *g, l_mem debt);
+LUAI_FUNC void luaE_setdebt (GlobalState *g, l_mem debt);
 LUAI_FUNC void luaE_freethread (lua_State *L, lua_State *L1);
 LUAI_FUNC lu_mem luaE_threadsize (lua_State *L);
 LUAI_FUNC CallInfo *luaE_extendCI (lua_State *L);

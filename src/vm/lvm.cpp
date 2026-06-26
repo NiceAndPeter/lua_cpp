@@ -1,10 +1,8 @@
 /*
-** $Id: lvm.c $
 ** Lua virtual machine
 ** See Copyright Notice in lua.h
 */
 
-#define lvm_c
 #define LUA_CORE
 
 #include "lprefix.h"
@@ -140,13 +138,13 @@ void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
   int nup = static_cast<int>(upvaluesSpan.size());
   LClosure *ncl = LClosure::create(this, nup);
   ncl->setProto(p);
-  setclLvalue2s(this, ra, ncl);  /* anchor new closure in stack */
+  setclLvalue2s(this, ra, ncl);  // anchor new closure in stack
   int i = 0;
-  for (const auto& uv : upvaluesSpan) {  /* fill in its upvalues */
-    if (uv.isInStack())  /* upvalue refers to local variable? */
-      ncl->setUpval(i, luaF_findupval(this, base + uv.getIndex()));
-    else  /* get upvalue from enclosing function */
-      ncl->setUpval(i, encup[uv.getIndex()]);
+  for (const auto& upvalue : upvaluesSpan) {  // fill in its upvalues
+    if (upvalue.isInStack())  // upvalue refers to local variable?
+      ncl->setUpval(i, luaF_findupval(this, base + upvalue.getIndex()));
+    else  // get upvalue from enclosing function
+      ncl->setUpval(i, encup[upvalue.getIndex()]);
     luaC_objbarrier(this, ncl, ncl->getUpval(i));
     i++;
   }
@@ -156,7 +154,7 @@ void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
 /*
 ** finish execution of an opcode interrupted by a yield
 */
-/* luaV_finishOp removed - use VirtualMachine::finishOp() directly */
+// luaV_finishOp removed - use VirtualMachine::finishOp() directly
 
 
 
@@ -167,7 +165,7 @@ void lua_State::pushClosure(Proto *p, UpVal **encup, StkId base, StkId ra) {
 **
 ** All these macros are to be used exclusively inside the main
 ** iterpreter loop (function luaV_execute) and may access directly
-** the local variables of that function (L, i, pc, ci, etc.).
+** the local variables of that function (L, i, pc, callInfo, etc.).
 ** ===================================================================
 */
 
@@ -217,7 +215,7 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 ** and debuggability. See lines 1378-1514 for the lambda implementations.
 */
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
@@ -282,9 +280,9 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 /*
 ** State management functions (converted from macros to lambdas)
 **
-** updatetrap(ci): Update local trap variable from CallInfo
-** updatebase(ci): Update local base pointer from CallInfo
-** updatestack(ra,ci,i): Conditionally update base and ra if trap is set
+** updatetrap(callInfo): Update local trap variable from CallInfo
+** updatebase(callInfo): Update local base pointer from CallInfo
+** updatestack(ra,callInfo,i): Conditionally update base and ra if trap is set
 **
 ** NOTE: These have been converted to lambdas defined inside luaV_execute()
 ** for better type safety. See lines ~1304-1323 for implementations.
@@ -294,11 +292,11 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 /*
 ** Control flow functions (converted from macros to lambdas)
 **
-** dojump(ci,i,e): Execute a jump instruction. The 'updatetrap' allows signals
+** dojump(callInfo,i,e): Execute a jump instruction. The 'updatetrap' allows signals
 **                 to stop tight loops. (Without it, the local copy of 'trap'
 **                 could never change.)
-** donextjump(ci): For test instructions, execute the jump instruction that follows it
-** docondjump(cond,ci,i): Conditional jump - skip next instruction if 'cond' is not
+** donextjump(callInfo): For test instructions, execute the jump instruction that follows it
+** docondjump(cond,callInfo,i): Conditional jump - skip next instruction if 'cond' is not
 **                        what was expected (parameter 'k'), else do next instruction,
 **                        which must be a jump.
 **
@@ -313,8 +311,8 @@ inline constexpr bool l_gei(lua_Integer a, lua_Integer b) noexcept {
 ** operation that might throw an exception, we must save it to the CallInfo
 ** so stack unwinding can report the correct error location.
 **
-** savepc(ci): Save local pc to CallInfo
-** savestate(L,ci): Save both pc and top to CallInfo and lua_State
+** savepc(callInfo): Save local pc to CallInfo
+** savestate(L,callInfo): Save both pc and top to CallInfo and lua_State
 **
 ** NOTE: These have been converted to lambdas defined inside luaV_execute()
 ** for better type safety. See lines ~1317-1323 for implementations.
@@ -342,7 +340,7 @@ inline void luai_threadyield(lua_State* L) noexcept {
 /*
 ** Check if garbage collection is needed and yield thread if necessary.
 **
-** 'c' is the limit of live values in the stack (typically L->top or ci->top)
+** 'c' is the limit of live values in the stack (typically L->top or callInfo->top)
 **
 ** PERFORMANCE vs CORRECTNESS: GC is expensive, so we only check conditionally
 ** (luaC_condGC) rather than forcing collection. The GC uses a debt-based system
@@ -355,8 +353,8 @@ inline void luai_threadyield(lua_State* L) noexcept {
 ** loops could starve other threads on single-core systems.
 */
 #define checkGC(L,c)  \
-	{ luaC_condGC(L, (savepc(ci), L->getStackSubsystem().setTopPtr(c)), \
-                         updatetrap(ci)); \
+	{ luaC_condGC(L, (savepc(callInfo), L->getStackSubsystem().setTopPtr(c)), \
+                         updatetrap(callInfo)); \
            luai_threadyield(L); }
 
 
@@ -370,7 +368,7 @@ inline void luai_threadyield(lua_State* L) noexcept {
 **
 ** PARAMETERS:
 ** - L: Lua state (contains stack, current CI, and global state)
-** - ci: CallInfo for the function being executed
+** - callInfo: CallInfo for the function being executed
 **
 ** LOCAL VARIABLES (kept in registers for performance):
 ** - cl: Current LClosure (Lua function) being executed
@@ -385,18 +383,17 @@ inline void luai_threadyield(lua_State* L) noexcept {
 ** ret: Common return point for all return opcodes
 **
 ** The function continues executing until:
-** 1. A return instruction is executed and ci has CIST_FRESH flag (new C frame)
+** 1. A return instruction is executed and callInfo has CIST_FRESH flag (new C frame)
 ** 2. An error is thrown (C++ exception)
 ** 3. The function yields (coroutine suspend)
 */
-/* luaV_execute removed - use VirtualMachine::execute() directly */
+// luaV_execute removed - use VirtualMachine::execute() directly
 
-/* }================================================================== */
+// }==================================================================
 
 
 /*
-** lua_State VM operation methods (now delegate to VirtualMachine class)
-** Updated in Phase 122 Part 2 to use VirtualMachine instead of luaV_* functions
+** lua_State VM operation methods (delegate to the VirtualMachine class)
 */
 
 void lua_State::execute(CallInfo *callinfo) {

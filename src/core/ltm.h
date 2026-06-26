@@ -1,5 +1,4 @@
 /*
-** $Id: ltm.h $
 ** Tag methods
 ** See Copyright Notice in lua.h
 */
@@ -22,7 +21,7 @@ enum class TMS {
   TM_GC,
   TM_MODE,
   TM_LEN,
-  TM_EQ,  /* last tag method with fast access */
+  TM_EQ,  // last tag method with fast access
   TM_ADD,
   TM_SUB,
   TM_MUL,
@@ -42,7 +41,7 @@ enum class TMS {
   TM_CONCAT,
   TM_CALL,
   TM_CLOSE,
-  TM_N		/* number of elements in the enum */
+  TM_N  // number of elements in the enum
 };
 
 
@@ -54,7 +53,6 @@ enum class TMS {
 */
 inline constexpr lu_byte maskflags = cast_byte(~(~0u << (static_cast<int>(TMS::TM_EQ) + 1)));
 
-// Phase 19: Convert invalidateTMcache macro to inline function
 inline void invalidateTMcache(Table* t) noexcept {
   t->clearFlagBits(maskflags);
 }
@@ -71,19 +69,18 @@ inline bool checknoTM(const Table* mt, TMS e) noexcept {
 	return mt == nullptr || (mt->getFlags() & (1u << static_cast<int>(e)));
 }
 
-// Phase 88: Convert gfasttm and fasttm macros to inline functions
 // Forward declarations - definitions provided after full types are available
-class global_State;
+class GlobalState;
 struct lua_State;
 
-inline const TValue* gfasttm(global_State* g, const Table* mt, TMS e) noexcept;
+inline const TValue* gfasttm(GlobalState* g, const Table* mt, TMS e) noexcept;
 inline const TValue* fasttm(lua_State* l, const Table* mt, TMS e) noexcept;
 
 using TypeNamesArray = std::array<const char*, LUA_TOTALTYPES>;
 LUAI_DDEC(const TypeNamesArray luaT_typenames_;)
 
 inline const char* ttypename(int x) noexcept {
-	return luaT_typenames_[x + 1];
+	return luaT_typenames_[static_cast<size_t>(x + 1)];
 }
 
 
@@ -111,8 +108,8 @@ LUAI_FUNC int luaT_callorderiTM (lua_State *L, const TValue *p1, int v2,
                                  int inv, int isfloat, TMS event);
 
 LUAI_FUNC void luaT_adjustvarargs (lua_State *L, int nfixparams,
-                                   struct CallInfo *ci, const Proto *p);
-LUAI_FUNC void luaT_getvarargs (lua_State *L, struct CallInfo *ci,
+                                   struct CallInfo *callInfo, const Proto *p);
+LUAI_FUNC void luaT_getvarargs (lua_State *L, struct CallInfo *callInfo,
                                               StkId where, int wanted);
 
 
