@@ -1754,7 +1754,7 @@ static lua_Integer unpackint (lua_State *L, const char *str,
   }
   else if (size > SZINT) {  // must check unread bytes
     int mask = (!issigned || (lua_Integer)res >= 0) ? 0 : MC;
-    for (i = limit; i < size; i++) {
+    for (int i = limit; i < size; i++) {
       if (l_unlikely((unsigned char)str[islittle ? i : size - 1 - i] != mask))
         luaL_error(L, "%d-byte integer does not fit into Lua Integer", size);
     }
