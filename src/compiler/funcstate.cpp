@@ -54,8 +54,8 @@ inline bool hasmultret(expkind k) noexcept {
 
 
 typedef struct ConsControl {
-  expdesc v;  /* last list item read */
-  expdesc *t;  /* table descriptor */
+  ExpDesc v;  /* last list item read */
+  ExpDesc *t;  /* table descriptor */
   int nh;  /* total number of 'record' elements */
   int na;  /* number of array elements already stored */
   int tostore;  /* number of array elements pending to be stored */
@@ -151,7 +151,7 @@ LocVar *FuncState::localdebuginfo(int vidx) {
 /*
 ** Create an expression representing variable 'vidx'
 */
-void FuncState::init_var(expdesc& e, int vidx) {
+void FuncState::init_var(ExpDesc& e, int vidx) {
   e.setFalseList(NO_JUMP);
   e.setTrueList(NO_JUMP);
   e.setKind(VLOCAL);
@@ -201,7 +201,7 @@ Upvaldesc *FuncState::allocupvalue() {
 }
 
 
-int FuncState::newupvalue(TString& name, expdesc& v) {
+int FuncState::newupvalue(TString& name, ExpDesc& v) {
   Upvaldesc *up = allocupvalue();
   FuncState *prevFunc = getPrev();
   if (v.getKind() == VLOCAL) {
@@ -232,7 +232,7 @@ int FuncState::newupvalue(TString& name, expdesc& v) {
 ** but no collective declaration); and var->u.info>=0 points to the
 ** inner-most (the first one found) collective declaration, if there is one.
 */
-int FuncState::searchvar(TString& n, expdesc& var) {
+int FuncState::searchvar(TString& n, ExpDesc& var) {
   int nactive = static_cast<int>(getNumActiveVars());
   for (int i = nactive - 1; i >= 0; i--) {
     Vardesc *vd = getlocalvardesc(i);
@@ -291,7 +291,7 @@ void FuncState::marktobeclosed() {
 ** this upvalue into all intermediate functions. If it is a global, set
 ** 'var' as 'void' as a flag.
 */
-void FuncState::singlevaraux(TString& n, expdesc& var, int base) {
+void FuncState::singlevaraux(TString& n, ExpDesc& var, int base) {
   int v = searchvar(n, var);  /* look up variables at current level */
   if (v >= 0) {  /* found? */
     if (v == VLOCAL && !base)
@@ -428,8 +428,8 @@ void FuncState::setvararg(int nparams) {
 
 
 /* Create code to store the "top" register in 'var' */
-void FuncState::storevartop(expdesc& var) {
-  expdesc e;
+void FuncState::storevartop(ExpDesc& var) {
+  ExpDesc e;
   e.init(VNONRELOC, getFirstFreeRegister() - 1);
   storevar(var, e);  /* will also free the top register */
 }

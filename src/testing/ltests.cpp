@@ -1185,7 +1185,7 @@ static int test_applyparam (lua_State *L) {
 
 
 static int string_query (lua_State *L) {
-  stringtable *tb = G(L)->getStringTable();
+  StringTable *tb = G(L)->getStringTable();
   int s = cast_int(luaL_optinteger(L, 1, 0)) - 1;
   if (s == -1) {
     lua_pushinteger(L ,tb->getSize());

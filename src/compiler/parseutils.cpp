@@ -58,7 +58,7 @@ typedef struct BlockCnt {
 } BlockCnt;
 
 
-void expdesc::init(expkind kind, int i) {
+void ExpDesc::init(expkind kind, int i) {
   setFalseList(NO_JUMP);
   setTrueList(NO_JUMP);
   setKind(kind);
@@ -66,7 +66,7 @@ void expdesc::init(expkind kind, int i) {
 }
 
 
-void expdesc::initString(TString *s) {
+void ExpDesc::initString(TString *s) {
   setFalseList(NO_JUMP);
   setTrueList(NO_JUMP);
   setKind(VKSTR);
@@ -96,8 +96,8 @@ inline void leavelevel(LexState* ls) noexcept {
 
 
 typedef struct ConsControl {
-  expdesc v;  /* last list item read */
-  expdesc *t;  /* table descriptor */
+  ExpDesc v;  /* last list item read */
+  ExpDesc *t;  /* table descriptor */
   int nh;  /* total number of 'record' elements */
   int na;  /* number of array elements already stored */
   int tostore;  /* number of array elements pending to be stored */
@@ -168,7 +168,7 @@ inline BinOpr getbinopr (int op) noexcept {
 */
 struct LHS_assign {
   struct LHS_assign *prev;
-  expdesc v;  /* variable (global, local, upvalue, or indexed) */
+  ExpDesc v;  /* variable (global, local, upvalue, or indexed) */
 };
 
 

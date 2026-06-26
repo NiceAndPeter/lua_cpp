@@ -91,7 +91,7 @@ static void tablerehash (TString **vect, unsigned int osize, unsigned int nsize)
 
 
 void TString::resize(lua_State* L, unsigned int nsize) {
-  stringtable *tb = G(L)->getStringTable();
+  StringTable *tb = G(L)->getStringTable();
   unsigned int osize = tb->getSize();
   TString **newvect;
   if (nsize < osize)  /* shrinking table? */
@@ -124,7 +124,7 @@ void TString::clearCache(global_State* g) {
 void TString::init(lua_State* L) {
   global_State *g = G(L);
   unsigned int i, j;
-  stringtable *tb = G(L)->getStringTable();
+  StringTable *tb = G(L)->getStringTable();
   tb->setHash(luaM_newvector<TString*>(L, MINSTRTABSIZE));
   tablerehash(tb->getHash(), 0, MINSTRTABSIZE);  /* clear array */
   tb->setSize(MINSTRTABSIZE);
@@ -185,7 +185,7 @@ TString* TString::createLongString(lua_State* L, size_t l) {
 }
 
 
-static void growstrtab (lua_State *L, stringtable *tb) {
+static void growstrtab (lua_State *L, StringTable *tb) {
   if (l_unlikely(tb->getNumElements() == std::numeric_limits<int>::max())) {  /* too many strings? */
     luaC_fullgc(*L, 1);  /* try to free some... */
     if (tb->getNumElements() == std::numeric_limits<int>::max())  /* still too many? */
@@ -202,7 +202,7 @@ static void growstrtab (lua_State *L, stringtable *tb) {
 static TString *internshrstr (lua_State *L, const char *str, size_t l) {
   TString *ts;
   global_State *g = G(L);
-  stringtable *tb = g->getStringTable();
+  StringTable *tb = g->getStringTable();
   unsigned int h = TString::computeHash(str, l, g->getSeed());
   TString **list = &tb->getHash()[lmod(h, tb->getSize())];
   lua_assert(str != nullptr);  /* otherwise 'memcmp'/'memcpy' are undefined */
@@ -359,7 +359,7 @@ bool TString::equals(const TString* other) const {
 }
 
 void TString::remove(lua_State* L) {
-  stringtable *tb = G(L)->getStringTable();
+  StringTable *tb = G(L)->getStringTable();
   TString **p = &tb->getHash()[lmod(getHash(), tb->getSize())];
   while (*p != this)  /* find previous element */
     p = &(*p)->u.hashNext;

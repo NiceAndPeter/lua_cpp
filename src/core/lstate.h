@@ -178,7 +178,7 @@ enum class GCKind : lu_byte {
 };
 
 
-class stringtable {
+class StringTable {
 private:
   TString **hash;  /* array of buckets (linked lists of strings) */
   unsigned int numberOfElements;  /* number of elements */
@@ -931,12 +931,12 @@ public:
 /* 5. String Cache - String interning and caching */
 class StringCache {
 private:
-  stringtable strt;                               /* String interning table */
+  StringTable strt;                               /* String interning table */
   TString *cache[STRCACHE_N][STRCACHE_M];        /* API string cache */
 
 public:
-  inline stringtable* getTable() noexcept { return &strt; }
-  inline const stringtable* getTable() const noexcept { return &strt; }
+  inline StringTable* getTable() noexcept { return &strt; }
+  inline const StringTable* getTable() const noexcept { return &strt; }
 
   inline TString* getCache(unsigned int n, unsigned int m) const noexcept { return cache[n][m]; }
   inline void setCache(unsigned int n, unsigned int m, TString* str) noexcept { cache[n][m] = str; }
@@ -1160,8 +1160,8 @@ public:
   inline GCObject** getFinObjROldPtr() noexcept { return gcLists.getFinObjROldPtr(); }
 
   /* Delegating accessors for StringCache */
-  inline stringtable* getStringTable() noexcept { return strings.getTable(); }
-  inline const stringtable* getStringTable() const noexcept { return strings.getTable(); }
+  inline StringTable* getStringTable() noexcept { return strings.getTable(); }
+  inline const StringTable* getStringTable() const noexcept { return strings.getTable(); }
 
   inline TString* getStrCache(unsigned int n, unsigned int m) const noexcept { return strings.getCache(n, m); }
   inline void setStrCache(unsigned int n, unsigned int m, TString* str) noexcept { strings.setCache(n, m, str); }

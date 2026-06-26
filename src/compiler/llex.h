@@ -12,7 +12,7 @@
 #include "lzio.h"
 
 /* Forward declarations */
-class expdesc;
+class ExpDesc;
 struct Labeldesc;
 class Labellist;
 struct ConsControl;
