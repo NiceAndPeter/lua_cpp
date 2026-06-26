@@ -70,11 +70,6 @@ typedef enum {
 } expkind;
 
 
-/* Phase 44.6: vkisvar and vkisindexed macros replaced with expdesc static methods:
-** - vkisvar(k) → expdesc::isVar(k)
-** - vkisindexed(k) → expdesc::isIndexed(k)
-*/
-
 class expdesc {
 private:
   expkind k;
@@ -137,7 +132,7 @@ public:
   void setFalseList(int list) noexcept { falseJumpList = list; }
   int* getFalseListRef() noexcept { return &falseJumpList; }
 
-  // Phase 44.6: Expression kind helper methods
+  // Expression kind helper methods
 
   // Check if expression kind is a variable
   static bool isVar(expkind kind) noexcept {
@@ -149,7 +144,7 @@ public:
     return VINDEXED <= kind && kind <= VINDEXSTR;
   }
 
-  // Phase 84: Expression initialization methods
+  // Expression initialization methods
   void init(expkind kind, int i);
   void initString(TString *s);
 };
@@ -162,11 +157,6 @@ inline constexpr lu_byte RDKTOCLOSE = 2;   /* to-be-closed */
 inline constexpr lu_byte RDKCTC = 3;   /* local compile-time constant */
 inline constexpr lu_byte GDKREG = 4;   /* regular global */
 inline constexpr lu_byte GDKCONST = 5;   /* global constant */
-
-/* Phase 44.6: varinreg and varglobal macros replaced with Vardesc methods:
-** - varinreg(v) → v->isInReg()
-** - varglobal(v) → v->isGlobal()
-*/
 
 /* description of an active variable */
 class Vardesc {
@@ -183,7 +173,7 @@ public:
     TValue k;  /* constant value (if any) */
   };
 
-  // Phase 44.6: Variable kind helper methods
+  // Variable kind helper methods
 
   // Check if variable is in register
   bool isInReg() const noexcept {
@@ -277,7 +267,7 @@ public:
     return &actvar_vec.back();
   }
 
-  /* Phase 116: std::span accessors for actvar array */
+  /* std::span accessors for actvar array */
   std::span<Vardesc> actvarGetSpan() noexcept {
     return std::span(actvar_vec.data(), actvar_vec.size());
   }
@@ -447,7 +437,7 @@ public:
 /* state needed to generate code for a given function */
 class FuncState {
 private:
-  /* Core context (Phase 130 Part 6: references for non-null, non-reassigned members) */
+  /* Core context (references for non-null, non-reassigned members) */
   Proto& f;  /* current function header */
   class FuncState *prev;  /* enclosing function (can be null) */
   class LexState& ls;  /* lexical state */
@@ -462,12 +452,12 @@ private:
   UpvalueTracker upvalueTrack;     /* Upvalue tracking */
 
 public:
-  /* Constructor (Phase 130 Part 6: required for reference members) */
+  /* Constructor (required for reference members) */
   explicit FuncState(Proto& proto, class LexState& lexState) noexcept
     : f(proto), prev(nullptr), ls(lexState), bl(nullptr), numberOfNestedPrototypes(0),
       codeBuffer(), constantPool(), variableScope(), registerAlloc(), upvalueTrack() {}
 
-  /* Core context accessors (Phase 130 Part 6: return references where appropriate) */
+  /* Core context accessors (return references where appropriate) */
   inline Proto& getProto() const noexcept { return f; }
   inline FuncState* getPrev() const noexcept { return prev; }
   inline class LexState& getLexState() const noexcept { return ls; }
@@ -559,7 +549,7 @@ public:
   inline lu_byte& getNumUpvaluesRef() noexcept { return upvalueTrack.getNumUpvaluesRef(); }
   inline lu_byte& getNeedCloseRef() noexcept { return upvalueTrack.getNeedCloseRef(); }
 
-  // Code generation methods (from lcode.h) - Phase 27c
+  // Code generation methods (from lcode.h)
   // Note: OpCode is typedef'd in lopcodes.h, we use int to avoid circular deps
   int code(Instruction i);
   int codeABx(int o, int A, int Bx);
@@ -596,7 +586,7 @@ public:
   void settablesize(int pcpos, unsigned ra, unsigned asize, unsigned hsize);
   void setlist(int base, int nelems, int tostore);
   void finish();
-  // Phase 77: Code generation primitives (moved from private to public as they're used by other methods)
+  // Code generation primitives (public as they're used by other methods)
   int codeAsBx(OpCode o, int A, int Bc);
   int codek(int reg, int k);
   int getjump(int position);
@@ -604,7 +594,7 @@ public:
   Instruction *getjumpcontrol(int position);
   int patchtestreg(int node, int reg);
   void patchlistaux(int list, int vtarget, int reg, int dtarget);
-  // More Phase 77 methods (public for now as used by unconverted functions)
+  // More code generation methods (public for now as used by unconverted functions)
   int condjump(OpCode o, int A, int B, int C, int k);
   int removevalues(int list);
   void savelineinfo(Proto& proto, int line);
@@ -617,7 +607,7 @@ public:
   void freeExpressions(expdesc& e1, expdesc& e2);
   TValue *const2val(const expdesc& e);
   int codeextraarg(int A);
-  // Phase 78: Constant management (public for now as used by unconverted functions)
+  // Constant management (public for now as used by unconverted functions)
   int addk(Proto& proto, TValue *v);
   int k2proto(TValue *key, TValue *v);
   int stringK(TString& s);
@@ -629,7 +619,7 @@ public:
   void floatCode(int reg, lua_Number flt);
   int str2K(expdesc& e);
   int exp2K(expdesc& e);
-  // Phase 79: Expression & code generation (public for now as used by unconverted functions)
+  // Expression & code generation (public for now as used by unconverted functions)
   void discharge2reg(expdesc& e, int reg);
   void discharge2anyreg(expdesc& e);
   int code_loadbool(int A, OpCode op);
@@ -655,37 +645,37 @@ public:
   void codeorder(BinOpr opr, expdesc& e1, expdesc& e2);
   void codeeq(BinOpr opr, expdesc& e1, expdesc& e2);
   void codeconcat(expdesc& e1, expdesc& e2, int line);
-  // Phase 82: Limit checking
+  // Limit checking
   l_noret errorlimit(int limit, const char *what);
   void checklimit(int v, int l, const char *what);
-  // Phase 83: Variable utilities
+  // Variable utilities
   Vardesc *getlocalvardesc(int vidx);
   lu_byte reglevel(int nvar);
   lu_byte nvarstack();
   LocVar *localdebuginfo(int vidx);
   void init_var(expdesc& e, int vidx);
   short registerlocalvar(TString& varname);
-  // Phase 84: Variable scope
+  // Variable scope
   void removevars(int tolevel);
-  // Phase 85: Upvalue and variable search
+  // Upvalue and variable search
   int searchupvalue(TString& name);
   Upvaldesc *allocupvalue();
   int newupvalue(TString& name, expdesc& v);
   int searchvar(TString& n, expdesc& var);
   void markupval(int level);
   void marktobeclosed();
-  // Phase 86: Variable lookup auxiliary
+  // Variable lookup auxiliary
   void singlevaraux(TString& n, expdesc& var, int base);
-  // Phase 87: Goto resolution
+  // Goto resolution
   void solvegotos(BlockCnt& blockCnt);
-  // Phase 88: Block management (used by parser infrastructure)
+  // Block management (used by parser infrastructure)
   void enterblock(BlockCnt& blk, lu_byte isloop);
   void leaveblock();
-  // Phase 88: Constructor helpers (used by parser infrastructure)
+  // Constructor helpers (used by parser infrastructure)
   void closelistfield(ConsControl& cc);
   void lastlistfield(ConsControl& cc);
   int maxtostore();
-  // Phase 88: Variable handling (used by parser infrastructure)
+  // Variable handling (used by parser infrastructure)
   void setvararg(int nparams);
   void storevartop(expdesc& var);
   void checktoclose(int level);
@@ -700,7 +690,7 @@ private:
 
 
 /*
-** Phase 95: Parser class - Separates parsing logic from lexical analysis
+** Parser class - Separates parsing logic from lexical analysis
 ** Extracted from LexState to achieve proper separation of concerns
 */
 class Parser {
@@ -709,7 +699,7 @@ private:
   class FuncState *fs;  /* current function state (reassigned for nested functions) */
 
 public:
-  // Constructor (Phase 130 Part 6: LexState& required)
+  // Constructor (LexState& required)
   explicit Parser(class LexState& lexState, class FuncState* funcState)
     : ls(lexState), fs(funcState) {}
 
@@ -734,7 +724,6 @@ public:
   int new_varkind(TString* name, lu_byte kind);
   int new_localvar(TString& name);
 
-  /* Phase 123: Convert new_localvarliteral macro to template function */
   template<size_t N>
   inline int new_localvarliteral(const char (&v)[N]) {
     return new_localvar(*ls.newString(v, N - 1));

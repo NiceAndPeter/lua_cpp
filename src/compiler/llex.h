@@ -87,7 +87,7 @@ typedef struct Token {
 } Token;
 
 
-/* Phase 94: Subsystem for input character stream handling */
+/* Subsystem for input character stream handling */
 class InputScanner {
 private:
   int current;      /* current character (charint) */
@@ -117,7 +117,7 @@ public:
   bool currIsNewline() const noexcept { return current == '\n' || current == '\r'; }
 };
 
-/* Phase 94: Subsystem for token state management */
+/* Subsystem for token state management */
 class TokenState {
 private:
   Token current;    /* current token */
@@ -131,7 +131,7 @@ public:
   Token& getLookaheadRef() noexcept { return lookahead; }
 };
 
-/* Phase 94: Subsystem for string interning and buffer management */
+/* Subsystem for string interning and buffer management */
 class StringInterner {
 private:
   Mbuffer *buff;  /* buffer for tokens */
@@ -155,11 +155,11 @@ public:
   void setGlobalName(TString* gbl) noexcept { globalKeywordName = gbl; }
 };
 
-/* Phase 95: Lexical state - focused on tokenization only
+/* Lexical state - focused on tokenization only
 ** Parser-specific fields and methods moved to Parser class */
 class LexState {
 public:
-  // Phase 96: Direct subsystem access for performance
+  // Direct subsystem access for performance
   // These subsystems are frequently accessed in hot paths, so we make them
   // public to eliminate indirection overhead from delegating accessor methods
   InputScanner scanner;
@@ -172,7 +172,7 @@ private:
   class Dyndata *dyd;  /* dynamic structures shared by lexer and parser */
 
 public:
-  // Phase 94: Accessors delegating to subsystems
+  // Accessors delegating to subsystems
 
   // InputScanner accessors
   int getCurrentChar() const noexcept { return scanner.getCurrent(); }
@@ -197,7 +197,7 @@ public:
   const Token& getLookahead() const noexcept { return tokens.getLookahead(); }
   Token& getLookaheadRef() noexcept { return tokens.getLookaheadRef(); }
 
-  // Phase 96: Hot-path token accessors - frequently used in parser
+  // Hot-path token accessors - frequently used in parser
   // Direct access to token value without going through full getCurrentToken() call
   inline int getToken() const noexcept { return tokens.getCurrent().token; }
   inline void setToken(int tok) noexcept { tokens.getCurrentRef().token = tok; }
@@ -242,7 +242,7 @@ public:
   l_noret undefgoto(class FuncState *fs, Labeldesc *gt);
 
 private:
-  // Phase 93: Lexer helper methods (converted from static functions)
+  // Lexer helper methods (converted from static functions)
   // Batch 1: Trivial functions
   void save(int c);
   void incLineNumber();

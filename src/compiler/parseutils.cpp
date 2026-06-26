@@ -181,11 +181,9 @@ LClosure *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
   LexState lexstate;
   LClosure *cl = LClosure::create(L, 1);  /* create main closure */
   setclLvalue2s(L, L->getTop().p, cl);  /* anchor it (to avoid being collected) */
-  L->inctop();  /* Phase 25e */
-  lexstate.setTable(Table::create(L));  /* create table for scanner */
+  L->inctop();  lexstate.setTable(Table::create(L));  /* create table for scanner */
   sethvalue2s(L, L->getTop().p, lexstate.getTable());  /* anchor it */
-  L->inctop();  /* Phase 25e */
-  Proto* proto = luaF_newproto(L);
+  L->inctop();  Proto* proto = luaF_newproto(L);
   cl->setProto(proto);
   luaC_objbarrier(L, cl, cl->getProto());
   proto->setSource(TString::create(L, name));  /* create and anchor TString */

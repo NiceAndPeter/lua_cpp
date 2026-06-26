@@ -1083,7 +1083,7 @@ int FuncState::finaltarget(int i) {
 
 /*
 ** =====================================================================
-** FuncState Method Implementations (Phase 27c)
+** FuncState Method Implementations
 ** Simple wrappers that forward to existing luaK_* functions
 ** =====================================================================
 */

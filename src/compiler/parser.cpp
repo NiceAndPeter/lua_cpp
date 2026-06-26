@@ -44,7 +44,6 @@ inline bool eqstr(const TString& a, const TString& b) noexcept {
 }
 
 
-/* Phase 123: Convert check_condition macro to inline function */
 inline void check_condition(Parser* parser, bool c, const char* msg) {
 	if (!c) parser->getLexState().syntaxError(msg);
 }
@@ -450,7 +449,7 @@ void Parser::open_func(FuncState *funcstate, BlockCnt& bl) {
   f.setMaxStackSize(2);  /* registers 0/1 are always valid */
   funcstate->setKCache(Table::create(state));  /* create table for function */
   sethvalue2s(state, state->getTop().p, funcstate->getKCache());  /* anchor it */
-  state->inctop();  /* Phase 25e */
+  state->inctop();
   funcstate->enterblock(bl, 0);
 }
 
