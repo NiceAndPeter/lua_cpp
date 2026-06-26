@@ -129,8 +129,15 @@ Converting Lua 5.5 from C to modern C++23:
   `uv`→`upvalue` (after disambiguating Udata user-values: `UValue::uv`→`value`,
   `Udata::uv[]`→`userValues[]`), `ts`→`tstring`. See
   `docs/IDENTIFIER_MODERNIZATION_PLAN.md`.
+- **Wave 5** (targeted refactors — assessed, mostly already done): extracted
+  `LexState::readName` from the lexer dispatch. Found the rest low-value or
+  too risky for a zero-regression project: remaining macros are all *necessary*
+  (see `NECESSARY_MACROS.md`); leftover loops are raw-array/hot-path; and the long
+  functions (`str_format`/`str_pack` with gotos+fallthrough, recursive `match`)
+  are stable, subtle code — deliberately left intact.
 - **Deferred** (diminishing-returns / real risk): VM register operands `ra/rb/rc`,
-  bulk single-letter loop/temp locals, Wave 5 (refactors), Wave 6 (Doxygen).
+  bulk single-letter loop/temp locals, decomposing stable subtle functions,
+  Wave 6 (Doxygen).
 - **Result**: ~2.33s avg (build + `testes/all.lua` green), zero perf regression.
 
 ---
