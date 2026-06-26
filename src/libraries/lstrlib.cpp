@@ -38,9 +38,9 @@
 
 
 static int str_len (lua_State *L) {
-  size_t l;
-  luaL_checklstring(L, 1, &l);
-  lua_pushinteger(L, (lua_Integer)l);
+  size_t len;
+  luaL_checklstring(L, 1, &len);
+  lua_pushinteger(L, (lua_Integer)len);
   return 1;
 }
 
@@ -83,10 +83,10 @@ static size_t getendpos (lua_State *L, int arg, lua_Integer def,
 
 
 static int str_sub (lua_State *L) {
-  size_t l;
-  const char *s = luaL_checklstring(L, 1, &l);
-  size_t start = posrelatI(luaL_checkinteger(L, 2), l);
-  size_t end = getendpos(L, 3, -1, l);
+  size_t len;
+  const char *s = luaL_checklstring(L, 1, &len);
+  size_t start = posrelatI(luaL_checkinteger(L, 2), len);
+  size_t end = getendpos(L, 3, -1, len);
   if (start <= end)
     lua_pushlstring(L, s + start - 1, (end - start) + 1);
   else lua_pushliteral(L, "");
@@ -95,38 +95,38 @@ static int str_sub (lua_State *L) {
 
 
 static int str_reverse (lua_State *L) {
-  size_t l;
+  size_t len;
   luaL_Buffer b;
-  const char *s = luaL_checklstring(L, 1, &l);
-  char *p = luaL_buffinitsize(L, &b, l);
-  std::reverse_copy(s, s + l, p);
-  luaL_pushresultsize(&b, l);
+  const char *s = luaL_checklstring(L, 1, &len);
+  char *p = luaL_buffinitsize(L, &b, len);
+  std::reverse_copy(s, s + len, p);
+  luaL_pushresultsize(&b, len);
   return 1;
 }
 
 
 static int str_lower (lua_State *L) {
-  size_t l;
+  size_t len;
   luaL_Buffer b;
-  const char *s = luaL_checklstring(L, 1, &l);
-  char *p = luaL_buffinitsize(L, &b, l);
-  std::transform(s, s + l, p, [](char c) {
+  const char *s = luaL_checklstring(L, 1, &len);
+  char *p = luaL_buffinitsize(L, &b, len);
+  std::transform(s, s + len, p, [](char c) {
     return cast_char(tolower(cast_uchar(c)));
   });
-  luaL_pushresultsize(&b, l);
+  luaL_pushresultsize(&b, len);
   return 1;
 }
 
 
 static int str_upper (lua_State *L) {
-  size_t l;
+  size_t len;
   luaL_Buffer b;
-  const char *s = luaL_checklstring(L, 1, &l);
-  char *p = luaL_buffinitsize(L, &b, l);
-  std::transform(s, s + l, p, [](char c) {
+  const char *s = luaL_checklstring(L, 1, &len);
+  char *p = luaL_buffinitsize(L, &b, len);
+  std::transform(s, s + len, p, [](char c) {
     return cast_char(toupper(cast_uchar(c)));
   });
-  luaL_pushresultsize(&b, l);
+  luaL_pushresultsize(&b, len);
   return 1;
 }
 
